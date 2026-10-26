@@ -9,7 +9,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 
 ---
 
-## CC-001 · C7 · Nazwa encji `Group` koliduje z `GitLab::Group`
+## CC-001 | C7 | Nazwa encji `Group` koliduje z `GitLab::Group`
 
 - **Problem:** C7 nazywa encję grup użytkownika `Group` i jednocześnie wymaga `GitLab::Group`. Cedar 4
   (cedar-java 4.10.0) odrzuca taki schemat: `definition of GitLab::Group illegally shadows the existing
@@ -21,10 +21,10 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `GitLab::Namespace`, co dotyka manifestów serwerów (C6) i `resourceDefaults` (C5).
 - **Status:** open
 
-## CC-002 · C2 · Który wariant JWT dla `initialize`/`tools/list` w kontekście użytkownika
+## CC-002 | C2 | Który wariant JWT dla `initialize`/`tools/list` w kontekście użytkownika
 
-- **Problem:** w tabeli C2 `tool` jest wymagany, a wariant serwisowy jest opisany jako „wywołania bez
-  użytkownika”. Nie wiadomo, jaki JWT gateway wysyła do serwera dla `initialize`, `tools/list` i `ping`
+- **Problem:** w tabeli C2 `tool` jest wymagany, a wariant serwisowy jest opisany jako "wywołania bez
+  użytkownika". Nie wiadomo, jaki JWT gateway wysyła do serwera dla `initialize`, `tools/list` i `ping`
   w ramach sesji konkretnego użytkownika: wariant użytkownika nie ma wtedy sensownej wartości `tool`.
 - **Przyjęty wariant:** wariant użytkownika ma `tool` wymagany i służy tylko do `tools/call` (oraz do
   `resolve` w brokerze). `initialize`, `tools/list`, `ping` i `GET /mcp-manifest` gateway zawsze wysyła
@@ -33,7 +33,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   (b) osobna wartość `tool` dla metod protokołu (np. `-`).
 - **Status:** open
 
-## CC-003 · C2 · Kto pilnuje `exp - iat <= 60 s` i granicy tolerancji zegara
+## CC-003 | C2 | Kto pilnuje `exp - iat <= 60 s` i granicy tolerancji zegara
 
 - **Problem:** C2 podaje `exp - iat <= 60 s`, ale w liście kontroli odbiorcy wymienia tylko podpis, `iss`,
   `aud`, `exp` (skew <= 30 s), `jti`, `tool`. Nie wiadomo, czy odbiorca ma odrzucać token o dłuższym życiu.
@@ -46,7 +46,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   i `issued-in-future` zmieniają oczekiwanie na `valid`.
 - **Status:** open
 
-## CC-004 · C6 · Kształt obiektu liczonego do `definitionHash`
+## CC-004 | C6 | Kształt obiektu liczonego do `definitionHash`
 
 - **Problem:** C6 wymienia pola wchodzące do hasha (definicja MCP + wpis manifestu + `system`,
   `credential`), ale nie układ obiektu. Starter (generuje) i gateway (weryfikuje) muszą liczyć bit w bit
@@ -59,7 +59,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** obiekt zagnieżdżony `{tool: {...}, manifest: {...}, server: {...}}`.
 - **Status:** open
 
-## CC-005 · C6/C5 · Manifest nie zawiera definicji narzędzia MCP
+## CC-005 | C6/C5 | Manifest nie zawiera definicji narzędzia MCP
 
 - **Problem:** `definitionHash` obejmuje `description`, `inputSchema` itd., ale manifest ich nie niesie.
   Przy `PUT /admin/v1/registry/servers/{serverId}` (CI, serwer nie musi działać) gateway nie ma z czego
@@ -73,7 +73,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `pending` pokazuje pełny diff, katalog może pokazać `description`. Zmiana addytywna (minor 1.1.0).
 - **Status:** open
 
-## CC-006 · C7 · Uzupełnienia modelu Cedar względem skrótu w C7
+## CC-006 | C7 | Uzupełnienia modelu Cedar względem skrótu w C7
 
 - **Problem:** skrót modelu w C7 nie wystarcza do napisania polityk zakresów: Cedar nie odczyta atrybutu
   rodzica przez `in`, nie dopasuje prefiksu napisu do wartości ze zbioru i nie ma `null`.
@@ -91,12 +91,12 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   - id encji `Tool` = nazwa widziana przez klienta `<system>__<tool>`, atrybut `name` = nazwa po stronie
     serwera, `server` = `serverId`.
 - **Konsekwencja:** na poziomie gateway'a nie da się sprawdzić zakresu OpenSearch (prefiks względem listy
-  nazw z argumentów, Cedar nie ma kwantyfikatora „dla każdego”); robi to serwer na rozwiązanym indeksie.
+  nazw z argumentów, Cedar nie ma kwantyfikatora "dla każdego"); robi to serwer na rozwiązanym indeksie.
 - **Alternatywy:** hierarchia `OpenSearch::Index in [OpenSearch::IndexPrefix]` zamiast `namePrefixes`;
   dla zakresów na gateway'u builder mógłby liczyć gotową flagę, ale to przenosi decyzję poza Cedar.
 - **Status:** open
 
-## CC-007 · C9 · Skróty typów zasobów w grupach zakresu i reguły parsowania
+## CC-007 | C9 | Skróty typów zasobów w grupach zakresu i reguły parsowania
 
 - **Problem:** C9 podaje przykłady `proj` (Jira), `grp` (GitLab), `idx` (OpenSearch), ale nie skróty dla
   Confluence i service desk ani reguł parsowania (identyfikatory zawierają `-`, np. `team-a`).
@@ -112,18 +112,18 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   pełne); dopasowanie prefiksu bez granicy `-`.
 - **Status:** open
 
-## CC-008 · C7/C8 · Format `policyRevision` i porządek rewizji
+## CC-008 | C7/C8 | Format `policyRevision` i porządek rewizji
 
 - **Problem:** przykład w C8 ma `"policyRevision": "2026.10.26-a1b2c3"`, a C7 definiuje rewizję jako
   `YYYYMMDDHHMMSS-<sha7>`. C7 nie mówi też, co z dwiema rewizjami z tej samej sekundy.
 - **Przyjęty wariant:** wszędzie (C2 `prv`, C7, C8) format C7, wzorzec `^[0-9]{14}-[0-9a-f]{7}$`.
-  Porządek wyznacza tylko część czasowa; rewizja o tej samej części czasowej co załadowana nie jest „wyższa”
+  Porządek wyznacza tylko część czasowa; rewizja o tej samej części czasowej co załadowana nie jest "wyższa"
   i jest odrzucana (wektor `bundles/same-second-revision.json`).
 - **Alternatywy:** porządek leksykograficzny całego napisu (wtedy sha decyduje przy remisie, co jest
   przypadkowe).
 - **Status:** open
 
-## CC-009 · C8 · Pola zdarzenia audytu
+## CC-009 | C8 | Pola zdarzenia audytu
 
 - **Problem:** C8 nie mówi, które pola są wymagane; nie ma pola na system docelowy zdarzeń brokera
   (`credential_resolve`, `connection_change`); format `resource.parent` (`Jira::Project::ABC`) różni się
@@ -135,7 +135,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** osobne pole `system`; `resource.parent` jako obiekt `{type, id}`.
 - **Status:** open
 
-## CC-010 · C10/C11/C12 · Pola błędów `confirmation_required` i `step_up_required`
+## CC-010 | C10/C11/C12 | Pola błędów `confirmation_required` i `step_up_required`
 
 - **Problem:** C10 podaje dla `confirmation_required` tylko `confirmationId`, C11 także `confirmUrl`.
   C10 nazywa link step-up `stepUpUrl`, C12 w odpowiedzi BFF `url`.
@@ -144,7 +144,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy (propozycja):** jedna nazwa `stepUpUrl` w obu miejscach; `confirmUrl` wymagane.
 - **Status:** open
 
-## CC-011 · C7 · Format podpisu paczki, `schemaVersion`, porównanie wersji schematu
+## CC-011 | C7 | Format podpisu paczki, `schemaVersion`, porównanie wersji schematu
 
 - **Problem:** C7 nie mówi, czy `.sig` to surowe bajty czy base64, ani czym jest `schemaVersion`.
 - **Przyjęty wariant:** `.sig` = surowe 64 bajty podpisu Ed25519 nad dokładnymi bajtami `.tar.gz`
@@ -153,20 +153,20 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** podpis base64 w pliku tekstowym; podpis nad `manifest.json` z sumami plików.
 - **Status:** open
 
-## CC-012 · C4/C5/C12 · Ciała błędów dla statusów, których kontrakt nie opisuje
+## CC-012 | C4/C5/C12 | Ciała błędów dla statusów, których kontrakt nie opisuje
 
 - **Problem:** kontrakty opisują ciała tylko części błędów (409/422 w C4, `step_up_required` w C12).
   Klienci generowani z OpenAPI potrzebują kształtu dla 400/401/403/404/409/503.
 - **Przyjęty wariant:** wspólny kształt `Error {error: <snake_case>, message?}` i kody: `invalid_request`
   (400), `unauthenticated` (401), `forbidden` (403, zły CN certyfikatu w C4), `access_denied` (403 w C5/C12),
-  `not_found_or_denied` (404, także „nie właściciel”), `slug_taken` (409 przy tworzeniu linku),
+  `not_found_or_denied` (404, także "nie właściciel"), `slug_taken` (409 przy tworzeniu linku),
   `hash_mismatch` (409 przy approve), `manifest_rejected` (422 przy rejestracji manifestu niezgodnego
   z konfiguracją), `csrf_invalid` (403 w C12), `upstream_unavailable` (503 w `resolve`, gdy magazyn
   sekretów/IdP/system nie odpowiada). `DELETE` i `purge` zwracają 204, `approve` i decyzja potwierdzenia 204.
 - **Alternatywy:** RFC 9457 `application/problem+json`.
 - **Status:** open
 
-## CC-013 · C4 · Wartości puste i zdarzenie unieważnienia
+## CC-013 | C4 | Wartości puste i zdarzenie unieważnienia
 
 - **Problem:** C4 wymienia `expiresAt` i `lastUsedAt` jako pola odpowiedzi, ale PAT bez daty ważności
   i nieużyte połączenie nie mają wartości. C4.3 nie podaje nazwy kanału Redis ani kształtu zdarzenia dla
@@ -178,7 +178,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** pominięcie pola zamiast `null`; zdarzenie `purge` z `system` pominiętym = wszystkie.
 - **Status:** open
 
-## CC-014 · C5 · Zawartość katalogu i `requiredEntitlements`
+## CC-014 | C5 | Zawartość katalogu i `requiredEntitlements`
 
 - **Problem:** C5 nie wymienia pól serwera i narzędzia w katalogu poza `access` i `requiredEntitlements`;
   nie mówi też, czy `requiredEntitlements` jest wypełniane dla narzędzi już dostępnych.
@@ -188,17 +188,17 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** `requiredEntitlements` tylko dla `denied`.
 - **Status:** open
 
-## CC-015 · C5 · Podgląd i decyzja potwierdzenia
+## CC-015 | C5 | Podgląd i decyzja potwierdzenia
 
-- **Problem:** C5 mówi „argumenty w ustalonej kolejności, ewentualnie obcięte z oznaczeniem”, bez formatu.
+- **Problem:** C5 mówi "argumenty w ustalonej kolejności, ewentualnie obcięte z oznaczeniem", bez formatu.
 - **Przyjęty wariant:** `{confirmationId, tool, arguments: [{name, value, truncated}]}`, argumenty
   posortowane po nazwie, `value` to serializacja JSON wartości (napis, obcięty przy `truncated: true`),
-  bez `confirmation_code`. Decyzja `POST {decision}` → 204; brak świeżego MFA → 401
-  `{error: "step_up_required"}`; cudze, wygasłe lub zużyte → 404.
+  bez `confirmation_code`. Decyzja `POST {decision}` -> 204; brak świeżego MFA -> 401
+  `{error: "step_up_required"}`; cudze, wygasłe lub zużyte -> 404.
 - **Alternatywy:** dodać `expiresAt` (TTL 120 s), żeby portal pokazał odliczanie; 410 dla wygasłych.
 - **Status:** open
 
-## CC-016 · C5/C12 · Aktywność: limit i kształt
+## CC-016 | C5/C12 | Aktywność: limit i kształt
 
 - **Problem:** `?limit=50` bez maksimum; kształt pozycji nieopisany.
 - **Przyjęty wariant:** `limit` 1..200, domyślnie 50, od najnowszych; pozycje to zdarzenia C8
@@ -206,30 +206,30 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** węższy widok (tylko `ts`, `tool`, `decision`, `outcome`, `errorCode`).
 - **Status:** open
 
-## CC-017 · C5 · Wirtualny serwer: klucze `resourceDefaults` i slug
+## CC-017 | C5 | Wirtualny serwer: klucze `resourceDefaults` i slug
 
 - **Problem:** `resourceDefaults: {<resourceType>: [ids]}` nie mówi, które typy są dozwolone, a zawężenie
   musi trafić do `context.vsScopes`, które ma tylko 5 pól (C7). Brak reguł dla `slug` (część URL).
 - **Przyjęty wariant:** klucze tylko `Jira::Project`, `Confluence::Space`, `GitLab::Group`,
   `OpenSearch::Index` (wartości to prefiksy, jak w C9), `ServiceDesk::Queue`; każda lista niepusta.
-  Slug: `^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`. Narzędzie niedostępne → 403 `access_denied`, zajęty
-  slug → 409 `slug_taken`.
+  Slug: `^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`. Narzędzie niedostępne -> 403 `access_denied`, zajęty
+  slug -> 409 `slug_taken`.
 - **Alternatywy:** dopuścić zawężanie do pojedynczych zgłoszeń/stron (wymaga nowych pól `vsScopes`).
 - **Status:** open
 
-## CC-018 · C6 · Reguły manifestu poza JSON Schema
+## CC-018 | C6 | Reguły manifestu poza JSON Schema
 
 - **Problem:** część reguł C5/C6 nie da się wyrazić w JSON Schema.
-- **Przyjęty wariant:** opisane w `README.md` („Reguły semantyczne manifestu”) i sprawdzane w testach
+- **Przyjęty wariant:** opisane w `README.md` ("Reguły semantyczne manifestu") i sprawdzane w testach
   wektorów: `serverId == "mcp-" + system`; unikalne nazwy narzędzi; typy z `resourceRefs` i `parent`
   zadeklarowane w `resourceTypes`; nazwa narzędzia bez `__` (wzorzec w schemacie);
   `credential.required: true` wymaga niepustego `acceptedTypes`.
 - **Alternatywy:** brak.
 - **Status:** open
 
-## CC-019 · C7 · Publikacja referencyjnego entity buildera
+## CC-019 | C7 | Publikacja referencyjnego entity buildera
 
-- **Problem:** C7 mówi, że entity builder ma implementację w Javie „współdzieloną przez gateway i starter”,
+- **Problem:** C7 mówi, że entity builder ma implementację w Javie "współdzieloną przez gateway i starter",
   ale nie mówi, gdzie ona żyje. W `mcp-contracts` jest specyfikacja, wektory i referencyjna implementacja
   w testach (`src/test/java/.../cedar/ReferenceEntityBuilder.java`), niepublikowana.
 - **Propozycja:** wydać ją jako osobny artefakt `pl.aiwcorpo.mcp:mcp-cedar-entities` (bez zależności od
@@ -238,7 +238,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** każdy strumień implementuje sam i przechodzi wektory z `test-vectors/entity-builder`.
 - **Status:** open (decyzja człowieka; w 1.0.0 nic nie jest publikowane poza zasobami)
 
-## CC-020 · C12 · Mechanizm CSRF
+## CC-020 | C12 | Mechanizm CSRF
 
 - **Problem:** pierwsza wersja C12 wymagała nagłówka `X-CSRF-Token` bez opisu, skąd frontend bierze token.
 - **Przyjęty wariant:** zaktualizowany C12 (plan z 2026-10-26 21:58): konwencja Angulara, ciasteczko
@@ -246,7 +246,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `portal-bff.v1.yaml` i handlery MSW są z tym zgodne.
 - **Status:** resolved (rozstrzygnięte w `01-contracts.md` C12)
 
-## CC-021 · C12 · Status i akcje serwera w katalogu portalu
+## CC-021 | C12 | Status i akcje serwera w katalogu portalu
 
 - **Problem:** C12 podaje statusy i akcje, ale nie poziom (serwer czy narzędzie), kolejność reguł ani
   status dla systemów, do których użytkownik niczego nie podłącza (`service-account`, `token-exchange`).
@@ -257,18 +257,18 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Alternatywy:** frontend składa URL z konfiguracji; status per narzędzie.
 - **Status:** open (pole `url` to dodatek względem C12, wymaga akceptacji)
 
-## CC-022 · C12 · `returnPath` przy OAuth i błędy w callbacku
+## CC-022 | C12 | `returnPath` przy OAuth i błędy w callbacku
 
 - **Problem:** C4 `oauth/start` wymaga `returnPath`, a C12 `POST /connections/{system}/oauth` nie ma body.
   Callback opisuje tylko sukces (`returnPath?connected=<system>`).
 - **Przyjęty wariant:** opcjonalne body `{returnPath}` (domyślnie `/`); przy błędzie przekierowanie na
-  `returnPath?connectError=<kod>`, kod ∈ `identity_mismatch`, `flow_invalid`, `provider_error`.
+  `returnPath?connectError=<kod>`, kod in `identity_mismatch`, `flow_invalid`, `provider_error`.
 - **Alternatywy:** `returnPath` w query; strona błędu w BFF.
 - **Status:** open
 
-## CC-023 · C12 · Brak endpointów logowania i wylogowania
+## CC-023 | C12 | Brak endpointów logowania i wylogowania
 
-- **Problem:** „logowanie OIDC po stronie BFF”, ale C12 nie podaje, dokąd frontend przekierowuje po 401
+- **Problem:** "logowanie OIDC po stronie BFF", ale C12 nie podaje, dokąd frontend przekierowuje po 401
   ani jak się wylogować.
 - **Przyjęty wariant:** nic nie dodano; 401 `{error: "unauthenticated"}`. ws-07/ws-08 muszą uzgodnić
   ścieżki (domyślne Spring Security: `/oauth2/authorization/<rejestracja>` i `POST /logout`).
@@ -276,26 +276,26 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `POST /api/v1/auth/logout` (204, CSRF).
 - **Status:** open
 
-## CC-024 · C13 · Kształt `AccessRequest` i `RequestResult`
+## CC-024 | C13 | Kształt `AccessRequest` i `RequestResult`
 
 - **Problem:** C13 nazywa typy `Entitlement`, `AccessRequest`, `RequestResult` bez pól; C12 nie wystawia
   katalogu uprawnień (`catalog(system)`).
-- **Przyjęty wariant:** `AccessRequest {requestId, entitlement, status ∈ pending|approved|rejected|cancelled,
+- **Przyjęty wariant:** `AccessRequest {requestId, entitlement, status in pending|approved|rejected|cancelled,
   createdAt, requestUrl?}`; `RequestResult` = `{requestUrl}` albo `{requestId}`. Katalog uprawnień nie jest
   wystawiany; portal zamawia grupy z `requiredEntitlements` katalogu C5.
 - **Alternatywy:** dodać `GET /api/v1/entitlements?system=` z C13 `catalog`.
 - **Status:** open
 
-## CC-025 · C12 · Ścieżki skrócone w tabeli
+## CC-025 | C12 | Ścieżki skrócone w tabeli
 
 - **Problem:** `GET/POST/DELETE /api/v1/virtual-servers` (DELETE bez identyfikatora) i
-  `GET …/pending · POST …/approve` bez pełnej ścieżki.
+  `GET .../pending | POST .../approve` bez pełnej ścieżki.
 - **Przyjęty wariant:** `DELETE /api/v1/virtual-servers/{slug}`;
   `/api/v1/admin/registry/servers/{serverId}/tools/{tool}/pending` i `.../approve` (jak w C5).
   `GET /admin/v1/policy/status` nie ma odpowiednika w BFF (C12 go nie wymienia).
 - **Status:** open
 
-## CC-026 · C7 · `latest.json`: tylko nazwy plików względne i reguły spójności rewizji
+## CC-026 | C7 | `latest.json`: tylko nazwy plików względne i reguły spójności rewizji
 
 - **Problem:** C7 opisuje `latest.json {revision, url, sigUrl}`, ale nie mówi, czy `url` może wskazywać
   dowolny host i ścieżkę, ani że rewizja w nazwie pliku, w `latest.json` i w `manifest.json` w paczce

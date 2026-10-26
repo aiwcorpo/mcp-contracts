@@ -3,8 +3,8 @@
 Entity builder zamienia tożsamość wywołującego, wpis narzędzia i argumenty na żądanie Cedar
 (`principal`, `action`, `resource`, `context`) i listę encji. Gateway i starter muszą robić to identycznie,
 bo oceniają te same polityki z tej samej paczki. Zgodność sprawdzają wektory w
-`test-vectors/entity-builder/` (wejście → oczekiwane wyjście) i `test-vectors/policy-decisions/`
-(żądanie → decyzja). Implementacje referencyjne: `scripts/lib/entity-builder.mjs` (generuje wektory)
+`test-vectors/entity-builder/` (wejście -> oczekiwane wyjście) i `test-vectors/policy-decisions/`
+(żądanie -> decyzja). Implementacje referencyjne: `scripts/lib/entity-builder.mjs` (generuje wektory)
 i `src/test/java/pl/aiwcorpo/mcp/contracts/cedar/ReferenceEntityBuilder.java` (wykonuje je w JUnit).
 Propozycja publikacji implementacji Javy jako wspólnego artefaktu: CC-019.
 
@@ -39,11 +39,11 @@ a `<id>` to **cała reszta** napisu (może zawierać `-`, wielkość liter zacho
 
 | Grupa | Pole `scopes` | Przykład |
 | --- | --- | --- |
-| `mcp-jira-proj-<key>` | `jiraProjects` | `mcp-jira-proj-ABC` → `"ABC"` |
-| `mcp-confluence-space-<key>` | `confluenceSpaces` | `mcp-confluence-space-ENG` → `"ENG"` |
-| `mcp-gitlab-grp-<path>` | `gitlabGroups` | `mcp-gitlab-grp-team-a` → `"team-a"` |
-| `mcp-opensearch-idx-<prefix>` | `opensearchIndexPrefixes` | `mcp-opensearch-idx-logs-team-a` → `"logs-team-a"` |
-| `mcp-servicedesk-queue-<id>` | `servicedeskQueues` | `mcp-servicedesk-queue-42` → `"42"` |
+| `mcp-jira-proj-<key>` | `jiraProjects` | `mcp-jira-proj-ABC` -> `"ABC"` |
+| `mcp-confluence-space-<key>` | `confluenceSpaces` | `mcp-confluence-space-ENG` -> `"ENG"` |
+| `mcp-gitlab-grp-<path>` | `gitlabGroups` | `mcp-gitlab-grp-team-a` -> `"team-a"` |
+| `mcp-opensearch-idx-<prefix>` | `opensearchIndexPrefixes` | `mcp-opensearch-idx-logs-team-a` -> `"logs-team-a"` |
+| `mcp-servicedesk-queue-<id>` | `servicedeskQueues` | `mcp-servicedesk-queue-42` -> `"42"` |
 
 Wszystkie pięć pól jest zawsze obecnych (pusty zbiór = brak zakresu). Grupy uprawnień
 (`mcp-jira-read`), `mcp-client-*`, `mcp-platform-admin` i grupy o nieznanym systemie lub rodzaju nie
@@ -78,26 +78,26 @@ przeniesione do `HR` jest w `HR`, wektor `srv-moved-issue-restricted`).
 | --- | --- |
 | `client` | `azp` (zawsze) |
 | `virtualServer` | `vs`, tylko przy wywołaniu przez link |
-| `vsScopes` | tylko przy linku z niepustym `resourceDefaults`; klucz typu → pole jak w tabeli niżej |
+| `vsScopes` | tylko przy linku z niepustym `resourceDefaults`; klucz typu -> pole jak w tabeli niżej |
 | `mfaAge` | `mfa`, tylko gdy claim jest |
 | `refs` | zawsze (może być `{}`) |
 
-`resourceDefaults` → `vsScopes`: `Jira::Project` → `jiraProjects`, `Confluence::Space` → `confluenceSpaces`,
-`GitLab::Group` → `gitlabGroups`, `OpenSearch::Index` → `opensearchIndexPrefixes`, `ServiceDesk::Queue` →
+`resourceDefaults` -> `vsScopes`: `Jira::Project` -> `jiraProjects`, `Confluence::Space` -> `confluenceSpaces`,
+`GitLab::Group` -> `gitlabGroups`, `OpenSearch::Index` -> `opensearchIndexPrefixes`, `ServiceDesk::Queue` ->
 `servicedeskQueues`. Inny klucz to błąd konfiguracji linku (`internal_error`, odmowa). Brak pola w
 `vsScopes` znaczy, że link tego typu nie zawęża.
 
 ### `context.refs`
 
 Dla każdego `resourceRef {argument, type}` narzędzia pole `refs.<namespace małymi literami><Typ>`
-(`Jira::Project` → `jiraProject`, `GitLab::Group` → `gitlabGroup`, `OpenSearch::Index` →
-`opensearchIndex`, `ServiceDesk::Ticket` → `servicedeskTicket`) dostaje identyfikatory z argumentu:
+(`Jira::Project` -> `jiraProject`, `GitLab::Group` -> `gitlabGroup`, `OpenSearch::Index` ->
+`opensearchIndex`, `ServiceDesk::Ticket` -> `servicedeskTicket`) dostaje identyfikatory z argumentu:
 
 | Wartość argumentu | Identyfikatory |
 | --- | --- |
 | brak lub `null` | żadne (pole i tak jest obecne, pusty zbiór) |
 | napis | ten napis |
-| liczba całkowita | zapis dziesiętny (`4711` → `"4711"`) |
+| liczba całkowita | zapis dziesiętny (`4711` -> `"4711"`) |
 | tablica napisów / liczb całkowitych | każdy element jak wyżej |
 | cokolwiek innego | błąd `invalid_argument`, wywołanie odrzucone |
 

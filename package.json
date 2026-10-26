@@ -3,10 +3,34 @@
   "version": "1.0.0",
   "description": "Kontrakty platformy MCP: OpenAPI, JSON Schema, schemat Cedar, wektory testowe, typy TS i handlery MSW.",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "engines": {
     "node": ">=24"
+  },
+  "exports": {
+    "./msw": {
+      "types": "./dist/msw/index.d.ts",
+      "default": "./dist/msw/index.js"
+    },
+    "./types/credential-broker": {
+      "types": "./dist/types/credential-broker.v1.d.ts"
+    },
+    "./types/gateway-admin": {
+      "types": "./dist/types/gateway-admin.v1.d.ts"
+    },
+    "./types/portal-bff": {
+      "types": "./dist/types/portal-bff.v1.d.ts"
+    },
+    "./types/schemas/*": {
+      "types": "./dist/types/schemas/*.d.ts"
+    },
+    "./openapi/*": "./openapi/*",
+    "./schemas/*": "./schemas/*",
+    "./cedar/*": "./cedar/*",
+    "./test-vectors/*": "./test-vectors/*",
+    "./mocks/wiremock/*": "./mocks/wiremock/*",
+    "./package.json": "./package.json"
   },
   "files": [
     "openapi/",
@@ -27,7 +51,16 @@
     "lint:openapi": "spectral lint --fail-severity=warn openapi/*.yaml openapi/bundled/*.yaml",
     "test:node": "node --test \"test/*.test.mjs\"",
     "test": "npm run lint:openapi && npm run build && npm run test:node",
-    "smoke:wiremock": "scripts/smoke-wiremock.sh"
+    "smoke:wiremock": "scripts/smoke-wiremock.sh",
+    "pack": "npm run build && mkdir -p release && npm pack --pack-destination release"
+  },
+  "peerDependencies": {
+    "msw": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "msw": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@apidevtools/json-schema-ref-parser": "16.0.5",
