@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  mcp-contracts: machine-readable contracts of the MCP platform (OpenAPI, JSON Schema, Cedar, test vectors).
+
+  Two artifacts are produced from one build:
+    - pl.aiwcorpo.mcp:mcp-contracts:1.0.0                  contracts only (safe for runtime classpath)
+    - pl.aiwcorpo.mcp:mcp-contracts:1.0.0:test-vectors     vectors + TEST keys, use with <scope>test</scope>
+  Keys live only in the classifier jar so that a production component cannot pick up a test JWKS by accident.
+
+  Everything is placed under the classpath prefix mcp-contracts/ to avoid collisions with consumer resources.
+  The Java code in src/test is a reference used to execute the vectors; it is not published.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>pl.aiwcorpo.mcp</groupId>
+    <artifactId>mcp-contracts</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>Aiwcorpo MCP Platform :: Contracts</name>
+    <description>OpenAPI, JSON Schema, Cedar schema and test vectors shared by all MCP platform components.</description>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <project.build.outputTimestamp>2026-10-26T00:00:00Z</project.build.outputTimestamp>
+        <cedar-java.version>4.10.0</cedar-java.version>
+        <jackson.version>2.20.0</jackson.version>
+        <junit.version>6.1.3</junit.version>
+        <contracts.prefix>mcp-contracts</contracts.prefix>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- The uber classifier bundles the native cedar_java_ffi libraries (incl. macOS aarch64 and Linux x86_64);
+             the plain jar has none and fails at runtime. -->
+        <dependency>
+            <groupId>com.cedarpolicy</groupId>
+            <artifactId>cedar-java</artifactId>
+            <version>${cedar-java.version}</version>
+            <classifier>uber</classifier>
+            <scope>test</scope>
+        </dependency>
+        <!-- Same major/minor as cedar-java's runtime dependency, so its serializers bind to the classes we use. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>openapi</directory>
+                <targetPath>${contracts.prefix}/openapi</targetPath>
+            </resource>
+            <resource>
+                <directory>schemas</directory>
+                <targetPath>${contracts.prefix}/schemas</targetPath>
+            </resource>
+            <resource>
+                <directory>cedar</directory>
+                <targetPath>${contracts.prefix}/cedar</targetPath>
+            </resource>
+            <resource>
+                <directory>mocks/wiremock</directory>
+                <targetPath>${contracts.prefix}/mocks/wiremock</targetPath>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>enforce-java</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion><version>[25,)</version></requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>stage-test-vectors</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/test-vectors-jar/${contracts.prefix}/test-vectors</outputDirectory>
+                            <resources>
+                                <resource><directory>test-vectors</directory></resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.16.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.6.1</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <contracts.root>${project.basedir}</contracts.root>
+                    </systemPropertyVariables>
+                    <!-- cedar-java loads its native library through JNI. -->
+                    <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <id>test-vectors-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>jar</goal></goals>
+                        <configuration>
+                            <classifier>test-vectors</classifier>
+                            <classesDirectory>${project.build.directory}/test-vectors-jar</classesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.2.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

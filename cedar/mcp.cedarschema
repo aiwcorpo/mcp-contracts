@@ -1,0 +1,139 @@
+// Cedar model of the MCP platform (contract C7), mcp-contracts 1.0.0.
+//
+// Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
+// and policies must guard it with `has`.
+//
+// Two evaluations use this schema (C7):
+//   gateway: principal User, Action::"call", resource Tool, context built from the tool's resourceRefs
+//   server:  principal User, Action::"read" | "update" | "delete" | "admin", resource = resolved system entity
+// How principal.scopes, context.vsScopes and context.refs are derived is specified in cedar/entity-builder.md.
+
+// Derived from scope groups mcp-<system>-<restype>-<id> (C9). Always present; an empty set means no scope.
+type Scopes = {
+  jiraProjects: Set<String>,
+  confluenceSpaces: Set<String>,
+  gitlabGroups: Set<String>,
+  opensearchIndexPrefixes: Set<String>,
+  servicedeskQueues: Set<String>,
+};
+
+// Narrowing from the virtual server's resourceDefaults (C5). An absent field means
+// "this virtual server does not narrow this resource type", which is why it cannot reuse Scopes.
+type VsScopes = {
+  jiraProjects?: Set<String>,
+  confluenceSpaces?: Set<String>,
+  gitlabGroups?: Set<String>,
+  opensearchIndexPrefixes?: Set<String>,
+  servicedeskQueues?: Set<String>,
+};
+
+// Identifiers taken only from tool arguments declared in resourceRefs (C6). A field is present exactly
+// when the tool declares a resourceRef of that type; argument values are never trusted beyond being ids.
+type Refs = {
+  jiraProject?: Set<String>,
+  jiraIssue?: Set<String>,
+  confluenceSpace?: Set<String>,
+  confluencePage?: Set<String>,
+  gitlabGroup?: Set<String>,
+  gitlabProject?: Set<String>,
+  opensearchIndex?: Set<String>,
+  servicedeskQueue?: Set<String>,
+  servicedeskTicket?: Set<String>,
+};
+
+type RequestContext = {
+  client: String,
+  virtualServer?: String,
+  vsScopes?: VsScopes,
+  mfaAge?: Long,
+  refs?: Refs,
+};
+
+// Called UserGroup, not Group: Cedar 4 rejects a top-level Group next to GitLab::Group (shadowing). See CC-001.
+entity UserGroup;
+
+// Entity id = `sub` from C1/C2. Parents = the user's mcp-* groups.
+entity User in [UserGroup] {
+  username: String,
+  client: String,
+  mfaAge?: Long,
+  scopes: Scopes,
+};
+
+// Entity id = client-visible tool name <system>__<tool> (C5).
+entity Tool {
+  server: String,
+  name: String,
+  risk: String,
+};
+
+namespace Jira {
+  entity Project {
+    key: String,
+    category?: String,
+  };
+  // `project` duplicates the parent edge because Cedar cannot read attributes of an ancestor through `in`.
+  entity Issue in [Project] {
+    key: String,
+    project: Project,
+  };
+}
+
+namespace Confluence {
+  entity Space {
+    key: String,
+    labels: Set<String>,
+  };
+  entity Page in [Space] {
+    id: String,
+    space: Space,
+  };
+}
+
+namespace GitLab {
+  entity Group {
+    path: String,
+  };
+  entity Project in [Group] {
+    path: String,
+    group: Group,
+  };
+}
+
+namespace OpenSearch {
+  // namePrefixes: every dash-delimited prefix of name, computed by the entity builder,
+  // because Cedar cannot match a string prefix against a value held in a set.
+  entity Index {
+    name: String,
+    tags: Set<String>,
+    namePrefixes: Set<String>,
+  };
+}
+
+namespace ServiceDesk {
+  entity Queue {
+    id: String,
+  };
+  entity Ticket in [Queue] {
+    id: String,
+    queue: Queue,
+  };
+}
+
+action "call" appliesTo {
+  principal: [User],
+  resource: [Tool],
+  context: RequestContext,
+};
+
+action "read", "update", "delete", "admin" appliesTo {
+  principal: [User],
+  resource: [
+    Jira::Project, Jira::Issue,
+    Confluence::Space, Confluence::Page,
+    GitLab::Group, GitLab::Project,
+    OpenSearch::Index,
+    ServiceDesk::Queue, ServiceDesk::Ticket
+  ],
+  context: RequestContext,
+};
