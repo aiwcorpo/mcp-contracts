@@ -15,7 +15,8 @@
   "request": {
     "kind": "jsonrpc",
     "method": "tools/call",
-    "toolName": "get_issue"
+    "toolName": "get_issue",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
   },
   "expected": {
     "valid": false,

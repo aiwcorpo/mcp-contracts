@@ -1,5 +1,5 @@
 {
-  "description": "Link definition passed for a call without vs claim: inconsistent input, denied.",
+  "description": "vs claim without vsc: inconsistent input, denied.",
   "level": "gateway",
   "input": {
     "caller": {
@@ -8,15 +8,8 @@
       "grp": [
         "mcp-jira-read"
       ],
-      "azp": "claude-code"
-    },
-    "virtualServer": {
-      "slug": "team-a-dev",
-      "resourceDefaults": {
-        "Jira::Project": [
-          "ABC"
-        ]
-      }
+      "azp": "claude-code",
+      "vs": "team-a-dev"
     },
     "tool": {
       "serverId": "mcp-jira",

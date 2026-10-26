@@ -41,6 +41,22 @@ permit (
 )
 when { resource.server == "mcp-gitlab" && resource.risk == "UPDATE" };
 
+@id("confluence-call-read")
+permit (
+  principal in UserGroup::"mcp-confluence-read",
+  action == Action::"call",
+  resource is Tool
+)
+when { resource.server == "mcp-confluence" && resource.risk == "READ_ONLY" };
+
+@id("servicedesk-call-read")
+permit (
+  principal in UserGroup::"mcp-servicedesk-read",
+  action == Action::"call",
+  resource is Tool
+)
+when { resource.server == "mcp-servicedesk" && resource.risk == "READ_ONLY" };
+
 @id("opensearch-call-read")
 permit (
   principal in UserGroup::"mcp-opensearch-read",

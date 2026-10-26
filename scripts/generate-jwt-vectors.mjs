@@ -21,7 +21,7 @@ function userClaims(overrides = {}) {
     grp: ['mcp-jira-read', 'mcp-jira-write', 'mcp-jira-proj-ABC'],
     azp: 'claude-code',
     tool: 'get_issue',
-    rid: '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f',
+    rid: USER_RID,
     prv: '20261026120000-a1b2c3d',
     iat: T0,
     exp: T0 + 60,
@@ -36,7 +36,7 @@ function serviceClaims(overrides = {}) {
     aud: 'mcp-jira',
     sub: 'system:mcp-gateway',
     grp: [],
-    rid: '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80',
+    rid: SERVICE_RID,
     prv: '20261026120000-a1b2c3d',
     iat: T0,
     exp: T0 + 60,
@@ -51,8 +51,12 @@ async function sign(claims, keyName, header = {}) {
   return new SignJWT(claims).setProtectedHeader(protectedHeader).sign(await importJWK(jwk, 'ES256'));
 }
 
-const toolsCall = (name) => ({ kind: 'jsonrpc', method: 'tools/call', toolName: name });
-const rpc = (method) => ({ kind: 'jsonrpc', method });
+const USER_RID = '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f';
+const SERVICE_RID = '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80';
+// xRequestId is the X-Request-Id header sent with the token; receivers require it to equal rid.
+const toolsCall = (name, xRequestId = USER_RID) => ({ kind: 'jsonrpc', method: 'tools/call', toolName: name, xRequestId });
+const rpc = (method, xRequestId = SERVICE_RID) => ({ kind: 'jsonrpc', method, xRequestId });
+const http = (method, path, xRequestId = USER_RID) => ({ kind: 'http', method, path, xRequestId });
 
 function verifier(overrides = {}) {
   return {
@@ -86,18 +90,33 @@ await add('valid-second-kid', 'Signed with active key B; both kids of the JWKS m
 await add('valid-within-skew', 'Verified 29 s after exp; inside the 30 s clock skew.', {
   token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000004' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: { now: iso(T0 + 60 + 29) }, valid: true });
-await add('valid-virtual-server-mfa', 'Call through a virtual server with mfa claim.', {
-  token: await sign(userClaims({ vs: 'team-a-dev', mfa: 120, tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000005' }), 'test-gateway-jwt-a'),
+await add('valid-virtual-server-mfa', 'Call through a virtual server: vs with its narrowing vsc (CC-027) and mfa.', {
+  token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] }, mfa: 120, tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000005' }), 'test-gateway-jwt-a'),
   request: toolsCall('delete_issue'), valid: true });
 await add('valid-broker', 'User variant sent to the credential broker for resolve.', {
   token: await sign(userClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000006' }), 'test-gateway-jwt-a'),
-  request: { kind: 'http', method: 'POST', path: '/v1/credentials/resolve' },
+  request: http('POST', '/v1/credentials/resolve'),
   verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+await add('valid-virtual-server-without-narrowing', 'Link that only lists tools: vsc is an empty object.', {
+  token: await sign(userClaims({ vs: 'my-tools', vsc: {}, jti: '0192d1b2-7c3a-7f00-9a11-000000000007' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: true });
+for (const [suffix, request, jti] of [
+  ['initialize', rpc('initialize', USER_RID), '40'],
+  ['tools-list', rpc('tools/list', USER_RID), '41'],
+  ['ping', rpc('ping', USER_RID), '42'],
+  ['manifest', http('GET', '/mcp-manifest'), '43'],
+]) {
+  await add(`valid-user-variant-${suffix}`, `User variant is also accepted for ${request.method} ${request.path ?? ''}`.trim() + ' (CC-033).', {
+    token: await sign(userClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` }), 'test-gateway-jwt-a'), request, valid: true });
+}
+await add('valid-service-broker-systems', 'Service variant accepted by the broker only for GET /v1/systems (CC-030).', {
+  token: await sign(serviceClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000044' }), 'test-gateway-jwt-a'),
+  request: http('GET', '/v1/systems', SERVICE_RID), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
 for (const [suffix, request, jti] of [
   ['initialize', rpc('initialize'), '10'],
   ['tools-list', rpc('tools/list'), '11'],
   ['ping', rpc('ping'), '12'],
-  ['manifest', { kind: 'http', method: 'GET', path: '/mcp-manifest' }, '13'],
+  ['manifest', http('GET', '/mcp-manifest', SERVICE_RID), '13'],
 ]) {
   await add(`valid-service-${suffix}`, `Service variant accepted for ${request.method} ${request.path ?? ''}`.trim() + '.', {
     token: await sign(serviceClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` }), 'test-gateway-jwt-a'),
@@ -163,11 +182,24 @@ await add('issued-in-future', 'iat 120 s after the verifier clock, beyond the 30
 }
 await add('service-variant-tools-call', 'Service variant used for tools/call; only allowed for initialize, tools/list, ping and the manifest.', {
   token: await sign(serviceClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000032' }), 'test-gateway-jwt-a'),
-  request: toolsCall('get_issue'), valid: false, reason: 'service_token_not_allowed' });
+  request: toolsCall('get_issue', SERVICE_RID), valid: false, reason: 'service_token_not_allowed' });
 await add('service-variant-broker', 'Service variant sent to the broker resolve endpoint, which needs a user.', {
   token: await sign(serviceClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000033' }), 'test-gateway-jwt-a'),
-  request: { kind: 'http', method: 'POST', path: '/v1/credentials/resolve' },
+  request: http('POST', '/v1/credentials/resolve', SERVICE_RID),
   verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'service_token_not_allowed' });
+await add('server-token-at-broker', 'Token issued for mcp-jira presented to the broker.', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000045' }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' },
+  valid: false, reason: 'wrong_audience' });
+await add('request-id-mismatch', 'X-Request-Id header differs from rid; the correlation id must not be replaced on the way.', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000046' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue', '0192d1b2-7c3a-7d4e-8f10-ffffffffffff'), valid: false, reason: 'request_id_mismatch' });
+await add('vs-without-vsc', 'vs claim without its narrowing; a server could not apply the link (CC-027).', {
+  token: await sign(userClaims({ vs: 'team-a-dev', jti: '0192d1b2-7c3a-7f00-9a11-000000000047' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('vsc-without-vs', 'Narrowing without the virtual server slug.', {
+  token: await sign(userClaims({ vsc: { jiraProjects: ['ABC'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000048' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
 await add('service-variant-with-tool', 'Claims of the service variant plus a tool claim; matches neither variant.', {
   token: await sign(serviceClaims({ tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000034' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });

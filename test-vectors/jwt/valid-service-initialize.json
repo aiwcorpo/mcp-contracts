@@ -1,6 +1,6 @@
 {
   "description": "Service variant accepted for initialize.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAxMCJ9.kCCKYJSG45Pp_OgnsFmAXyIGwapxHXZjr2cM-391hMyCETmWQ0MdfBt6pSuxhhoywBan2lquIp-eZWe-FWo2lg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAxMCJ9.e-ofZg_MejRVYWZjBD-__46vxjDH6NkBL9hmUAQMjqbQB6mIHmjbBAMS7q2wvl8I061EGIToLO9sqczxCHYaBw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -28,7 +28,8 @@
   },
   "request": {
     "kind": "jsonrpc",
-    "method": "initialize"
+    "method": "initialize",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80"
   },
   "expected": {
     "valid": true,

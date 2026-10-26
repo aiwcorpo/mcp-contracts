@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Internal JWT claims (C2)",
-  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, exp - iat <= 60 s, jti not seen within its validity window, for tools/call: user variant only and tool == params.name. Any failure -> HTTP 401.",
+  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tools/call only with the user variant and tool == params.name, service variant only for initialize, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems. Production receivers reject any kid starting with 'test-' (configurable), so a token signed with the published test keys never passes. Any failure -> HTTP 401.",
   "oneOf": [
     {
       "$ref": "#/$defs/UserClaims"
@@ -12,7 +12,7 @@
   ],
   "$defs": {
     "Header": {
-      "description": "JOSE header. Receivers accept only ES256 and only a kid present in the gateway JWKS.",
+      "description": "JOSE header. Receivers accept only ES256 and only a kid present in the gateway JWKS; production receivers also reject kid values starting with 'test-'.",
       "type": "object",
       "required": [
         "alg",
@@ -120,6 +120,58 @@
         "vs": {
           "$ref": "common.schema.json#/$defs/VirtualServerSlug"
         },
+        "vsc": {
+          "description": "Narrowing of the virtual server (CC-027): resourceDefaults of the link mapped to the vsScopes fields of the Cedar model. Present exactly when vs is present; {} when the link does not narrow resources. Servers build context.vsScopes from it.",
+          "type": "object",
+          "properties": {
+            "jiraProjects": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "confluenceSpaces": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "gitlabGroups": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "opensearchIndexPrefixes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "servicedeskQueues": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        },
         "tool": {
           "$ref": "common.schema.json#/$defs/ToolName"
         },
@@ -129,7 +181,15 @@
           "minimum": 0
         }
       },
-      "unevaluatedProperties": false
+      "unevaluatedProperties": false,
+      "dependentRequired": {
+        "vs": [
+          "vsc"
+        ],
+        "vsc": [
+          "vs"
+        ]
+      }
     },
     "ServiceClaims": {
       "description": "Gateway call without a user. Accepted only for initialize, tools/list, ping and GET /mcp-manifest.",

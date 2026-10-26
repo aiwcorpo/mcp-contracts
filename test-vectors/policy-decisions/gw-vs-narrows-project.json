@@ -17,12 +17,9 @@
           "mcp-jira-proj-DEF"
         ],
         "azp": "claude-code",
-        "vs": "team-a-dev"
-      },
-      "virtualServer": {
-        "slug": "team-a-dev",
-        "resourceDefaults": {
-          "Jira::Project": [
+        "vs": "team-a-dev",
+        "vsc": {
+          "jiraProjects": [
             "ABC"
           ]
         }

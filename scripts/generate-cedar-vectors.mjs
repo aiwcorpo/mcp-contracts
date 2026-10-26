@@ -2,7 +2,7 @@
 // Expected decisions are written here by hand; the Java tests evaluate them with cedar-java.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { build, BuilderError } from './lib/entity-builder.mjs';
+import { build, BuilderError, vscFromResourceDefaults } from './lib/entity-builder.mjs';
 
 const SUB = {
   reader: 'b1a7c0de-0000-4000-8000-000000000001',
@@ -14,6 +14,7 @@ const SUB = {
   gitlabWriter: 'b1a7c0de-0000-4000-8000-000000000007',
   osReader: 'b1a7c0de-0000-4000-8000-000000000008',
   confluenceReader: 'b1a7c0de-0000-4000-8000-000000000009',
+  sdReader: 'b1a7c0de-0000-4000-8000-00000000000a',
 };
 const caller = (name, grp, extra = {}) => ({ sub: SUB[name], usr: name.toLowerCase(), grp, azp: 'claude-code', ...extra });
 
@@ -27,6 +28,7 @@ const users = {
   gitlabWriter: () => caller('gitlabWriter', ['mcp-gitlab-read', 'mcp-gitlab-write', 'mcp-gitlab-grp-team-a']),
   osReader: () => caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-logs-team-a']),
   confluenceReader: () => caller('confluenceReader', ['mcp-confluence-read', 'mcp-confluence-space-ENG']),
+  sdReader: () => caller('sdReader', ['mcp-servicedesk-read', 'mcp-servicedesk-queue-42']),
 };
 
 const tool = (system, name, risk, action, resourceRefs = []) => ({ serverId: `mcp-${system}`, system, name, risk, action, resourceRefs });
@@ -48,12 +50,15 @@ const tools = {
   searchIndex: tool('opensearch', 'search', 'READ_ONLY', 'read', [{ argument: 'index', type: 'OpenSearch::Index' }]),
   getTicket: tool('servicedesk', 'get_ticket', 'READ_ONLY', 'read', [{ argument: 'ticketId', type: 'ServiceDesk::Ticket' }]),
   getPage: tool('confluence', 'get_page', 'READ_ONLY', 'read', [{ argument: 'pageId', type: 'Confluence::Page' }]),
+  searchSpace: tool('confluence', 'search_space', 'READ_ONLY', 'read', [{ argument: 'spaceKey', type: 'Confluence::Space' }]),
+  listQueueTickets: tool('servicedesk', 'list_queue_tickets', 'READ_ONLY', 'read', [{ argument: 'queueId', type: 'ServiceDesk::Queue' }]),
 };
 
 const project = (key, category) => ({ type: 'Jira::Project', id: key, attrs: category ? { key, category } : { key } });
 const issue = (key, projectKey, category) => ({ type: 'Jira::Issue', id: key, attrs: { key }, parent: project(projectKey, category) });
 const vs = (slug, resourceDefaults) => ({ slug, ...(resourceDefaults && { resourceDefaults }) });
-const viaVs = (user, link) => ({ caller: { ...user, vs: link.slug }, virtualServer: link });
+// The gateway puts the link into the internal JWT as vs + vsc (CC-027); both builders read only the claims.
+const viaVs = (user, link) => ({ caller: { ...user, vs: link.slug, vsc: vscFromResourceDefaults(link.resourceDefaults) } });
 
 const outDir = (name) => {
   rmSync(path('test-vectors', name), { recursive: true, force: true });
@@ -102,8 +107,15 @@ builderVector('virtual-server-scopes', 'Virtual server resourceDefaults become c
   tool: tools.createIssue, arguments: { projectKey: 'ABC' } });
 builderVector('virtual-server-without-defaults', 'Virtual server with only a tool list: virtualServer set, no vsScopes.', 'gateway',
   { ...viaVs(users.reader(), vs('my-tools')), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
-builderVector('virtual-server-without-vs-claim', 'Link definition passed for a call without vs claim: inconsistent input, denied.', 'gateway',
-  { caller: users.reader(), virtualServer: vs('team-a-dev', { 'Jira::Project': ['ABC'] }), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('vsc-without-vs', 'vsc claim without vs: inconsistent input, denied (the JWT receiver already rejects it).', 'gateway',
+  { caller: { ...users.reader(), vsc: { jiraProjects: ['ABC'] } }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('vs-without-vsc', 'vs claim without vsc: inconsistent input, denied.', 'gateway',
+  { caller: { ...users.reader(), vs: 'team-a-dev' }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('tool-unknown-risk', 'Registry entry with a risk outside READ_ONLY, UPDATE, DESTRUCTIVE: denied, a typo must not bypass risk rules.', 'gateway',
+  { caller: users.destroyer({ mfa: 60 }), tool: { ...tools.deleteIssue, risk: 'DESTRUCTlVE' }, arguments: { issueKey: 'ABC-1' } });
+builderVector('server-virtual-server', 'Server: narrowing comes from the vsc claim, so a server can apply the link (CC-027).', 'server', {
+  ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.getIssue, arguments: { issueKey: 'DEF-5' },
+  resource: issue('DEF-5', 'DEF', 'Software') });
 builderVector('mfa-age', 'mfa claim becomes principal.mfaAge and context.mfaAge.', 'gateway',
   { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('server-jira-issue', 'Server: resolved issue with parent project; project attribute duplicates the parent edge.', 'server',
@@ -245,6 +257,50 @@ decision('srv-confluence-restricted-page', 'Server: page in a space labelled res
   caller: users.confluenceReader(), tool: tools.getPage, arguments: { pageId: '90210' },
   resource: { type: 'Confluence::Page', id: '90210', attrs: { id: '90210' },
     parent: { type: 'Confluence::Space', id: 'LEGAL', attrs: { key: 'LEGAL', labels: ['restricted'] } } },
-}, deny('confluence-forbid-restricted-page'), { covers: ['restricted'] });
+}, deny('confluence-forbid-restricted-page'), { covers: ['restricted', 'forbid_overrides_permit'] });
+
+const page = (id, spaceKey, labels = []) => ({ type: 'Confluence::Page', id, attrs: { id },
+  parent: { type: 'Confluence::Space', id: spaceKey, attrs: { key: spaceKey, labels } } });
+const ticket = (id, queueId) => ({ type: 'ServiceDesk::Ticket', id, attrs: { id },
+  parent: { type: 'ServiceDesk::Queue', id: queueId, attrs: { id: queueId } } });
+const gitlabProject = (projectPath) => {
+  const group = projectPath.slice(0, projectPath.lastIndexOf('/'));
+  return { type: 'GitLab::Project', id: projectPath, attrs: { path: projectPath },
+    parent: { type: 'GitLab::Group', id: group, attrs: { path: group } } };
+};
+
+decision('gw-confluence-read-allowed', 'Confluence reader calls a READ_ONLY Confluence tool.', 'gateway',
+  { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'OPS' } }, allow('confluence-call-read'));
+decision('gw-vs-narrows-confluence-space', 'Link limited to space ENG; tool names space OPS.', 'gateway',
+  { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.searchSpace, arguments: { spaceKey: 'OPS' } },
+  deny('vs-narrow-call-confluence-space'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
+decision('gw-vs-narrows-servicedesk-queue', 'Link limited to queue 42; tool names queue 7.', 'gateway',
+  { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.listQueueTickets, arguments: { queueId: 7 } },
+  deny('vs-narrow-call-servicedesk-queue'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
+decision('srv-confluence-read-allowed', 'Server: page in a normal space.', 'server',
+  { caller: users.confluenceReader(), tool: tools.getPage, arguments: { pageId: '1001' }, resource: page('1001', 'ENG') }, allow('confluence-read'));
+decision('srv-vs-narrows-confluence-page', 'Server: page in OPS through a link limited to ENG.', 'server',
+  { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.getPage, arguments: { pageId: '2002' },
+    resource: page('2002', 'OPS') },
+  deny('vs-narrow-confluence-page'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
+decision('srv-servicedesk-read-allowed', 'Server: ticket in queue 42.', 'server',
+  { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-read'));
+decision('srv-vs-narrows-servicedesk-ticket', 'Server: ticket in queue 7 through a link limited to queue 42.', 'server',
+  { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.getTicket, arguments: { ticketId: 777 },
+    resource: ticket('777', '7') },
+  deny('vs-narrow-servicedesk-ticket'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
+decision('srv-vs-narrows-gitlab-project', 'Server: project of team-b through a link limited to group team-a.', 'server',
+  { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: { projectPath: 'team-b/app' },
+    resource: gitlabProject('team-b/app') },
+  deny('vs-narrow-gitlab-project'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
+decision('srv-vs-inside-gitlab-group', 'Server: project of team-a through the same link.', 'server',
+  { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: { projectPath: 'team-a/app' },
+    resource: gitlabProject('team-a/app') },
+  allow('gitlab-read'), { covers: ['virtual_server_narrowing'] });
+decision('srv-vs-narrows-opensearch-index', 'Server: index of another team through a link limited to prefix logs-team-a.', 'server',
+  { ...viaVs(caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-logs-team-a', 'mcp-opensearch-idx-logs-team-b']),
+    vs('team-a-logs', { 'OpenSearch::Index': ['logs-team-a'] })), tool: tools.searchIndex, arguments: { index: 'logs-team-b-2026.10' },
+    resource: { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } } },
+  deny('vs-narrow-opensearch-index'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
 
 console.log(`policy decisions: ${decisionCount}`);

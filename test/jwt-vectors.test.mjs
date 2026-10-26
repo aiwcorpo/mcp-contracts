@@ -8,7 +8,9 @@ const SERVICE_METHODS = new Set(['initialize', 'tools/list', 'ping']);
 const ajv = createAjv();
 const validateClaims = schemaValidator(ajv, 'internal-jwt.schema.json');
 
-function serviceRequestAllowed(request) {
+// Server: initialize, tools/list, ping, GET /mcp-manifest. Broker: GET /v1/systems only (CC-030).
+function serviceRequestAllowed(request, audience) {
+  if (audience === 'mcp-credential-broker') return request.method === 'GET' && request.path === '/v1/systems';
   if (request.kind === 'jsonrpc') return SERVICE_METHODS.has(request.method);
   return request.method === 'GET' && request.path === '/mcp-manifest';
 }
@@ -41,7 +43,8 @@ async function verify(vector) {
   if (claims.exp - claims.iat > verifier.maxLifetimeSeconds) return 'lifetime_too_long';
   if (verifier.seenJtis.includes(claims.jti)) return 'replayed_jti';
   const service = claims.sub === 'system:mcp-gateway';
-  if (service && !serviceRequestAllowed(request)) return 'service_token_not_allowed';
+  if (service && !serviceRequestAllowed(request, verifier.audience)) return 'service_token_not_allowed';
+  if (request.xRequestId !== claims.rid) return 'request_id_mismatch';
   if (request.kind === 'jsonrpc' && request.method === 'tools/call' && claims.tool !== request.toolName) {
     return 'tool_mismatch';
   }
@@ -60,7 +63,7 @@ test('every C2 rejection case is covered', () => {
   const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
   for (const reason of ['missing_token', 'bad_signature', 'unknown_kid', 'alg_not_allowed', 'wrong_issuer',
     'wrong_audience', 'expired', 'replayed_jti', 'service_token_not_allowed', 'tool_mismatch',
-    'invalid_claims', 'lifetime_too_long', 'not_yet_valid']) {
+    'invalid_claims', 'lifetime_too_long', 'not_yet_valid', 'request_id_mismatch']) {
     assert.ok(reasons.has(reason), `no vector for ${reason}`);
   }
 });

@@ -9,10 +9,8 @@
         "mcp-jira-read"
       ],
       "azp": "claude-code",
-      "vs": "my-tools"
-    },
-    "virtualServer": {
-      "slug": "my-tools"
+      "vs": "my-tools",
+      "vsc": {}
     },
     "tool": {
       "serverId": "mcp-jira",

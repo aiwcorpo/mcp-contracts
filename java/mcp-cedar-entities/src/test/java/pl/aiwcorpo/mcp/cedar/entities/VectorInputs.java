@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /** Converts vector JSON into the public API types and the API result back into vector JSON. */
 final class VectorInputs {
@@ -28,8 +27,15 @@ final class VectorInputs {
         List<String> groups = new ArrayList<>();
         c.get("grp").forEach(g -> groups.add(g.asText()));
         Caller caller = Caller.of(c.get("sub").asText(), c.get("usr").asText(), groups, c.get("azp").asText());
+        if (c.has("vs") != c.has("vsc")) {
+            // The Java API cannot represent half a link; this mirrors the JWT receiver rejecting such a token.
+            throw new EntityBuilderException(EntityBuilderException.Code.INTERNAL_ERROR, "vs and vsc must be present together");
+        }
         if (c.has("vs")) {
-            caller = caller.withVirtualServer(c.get("vs").asText());
+            Map<String, List<String>> vsc = JSON.convertValue(c.get("vsc"), new TypeReference<Map<String, List<String>>>() { });
+            Map<String, java.util.SortedSet<String>> scopes = new java.util.LinkedHashMap<>();
+            vsc.forEach((field, ids) -> scopes.put(field, new java.util.TreeSet<>(ids)));
+            caller = caller.withVirtualServer(new VirtualServerScope(c.get("vs").asText(), scopes));
         }
         if (c.has("mfa")) {
             caller = caller.withMfaAge(c.get("mfa").asLong());
@@ -42,13 +48,9 @@ final class VectorInputs {
         Map<String, Object> arguments = input.has("arguments")
                 ? JSON.convertValue(input.get("arguments"), new TypeReference<Map<String, Object>>() { })
                 : Map.of();
-        Optional<VirtualServerScope> link = Optional.ofNullable(input.get("virtualServer")).map(vs ->
-                new VirtualServerScope(vs.get("slug").asText(), vs.has("resourceDefaults")
-                        ? JSON.convertValue(vs.get("resourceDefaults"), new TypeReference<Map<String, List<String>>>() { })
-                        : Map.of()));
         return switch (level) {
-            case "gateway" -> BUILDER.forToolCall(caller, tool, arguments, link);
-            case "server" -> BUILDER.forResource(caller, tool, arguments, link, resource(input.get("resource")));
+            case "gateway" -> BUILDER.forToolCall(caller, tool, arguments);
+            case "server" -> BUILDER.forResource(caller, tool, arguments, resource(input.get("resource")));
             default -> throw new IllegalArgumentException(level);
         };
     }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Policy bundle manifest (C7)",
-  "description": "manifest.json at the root of policies-<revision>.tar.gz. The archive also contains schema.cedarschema, policies/**/*.cedar and entities/static.json. The signature policies-<revision>.tar.gz.sig is a raw 64-byte Ed25519 signature over the exact bytes of the .tar.gz file.",
+  "description": "manifest.json at the root of policies-<revision>.tar.gz. A main bundle also contains schema.cedarschema, policies/**/*.cedar and entities/static.json. An overrides bundle contains only manifest.json and policies/**/*.cedar with forbid rules: schema and static entities always come from the main bundle, and an overrides archive with any other entry or any permit policy is rejected (CC-028). Revisions are monotonic per channel (main and overrides separately). The signature policies-<revision>.tar.gz.sig is a raw 64-byte Ed25519 signature over the exact bytes of the .tar.gz file; main and overrides use different keys.",
   "type": "object",
   "required": [
     "revision",

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 1.0.0
+  version: 1.1.0
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -36,11 +36,14 @@ paths:
     get:
       tags: [catalog]
       operationId: getCatalog
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Registered servers and tools with the current user's access computed from policy.
       security:
         - mtls: []
           bffUserToken: []
       responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '200':
           description: Approved tools of all registered servers.
           content:
@@ -56,11 +59,13 @@ paths:
                         version: 1.4.0
                         tools:
                           - name: jira__get_issue
+                            description: Returns one Jira issue by key.
                             risk: READ_ONLY
                             action: read
                             access: granted
                             requiredEntitlements: [mcp-jira-read]
                           - name: jira__update_issue
+                            description: Updates the summary of an issue.
                             risk: UPDATE
                             action: update
                             access: denied
@@ -70,6 +75,7 @@ paths:
                         version: 1.0.0
                         tools:
                           - name: gitlab__get_project
+                            description: Returns one GitLab project by path.
                             risk: READ_ONLY
                             action: read
                             access: denied
@@ -80,11 +86,14 @@ paths:
     get:
       tags: [virtual-servers]
       operationId: listVirtualServers
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Virtual servers (links) owned by the current user.
       security:
         - mtls: []
           bffUserToken: []
       responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '200':
           description: Links of the current user.
           content:
@@ -107,6 +116,7 @@ paths:
     post:
       tags: [virtual-servers]
       operationId: createVirtualServer
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Create a virtual server owned by the current user.
       description: |
         A virtual server only narrows. The gateway rejects tools the user may not call (403) and evaluates
@@ -170,11 +180,14 @@ paths:
     delete:
       tags: [virtual-servers]
       operationId: deleteVirtualServer
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Delete a virtual server; owner only.
       security:
         - mtls: []
           bffUserToken: []
       responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '204':
           description: Deleted.
         '401':
@@ -185,6 +198,7 @@ paths:
     get:
       tags: [registry]
       operationId: listRegistryServers
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Registered servers with tools and approval status (admin).
       security:
         - mtls: []
@@ -211,7 +225,22 @@ paths:
                           resourceRefs:
                             - argument: issueKey
                               type: Jira::Issue
-                          definitionHash: sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a
+                          definition:
+                            name: get_issue
+                            description: Returns one Jira issue by key.
+                            inputSchema:
+                              type: object
+                              properties:
+                                issueKey:
+                                  type: string
+                                  description: Issue key, e.g. ABC-123
+                                  pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              required:
+                                - issueKey
+                              additionalProperties: false
+                            annotations:
+                              readOnlyHint: true
+                          definitionHash: sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696
                           status: approved
                         - name: update_issue
                           risk: UPDATE
@@ -219,7 +248,27 @@ paths:
                           resourceRefs:
                             - argument: issueKey
                               type: Jira::Issue
-                          definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                          definition:
+                            name: update_issue
+                            description: Updates the summary of an issue.
+                            inputSchema:
+                              type: object
+                              properties:
+                                issueKey:
+                                  type: string
+                                  description: Issue key, e.g. ABC-123
+                                  pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                summary:
+                                  type: string
+                                  maxLength: 255
+                              required:
+                                - issueKey
+                                - summary
+                              additionalProperties: false
+                            annotations:
+                              readOnlyHint: false
+                              destructiveHint: false
+                          definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
                           status: pending_approval
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -231,10 +280,13 @@ paths:
     put:
       tags: [registry]
       operationId: registerServer
+      x-allowed-client-cn: [mcp-registry-ci]
       summary: Register or update a server manifest (CI).
       description: |
         Body is the C6 manifest (schemas/server-manifest.schema.json); `serverId` in the body must equal the path.
-        A new tool or a tool whose definitionHash changed becomes pending_approval. The binding
+        A new tool or a tool whose definitionHash changed becomes pending_approval. The gateway recomputes
+        every definitionHash from the entry's definition (CC-004, CC-005) and rejects the manifest with 422
+        when one differs or when any semantic manifest rule of the README fails. The binding
         serverId -> system/internalUrl comes only from gateway configuration; a manifest that disagrees is
         rejected with 422 and nothing is stored.
       security:
@@ -254,11 +306,18 @@ paths:
                   internalUrl: https://mcp-jira.internal:8443/mcp/jira
                   credential:
                     required: true
-                    acceptedTypes: [user-oauth, user-secret]
+                    acceptedTypes:
+                      - user-oauth
+                      - user-secret
                   resourceTypes:
                     - type: Jira::Project
-                      attributes: [key, category]
+                      attributes:
+                        - key
+                        - category
                     - type: Jira::Issue
+                      attributes:
+                        - key
+                        - project
                       parent: Jira::Project
                   tools:
                     - name: get_issue
@@ -267,7 +326,22 @@ paths:
                       resourceRefs:
                         - argument: issueKey
                           type: Jira::Issue
-                      definitionHash: sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a
+                      definition:
+                        name: get_issue
+                        description: Returns one Jira issue by key.
+                        inputSchema:
+                          type: object
+                          properties:
+                            issueKey:
+                              type: string
+                              description: Issue key, e.g. ABC-123
+                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                          required:
+                            - issueKey
+                          additionalProperties: false
+                        annotations:
+                          readOnlyHint: true
+                      definitionHash: sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696
       responses:
         '200':
           description: Stored; the body shows the resulting status of every tool.
@@ -288,7 +362,22 @@ paths:
                         resourceRefs:
                           - argument: issueKey
                             type: Jira::Issue
-                        definitionHash: sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a
+                        definition:
+                          name: get_issue
+                          description: Returns one Jira issue by key.
+                          inputSchema:
+                            type: object
+                            properties:
+                              issueKey:
+                                type: string
+                                description: Issue key, e.g. ABC-123
+                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                            required:
+                              - issueKey
+                            additionalProperties: false
+                          annotations:
+                            readOnlyHint: true
+                        definitionHash: sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696
                         status: pending_approval
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -312,7 +401,9 @@ paths:
     get:
       tags: [registry]
       operationId: getPendingTool
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Approved and pending entry of a tool, for a diff (admin).
+      description: Both entries carry the full MCP definition (CC-005), so a changed description or inputSchema is visible in the diff.
       security:
         - mtls: []
           bffUserToken: []
@@ -333,7 +424,27 @@ paths:
                       resourceRefs:
                         - argument: issueKey
                           type: Jira::Issue
-                      definitionHash: sha256:0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728ff
+                      definition:
+                        name: update_issue
+                        description: Updates the summary of an issue.
+                        inputSchema:
+                          type: object
+                          properties:
+                            issueKey:
+                              type: string
+                              description: Issue key, e.g. ABC-123
+                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                            summary:
+                              type: string
+                              maxLength: 255
+                          required:
+                            - issueKey
+                            - summary
+                          additionalProperties: false
+                        annotations:
+                          readOnlyHint: false
+                          destructiveHint: false
+                      definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
                     pendingEntry:
                       name: update_issue
                       risk: READ_ONLY
@@ -341,8 +452,28 @@ paths:
                       resourceRefs:
                         - argument: issueKey
                           type: Jira::Issue
-                      definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
-                    pendingHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                      definition:
+                        name: update_issue
+                        description: Updates the summary of an issue.
+                        inputSchema:
+                          type: object
+                          properties:
+                            issueKey:
+                              type: string
+                              description: Issue key, e.g. ABC-123
+                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                            summary:
+                              type: string
+                              maxLength: 255
+                          required:
+                            - issueKey
+                            - summary
+                          additionalProperties: false
+                        annotations:
+                          readOnlyHint: false
+                          destructiveHint: false
+                      definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -356,6 +487,7 @@ paths:
     post:
       tags: [registry]
       operationId: approveTool
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Approve the pending definition of a tool (group mcp-platform-admin).
       description: definitionHash must equal the current pendingHash, otherwise 409 and nothing changes.
       security:
@@ -370,7 +502,7 @@ paths:
             examples:
               approve:
                 value:
-                  definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                  definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
       responses:
         '204':
           description: Approved.
@@ -394,6 +526,7 @@ paths:
     get:
       tags: [activity]
       operationId: listActivity
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Recent gateway audit events of the current user (without arguments).
       description: Events are kept for 30 days. Newest first.
       security:
@@ -402,6 +535,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
       responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '200':
           description: Audit events (C8) with component=gateway and sub of the caller.
           content:
@@ -440,11 +575,14 @@ paths:
     get:
       tags: [confirmations]
       operationId: getConfirmation
-      summary: Preview a pending confirmation; owner only.
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Preview a pending confirmation; owner only, fresh MFA required (CC-034).
       security:
         - mtls: []
           bffUserToken: []
       responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '200':
           description: Tool and arguments in a fixed order; long values are truncated and marked.
           content:
@@ -460,13 +598,15 @@ paths:
                       - name: issueKey
                         value: '"ABC-123"'
                         truncated: false
+                    expiresAt: '2026-10-26T20:02:00Z'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
     post:
       tags: [confirmations]
       operationId: decideConfirmation
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Approve or decline a pending confirmation; owner only, fresh MFA required.
       security:
         - mtls: []
@@ -482,24 +622,19 @@ paths:
                 value:
                   decision: approve
       responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '204':
           description: Decision recorded; the waiting tool call continues or is declined.
         '401':
-          description: Missing token, or MFA not fresh enough (step_up_required).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                step_up_required:
-                  value:
-                    error: step_up_required
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
   /admin/v1/policy/status:
     get:
       tags: [policy]
       operationId: getPolicyStatus
+      x-allowed-client-cn: [mcp-portal-bff]
       summary: Policy bundle revision loaded by each gateway instance (admin).
       security:
         - mtls: []
@@ -573,6 +708,19 @@ components:
         maximum: 200
         default: 50
   responses:
+    StepUpOrUnauthenticated:
+      description: Missing or invalid token, or the user's last MFA authentication is not fresh enough (step_up_required with stepUpUrl, CC-010, CC-034).
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/StepUpRequired'
+              - $ref: '#/components/schemas/Error'
+          examples:
+            step_up_required:
+              value:
+                error: step_up_required
+                stepUpUrl: https://mcp-portal.internal/api/v1/auth/login?returnPath=%2Fconfirm
     BadRequest:
       description: Malformed request or schema violation.
       content:
@@ -614,6 +762,17 @@ components:
               value:
                 error: not_found_or_denied
   schemas:
+    StepUpRequired:
+      type: object
+      required: [error, stepUpUrl]
+      properties:
+        error:
+          const: step_up_required
+        stepUpUrl:
+          type: string
+          format: uri
+          description: Portal URL that re-authenticates with max_age / acr_values (configured in the gateway).
+      additionalProperties: false
     Error:
       type: object
       description: Generic error body for statuses whose body C5 does not define.
@@ -631,10 +790,13 @@ components:
       enum: [granted, denied]
     CatalogTool:
       type: object
-      required: [name, risk, action, access, requiredEntitlements]
+      required: [name, description, risk, action, access, requiredEntitlements]
       properties:
         name:
           $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        description:
+          type: string
+          description: definition.description of the approved manifest entry (CC-005, CC-014).
         risk:
           $ref: '../schemas/common.schema.json#/$defs/Risk'
         action:
@@ -797,7 +959,7 @@ components:
       additionalProperties: false
     ConfirmationView:
       type: object
-      required: [confirmationId, tool, arguments]
+      required: [confirmationId, tool, arguments, expiresAt]
       properties:
         confirmationId:
           $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
@@ -808,6 +970,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ConfirmationArgument'
+        expiresAt:
+          description: End of the confirmation TTL (C11, 120 s after creation); the portal shows a countdown.
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
       additionalProperties: false
     ConfirmationDecision:
       type: object

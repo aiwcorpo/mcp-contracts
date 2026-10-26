@@ -16,12 +16,9 @@
           "mcp-jira-proj-DEF"
         ],
         "azp": "claude-code",
-        "vs": "docs"
-      },
-      "virtualServer": {
-        "slug": "docs",
-        "resourceDefaults": {
-          "Confluence::Space": [
+        "vs": "docs",
+        "vsc": {
+          "confluenceSpaces": [
             "ENG"
           ]
         }

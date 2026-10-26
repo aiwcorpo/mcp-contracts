@@ -1,7 +1,8 @@
 {
   "description": "Server: page in a space labelled restricted.",
   "covers": [
-    "restricted"
+    "restricted",
+    "forbid_overrides_permit"
   ],
   "builder": {
     "level": "server",

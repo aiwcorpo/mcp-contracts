@@ -72,24 +72,37 @@ function argumentIds(argumentName, value) {
   throw new BuilderError('invalid_argument', `${argumentName}: not a resource identifier`);
 }
 
-function buildContext({ caller, tool, arguments: args = {}, virtualServer }) {
+const RISKS = new Set(['READ_ONLY', 'UPDATE', 'DESTRUCTIVE']);
+const ACTIONS = new Set(['read', 'update', 'delete', 'admin']);
+
+/** Gateway side of CC-027: resourceDefaults of a link -> the vsc claim of the internal JWT. */
+export function vscFromResourceDefaults(resourceDefaults = {}) {
+  const vsc = {};
+  for (const [type, ids] of Object.entries(resourceDefaults)) {
+    const field = VS_SCOPE_FIELD[type];
+    if (!field) throw new BuilderError('internal_error', `resourceDefaults type ${type} cannot narrow`);
+    vsc[field] = sortedSet([...(vsc[field] ?? []), ...ids]);
+  }
+  return vsc;
+}
+
+function buildContext({ caller, tool, arguments: args = {} }) {
+  if (!RISKS.has(tool.risk)) throw new BuilderError('internal_error', `unknown risk ${tool.risk}`);
+  if (!ACTIONS.has(tool.action)) throw new BuilderError('internal_error', `unknown action ${tool.action}`);
   const context = { client: caller.azp };
+  if ((caller.vs === undefined) !== (caller.vsc === undefined)) {
+    throw new BuilderError('internal_error', 'vs and vsc must be present together');
+  }
   if (caller.vs !== undefined) {
-    if (!virtualServer || virtualServer.slug !== caller.vs) {
-      throw new BuilderError('internal_error', 'virtual server definition missing for vs claim');
-    }
     context.virtualServer = caller.vs;
-    const defaults = virtualServer.resourceDefaults ?? {};
-    if (Object.keys(defaults).length > 0) {
-      context.vsScopes = {};
-      for (const [type, ids] of Object.entries(defaults)) {
-        const field = VS_SCOPE_FIELD[type];
-        if (!field) throw new BuilderError('internal_error', `resourceDefaults type ${type} cannot narrow`);
-        context.vsScopes[field] = sortedSet(ids);
-      }
+    const fields = Object.keys(caller.vsc);
+    for (const field of fields) {
+      if (!SCOPE_FIELDS.includes(field)) throw new BuilderError('internal_error', `vsc field ${field} unknown`);
     }
-  } else if (virtualServer) {
-    throw new BuilderError('internal_error', 'virtual server given without vs claim');
+    if (fields.length > 0) {
+      context.vsScopes = {};
+      for (const field of SCOPE_FIELDS.filter((f) => f in caller.vsc)) context.vsScopes[field] = sortedSet(caller.vsc[field]);
+    }
   }
   if (caller.mfa !== undefined) context.mfaAge = caller.mfa;
   context.refs = {};

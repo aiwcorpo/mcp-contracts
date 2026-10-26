@@ -310,3 +310,23 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   Wektory: `test-vectors/bundles/latest-*.json` i przypadki paczek.
 - **Alternatywy:** absolutne URL z listą dozwolonych hostów w konfiguracji odbiorcy.
 - **Status:** open
+
+## CC-027 | C2/C4/C5 | Tożsamość TLS brokera i wewnętrznego endpointu gateway'a
+
+- **Zgłasza:** ws-01
+- **Problem:** C5 ustala tożsamość serwerów MCP (SAN `<serverId>.internal`), a C4 tożsamość klientów
+  brokera (CN `mcp-gateway`, `mcp-portal-bff`, `mcp-offboarding`). Nie ma odpowiednika dla serwerów
+  wywoływanych przez inne komponenty: brokera (wołają go gateway i BFF) i wewnętrznego endpointu gateway'a
+  (JWKS z C2 `https://<gateway-internal>/.well-known/jwks.json`, admin API C5 wołane przez BFF i CI).
+  Bez ustalonej nazwy wystawca certyfikatów nie wie, jaką nazwę nadać, a klienci, którzy łączą się przez
+  inny adres niż SAN, wyłączają weryfikację nazwy hosta. Wtedy zostaje tylko "certyfikat od wewnętrznego CA"
+  i każdy komponent z certyfikatem tego CA (np. serwer MCP) może udawać brokera i odbierać PAT-y z
+  `PUT .../secret` albo podsunąć własny JWKS.
+- **Wariant przyjęty w `mcp-platform-dev`** (bez zmiany kontraktu): każdy certyfikat ma `CN=<nazwa>` i SAN
+  `DNS:<nazwa>.internal`; broker `mcp-credential-broker.internal`, gateway `mcp-gateway.internal` (zgodne z
+  domyślnym `iss` z C2 `https://mcp-gateway.internal`). Certyfikaty dev mają dodatkowo `localhost`.
+- **Propozycja:** dopisać do C4: "klient (gateway, BFF) sprawdza, że SAN certyfikatu brokera ==
+  `mcp-credential-broker.internal` (konfigurowalne)", a do C2/C5: "wewnętrzny endpoint gateway'a (JWKS,
+  `/admin/v1`) ma SAN `mcp-gateway.internal` (konfigurowalne); odbiorcy JWKS i BFF to sprawdzają".
+  Zmiana opisowa, bez wpływu na OpenAPI i schematy (patch).
+- **Status:** open

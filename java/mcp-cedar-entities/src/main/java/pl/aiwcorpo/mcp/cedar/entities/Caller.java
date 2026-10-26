@@ -13,7 +13,7 @@ import java.util.OptionalLong;
  * @param username C2 {@code usr}
  * @param groups C2 {@code grp}; groups without the {@code mcp-} prefix are ignored
  * @param client C2 {@code azp}
- * @param virtualServer C2 {@code vs}, present only for calls through a virtual server link
+ * @param virtualServer C2 {@code vs} and {@code vsc}, present only for calls through a virtual server link
  * @param mfaAgeSeconds C2 {@code mfa}, absent means unknown
  */
 public record Caller(
@@ -21,7 +21,7 @@ public record Caller(
         String username,
         List<String> groups,
         String client,
-        Optional<String> virtualServer,
+        Optional<VirtualServerScope> virtualServer,
         OptionalLong mfaAgeSeconds) {
 
     public Caller {
@@ -38,9 +38,9 @@ public record Caller(
         return new Caller(sub, username, groups, client, Optional.empty(), OptionalLong.empty());
     }
 
-    /** @return a copy calling through the given virtual server slug */
-    public Caller withVirtualServer(String slug) {
-        return new Caller(sub, username, groups, client, Optional.of(slug), mfaAgeSeconds);
+    /** @return a copy calling through the given virtual server */
+    public Caller withVirtualServer(VirtualServerScope link) {
+        return new Caller(sub, username, groups, client, Optional.of(link), mfaAgeSeconds);
     }
 
     /** @return a copy with the given MFA age in seconds */

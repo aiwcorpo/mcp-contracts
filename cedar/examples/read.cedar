@@ -17,6 +17,22 @@ permit (
 )
 when { resource is GitLab::Group || resource is GitLab::Project };
 
+@id("confluence-read")
+permit (
+  principal in UserGroup::"mcp-confluence-read",
+  action == Action::"read",
+  resource
+)
+when { resource is Confluence::Space || resource is Confluence::Page };
+
+@id("servicedesk-read")
+permit (
+  principal in UserGroup::"mcp-servicedesk-read",
+  action == Action::"read",
+  resource
+)
+when { resource is ServiceDesk::Queue || resource is ServiceDesk::Ticket };
+
 // OpenSearch has no per-user rights in the backend beyond FLS, so reading is limited to granted index prefixes.
 @id("opensearch-read-in-scope")
 permit (

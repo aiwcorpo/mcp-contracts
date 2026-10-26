@@ -1,0 +1,155 @@
+{
+  "description": "Server: ticket in queue 42.",
+  "covers": [],
+  "builder": {
+    "level": "server",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-00000000000a",
+        "usr": "sdreader",
+        "grp": [
+          "mcp-servicedesk-read",
+          "mcp-servicedesk-queue-42"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "name": "get_ticket",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "ticketId",
+            "type": "ServiceDesk::Ticket"
+          }
+        ]
+      },
+      "arguments": {
+        "ticketId": 501
+      },
+      "resource": {
+        "type": "ServiceDesk::Ticket",
+        "id": "501",
+        "attrs": {
+          "id": "501"
+        },
+        "parent": {
+          "type": "ServiceDesk::Queue",
+          "id": "42",
+          "attrs": {
+            "id": "42"
+          }
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000a"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "ServiceDesk::Ticket",
+      "id": "501"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "servicedeskTicket": [
+          "501"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "ServiceDesk::Queue",
+        "id": "42"
+      },
+      "attrs": {
+        "id": "42"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "ServiceDesk::Ticket",
+        "id": "501"
+      },
+      "attrs": {
+        "id": "501",
+        "queue": {
+          "__entity": {
+            "type": "ServiceDesk::Queue",
+            "id": "42"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "ServiceDesk::Queue",
+          "id": "42"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-00000000000a"
+      },
+      "attrs": {
+        "username": "sdreader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": [
+            "42"
+          ]
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-servicedesk-queue-42"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-servicedesk-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-servicedesk-queue-42"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-servicedesk-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "servicedesk-read"
+    ]
+  }
+}

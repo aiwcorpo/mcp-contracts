@@ -3,6 +3,54 @@ import type { OperationExamples } from './types.js';
 
 export const portalBffExamples: OperationExamples[] = [
   {
+    "operationId": "login",
+    "method": "GET",
+    "route": "/api/v1/auth/login",
+    "defaultExample": "status-302",
+    "responses": [
+      {
+        "status": 302,
+        "name": "status-302",
+        "headers": {
+          "Location": "https://keycloak.internal/realms/corp/protocol/openid-connect/auth?client_id=mcp-portal&response_type=code&scope=openid&state=st-login-1&code_challenge=Zx8-test&code_challenge_method=S256"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "logout",
+    "method": "POST",
+    "route": "/api/v1/auth/logout",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204"
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        }
+      },
+      {
+        "status": 403,
+        "name": "csrf_invalid",
+        "body": {
+          "error": "csrf_invalid"
+        }
+      }
+    ]
+  },
+  {
     "operationId": "getMe",
     "method": "GET",
     "route": "/api/v1/me",
@@ -69,6 +117,7 @@ export const portalBffExamples: OperationExamples[] = [
               "tools": [
                 {
                   "name": "jira__get_issue",
+                  "description": "Returns one Jira issue by key.",
                   "risk": "READ_ONLY",
                   "action": "read",
                   "access": "granted",
@@ -78,6 +127,7 @@ export const portalBffExamples: OperationExamples[] = [
                 },
                 {
                   "name": "jira__delete_issue",
+                  "description": "Deletes an issue permanently.",
                   "risk": "DESTRUCTIVE",
                   "action": "delete",
                   "access": "denied",
@@ -100,6 +150,7 @@ export const portalBffExamples: OperationExamples[] = [
               "tools": [
                 {
                   "name": "gitlab__get_project",
+                  "description": "Returns one GitLab project by path.",
                   "risk": "READ_ONLY",
                   "action": "read",
                   "access": "granted",
@@ -121,6 +172,7 @@ export const portalBffExamples: OperationExamples[] = [
               "tools": [
                 {
                   "name": "confluence__get_page",
+                  "description": "Returns one Confluence page.",
                   "risk": "READ_ONLY",
                   "action": "read",
                   "access": "denied",
@@ -250,7 +302,7 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "step_up_required",
         "body": {
           "error": "step_up_required",
-          "url": "https://mcp-portal.internal/login?max_age=0&returnPath=%2Fcatalog"
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         }
       },
       {
@@ -320,14 +372,16 @@ export const portalBffExamples: OperationExamples[] = [
               "value": "\"ABC-123\"",
               "truncated": false
             }
-          ]
+          ],
+          "expiresAt": "2026-10-26T20:02:00Z"
         }
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         }
       },
       {
@@ -354,7 +408,7 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "step_up_required",
         "body": {
           "error": "step_up_required",
-          "url": "https://mcp-portal.internal/login?max_age=0&returnPath=%2Fcatalog"
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         }
       },
       {
@@ -637,7 +691,34 @@ export const portalBffExamples: OperationExamples[] = [
                     "type": "Jira::Issue"
                   }
                 ],
-                "definitionHash": "sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff",
+                "definition": {
+                  "name": "update_issue",
+                  "description": "Updates the summary of an issue.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "issueKey": {
+                        "type": "string",
+                        "description": "Issue key, e.g. ABC-123",
+                        "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                      },
+                      "summary": {
+                        "type": "string",
+                        "maxLength": 255
+                      }
+                    },
+                    "required": [
+                      "issueKey",
+                      "summary"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": false
+                  }
+                },
+                "definitionHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49",
                 "status": "pending_approval"
               }
             ]
@@ -681,9 +762,36 @@ export const portalBffExamples: OperationExamples[] = [
                 "type": "Jira::Issue"
               }
             ],
-            "definitionHash": "sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff"
+            "definition": {
+              "name": "update_issue",
+              "description": "Updates the summary of an issue.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "issueKey": {
+                    "type": "string",
+                    "description": "Issue key, e.g. ABC-123",
+                    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "issueKey",
+                  "summary"
+                ],
+                "additionalProperties": false
+              },
+              "annotations": {
+                "readOnlyHint": false,
+                "destructiveHint": false
+              }
+            },
+            "definitionHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
           },
-          "pendingHash": "sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff"
+          "pendingHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
         }
       },
       {

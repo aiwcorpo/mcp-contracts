@@ -1,5 +1,8 @@
 extends:
   - spectral:oas
+functionsDir: spectral-functions
+functions:
+  - mtlsClientCn
 rules:
   # Every operation must state who may call it; an operation without security would be anonymous.
   operation-security-required:
@@ -9,6 +12,12 @@ rules:
     then:
       field: security
       function: truthy
+  mtls-allowed-client-cn:
+    description: Operations secured with mTLS list the allowed client certificate CNs and answer 403 to others.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      function: mtlsClientCn
   operation-operationId: error
   operation-tags: error
   operation-description: off

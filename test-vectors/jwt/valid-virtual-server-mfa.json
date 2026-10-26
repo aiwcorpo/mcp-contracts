@@ -1,6 +1,6 @@
 {
-  "description": "Call through a virtual server with mfa claim.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZGVsZXRlX2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDUiLCJ2cyI6InRlYW0tYS1kZXYiLCJtZmEiOjEyMH0.13iiuDit_vMLuNb0zZrK2MhWbJMmy1m_uq5buPrkjl9h0RzXeosE0BLUdQ7YE-F6XkyZXi7v6wh_I5TQO2MmHw",
+  "description": "Call through a virtual server: vs with its narrowing vsc (CC-027) and mfa.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZGVsZXRlX2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDUiLCJ2cyI6InRlYW0tYS1kZXYiLCJ2c2MiOnsiamlyYVByb2plY3RzIjpbIkFCQyJdfSwibWZhIjoxMjB9.szk4vtMaSQwO9aiTTCQHrXVPIGbRiaqEn2KAKo5GganxVC2Ip2peJpuEkXrZKzTDwBV4JQwxc66f-CFkBCDHjQ",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -24,6 +24,11 @@
     "exp": 1793016060,
     "jti": "0192d1b2-7c3a-7f00-9a11-000000000005",
     "vs": "team-a-dev",
+    "vsc": {
+      "jiraProjects": [
+        "ABC"
+      ]
+    },
     "mfa": 120
   },
   "verifier": {
@@ -38,7 +43,8 @@
   "request": {
     "kind": "jsonrpc",
     "method": "tools/call",
-    "toolName": "delete_issue"
+    "toolName": "delete_issue",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
   },
   "expected": {
     "valid": true,

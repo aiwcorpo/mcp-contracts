@@ -48,12 +48,13 @@
               "value": "\"ABC-123\"",
               "truncated": false
             }
-          ]
+          ],
+          "expiresAt": "2026-10-26T20:02:00Z"
         }
       }
     },
     {
-      "name": "getConfirmation 401 unauthenticated",
+      "name": "getConfirmation 401 step_up_required",
       "priority": 2,
       "request": {
         "method": "GET",
@@ -63,7 +64,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
           }
         }
       },
@@ -73,7 +74,33 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "https://mcp-portal.internal/api/v1/auth/login?returnPath=%2Fconfirm"
+        }
+      }
+    },
+    {
+      "name": "getConfirmation 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/confirmations/{confirmationId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
         }
       }
     },

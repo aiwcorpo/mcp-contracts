@@ -1,4 +1,6 @@
-// Rules of C5/C6 that JSON Schema cannot express (README: "Reguły semantyczne manifestu").
+// Rules of C5/C6 that JSON Schema cannot express (README: "Reguły semantyczne manifestu", CC-005, CC-018).
+import { manifestEntryHash } from './definition-hash.mjs';
+
 export function manifestRuleViolations(manifest) {
   const violations = [];
   if (manifest.serverId !== `mcp-${manifest.system}`) violations.push('serverId-matches-system');
@@ -12,5 +14,10 @@ export function manifestRuleViolations(manifest) {
   if (declared.size !== manifest.resourceTypes.length || referenced.some((type) => !declared.has(type))) {
     violations.push('resource-types-declared');
   }
-  return violations;
+  for (const tool of manifest.tools) {
+    if (tool.definition.name !== tool.name) violations.push('definition-name-matches');
+    if (tool.definition.inputSchema?.properties?.confirmation_code !== undefined) violations.push('no-confirmation-code');
+    if (manifestEntryHash(manifest, tool) !== tool.definitionHash) violations.push('definition-hash-matches');
+  }
+  return [...new Set(violations)];
 }

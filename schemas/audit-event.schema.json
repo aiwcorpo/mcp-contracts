@@ -18,9 +18,9 @@
       "$ref": "common.schema.json#/$defs/RequestId"
     },
     "clientRequestId": {
-      "description": "X-Request-Id sent by the AI client, recorded by the gateway only (C3). Untrusted text.",
+      "description": "X-Request-Id sent by the AI client, recorded by the gateway only (C3). Untrusted, so limited to a log-safe alphabet (CC-031); the gateway drops a value that does not match instead of rejecting the call.",
       "type": "string",
-      "maxLength": 128
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
     },
     "component": {
       "type": "string",
@@ -81,9 +81,9 @@
           "$ref": "common.schema.json#/$defs/ResourceType"
         },
         "id": {
+          "description": "Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but control characters are excluded so the line-oriented SIEM format cannot be broken (CC-031).",
           "type": "string",
-          "minLength": 1,
-          "maxLength": 512
+          "pattern": "^[^\\u0000-\\u001f\\u007f]{1,512}$"
         },
         "parent": {
           "description": "Parent as <Namespace>::<Type>::<id>, e.g. Jira::Project::ABC (C8 example format).",

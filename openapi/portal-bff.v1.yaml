@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 1.0.0
+  version: 1.1.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -19,6 +19,7 @@ servers:
   - url: /
     description: Same origin as the portal frontend.
 tags:
+  - name: auth
   - name: me
   - name: catalog
   - name: connections
@@ -28,6 +29,57 @@ tags:
   - name: activity
   - name: admin
 paths:
+  /api/v1/auth/login:
+    get:
+      tags: [auth]
+      operationId: login
+      summary: Start the OIDC login (or a step-up re-authentication) run by the BFF (CC-023).
+      description: |
+        Redirects to the IdP. After the IdP callback the BFF creates `__Host-session`, sets `XSRF-TOKEN` and
+        redirects to `returnPath`. With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication
+        (`max_age=0` and the MFA `acr_values`). Open to anonymous callers; it never returns JSON.
+      security: []
+      parameters:
+        - name: returnPath
+          in: query
+          required: false
+          schema:
+            $ref: 'credential-broker.v1.yaml#/components/schemas/ReturnPath'
+        - name: stepUp
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '302':
+          description: To the IdP authorization endpoint.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+              examples:
+                keycloak:
+                  value: https://keycloak.internal/realms/corp/protocol/openid-connect/auth?client_id=mcp-portal&response_type=code&scope=openid&state=st-login-1&code_challenge=Zx8-test&code_challenge_method=S256
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: End the BFF session (CC-023).
+      description: Invalidates `__Host-session`, clears the cookies and ends the IdP session when the IdP supports it.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          description: Logged out; the frontend navigates to its start page.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
   /api/v1/me:
     get:
       tags: [me]
@@ -92,11 +144,13 @@ paths:
                         actions: [copy_link, request_access, disconnect]
                         tools:
                           - name: jira__get_issue
+                            description: Returns one Jira issue by key.
                             risk: READ_ONLY
                             action: read
                             access: granted
                             requiredEntitlements: [mcp-jira-read]
                           - name: jira__delete_issue
+                            description: Deletes an issue permanently.
                             risk: DESTRUCTIVE
                             action: delete
                             access: denied
@@ -109,6 +163,7 @@ paths:
                         actions: [connect_oauth, add_secret]
                         tools:
                           - name: gitlab__get_project
+                            description: Returns one GitLab project by path.
                             risk: READ_ONLY
                             action: read
                             access: granted
@@ -121,6 +176,7 @@ paths:
                         actions: [view_request]
                         tools:
                           - name: confluence__get_page
+                            description: Returns one Confluence page.
                             risk: READ_ONLY
                             action: read
                             access: denied
@@ -317,7 +373,7 @@ paths:
     get:
       tags: [confirmations]
       operationId: getMyConfirmation
-      summary: Confirmation page data (proxy to C5); owner only.
+      summary: Confirmation page data (proxy to C5); owner only, fresh MFA required (CC-034).
       security:
         - session: []
       responses:
@@ -336,8 +392,9 @@ paths:
                       - name: issueKey
                         value: '"ABC-123"'
                         truncated: false
+                    expiresAt: '2026-10-26T20:02:00Z'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
     post:
@@ -623,7 +680,27 @@ paths:
                           resourceRefs:
                             - argument: issueKey
                               type: Jira::Issue
-                          definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                          definition:
+                            name: update_issue
+                            description: Updates the summary of an issue.
+                            inputSchema:
+                              type: object
+                              properties:
+                                issueKey:
+                                  type: string
+                                  description: Issue key, e.g. ABC-123
+                                  pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                summary:
+                                  type: string
+                                  maxLength: 255
+                              required:
+                                - issueKey
+                                - summary
+                              additionalProperties: false
+                            annotations:
+                              readOnlyHint: false
+                              destructiveHint: false
+                          definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
                           status: pending_approval
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -657,8 +734,28 @@ paths:
                       resourceRefs:
                         - argument: issueKey
                           type: Jira::Issue
-                      definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
-                    pendingHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                      definition:
+                        name: update_issue
+                        description: Updates the summary of an issue.
+                        inputSchema:
+                          type: object
+                          properties:
+                            issueKey:
+                              type: string
+                              description: Issue key, e.g. ABC-123
+                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                            summary:
+                              type: string
+                              maxLength: 255
+                          required:
+                            - issueKey
+                            - summary
+                          additionalProperties: false
+                        annotations:
+                          readOnlyHint: false
+                          destructiveHint: false
+                      definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                    pendingHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -685,7 +782,7 @@ paths:
             examples:
               approve:
                 value:
-                  definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                  definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
       responses:
         '204':
           description: Approved.
@@ -751,7 +848,7 @@ components:
               value:
                 error: invalid_request
     Unauthenticated:
-      description: No valid session; the frontend starts the login (CC-023).
+      description: No valid session; the frontend navigates to GET /api/v1/auth/login (CC-023).
       content:
         application/json:
           schema:
@@ -761,7 +858,7 @@ components:
               value:
                 error: unauthenticated
     StepUpOrUnauthenticated:
-      description: No valid session, or the operation needs a fresh MFA login (step_up_required with url).
+      description: No valid session, or the operation needs a fresh MFA login (step_up_required with stepUpUrl, CC-010).
       content:
         application/json:
           schema:
@@ -772,7 +869,7 @@ components:
             step_up_required:
               value:
                 error: step_up_required
-                url: https://mcp-portal.internal/login?max_age=0&returnPath=%2Fcatalog
+                stepUpUrl: /api/v1/auth/login?stepUp=true&returnPath=/catalog
     CsrfInvalid:
       description: Missing or wrong X-XSRF-TOKEN header (must equal the XSRF-TOKEN cookie).
       content:
@@ -818,14 +915,14 @@ components:
       additionalProperties: false
     StepUpRequired:
       type: object
-      required: [error, url]
+      required: [error, stepUpUrl]
       properties:
         error:
           const: step_up_required
-        url:
+        stepUpUrl:
           type: string
-          format: uri
-          description: Where the browser goes to re-authenticate with max_age / acr_values.
+          format: uri-reference
+          description: Where the browser goes to re-authenticate with max_age / acr_values; normally GET /api/v1/auth/login with stepUp=true.
       additionalProperties: false
     Me:
       type: object

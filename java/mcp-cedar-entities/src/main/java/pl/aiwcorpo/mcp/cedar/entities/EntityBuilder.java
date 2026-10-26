@@ -39,6 +39,9 @@ public final class EntityBuilder {
             "GitLab::Project", "group",
             "ServiceDesk::Ticket", "queue");
     private static final String OPENSEARCH_INDEX = "OpenSearch::Index";
+    // A typo in risk would otherwise skip every rule that compares resource.risk (e.g. the MFA rule for DESTRUCTIVE).
+    private static final Set<String> RISKS = Set.of("READ_ONLY", "UPDATE", "DESTRUCTIVE");
+    private static final Set<String> ACTIONS = Set.of("read", "update", "delete", "admin");
     private static final Comparator<Entity> BY_TYPE_THEN_ID = Comparator
             .<Entity, String>comparing(e -> e.getEUID().getType().toString())
             .thenComparing(e -> e.getEUID().getId().toString());
@@ -50,13 +53,11 @@ public final class EntityBuilder {
      * @param tool approved registry entry of the tool
      * @param arguments {@code params.arguments} of {@code tools/call} without {@code confirmation_code}; values as
      *        produced by a JSON parser (String, Number, Boolean, List, Map, null)
-     * @param virtualServer the link, required exactly when {@code caller.virtualServer()} is present
      * @return request and entities
      * @throws EntityBuilderException when a resource argument is not an identifier or the input is inconsistent
      */
-    public CedarRequest forToolCall(Caller caller, ToolDescriptor tool, Map<String, ?> arguments,
-            Optional<VirtualServerScope> virtualServer) {
-        Map<String, Value> context = context(caller, tool, arguments, virtualServer);
+    public CedarRequest forToolCall(Caller caller, ToolDescriptor tool, Map<String, ?> arguments) {
+        Map<String, Value> context = context(caller, tool, arguments);
         List<Entity> entities = principalEntities(caller);
         EntityUID resource = uid("Tool", tool.qualifiedName());
         Map<String, Value> attrs = new LinkedHashMap<>();
@@ -73,14 +74,13 @@ public final class EntityBuilder {
      * @param caller the calling user (from the internal JWT)
      * @param tool the server's own manifest entry of the tool
      * @param arguments arguments of the call, as for {@link #forToolCall}
-     * @param virtualServer the link, required exactly when {@code caller.virtualServer()} is present
      * @param resource the resource resolved from the system, with its parent where the type has one
      * @return request and entities
      * @throws EntityBuilderException when a resource argument is not an identifier or the input is inconsistent
      */
     public CedarRequest forResource(Caller caller, ToolDescriptor tool, Map<String, ?> arguments,
-            Optional<VirtualServerScope> virtualServer, ResolvedResource resource) {
-        Map<String, Value> context = context(caller, tool, arguments, virtualServer);
+            ResolvedResource resource) {
+        Map<String, Value> context = context(caller, tool, arguments);
         List<Entity> entities = principalEntities(caller);
         Objects.requireNonNull(resource, "resource");
         resource.parent().ifPresent(parent -> entities.add(systemEntity(parent, Optional.empty())));
@@ -94,33 +94,26 @@ public final class EntityBuilder {
         return new CedarRequest(uid("User", caller.sub()), action, resource, context, new LinkedHashSet<>(entities));
     }
 
-    private static Map<String, Value> context(Caller caller, ToolDescriptor tool, Map<String, ?> arguments,
-            Optional<VirtualServerScope> virtualServer) {
+    private static Map<String, Value> context(Caller caller, ToolDescriptor tool, Map<String, ?> arguments) {
         Objects.requireNonNull(caller, "caller");
         Objects.requireNonNull(tool, "tool");
         Objects.requireNonNull(arguments, "arguments");
-        Objects.requireNonNull(virtualServer, "virtualServer");
+        if (!RISKS.contains(tool.risk())) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown risk " + tool.risk());
+        }
+        if (!ACTIONS.contains(tool.action())) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown action " + tool.action());
+        }
         Map<String, Value> context = new LinkedHashMap<>();
         context.put("client", new PrimString(caller.client()));
-        if (caller.virtualServer().isPresent()) {
-            String slug = caller.virtualServer().get();
-            VirtualServerScope link = virtualServer
-                    .filter(vs -> vs.slug().equals(slug))
-                    .orElseThrow(() -> new EntityBuilderException(Code.INTERNAL_ERROR,
-                            "virtual server definition missing for vs claim " + slug));
-            context.put("virtualServer", new PrimString(slug));
-            if (!link.resourceDefaults().isEmpty()) {
+        caller.virtualServer().ifPresent(link -> {
+            context.put("virtualServer", new PrimString(link.slug()));
+            if (!link.vsScopes().isEmpty()) {
                 Map<String, Value> vsScopes = new LinkedHashMap<>();
-                link.resourceDefaults().forEach((type, ids) -> {
-                    String field = ScopeGroups.vsScopeField(type).orElseThrow(() -> new EntityBuilderException(
-                            Code.INTERNAL_ERROR, "resourceDefaults type cannot narrow: " + type));
-                    vsScopes.put(field, stringSet(new TreeSet<>(ids)));
-                });
+                link.vsScopes().forEach((field, ids) -> vsScopes.put(field, stringSet(ids)));
                 context.put("vsScopes", new CedarMap(vsScopes));
             }
-        } else if (virtualServer.isPresent()) {
-            throw new EntityBuilderException(Code.INTERNAL_ERROR, "virtual server given without vs claim");
-        }
+        });
         caller.mfaAgeSeconds().ifPresent(age -> context.put("mfaAge", new PrimLong(age)));
         Map<String, SortedSet<String>> refs = new LinkedHashMap<>();
         for (ResourceRef ref : tool.resourceRefs()) {

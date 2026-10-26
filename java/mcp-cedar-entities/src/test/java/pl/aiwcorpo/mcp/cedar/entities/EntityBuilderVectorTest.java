@@ -13,7 +13,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -77,14 +76,25 @@ class EntityBuilderVectorTest {
                 List.of(new ResourceRef("ticketId", "ServiceDesk::Ticket")));
         Caller caller = Caller.of("u", "u", List.of(), "claude-code");
         for (Object id : List.of(4711, 4711L, 4711.0d, new java.math.BigDecimal("4711"))) {
-            CedarRequest request = new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", id), Optional.empty());
+            CedarRequest request = new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", id));
             var refs = (com.cedarpolicy.value.CedarMap) request.context().get("refs");
             assertEquals(List.of(new com.cedarpolicy.value.PrimString("4711")), List.copyOf(
                     (com.cedarpolicy.value.CedarList) refs.get("servicedeskTicket")));
         }
         var e = assertThrows(EntityBuilderException.class, () ->
-                new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", 47.5), Optional.empty()));
+                new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", 47.5)));
         assertEquals(EntityBuilderException.Code.INVALID_ARGUMENT, e.code());
+    }
+
+    @Test
+    void gatewayMapsResourceDefaultsToVsc() {
+        VirtualServerScope link = VirtualServerScope.fromResourceDefaults("team-a",
+                Map.of("Jira::Project", List.of("DEF", "ABC"), "OpenSearch::Index", List.of("logs-team-a")));
+        assertEquals(List.of("jiraProjects", "opensearchIndexPrefixes"), List.copyOf(link.vsScopes().keySet()));
+        assertEquals(List.of("ABC", "DEF"), List.copyOf(link.vsScopes().get("jiraProjects")));
+        var e = assertThrows(EntityBuilderException.class, () ->
+                VirtualServerScope.fromResourceDefaults("x", Map.of("Jira::Issue", List.of("ABC-1"))));
+        assertEquals(EntityBuilderException.Code.INTERNAL_ERROR, e.code());
     }
 
     @Test

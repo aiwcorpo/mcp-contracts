@@ -59,7 +59,33 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "step_up_required"
+          "error": "step_up_required",
+          "stepUpUrl": "https://mcp-portal.internal/api/v1/auth/login?returnPath=%2Fconfirm"
+        }
+      }
+    },
+    {
+      "name": "decideConfirmation 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/confirmations/{confirmationId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
         }
       }
     },
