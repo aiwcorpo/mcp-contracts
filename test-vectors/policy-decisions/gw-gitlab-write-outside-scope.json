@@ -1,0 +1,106 @@
+{
+  "description": "GitLab UPDATE into team-b with scope team-a.",
+  "covers": [
+    "forbid_overrides_permit"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000007"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "gitlab__create_project"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabGroup": [
+          "team-b"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "gitlab__create_project"
+      },
+      "attrs": {
+        "server": "mcp-gitlab",
+        "name": "create_project",
+        "risk": "UPDATE"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000007"
+      },
+      "attrs": {
+        "username": "gitlabwriter",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [
+            "team-a"
+          ],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-grp-team-a"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "gitlab-call-write-outside-scope"
+    ]
+  }
+}

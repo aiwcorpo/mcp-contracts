@@ -1,0 +1,65 @@
+{
+  "description": "User without any mcp- group: default deny.",
+  "covers": [
+    "no_group"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000005"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__get_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__get_issue"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "get_issue",
+        "risk": "READ_ONLY"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000005"
+      },
+      "attrs": {
+        "username": "nobody",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

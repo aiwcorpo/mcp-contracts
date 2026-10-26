@@ -1,0 +1,160 @@
+{
+  "description": "Server: resolved issue with parent project; project attribute duplicates the parent edge.",
+  "level": "server",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000002",
+      "usr": "writer",
+      "grp": [
+        "mcp-jira-read",
+        "mcp-jira-write",
+        "mcp-jira-proj-ABC"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "update_issue",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "arguments": {
+      "issueKey": "ABC-1"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1",
+      "attrs": {
+        "key": "ABC-1"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "ABC",
+        "attrs": {
+          "key": "ABC",
+          "category": "Software"
+        }
+      }
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000002"
+    },
+    "action": {
+      "type": "Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Jira::Issue",
+          "id": "ABC-1"
+        },
+        "attrs": {
+          "key": "ABC-1",
+          "project": {
+            "__entity": {
+              "type": "Jira::Project",
+              "id": "ABC"
+            }
+          }
+        },
+        "parents": [
+          {
+            "type": "Jira::Project",
+            "id": "ABC"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "Jira::Project",
+          "id": "ABC"
+        },
+        "attrs": {
+          "key": "ABC",
+          "category": "Software"
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000002"
+        },
+        "attrs": {
+          "username": "writer",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [
+              "ABC"
+            ],
+            "confluenceSpaces": [],
+            "gitlabGroups": [],
+            "opensearchIndexPrefixes": [],
+            "servicedeskQueues": []
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-ABC"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

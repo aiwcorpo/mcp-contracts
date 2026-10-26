@@ -1,0 +1,78 @@
+{
+  "description": "Reader calls a READ_ONLY Jira tool.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__get_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__get_issue"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "get_issue",
+        "risk": "READ_ONLY"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-call-read"
+    ]
+  }
+}

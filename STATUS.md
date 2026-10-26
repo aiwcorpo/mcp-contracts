@@ -17,6 +17,10 @@
 - Poprawka po przeglądzie bezpieczeństwa: wzorce `url`/`sigUrl` w `policy-bundle-latest.schema.json`
   zakotwiczone i ograniczone do nazw plików w tym samym katalogu; reguły spójności rewizji (CC-026)
   i negatywne wektory `bundles/latest-*.json`.
+- Kamień 4: specyfikacja entity buildera (`cedar/entity-builder.md`), 15 wektorów buildera, 38 wektorów
+  decyzji Cedar (gateway i serwer, wszystkie przypadki z DoD); dwie niezależne implementacje buildera
+  (JS generuje wektory, Java w testach je wykonuje) i ocena decyzji przez cedar-java z walidacją żądania
+  względem schematu.
 
 ## Odstępstwa od briefu
 

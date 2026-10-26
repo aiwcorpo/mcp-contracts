@@ -1,0 +1,85 @@
+{
+  "description": "Server: no mcp-jira-read.",
+  "covers": [
+    "no_group"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000005"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "ABC-1"
+      },
+      "attrs": {
+        "key": "ABC-1",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "ABC"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "ABC"
+      },
+      "attrs": {
+        "key": "ABC",
+        "category": "Software"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000005"
+      },
+      "attrs": {
+        "username": "nobody",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

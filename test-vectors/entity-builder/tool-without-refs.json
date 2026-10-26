@@ -1,0 +1,88 @@
+{
+  "description": "Tool with no resourceRefs: refs is an empty record.",
+  "level": "gateway",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "list_projects",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": []
+    },
+    "arguments": {
+      "anything": "ignored"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__list_projects"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {}
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "jira__list_projects"
+        },
+        "attrs": {
+          "server": "mcp-jira",
+          "name": "list_projects",
+          "risk": "READ_ONLY"
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000001"
+        },
+        "attrs": {
+          "username": "reader",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [],
+            "confluenceSpaces": [],
+            "gitlabGroups": [],
+            "opensearchIndexPrefixes": [],
+            "servicedeskQueues": []
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

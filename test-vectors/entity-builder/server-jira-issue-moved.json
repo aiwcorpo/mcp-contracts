@@ -1,0 +1,132 @@
+{
+  "description": "Server: issue key says ABC but the system resolved it into HR (Restricted).",
+  "level": "server",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "get_issue",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "arguments": {
+      "issueKey": "ABC-123"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "attrs": {
+        "key": "ABC-123"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "HR",
+        "attrs": {
+          "key": "HR",
+          "category": "Restricted"
+        }
+      }
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-123"
+        ]
+      }
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Jira::Issue",
+          "id": "ABC-123"
+        },
+        "attrs": {
+          "key": "ABC-123",
+          "project": {
+            "__entity": {
+              "type": "Jira::Project",
+              "id": "HR"
+            }
+          }
+        },
+        "parents": [
+          {
+            "type": "Jira::Project",
+            "id": "HR"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "Jira::Project",
+          "id": "HR"
+        },
+        "attrs": {
+          "key": "HR",
+          "category": "Restricted"
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000001"
+        },
+        "attrs": {
+          "username": "reader",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [],
+            "confluenceSpaces": [],
+            "gitlabGroups": [],
+            "opensearchIndexPrefixes": [],
+            "servicedeskQueues": []
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

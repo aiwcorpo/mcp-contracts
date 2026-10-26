@@ -1,0 +1,129 @@
+{
+  "description": "Server: namePrefixes computed from the index name.",
+  "level": "server",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000008",
+      "usr": "osreader",
+      "grp": [
+        "mcp-opensearch-read",
+        "mcp-opensearch-idx-logs-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-opensearch",
+      "system": "opensearch",
+      "name": "search",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "index",
+          "type": "OpenSearch::Index"
+        }
+      ]
+    },
+    "arguments": {
+      "index": "logs-team-a-2026.10"
+    },
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10",
+      "attrs": {
+        "name": "logs-team-a-2026.10",
+        "tags": [
+          "logs"
+        ]
+      }
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000008"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "opensearchIndex": [
+          "logs-team-a-2026.10"
+        ]
+      }
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "OpenSearch::Index",
+          "id": "logs-team-a-2026.10"
+        },
+        "attrs": {
+          "name": "logs-team-a-2026.10",
+          "tags": [
+            "logs"
+          ],
+          "namePrefixes": [
+            "logs",
+            "logs-team",
+            "logs-team-a",
+            "logs-team-a-2026.10"
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000008"
+        },
+        "attrs": {
+          "username": "osreader",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [],
+            "confluenceSpaces": [],
+            "gitlabGroups": [],
+            "opensearchIndexPrefixes": [
+              "logs-team-a"
+            ],
+            "servicedeskQueues": []
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-opensearch-idx-logs-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-opensearch-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-idx-logs-team-a"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

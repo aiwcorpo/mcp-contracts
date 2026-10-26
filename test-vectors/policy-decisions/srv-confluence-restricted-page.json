@@ -1,0 +1,116 @@
+{
+  "description": "Server: page in a space labelled restricted.",
+  "covers": [
+    "restricted"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000009"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Confluence::Page",
+      "id": "90210"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "confluencePage": [
+          "90210"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Confluence::Page",
+        "id": "90210"
+      },
+      "attrs": {
+        "id": "90210",
+        "space": {
+          "__entity": {
+            "type": "Confluence::Space",
+            "id": "LEGAL"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "Confluence::Space",
+          "id": "LEGAL"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Confluence::Space",
+        "id": "LEGAL"
+      },
+      "attrs": {
+        "key": "LEGAL",
+        "labels": [
+          "restricted"
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000009"
+      },
+      "attrs": {
+        "username": "confluencereader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [
+            "ENG"
+          ],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-space-ENG"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-space-ENG"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "confluence-forbid-restricted-page"
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "description": "Tool absent from the registry: no Tool entity, every policy errors or does not match, deny.",
+  "covers": [
+    "unknown_tool"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__drop_project"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {}
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

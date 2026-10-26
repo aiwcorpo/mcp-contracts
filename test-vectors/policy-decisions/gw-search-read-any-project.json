@@ -1,0 +1,79 @@
+{
+  "description": "Reads are not scope-limited at the gateway; the system enforces the user's own rights.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__search_issues"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraProject": [
+          "ABC",
+          "HR"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__search_issues"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "search_issues",
+        "risk": "READ_ONLY"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-call-read"
+    ]
+  }
+}

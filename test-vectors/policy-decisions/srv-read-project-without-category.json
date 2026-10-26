@@ -1,0 +1,76 @@
+{
+  "description": "Server: project with no category attribute (optional attribute, has-guard).",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Project",
+      "id": "ABC"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraProject": [
+          "ABC"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "ABC"
+      },
+      "attrs": {
+        "key": "ABC"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-read"
+    ]
+  }
+}

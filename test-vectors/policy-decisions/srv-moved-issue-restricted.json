@@ -1,0 +1,101 @@
+{
+  "description": "Server: ABC-123 was moved to HR (Restricted); the argument still looks like ABC.",
+  "covers": [
+    "restricted",
+    "forbid_overrides_permit"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-123"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "ABC-123"
+      },
+      "attrs": {
+        "key": "ABC-123",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "HR"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "HR"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "HR"
+      },
+      "attrs": {
+        "key": "HR",
+        "category": "Restricted"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "jira-forbid-restricted-issue"
+    ]
+  }
+}

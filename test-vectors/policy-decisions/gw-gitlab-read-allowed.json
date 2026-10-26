@@ -1,0 +1,78 @@
+{
+  "description": "GitLab reader.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "gitlab__get_project"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabProject": [
+          "team-a/app"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "gitlab__get_project"
+      },
+      "attrs": {
+        "server": "mcp-gitlab",
+        "name": "get_project",
+        "risk": "READ_ONLY"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000006"
+      },
+      "attrs": {
+        "username": "gitlabreader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "gitlab-call-read"
+    ]
+  }
+}

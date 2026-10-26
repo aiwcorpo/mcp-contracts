@@ -1,0 +1,97 @@
+{
+  "description": "Integer argument converted to its decimal string.",
+  "level": "gateway",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-servicedesk-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-servicedesk",
+      "system": "servicedesk",
+      "name": "get_ticket",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "ticketId",
+          "type": "ServiceDesk::Ticket"
+        }
+      ]
+    },
+    "arguments": {
+      "ticketId": 4711
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "servicedesk__get_ticket"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "servicedeskTicket": [
+          "4711"
+        ]
+      }
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "servicedesk__get_ticket"
+        },
+        "attrs": {
+          "server": "mcp-servicedesk",
+          "name": "get_ticket",
+          "risk": "READ_ONLY"
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000001"
+        },
+        "attrs": {
+          "username": "reader",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [],
+            "confluenceSpaces": [],
+            "gitlabGroups": [],
+            "opensearchIndexPrefixes": [],
+            "servicedeskQueues": []
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-servicedesk-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-servicedesk-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

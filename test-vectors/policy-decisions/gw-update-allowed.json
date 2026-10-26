@@ -1,0 +1,104 @@
+{
+  "description": "UPDATE tool with mcp-jira-write; issue key alone is checked on the server.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000002"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__update_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__update_issue"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "update_issue",
+        "risk": "UPDATE"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000002"
+      },
+      "attrs": {
+        "username": "writer",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [
+            "ABC"
+          ],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-call-update"
+    ]
+  }
+}

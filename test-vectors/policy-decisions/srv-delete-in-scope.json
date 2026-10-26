@@ -1,0 +1,126 @@
+{
+  "description": "Server: delete in scope with mcp-jira-destructive.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000004"
+    },
+    "action": {
+      "type": "Action",
+      "id": "delete"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1"
+    },
+    "context": {
+      "client": "claude-code",
+      "mfaAge": 120,
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "ABC-1"
+      },
+      "attrs": {
+        "key": "ABC-1",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "ABC"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "ABC"
+      },
+      "attrs": {
+        "key": "ABC",
+        "category": "Software"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000004"
+      },
+      "attrs": {
+        "username": "destroyer",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [
+            "ABC"
+          ],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        },
+        "mfaAge": 120
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-destructive"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-destructive"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-delete-issue-in-scope"
+    ]
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "description": "Server: GitLab project in group team-b.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000007"
+    },
+    "action": {
+      "type": "Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "team-b/app"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabProject": [
+          "team-b/app"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "GitLab::Group",
+        "id": "team-b"
+      },
+      "attrs": {
+        "path": "team-b"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "GitLab::Project",
+        "id": "team-b/app"
+      },
+      "attrs": {
+        "path": "team-b/app",
+        "group": {
+          "__entity": {
+            "type": "GitLab::Group",
+            "id": "team-b"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "GitLab::Group",
+          "id": "team-b"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000007"
+      },
+      "attrs": {
+        "username": "gitlabwriter",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [
+            "team-a"
+          ],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-grp-team-a"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

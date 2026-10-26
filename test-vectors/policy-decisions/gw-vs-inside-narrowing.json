@@ -1,0 +1,125 @@
+{
+  "description": "Same link, project ABC inside the narrowing.",
+  "covers": [
+    "virtual_server_narrowing"
+  ],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000003"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__create_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "virtualServer": "team-a-dev",
+      "vsScopes": {
+        "jiraProjects": [
+          "ABC"
+        ]
+      },
+      "refs": {
+        "jiraProject": [
+          "ABC"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__create_issue"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "create_issue",
+        "risk": "UPDATE"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000003"
+      },
+      "attrs": {
+        "username": "writer2",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [
+            "ABC",
+            "DEF"
+          ],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-DEF"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-DEF"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-call-update"
+    ]
+  }
+}

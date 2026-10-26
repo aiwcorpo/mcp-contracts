@@ -1,0 +1,94 @@
+{
+  "description": "Server: logs-team-ab is not inside prefix logs-team-a (dash boundary).",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000008"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-ab"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "opensearchIndex": [
+          "logs-team-ab"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "OpenSearch::Index",
+        "id": "logs-team-ab"
+      },
+      "attrs": {
+        "name": "logs-team-ab",
+        "tags": [],
+        "namePrefixes": [
+          "logs",
+          "logs-team",
+          "logs-team-ab"
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000008"
+      },
+      "attrs": {
+        "username": "osreader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [
+            "logs-team-a"
+          ],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-idx-logs-team-a"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-opensearch-idx-logs-team-a"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-opensearch-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

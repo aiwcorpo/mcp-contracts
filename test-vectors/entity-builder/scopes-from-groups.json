@@ -1,0 +1,228 @@
+{
+  "description": "All scope group forms of C9; unknown systems, unknown resource kinds and non-mcp groups add no scope.",
+  "level": "gateway",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-jira-read",
+        "mcp-jira-proj-ABC",
+        "mcp-jira-proj-DEF",
+        "mcp-confluence-space-ENG",
+        "mcp-gitlab-grp-team-a",
+        "mcp-opensearch-idx-logs-team-a",
+        "mcp-servicedesk-queue-42",
+        "mcp-client-claude-code",
+        "mcp-platform-admin",
+        "mcp-jira-board-7",
+        "mcp-wiki-proj-X",
+        "employees"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "list_projects",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": []
+    },
+    "arguments": {}
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__list_projects"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {}
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "jira__list_projects"
+        },
+        "attrs": {
+          "server": "mcp-jira",
+          "name": "list_projects",
+          "risk": "READ_ONLY"
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000001"
+        },
+        "attrs": {
+          "username": "reader",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [
+              "ABC",
+              "DEF"
+            ],
+            "confluenceSpaces": [
+              "ENG"
+            ],
+            "gitlabGroups": [
+              "team-a"
+            ],
+            "opensearchIndexPrefixes": [
+              "logs-team-a"
+            ],
+            "servicedeskQueues": [
+              "42"
+            ]
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-client-claude-code"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-confluence-space-ENG"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-gitlab-grp-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-board-7"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-ABC"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-DEF"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-opensearch-idx-logs-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-platform-admin"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-servicedesk-queue-42"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-wiki-proj-X"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-client-claude-code"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-confluence-space-ENG"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-board-7"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-DEF"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-idx-logs-team-a"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-platform-admin"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-servicedesk-queue-42"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-wiki-proj-X"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

@@ -11,3 +11,19 @@ for (const file of OPENAPI_FILES) {
     assert.equal(committed, await bundleOpenApi(file));
   });
 }
+
+import { build, BuilderError } from '../scripts/lib/entity-builder.mjs';
+import { listJson } from '../scripts/lib/contracts.mjs';
+
+test('entity-builder vectors agree with scripts/lib/entity-builder.mjs', () => {
+  for (const { name, data } of listJson('test-vectors', 'entity-builder')) {
+    let actual;
+    try {
+      actual = build(data.level, data.input);
+    } catch (e) {
+      if (!(e instanceof BuilderError)) throw e;
+      actual = { error: e.code };
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(actual)), data.expected, name);
+  }
+});

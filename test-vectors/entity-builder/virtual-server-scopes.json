@@ -1,0 +1,166 @@
+{
+  "description": "Virtual server resourceDefaults become context.vsScopes.",
+  "level": "gateway",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000003",
+      "usr": "writer2",
+      "grp": [
+        "mcp-jira-read",
+        "mcp-jira-write",
+        "mcp-jira-proj-ABC",
+        "mcp-jira-proj-DEF"
+      ],
+      "azp": "claude-code",
+      "vs": "team-a-dev"
+    },
+    "virtualServer": {
+      "slug": "team-a-dev",
+      "resourceDefaults": {
+        "Jira::Project": [
+          "ABC"
+        ],
+        "OpenSearch::Index": [
+          "logs-team-a"
+        ],
+        "GitLab::Group": [
+          "team-a"
+        ]
+      }
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "create_issue",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectKey",
+          "type": "Jira::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectKey": "ABC"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000003"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__create_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "virtualServer": "team-a-dev",
+      "vsScopes": {
+        "jiraProjects": [
+          "ABC"
+        ],
+        "opensearchIndexPrefixes": [
+          "logs-team-a"
+        ],
+        "gitlabGroups": [
+          "team-a"
+        ]
+      },
+      "refs": {
+        "jiraProject": [
+          "ABC"
+        ]
+      }
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "jira__create_issue"
+        },
+        "attrs": {
+          "server": "mcp-jira",
+          "name": "create_issue",
+          "risk": "UPDATE"
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000003"
+        },
+        "attrs": {
+          "username": "writer2",
+          "client": "claude-code",
+          "scopes": {
+            "jiraProjects": [
+              "ABC",
+              "DEF"
+            ],
+            "confluenceSpaces": [],
+            "gitlabGroups": [],
+            "opensearchIndexPrefixes": [],
+            "servicedeskQueues": []
+          }
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-ABC"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-DEF"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-DEF"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

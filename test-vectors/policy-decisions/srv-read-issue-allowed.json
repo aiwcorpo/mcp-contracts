@@ -1,0 +1,98 @@
+{
+  "description": "Server: read an issue in a normal project.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "ABC-1"
+      },
+      "attrs": {
+        "key": "ABC-1",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "ABC"
+          }
+        }
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "ABC"
+      },
+      "attrs": {
+        "key": "ABC",
+        "category": "Software"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-read"
+    ]
+  }
+}

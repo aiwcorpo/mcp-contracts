@@ -1,0 +1,106 @@
+{
+  "description": "DESTRUCTIVE with mcp-jira-destructive and MFA 120 s ago.",
+  "covers": [],
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000004"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__delete_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "mfaAge": 120,
+      "refs": {
+        "jiraIssue": [
+          "ABC-1"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__delete_issue"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000004"
+      },
+      "attrs": {
+        "username": "destroyer",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [
+            "ABC"
+          ],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        },
+        "mfaAge": 120
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-destructive"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-destructive"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-call-destructive"
+    ]
+  }
+}
