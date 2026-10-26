@@ -1,0 +1,86 @@
+{
+  "mappings": [
+    {
+      "name": "listVirtualServers without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/virtual-servers",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listVirtualServers 200 one_link",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/virtual-servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "slug": "team-a-dev",
+            "displayName": "Team A development",
+            "tools": [
+              "jira__search_issues",
+              "jira__get_issue"
+            ],
+            "resourceDefaults": {
+              "Jira::Project": [
+                "ABC"
+              ]
+            },
+            "url": "https://mcp-gateway.internal/v/team-a-dev/mcp"
+          }
+        ]
+      }
+    },
+    {
+      "name": "listVirtualServers 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/virtual-servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    }
+  ]
+}

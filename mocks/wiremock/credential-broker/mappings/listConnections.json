@@ -1,0 +1,90 @@
+{
+  "mappings": [
+    {
+      "name": "listConnections without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/connections",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listConnections 200 two_connections",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/connections",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "system": "jira",
+            "type": "user-secret",
+            "status": "connected",
+            "backendUser": "jkowalski",
+            "expiresAt": "2027-01-31T00:00:00Z",
+            "connectedAt": "2026-10-01T08:00:00Z",
+            "lastUsedAt": "2026-10-26T19:58:00Z"
+          },
+          {
+            "system": "gitlab",
+            "type": "user-oauth",
+            "status": "expiring",
+            "backendUser": "jkowalski",
+            "expiresAt": "2026-10-30T08:00:00Z",
+            "connectedAt": "2026-09-30T08:00:00Z",
+            "lastUsedAt": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "listConnections 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/connections",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    }
+  ]
+}

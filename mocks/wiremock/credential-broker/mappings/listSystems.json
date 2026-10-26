@@ -1,0 +1,118 @@
+{
+  "mappings": [
+    {
+      "name": "listSystems without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/systems",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listSystems 200 all",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "system": "jira",
+            "supportedTypes": [
+              "user-oauth",
+              "user-secret"
+            ],
+            "defaultType": "user-secret",
+            "oauthScopes": []
+          },
+          {
+            "system": "confluence",
+            "supportedTypes": [
+              "user-oauth",
+              "user-secret"
+            ],
+            "defaultType": "user-secret",
+            "oauthScopes": []
+          },
+          {
+            "system": "gitlab",
+            "supportedTypes": [
+              "user-oauth",
+              "user-secret"
+            ],
+            "defaultType": "user-oauth",
+            "oauthScopes": [
+              "read_api",
+              "api"
+            ]
+          },
+          {
+            "system": "servicedesk",
+            "supportedTypes": [
+              "service-account"
+            ],
+            "defaultType": "service-account",
+            "oauthScopes": []
+          },
+          {
+            "system": "opensearch",
+            "supportedTypes": [
+              "token-exchange"
+            ],
+            "defaultType": "token-exchange",
+            "oauthScopes": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "listSystems 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    }
+  ]
+}

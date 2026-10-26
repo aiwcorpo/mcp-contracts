@@ -1,0 +1,92 @@
+{
+  "mappings": [
+    {
+      "name": "deleteVirtualServer without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/virtual-servers/{slug}",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "deleteVirtualServer 204 status-204",
+      "priority": 5,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/virtual-servers/{slug}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "name": "deleteVirtualServer 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/virtual-servers/{slug}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "deleteVirtualServer 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/virtual-servers/{slug}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    }
+  ]
+}

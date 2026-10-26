@@ -1,0 +1,147 @@
+{
+  "mappings": [
+    {
+      "name": "getPendingTool without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/pending",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getPendingTool 200 risk_lowered",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "approvedEntry": {
+            "name": "update_issue",
+            "risk": "UPDATE",
+            "action": "update",
+            "resourceRefs": [
+              {
+                "argument": "issueKey",
+                "type": "Jira::Issue"
+              }
+            ],
+            "definitionHash": "sha256:0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728ff"
+          },
+          "pendingEntry": {
+            "name": "update_issue",
+            "risk": "READ_ONLY",
+            "action": "update",
+            "resourceRefs": [
+              {
+                "argument": "issueKey",
+                "type": "Jira::Issue"
+              }
+            ],
+            "definitionHash": "sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff"
+          },
+          "pendingHash": "sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff"
+        }
+      }
+    },
+    {
+      "name": "getPendingTool 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getPendingTool 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "getPendingTool 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    }
+  ]
+}

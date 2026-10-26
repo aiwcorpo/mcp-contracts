@@ -1,0 +1,130 @@
+{
+  "mappings": [
+    {
+      "name": "listRegistryServers without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listRegistryServers 200 jira_pending",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "serverId": "mcp-jira",
+            "system": "jira",
+            "version": "1.4.0",
+            "tools": [
+              {
+                "name": "get_issue",
+                "risk": "READ_ONLY",
+                "action": "read",
+                "resourceRefs": [
+                  {
+                    "argument": "issueKey",
+                    "type": "Jira::Issue"
+                  }
+                ],
+                "definitionHash": "sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a",
+                "status": "approved"
+              },
+              {
+                "name": "update_issue",
+                "risk": "UPDATE",
+                "action": "update",
+                "resourceRefs": [
+                  {
+                    "argument": "issueKey",
+                    "type": "Jira::Issue"
+                  }
+                ],
+                "definitionHash": "sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff",
+                "status": "pending_approval"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "listRegistryServers 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listRegistryServers 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    }
+  ]
+}

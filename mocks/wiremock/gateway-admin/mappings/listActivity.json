@@ -1,0 +1,93 @@
+{
+  "mappings": [
+    {
+      "name": "listActivity without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/activity",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listActivity 200 recent",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/activity",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "ts": "2026-10-26T20:00:00.123Z",
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+            "component": "gateway",
+            "componentId": "mcp-gateway",
+            "event": "tool_call",
+            "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "username": "jkowalski",
+            "client": "claude-code",
+            "virtualServer": "team-a-dev",
+            "server": "mcp-jira",
+            "tool": "get_issue",
+            "risk": "READ_ONLY",
+            "decision": "allow",
+            "policyRevision": "20261026120000-a1b2c3d",
+            "credentialType": "user-secret",
+            "outcome": "ok",
+            "errorCode": null,
+            "latencyMs": 42,
+            "argsLength": 118
+          }
+        ]
+      }
+    },
+    {
+      "name": "listActivity 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/activity",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "mappings": [
+    {
+      "name": "startOAuth without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/start",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "startOAuth 200 gitlab",
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/start",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "authorizeUrl": "https://gitlab.internal/oauth/authorize?client_id=mcp-broker&response_type=code&state=st-7Q2xk9&code_challenge=Zx8-test&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fmcp-portal.internal%2Fapi%2Fv1%2Foauth%2Fcallback",
+          "flowId": "flow-01J9Z3T6Y2K4"
+        }
+      }
+    },
+    {
+      "name": "startOAuth 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/start",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "startOAuth 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/start",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    }
+  ]
+}

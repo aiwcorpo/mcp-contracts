@@ -1,0 +1,115 @@
+{
+  "mappings": [
+    {
+      "name": "getCatalog without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/catalog",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getCatalog 200 jira_reader",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/catalog",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "servers": [
+            {
+              "serverId": "mcp-jira",
+              "system": "jira",
+              "version": "1.4.0",
+              "tools": [
+                {
+                  "name": "jira__get_issue",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "granted",
+                  "requiredEntitlements": [
+                    "mcp-jira-read"
+                  ]
+                },
+                {
+                  "name": "jira__update_issue",
+                  "risk": "UPDATE",
+                  "action": "update",
+                  "access": "denied",
+                  "requiredEntitlements": [
+                    "mcp-jira-write"
+                  ]
+                }
+              ]
+            },
+            {
+              "serverId": "mcp-gitlab",
+              "system": "gitlab",
+              "version": "1.0.0",
+              "tools": [
+                {
+                  "name": "gitlab__get_project",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "denied",
+                  "requiredEntitlements": [
+                    "mcp-gitlab-read"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "getCatalog 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/catalog",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    }
+  ]
+}

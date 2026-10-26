@@ -21,6 +21,10 @@
   decyzji Cedar (gateway i serwer, wszystkie przypadki z DoD); dwie niezależne implementacje buildera
   (JS generuje wektory, Java w testach je wykonuje) i ocena decyzji przez cedar-java z walidacją żądania
   względem schematu.
+- Kamień 5: stuby WireMock 3 dla C4 i C5 (`mocks/wiremock/`, wybór przykładu nagłówkiem
+  `Prefer: example=<nazwa>`, 401 bez tokenu Bearer), handlery MSW dla C12 (`mocks/msw/`, egzekwują
+  `X-XSRF-TOKEN` == cookie `XSRF-TOKEN`); wszystko generowane z przykładów OpenAPI, test pilnuje zgodności.
+  `scripts/smoke-wiremock.sh` uruchamia stuby w Dockerze (wiremock 3.13.2) i sprawdza odpowiedzi.
 
 ## Odstępstwa od briefu
 

@@ -1,0 +1,105 @@
+{
+  "mappings": [
+    {
+      "name": "registerServer 200 registered",
+      "priority": 5,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "serverId": "mcp-jira",
+          "system": "jira",
+          "version": "1.4.0",
+          "tools": [
+            {
+              "name": "get_issue",
+              "risk": "READ_ONLY",
+              "action": "read",
+              "resourceRefs": [
+                {
+                  "argument": "issueKey",
+                  "type": "Jira::Issue"
+                }
+              ],
+              "definitionHash": "sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a",
+              "status": "pending_approval"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "registerServer 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "registerServer 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "registerServer 422 manifest_rejected",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=manifest_rejected($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "message": "system does not match gateway configuration for mcp-jira"
+        }
+      }
+    }
+  ]
+}
