@@ -1,0 +1,55 @@
+{
+  "description": "risk lowered from UPDATE to READ_ONLY; the hash changes (C6).",
+  "input": {
+    "tool": {
+      "name": "update_issue",
+      "description": "Updates the summary of an issue.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "issueKey",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    "manifestEntry": {
+      "risk": "READ_ONLY",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Updates the summary of an issue.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"issueKey\",\"summary\"],\"type\":\"object\"},\"name\":\"update_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\"}",
+  "expected": "sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe",
+  "differsFrom": "update-issue.json"
+}

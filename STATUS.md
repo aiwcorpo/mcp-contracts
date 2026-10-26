@@ -11,6 +11,12 @@
   i kompilują klientów z plików `bundled`.
 - Uwzględniona zmiana planu z 21:58: CSRF w C12 wg konwencji Angulara (`XSRF-TOKEN` / `X-XSRF-TOKEN`),
   CC-020 oznaczone jako `resolved`.
+- Kamień 3: testowe klucze (`test-vectors/keys`, NOT FOR PRODUCTION), wektory JWT (28, podpisane ES256),
+  manifestów, `definitionHash` (RFC 8785), zdarzeń audytu, błędów C10, paczek polityk (podpisy Ed25519,
+  rollback, overrides) i `latest.json`; referencyjne weryfikatory w `test/*.test.mjs`.
+- Poprawka po przeglądzie bezpieczeństwa: wzorce `url`/`sigUrl` w `policy-bundle-latest.schema.json`
+  zakotwiczone i ograniczone do nazw plików w tym samym katalogu; reguły spójności rewizji (CC-026)
+  i negatywne wektory `bundles/latest-*.json`.
 
 ## Odstępstwa od briefu
 

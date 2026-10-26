@@ -1,0 +1,17 @@
+{
+  "description": "Same revision as loaded; nothing to do, not a swap.",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026120000-a1b2c3d",
+    "url": "policies-20261026120000-a1b2c3d.tar.gz",
+    "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026120000-a1b2c3d.tar.gz",
+  "signature": "files/policies-20261026120000-a1b2c3d.tar.gz.sig",
+  "publicKey": "keys/test-policy-bundle.public.pem",
+  "loadedRevision": "20261026120000-a1b2c3d",
+  "expected": {
+    "accept": false,
+    "reason": "not_newer"
+  }
+}

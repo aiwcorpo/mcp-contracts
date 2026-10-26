@@ -1,0 +1,10 @@
+{
+  "description": "Kill switch or pending approval.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "tool_disabled",
+    "message": "This tool is temporarily disabled."
+  }
+}

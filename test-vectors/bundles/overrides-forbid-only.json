@@ -1,0 +1,16 @@
+{
+  "description": "Overrides bundle with only forbid rules, signed with the overrides key.",
+  "channel": "overrides",
+  "latest": {
+    "revision": "20261026121500-d4e5f60",
+    "url": "policies-20261026121500-d4e5f60.tar.gz",
+    "sigUrl": "policies-20261026121500-d4e5f60.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026121500-d4e5f60.tar.gz",
+  "signature": "files/policies-20261026121500-d4e5f60.tar.gz.sig",
+  "publicKey": "keys/test-policy-overrides.public.pem",
+  "loadedRevision": null,
+  "expected": {
+    "accept": true
+  }
+}

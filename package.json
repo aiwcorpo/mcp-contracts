@@ -22,7 +22,8 @@
     "generate": "node scripts/bundle-openapi.mjs",
     "lint:openapi": "spectral lint --fail-severity=warn openapi/*.yaml openapi/bundled/*.yaml",
     "test:node": "node --test \"test/*.test.mjs\"",
-    "test": "npm run lint:openapi && npm run test:node"
+    "test": "npm run lint:openapi && npm run test:node",
+    "generate:vectors": "node scripts/generate-vectors.mjs"
   },
   "devDependencies": {
     "@apidevtools/json-schema-ref-parser": "16.0.5",

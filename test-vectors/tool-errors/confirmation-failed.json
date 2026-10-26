@@ -1,0 +1,10 @@
+{
+  "description": "Wrong or expired code.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_failed",
+    "message": "Confirmation failed."
+  }
+}

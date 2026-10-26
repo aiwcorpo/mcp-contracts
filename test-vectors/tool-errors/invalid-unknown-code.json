@@ -1,0 +1,10 @@
+{
+  "description": "Code outside C10.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "forbidden",
+    "message": "Forbidden."
+  }
+}

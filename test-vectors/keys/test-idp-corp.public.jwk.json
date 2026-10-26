@@ -1,0 +1,9 @@
+{
+  "kty": "EC",
+  "x": "QrZf0DJbu9ZMIneHr1l0hME9bz0TAg6i3CkPHcMFLhI",
+  "y": "lVBDUrZYGWRabRRecmSnMZI99v4dwras6jB-qjTbUqg",
+  "crv": "P-256",
+  "kid": "test-idp-corp",
+  "alg": "ES256",
+  "use": "sig"
+}

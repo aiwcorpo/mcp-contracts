@@ -1,0 +1,11 @@
+{
+  "description": "Stack traces and backend details are not allowed.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "internal_error",
+    "message": "Unexpected error.",
+    "stack": "java.lang.IllegalStateException at ..."
+  }
+}

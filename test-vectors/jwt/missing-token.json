@@ -1,0 +1,25 @@
+{
+  "description": "No Authorization header. Never anonymous.",
+  "token": null,
+  "header": null,
+  "claims": null,
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-jira",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": []
+  },
+  "request": {
+    "kind": "jsonrpc",
+    "method": "tools/call",
+    "toolName": "get_issue"
+  },
+  "expected": {
+    "valid": false,
+    "httpStatus": 401,
+    "reason": "missing_token"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "description": "Pointer with file names relative to latest.json.",
+  "latest": {
+    "revision": "20261026130000-b2c3d4e",
+    "url": "policies-20261026130000-b2c3d4e.tar.gz",
+    "sigUrl": "policies-20261026130000-b2c3d4e.tar.gz.sig"
+  },
+  "expected": {
+    "accept": true
+  }
+}

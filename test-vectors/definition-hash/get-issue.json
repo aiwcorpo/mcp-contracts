@@ -1,0 +1,48 @@
+{
+  "description": "Jira get_issue.",
+  "input": {
+    "tool": {
+      "name": "get_issue",
+      "description": "Returns one Jira issue by key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+          }
+        },
+        "required": [
+          "issueKey"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    },
+    "manifestEntry": {
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"read\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Returns one Jira issue by key.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"get_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\"}",
+  "expected": "sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696"
+}

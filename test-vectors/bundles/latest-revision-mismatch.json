@@ -1,0 +1,12 @@
+{
+  "description": "url names an older revision than revision.",
+  "latest": {
+    "revision": "20261026130000-b2c3d4e",
+    "url": "policies-20261026120000-a1b2c3d.tar.gz",
+    "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+  },
+  "expected": {
+    "accept": false,
+    "reason": "invalid_latest"
+  }
+}

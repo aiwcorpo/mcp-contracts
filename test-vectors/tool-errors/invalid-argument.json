@@ -1,0 +1,10 @@
+{
+  "description": "Caller error.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "invalid_argument",
+    "message": "issueKey must look like ABC-123."
+  }
+}

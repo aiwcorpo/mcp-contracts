@@ -1,0 +1,5 @@
+*.tar.gz binary
+*.sig binary
+*.sig-by-* binary
+* text=auto eol=lf
+*.tar.gz -text

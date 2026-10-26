@@ -1,0 +1,10 @@
+{
+  "description": "Missing or not visible resource.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "not_found_or_denied",
+    "message": "Not found."
+  }
+}

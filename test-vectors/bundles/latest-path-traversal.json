@@ -1,0 +1,12 @@
+{
+  "description": "Relative path leaving the bundle directory.",
+  "latest": {
+    "revision": "20261026130000-b2c3d4e",
+    "url": "../old/policies-20261026130000-b2c3d4e.tar.gz",
+    "sigUrl": "../old/policies-20261026130000-b2c3d4e.tar.gz.sig"
+  },
+  "expected": {
+    "accept": false,
+    "reason": "invalid_latest"
+  }
+}

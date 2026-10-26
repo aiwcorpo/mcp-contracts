@@ -294,3 +294,19 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `/api/v1/admin/registry/servers/{serverId}/tools/{tool}/pending` i `.../approve` (jak w C5).
   `GET /admin/v1/policy/status` nie ma odpowiednika w BFF (C12 go nie wymienia).
 - **Status:** open
+
+## CC-026 · C7 · `latest.json`: tylko nazwy plików względne i reguły spójności rewizji
+
+- **Problem:** C7 opisuje `latest.json {revision, url, sigUrl}`, ale nie mówi, czy `url` może wskazywać
+  dowolny host i ścieżkę, ani że rewizja w nazwie pliku, w `latest.json` i w `manifest.json` w paczce
+  muszą się zgadzać. Bez tego podstawiony `latest.json` może skierować odbiorcę na obcy host albo podsunąć
+  starą, poprawnie podpisaną paczkę pod nową rewizją (rollback mimo kontroli monotoniczności).
+  Pierwsza wersja schematu miała wzorce niezakotwiczone na początku (uwaga z przeglądu bezpieczeństwa).
+- **Przyjęty wariant:** `url` i `sigUrl` to wyłącznie nazwy plików w katalogu `latest.json`:
+  `^policies-[0-9]{14}-[0-9a-f]{7}\.tar\.gz$` i to samo z `.sig` (bez hosta, ścieżki i `..`). Odbiorca MUSI:
+  (1) sprawdzić, że rewizja w `url` i `sigUrl` == `revision`; (2) po weryfikacji podpisu sprawdzić, że
+  `manifest.json` z paczki ma `revision` == `revision` z `latest.json` i `gitSha` zaczynający się od części
+  sha rewizji; (3) przyjąć tylko rewizję ściśle wyższą od załadowanej (równa i niższa odrzucone, CC-008).
+  Wektory: `test-vectors/bundles/latest-*.json` i przypadki paczek.
+- **Alternatywy:** absolutne URL z listą dozwolonych hostów w konfiguracji odbiorcy.
+- **Status:** open

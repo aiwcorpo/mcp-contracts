@@ -1,0 +1,8 @@
+{
+  "crv": "Ed25519",
+  "x": "mP83KGT0xE5wMLdD1Vs7hEo9AseLhYo8gwJH3qWwtLs",
+  "kty": "OKP",
+  "kid": "test-policy-overrides",
+  "alg": "EdDSA",
+  "use": "sig"
+}

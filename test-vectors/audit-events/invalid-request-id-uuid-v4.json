@@ -1,0 +1,13 @@
+{
+  "description": "requestId must be UUIDv7.",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "3b241101-e2bb-4255-8caf-4136c566a962",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "tool_call"
+  }
+}

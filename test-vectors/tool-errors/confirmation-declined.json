@@ -1,0 +1,10 @@
+{
+  "description": "User declined.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_declined",
+    "message": "The action was declined."
+  }
+}

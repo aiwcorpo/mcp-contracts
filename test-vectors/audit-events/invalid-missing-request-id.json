@@ -1,0 +1,12 @@
+{
+  "description": "requestId is required.",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "tool_call"
+  }
+}

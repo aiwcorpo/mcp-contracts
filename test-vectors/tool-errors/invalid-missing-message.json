@@ -1,0 +1,9 @@
+{
+  "description": "message is required.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "not_found_or_denied"
+  }
+}

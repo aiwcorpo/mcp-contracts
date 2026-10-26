@@ -1,0 +1,9 @@
+{
+  "kty": "EC",
+  "x": "JmHz6aRWV_iE6vrlS2HkXtQTOxgPbSRewfjDOB4FgKk",
+  "y": "p91jVTr4XHYAROxuEwmCJ4h3uXHH4IUle-BX8LKaKyQ",
+  "crv": "P-256",
+  "kid": "test-attacker",
+  "alg": "ES256",
+  "use": "sig"
+}

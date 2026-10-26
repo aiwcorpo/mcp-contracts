@@ -1,0 +1,39 @@
+{
+  "description": "Service variant sent to the broker resolve endpoint, which needs a user.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMzMifQ.6sLjavJNYRfAQlNVR-H8jza39SYHPq9GsSs4vqY0y0KiJbxLn-G0IoyFNoGGK-TEsLAGoI9HHt5eSFRMya9cVA",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-credential-broker",
+    "sub": "system:mcp-gateway",
+    "grp": [],
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
+    "prv": "20261026120000-a1b2c3d",
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000033"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-credential-broker",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": []
+  },
+  "request": {
+    "kind": "http",
+    "method": "POST",
+    "path": "/v1/credentials/resolve"
+  },
+  "expected": {
+    "valid": false,
+    "httpStatus": 401,
+    "reason": "service_token_not_allowed"
+  }
+}

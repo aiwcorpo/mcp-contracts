@@ -1,0 +1,10 @@
+{
+  "kty": "EC",
+  "x": "-cwaIo20Js-hUm6xfpKULlASHnBC-wg9de3l1J-0jcY",
+  "y": "esKrHsMlPBeUN38AXfeZlCUst_PVTIeTj1BA3a5eiNk",
+  "crv": "P-256",
+  "d": "FbDZ7J8lzkD5wIaAhYWruRCGIh-glOsJ4_qSAZNwpy0",
+  "kid": "test-gw-2026-10-b",
+  "alg": "ES256",
+  "use": "sig"
+}

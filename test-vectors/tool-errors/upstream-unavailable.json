@@ -1,0 +1,10 @@
+{
+  "description": "Broker or system down.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "upstream_unavailable",
+    "message": "The system is unavailable."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "description": "Jira create_issue.",
+  "input": {
+    "tool": {
+      "name": "create_issue",
+      "description": "Creates an issue in a project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "projectKey": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "projectKey",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    "manifestEntry": {
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectKey",
+          "type": "Jira::Project"
+        }
+      ]
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Creates an issue in a project.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"projectKey\":{\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"projectKey\",\"summary\"],\"type\":\"object\"},\"name\":\"create_issue\",\"resourceRefs\":[{\"argument\":\"projectKey\",\"type\":\"Jira::Project\"}],\"risk\":\"UPDATE\",\"system\":\"jira\"}",
+  "expected": "sha256:56cf3cd3a01d70b716818e48112ac3442ff9c289ddc106472567e18208db8781"
+}

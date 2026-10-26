@@ -1,0 +1,11 @@
+{
+  "description": "connectUrl belongs to credential_required only.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "access_denied",
+    "message": "Denied.",
+    "connectUrl": "https://mcp-portal.internal/connections"
+  }
+}

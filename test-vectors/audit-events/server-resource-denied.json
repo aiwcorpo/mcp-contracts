@@ -1,0 +1,29 @@
+{
+  "description": "Server denied a resolved resource (Restricted project).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "server",
+    "componentId": "mcp-jira",
+    "event": "policy_decision",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "server": "mcp-jira",
+    "tool": "get_issue",
+    "risk": "READ_ONLY",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::HR"
+    },
+    "decision": "deny",
+    "reason": "policy_forbid",
+    "policyRevision": "20261026120000-a1b2c3d",
+    "outcome": "denied",
+    "errorCode": "not_found_or_denied"
+  }
+}

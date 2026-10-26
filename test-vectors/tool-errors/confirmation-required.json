@@ -1,0 +1,12 @@
+{
+  "description": "Fallback channel without elicitation (C11).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "Confirm this action in the portal, then retry with confirmation_code.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+    "confirmUrl": "https://mcp-portal.internal/confirm/cnf_4k9Qe2LxW7tB3mZp"
+  }
+}

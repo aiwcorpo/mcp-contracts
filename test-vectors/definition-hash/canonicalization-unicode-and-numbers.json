@@ -1,0 +1,42 @@
+{
+  "description": "Exercises RFC 8785: non-ASCII text, key ordering, number forms 1.0, 1e3, 0.1 and an escaped control character.",
+  "input": {
+    "tool": {
+      "name": "add_comment",
+      "description": "Dodaje komentarz do zgłoszenia (żółw).\u0007",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "zeta": {
+            "type": "number",
+            "maximum": 1000,
+            "minimum": 1,
+            "multipleOf": 0.1
+          },
+          "alpha": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alpha"
+        ]
+      }
+    },
+    "manifestEntry": {
+      "risk": "UPDATE",
+      "action": "update"
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"update\",\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Dodaje komentarz do zgłoszenia (żółw).\\u0007\",\"inputSchema\":{\"properties\":{\"alpha\":{\"type\":\"string\"},\"zeta\":{\"maximum\":1000,\"minimum\":1,\"multipleOf\":0.1,\"type\":\"number\"}},\"required\":[\"alpha\"],\"type\":\"object\"},\"name\":\"add_comment\",\"resourceRefs\":[],\"risk\":\"UPDATE\",\"system\":\"jira\"}",
+  "expected": "sha256:e3697420a487043412951d129cfbc76782a508238eed7c3bfd40d141b561e3bd"
+}

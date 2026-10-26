@@ -1,0 +1,10 @@
+{
+  "description": "Anything else.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "internal_error",
+    "message": "Unexpected error."
+  }
+}

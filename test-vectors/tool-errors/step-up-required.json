@@ -1,0 +1,11 @@
+{
+  "description": "MFA too old for a destructive action.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "step_up_required",
+    "message": "Sign in again with MFA.",
+    "stepUpUrl": "https://mcp-portal.internal/step-up?returnPath=%2F"
+  }
+}

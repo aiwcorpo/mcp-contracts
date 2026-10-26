@@ -1,0 +1,54 @@
+{
+  "description": "Jira update_issue.",
+  "input": {
+    "tool": {
+      "name": "update_issue",
+      "description": "Updates the summary of an issue.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "issueKey",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    "manifestEntry": {
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Updates the summary of an issue.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"issueKey\",\"summary\"],\"type\":\"object\"},\"name\":\"update_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"UPDATE\",\"system\":\"jira\"}",
+  "expected": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
+}

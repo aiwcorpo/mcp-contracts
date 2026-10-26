@@ -1,0 +1,11 @@
+{
+  "description": "Rate limit.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "rate_limited",
+    "message": "Too many calls.",
+    "retryAfterSeconds": 30
+  }
+}

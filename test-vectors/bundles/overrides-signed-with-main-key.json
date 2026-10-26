@@ -1,0 +1,17 @@
+{
+  "description": "Overrides bundle signed with the main bundle key (separate keys, C7).",
+  "channel": "overrides",
+  "latest": {
+    "revision": "20261026121500-d4e5f60",
+    "url": "policies-20261026121500-d4e5f60.tar.gz",
+    "sigUrl": "policies-20261026121500-d4e5f60.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026121500-d4e5f60.tar.gz",
+  "signature": "files/policies-20261026121500-d4e5f60.tar.gz.sig-by-main-key",
+  "publicKey": "keys/test-policy-overrides.public.pem",
+  "loadedRevision": null,
+  "expected": {
+    "accept": false,
+    "reason": "bad_signature"
+  }
+}

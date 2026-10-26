@@ -1,0 +1,54 @@
+{
+  "description": "inputSchema as published by the gateway with confirmation_code (C11). The field is removed before hashing, so the hash equals delete-issue.",
+  "input": {
+    "tool": {
+      "name": "delete_issue",
+      "description": "Deletes an issue permanently.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+          },
+          "confirmation_code": {
+            "type": "string",
+            "description": "Confirmation code (C11)"
+          }
+        },
+        "required": [
+          "issueKey"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    "manifestEntry": {
+      "risk": "DESTRUCTIVE",
+      "action": "delete",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"delete\",\"annotations\":{\"destructiveHint\":true,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Deletes an issue permanently.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"delete_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"DESTRUCTIVE\",\"system\":\"jira\"}",
+  "expected": "sha256:3a85bd7c0c422bbb1d7488a80b903520701ecd37b03748e8323f6ff179dc1564",
+  "sameAs": "delete-issue.json"
+}

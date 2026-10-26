@@ -1,0 +1,13 @@
+{
+  "description": "Policy denied the tool.",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "access_denied",
+    "message": "You do not have access to this tool.",
+    "requiredEntitlements": [
+      "mcp-jira-write"
+    ]
+  }
+}
