@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Common definitions",
+  "description": "Shared value types referenced by the other contract schemas (mcp-contracts 1.0.0).",
+  "$defs": {
+    "SystemId": {
+      "description": "Target system identifier, lower case (01-contracts conventions).",
+      "type": "string",
+      "enum": [
+        "jira",
+        "confluence",
+        "gitlab",
+        "servicedesk",
+        "opensearch"
+      ]
+    },
+    "ServerId": {
+      "description": "MCP server id; always mcp-<system>, one server per system (C5).",
+      "type": "string",
+      "enum": [
+        "mcp-jira",
+        "mcp-confluence",
+        "mcp-gitlab",
+        "mcp-servicedesk",
+        "mcp-opensearch"
+      ]
+    },
+    "ComponentId": {
+      "description": "Identifier of a platform component, e.g. mcp-gateway, mcp-credential-broker, mcp-jira.",
+      "type": "string",
+      "pattern": "^mcp-[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "ToolName": {
+      "description": "Server-side tool name (without the gateway prefix). Snake case; a double underscore is forbidden because the gateway uses it as the <system>__<tool> separator (C5).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "QualifiedToolName": {
+      "description": "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>.",
+      "type": "string",
+      "pattern": "^(jira|confluence|gitlab|servicedesk|opensearch)__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "Risk": {
+      "type": "string",
+      "enum": [
+        "READ_ONLY",
+        "UPDATE",
+        "DESTRUCTIVE"
+      ]
+    },
+    "ToolAction": {
+      "description": "Cedar action evaluated by the server on the resolved resource (C6, C7).",
+      "type": "string",
+      "enum": [
+        "read",
+        "update",
+        "delete",
+        "admin"
+      ]
+    },
+    "CredentialType": {
+      "type": "string",
+      "enum": [
+        "user-oauth",
+        "user-secret",
+        "token-exchange",
+        "service-account"
+      ]
+    },
+    "CredentialScheme": {
+      "description": "Scheme of the X-MCP-Credential header value (C3).",
+      "type": "string",
+      "enum": [
+        "Bearer",
+        "Basic",
+        "Token",
+        "ApiKey"
+      ]
+    },
+    "ResourceType": {
+      "description": "Cedar entity type of a system resource (C7).",
+      "type": "string",
+      "enum": [
+        "Jira::Project",
+        "Jira::Issue",
+        "Confluence::Space",
+        "Confluence::Page",
+        "GitLab::Group",
+        "GitLab::Project",
+        "OpenSearch::Index",
+        "ServiceDesk::Queue",
+        "ServiceDesk::Ticket"
+      ]
+    },
+    "ScopeResourceType": {
+      "description": "Resource types that can be narrowed by a virtual server (C5 resourceDefaults) and granted by scope groups (C9).",
+      "type": "string",
+      "enum": [
+        "Jira::Project",
+        "Confluence::Space",
+        "GitLab::Group",
+        "OpenSearch::Index",
+        "ServiceDesk::Queue"
+      ]
+    },
+    "GroupName": {
+      "description": "Group / entitlement name from C9. Only the mcp- prefix is used by the platform.",
+      "type": "string",
+      "pattern": "^mcp-[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 255
+    },
+    "RequestId": {
+      "description": "UUIDv7 request id (C2 rid, X-Request-Id).",
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "PolicyRevision": {
+      "description": "Policy bundle revision YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part.",
+      "type": "string",
+      "pattern": "^[0-9]{14}-[0-9a-f]{7}$"
+    },
+    "Timestamp": {
+      "description": "ISO 8601 date-time in UTC (suffix Z).",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "DefinitionHash": {
+      "description": "sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "VirtualServerSlug": {
+      "description": "Virtual server slug; used in the URL path /v/<slug>/mcp (C5).",
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "ErrorCode": {
+      "description": "Client-visible error codes (C10).",
+      "type": "string",
+      "enum": [
+        "unauthenticated",
+        "access_denied",
+        "tool_disabled",
+        "confirmation_required",
+        "confirmation_failed",
+        "confirmation_declined",
+        "credential_required",
+        "not_found_or_denied",
+        "invalid_argument",
+        "rate_limited",
+        "step_up_required",
+        "upstream_unavailable",
+        "internal_error"
+      ]
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "ConfirmationId": {
+      "description": "Opaque, unguessable id of a pending confirmation (C11); used in URL paths.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{16,128}$"
+    }
+  }
+}

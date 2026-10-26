@@ -1,0 +1,996 @@
+openapi: 3.1.0
+info:
+  title: MCP Portal BFF API
+  version: 1.0.0
+  summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
+  description: |
+    Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
+    (HttpOnly, Secure, SameSite=Lax) created by the OIDC login run by the BFF; the frontend never sees tokens.
+    The frontend (Angular) is served by the BFF from the same origin. CSRF follows the Angular convention:
+    the BFF sets the cookie `XSRF-TOKEN` (not HttpOnly, Secure, SameSite=Strict) and the frontend sends its
+    value in the header `X-XSRF-TOKEN` for POST, PUT and DELETE (Angular HttpClient does this by default).
+
+    Secrets go only from the browser to the BFF (`PUT /connections/{system}/secret`); no response contains one.
+    Error bodies for statuses whose body C12 does not define use the generic `Error` shape (CC-012).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: /
+    description: Same origin as the portal frontend.
+tags:
+  - name: me
+  - name: catalog
+  - name: connections
+  - name: confirmations
+  - name: access-requests
+  - name: virtual-servers
+  - name: activity
+  - name: admin
+paths:
+  /api/v1/me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: Current user.
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Identity from the OIDC login.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              examples:
+                user:
+                  value:
+                    username: jkowalski
+                    displayName: Jan Kowalski
+                    groups: [mcp-jira-read, mcp-jira-write, mcp-jira-proj-ABC]
+                    isAdmin: false
+                admin:
+                  value:
+                    username: anowak
+                    displayName: Anna Nowak
+                    groups: [mcp-platform-admin, mcp-jira-read]
+                    isAdmin: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /api/v1/catalog:
+    get:
+      tags: [catalog]
+      operationId: getPortalCatalog
+      summary: Servers with tools, the user's status per server and the actions the UI may offer.
+      description: |
+        Built from C5 catalog, C4 connections, C4 systems and C13 requests. Status per server
+        (first matching rule wins, CC-021):
+
+        1. no tool of the server is granted and a request for one of its requiredEntitlements is pending: `request_pending`
+        2. no tool of the server is granted: `no_access`
+        3. the system's default credential type is `service-account` or `token-exchange` (nothing to connect): `connected`
+        4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error` -> `reconnect_required`
+        5. no connection: `not_connected`
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Catalog for the current user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalCatalog'
+              examples:
+                mixed:
+                  value:
+                    servers:
+                      - serverId: mcp-jira
+                        system: jira
+                        version: 1.4.0
+                        url: https://mcp-gateway.internal/s/mcp-jira/mcp
+                        status: connected
+                        actions: [copy_link, request_access, disconnect]
+                        tools:
+                          - name: jira__get_issue
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-jira-read]
+                          - name: jira__delete_issue
+                            risk: DESTRUCTIVE
+                            action: delete
+                            access: denied
+                            requiredEntitlements: [mcp-jira-destructive]
+                      - serverId: mcp-gitlab
+                        system: gitlab
+                        version: 1.0.0
+                        url: https://mcp-gateway.internal/s/mcp-gitlab/mcp
+                        status: not_connected
+                        actions: [connect_oauth, add_secret]
+                        tools:
+                          - name: gitlab__get_project
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-gitlab-read]
+                      - serverId: mcp-confluence
+                        system: confluence
+                        version: 1.0.0
+                        url: https://mcp-gateway.internal/s/mcp-confluence/mcp
+                        status: request_pending
+                        actions: [view_request]
+                        tools:
+                          - name: confluence__get_page
+                            risk: READ_ONLY
+                            action: read
+                            access: denied
+                            requiredEntitlements: [mcp-confluence-read]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /api/v1/connections:
+    get:
+      tags: [connections]
+      operationId: listMyConnections
+      summary: Connections of the current user (no secret values).
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Same items as C4 GET /v1/connections.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: 'credential-broker.v1.yaml#/components/schemas/Connection'
+              examples:
+                one:
+                  value:
+                    - system: jira
+                      type: user-secret
+                      status: connected
+                      backendUser: jkowalski
+                      expiresAt: '2027-01-31T00:00:00Z'
+                      connectedAt: '2026-10-01T08:00:00Z'
+                      lastUsedAt: '2026-10-26T19:58:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /api/v1/connections/{system}/oauth:
+    parameters:
+      - $ref: '#/components/parameters/System'
+    post:
+      tags: [connections]
+      operationId: startConnectOAuth
+      summary: Start connecting the account through OAuth; the browser then goes to authorizeUrl.
+      description: |
+        The BFF calls C4 oauth/start and keeps `flowId` in the session. `returnPath` (relative portal path) is
+        where the callback redirects at the end; default `/` (CC-022).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectOAuthRequest'
+            examples:
+              from_catalog:
+                value:
+                  returnPath: /catalog
+      responses:
+        '200':
+          description: Provider authorization URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectOAuthResponse'
+              examples:
+                gitlab:
+                  value:
+                    authorizeUrl: https://gitlab.internal/oauth/authorize?client_id=mcp-broker&response_type=code&state=st-7Q2xk9&code_challenge=Zx8-test&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fmcp-portal.internal%2Fapi%2Fv1%2Foauth%2Fcallback
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+  /api/v1/oauth/callback:
+    get:
+      tags: [connections]
+      operationId: oauthCallback
+      summary: redirect_uri registered at OAuth providers.
+      description: |
+        The BFF checks that the flow belongs to the current session, calls C4 oauth/complete and redirects to
+        `returnPath?connected=<system>`. On failure it redirects to `returnPath?connectError=<code>` with
+        code `identity_mismatch`, `flow_invalid` or `provider_error` (CC-022). Never returns JSON.
+      security:
+        - session: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: Set by the provider when the user cancelled or the provider failed.
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Back to the portal.
+          headers:
+            Location:
+              required: true
+              schema:
+                type: string
+              examples:
+                connected:
+                  value: /catalog?connected=gitlab
+                failed:
+                  value: /catalog?connectError=identity_mismatch
+  /api/v1/connections/{system}/secret:
+    parameters:
+      - $ref: '#/components/parameters/System'
+    put:
+      tags: [connections]
+      operationId: putMySecret
+      summary: Store a PAT / API key; requires fresh MFA.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'credential-broker.v1.yaml#/components/schemas/PutSecretRequest'
+            examples:
+              jira_pat:
+                value:
+                  secret: test-only-jira-pat-0000000000000000
+                  expiresAt: '2027-01-31T00:00:00Z'
+      responses:
+        '200':
+          description: Validated in the system and stored.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/PutSecretResponse'
+              examples:
+                connected:
+                  value:
+                    status: connected
+                    backendUser: jkowalski
+                    expiresAt: '2027-01-31T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        '422':
+          description: Rejected by the system or belongs to another user.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/PutSecretError'
+              examples:
+                secret_invalid:
+                  value:
+                    error: secret_invalid
+                identity_mismatch:
+                  value:
+                    error: identity_mismatch
+  /api/v1/connections/{system}:
+    parameters:
+      - $ref: '#/components/parameters/System'
+    delete:
+      tags: [connections]
+      operationId: disconnect
+      summary: Disconnect the account.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          description: Disconnected.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+  /api/v1/confirmations/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
+        example: cnf_4k9Qe2LxW7tB3mZp
+    get:
+      tags: [confirmations]
+      operationId: getMyConfirmation
+      summary: Confirmation page data (proxy to C5); owner only.
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Tool and arguments to confirm.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ConfirmationView'
+              examples:
+                delete_issue:
+                  value:
+                    confirmationId: cnf_4k9Qe2LxW7tB3mZp
+                    tool: jira__delete_issue
+                    arguments:
+                      - name: issueKey
+                        value: '"ABC-123"'
+                        truncated: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [confirmations]
+      operationId: decideMyConfirmation
+      summary: Approve or decline; requires fresh MFA.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ConfirmationDecision'
+            examples:
+              approve:
+                value:
+                  decision: approve
+      responses:
+        '204':
+          description: Decision recorded.
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/access-requests:
+    get:
+      tags: [access-requests]
+      operationId: listAccessRequests
+      summary: My access requests from the IGA (C13 requestsOf).
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Requests and their status.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessRequest'
+              examples:
+                pending:
+                  value:
+                    - requestId: REQ-2026-0042
+                      entitlement: mcp-confluence-read
+                      status: pending
+                      createdAt: '2026-10-25T09:00:00Z'
+                      requestUrl: https://iga.internal/requests/REQ-2026-0042
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [access-requests]
+      operationId: createAccessRequest
+      summary: Request an entitlement (C13 request); result depends on the IGA adapter.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessRequestCreate'
+            examples:
+              confluence_read:
+                value:
+                  entitlement: mcp-confluence-read
+      responses:
+        '200':
+          description: Either a URL of the IGA form (redirect the browser) or the id of a created request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequestResult'
+              examples:
+                created:
+                  value:
+                    requestId: REQ-2026-0043
+                redirect:
+                  value:
+                    requestUrl: https://iga.internal/catalog/request?entitlement=mcp-confluence-read
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+  /api/v1/virtual-servers:
+    get:
+      tags: [virtual-servers]
+      operationId: listMyVirtualServers
+      summary: My virtual servers with ready-made client configuration snippets.
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Proxy of C5 plus clientConfigs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PortalVirtualServer'
+              examples:
+                one:
+                  value:
+                    - slug: team-a-dev
+                      displayName: Team A development
+                      tools: [jira__search_issues, jira__get_issue]
+                      resourceDefaults:
+                        Jira::Project: [ABC]
+                      url: https://mcp-gateway.internal/v/team-a-dev/mcp
+                      clientConfigs:
+                        claudeCode: claude mcp add --transport http team-a-dev https://mcp-gateway.internal/v/team-a-dev/mcp
+                        copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp-gateway.internal/v/team-a-dev/mcp"}}}'
+                        codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp-gateway.internal/v/team-a-dev/mcp\"\n"
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [virtual-servers]
+      operationId: createMyVirtualServer
+      summary: Create a virtual server (proxy to C5).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/VirtualServerCreate'
+            examples:
+              team_a:
+                value:
+                  slug: team-a-dev
+                  displayName: Team A development
+                  tools: [jira__search_issues, jira__get_issue]
+                  resourceDefaults:
+                    Jira::Project: [ABC]
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalVirtualServerCreated'
+              examples:
+                created:
+                  value:
+                    slug: team-a-dev
+                    url: https://mcp-gateway.internal/v/team-a-dev/mcp
+                    clientConfigs:
+                      claudeCode: claude mcp add --transport http team-a-dev https://mcp-gateway.internal/v/team-a-dev/mcp
+                      copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp-gateway.internal/v/team-a-dev/mcp"}}}'
+                      codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp-gateway.internal/v/team-a-dev/mcp\"\n"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: CSRF token invalid, or a tool is not available to the user (access_denied).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                access_denied:
+                  value:
+                    error: access_denied
+                csrf_invalid:
+                  value:
+                    error: csrf_invalid
+        '409':
+          description: Slug already used.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                slug_taken:
+                  value:
+                    error: slug_taken
+  /api/v1/virtual-servers/{slug}:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        example: team-a-dev
+    delete:
+      tags: [virtual-servers]
+      operationId: deleteMyVirtualServer
+      summary: Delete my virtual server (proxy to C5).
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/activity:
+    get:
+      tags: [activity]
+      operationId: listMyActivity
+      summary: My recent tool calls (from gateway audit, without arguments).
+      security:
+        - session: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Proxy of C5 GET /admin/v1/activity.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../schemas/audit-event.schema.json'
+              examples:
+                recent:
+                  value:
+                    - ts: '2026-10-26T20:00:00.123Z'
+                      requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
+                      component: gateway
+                      componentId: mcp-gateway
+                      event: tool_call
+                      sub: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      username: jkowalski
+                      client: claude-code
+                      server: mcp-jira
+                      tool: get_issue
+                      risk: READ_ONLY
+                      decision: allow
+                      outcome: ok
+                      errorCode: null
+                      latencyMs: 42
+                      argsLength: 118
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /api/v1/admin/registry:
+    get:
+      tags: [admin]
+      operationId: getAdminRegistry
+      summary: Registry view for admins (proxy to C5 GET /admin/v1/registry/servers).
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Registered servers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: 'gateway-admin.v1.yaml#/components/schemas/RegistryServer'
+              examples:
+                jira:
+                  value:
+                    - serverId: mcp-jira
+                      system: jira
+                      version: 1.4.0
+                      tools:
+                        - name: update_issue
+                          risk: UPDATE
+                          action: update
+                          resourceRefs:
+                            - argument: issueKey
+                              type: Jira::Issue
+                          definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                          status: pending_approval
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/admin/registry/servers/{serverId}/tools/{tool}/pending:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/Tool'
+    get:
+      tags: [admin]
+      operationId: getAdminPendingTool
+      summary: Pending tool change for a diff (proxy to C5).
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Approved vs pending entry.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/PendingTool'
+              examples:
+                new_tool:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: update_issue
+                      risk: UPDATE
+                      action: update
+                      resourceRefs:
+                        - argument: issueKey
+                          type: Jira::Issue
+                      definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                    pendingHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/admin/registry/servers/{serverId}/tools/{tool}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/Tool'
+    post:
+      tags: [admin]
+      operationId: approveAdminTool
+      summary: Approve a pending tool definition (proxy to C5).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ApproveRequest'
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+      responses:
+        '204':
+          description: Approved.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The definition changed again; reload the diff.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-session
+      description: Session cookie set by the BFF after OIDC login (HttpOnly, Secure, SameSite=Lax).
+    csrf:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Value of the XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict) set by the BFF. Required for POST, PUT and DELETE.
+  parameters:
+    System:
+      name: system
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/SystemId'
+      example: jira
+    ServerId:
+      name: serverId
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/ServerId'
+      example: mcp-jira
+    Tool:
+      name: tool
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/ToolName'
+      example: update_issue
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid_request:
+              value:
+                error: invalid_request
+    Unauthenticated:
+      description: No valid session; the frontend starts the login (CC-023).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthenticated:
+              value:
+                error: unauthenticated
+    StepUpOrUnauthenticated:
+      description: No valid session, or the operation needs a fresh MFA login (step_up_required with url).
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/StepUpRequired'
+              - $ref: '#/components/schemas/Error'
+          examples:
+            step_up_required:
+              value:
+                error: step_up_required
+                url: https://mcp-portal.internal/login?max_age=0&returnPath=%2Fcatalog
+    CsrfInvalid:
+      description: Missing or wrong X-XSRF-TOKEN header (must equal the XSRF-TOKEN cookie).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            csrf_invalid:
+              value:
+                error: csrf_invalid
+    Forbidden:
+      description: Not an admin (mcp-platform-admin), or CSRF token invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            access_denied:
+              value:
+                error: access_denied
+    NotFound:
+      description: Does not exist or is not visible to the user.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            not_found_or_denied:
+              value:
+                error: not_found_or_denied
+  schemas:
+    Error:
+      type: object
+      description: Generic error body for statuses whose body C12 does not define.
+      required: [error]
+      properties:
+        error:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    StepUpRequired:
+      type: object
+      required: [error, url]
+      properties:
+        error:
+          const: step_up_required
+        url:
+          type: string
+          format: uri
+          description: Where the browser goes to re-authenticate with max_age / acr_values.
+      additionalProperties: false
+    Me:
+      type: object
+      required: [username, displayName, groups, isAdmin]
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        groups:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/GroupName'
+        isAdmin:
+          type: boolean
+          description: Member of mcp-platform-admin.
+      additionalProperties: false
+    CatalogStatus:
+      type: string
+      enum: [connected, expiring, reconnect_required, not_connected, request_pending, no_access]
+    CatalogAction:
+      type: string
+      enum: [copy_link, connect_oauth, add_secret, reconnect, request_access, view_request, disconnect]
+    PortalCatalogServer:
+      type: object
+      required: [serverId, system, version, url, status, actions, tools]
+      properties:
+        serverId:
+          $ref: '../schemas/common.schema.json#/$defs/ServerId'
+        system:
+          $ref: '../schemas/common.schema.json#/$defs/SystemId'
+        version:
+          $ref: '../schemas/common.schema.json#/$defs/SemVer'
+        url:
+          type: string
+          format: uri
+          description: Full MCP endpoint https://<gateway>/s/<serverId>/mcp, used by copy_link (CC-021).
+        status:
+          $ref: '#/components/schemas/CatalogStatus'
+        actions:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/CatalogAction'
+        tools:
+          type: array
+          items:
+            $ref: 'gateway-admin.v1.yaml#/components/schemas/CatalogTool'
+      additionalProperties: false
+    PortalCatalog:
+      type: object
+      required: [servers]
+      properties:
+        servers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortalCatalogServer'
+      additionalProperties: false
+    ConnectOAuthRequest:
+      type: object
+      properties:
+        returnPath:
+          $ref: 'credential-broker.v1.yaml#/components/schemas/ReturnPath'
+      additionalProperties: false
+    ConnectOAuthResponse:
+      type: object
+      required: [authorizeUrl]
+      properties:
+        authorizeUrl:
+          type: string
+          format: uri
+      additionalProperties: false
+    AccessRequestStatus:
+      type: string
+      enum: [pending, approved, rejected, cancelled]
+    AccessRequest:
+      type: object
+      description: Shape of C13 AccessRequest (CC-024).
+      required: [requestId, entitlement, status, createdAt]
+      properties:
+        requestId:
+          type: string
+        entitlement:
+          $ref: '../schemas/common.schema.json#/$defs/GroupName'
+        status:
+          $ref: '#/components/schemas/AccessRequestStatus'
+        createdAt:
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        requestUrl:
+          type: string
+          format: uri
+          description: Page of the request in the IGA, when the adapter has one.
+      additionalProperties: false
+    AccessRequestCreate:
+      type: object
+      required: [entitlement]
+      properties:
+        entitlement:
+          $ref: '../schemas/common.schema.json#/$defs/GroupName'
+      additionalProperties: false
+    AccessRequestResult:
+      oneOf:
+        - type: object
+          required: [requestUrl]
+          properties:
+            requestUrl:
+              type: string
+              format: uri
+          additionalProperties: false
+        - type: object
+          required: [requestId]
+          properties:
+            requestId:
+              type: string
+          additionalProperties: false
+    ClientConfigs:
+      type: object
+      description: Ready-to-paste configuration for supported AI clients.
+      required: [claudeCode, copilot, codex]
+      properties:
+        claudeCode:
+          type: string
+        copilot:
+          type: string
+        codex:
+          type: string
+      additionalProperties: false
+    PortalVirtualServer:
+      allOf:
+        - $ref: '#/components/schemas/VirtualServerFields'
+      type: object
+      required: [clientConfigs]
+      properties:
+        clientConfigs:
+          $ref: '#/components/schemas/ClientConfigs'
+      unevaluatedProperties: false
+    VirtualServerFields:
+      type: object
+      description: Same fields as C5 VirtualServer.
+      required: [slug, displayName, tools, url]
+      properties:
+        slug:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        displayName:
+          type: string
+        tools:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        resourceDefaults:
+          $ref: 'gateway-admin.v1.yaml#/components/schemas/ResourceDefaults'
+        url:
+          type: string
+          format: uri
+    PortalVirtualServerCreated:
+      type: object
+      required: [slug, url, clientConfigs]
+      properties:
+        slug:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        url:
+          type: string
+          format: uri
+        clientConfigs:
+          $ref: '#/components/schemas/ClientConfigs'
+      additionalProperties: false

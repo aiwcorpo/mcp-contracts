@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Internal JWT claims (C2)",
+  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, exp - iat <= 60 s, jti not seen within its validity window, for tools/call: user variant only and tool == params.name. Any failure -> HTTP 401.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/UserClaims"
+    },
+    {
+      "$ref": "#/$defs/ServiceClaims"
+    }
+  ],
+  "$defs": {
+    "Header": {
+      "description": "JOSE header. Receivers accept only ES256 and only a kid present in the gateway JWKS.",
+      "type": "object",
+      "required": [
+        "alg",
+        "kid"
+      ],
+      "properties": {
+        "alg": {
+          "const": "ES256"
+        },
+        "kid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "typ": {
+          "const": "JWT"
+        }
+      }
+    },
+    "Common": {
+      "type": "object",
+      "properties": {
+        "iss": {
+          "description": "Gateway issuer, default https://mcp-gateway.internal (configurable).",
+          "type": "string",
+          "format": "uri"
+        },
+        "aud": {
+          "description": "Id of the receiving component: mcp-<system> or mcp-credential-broker. A single string, never an array.",
+          "$ref": "common.schema.json#/$defs/ComponentId"
+        },
+        "rid": {
+          "$ref": "common.schema.json#/$defs/RequestId"
+        },
+        "prv": {
+          "$ref": "common.schema.json#/$defs/PolicyRevision"
+        },
+        "iat": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exp": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "jti": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "UserClaims": {
+      "description": "Call on behalf of a user. The only variant accepted for tools/call and by the broker resolve endpoint.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/Common"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "iss",
+        "aud",
+        "sub",
+        "usr",
+        "grp",
+        "azp",
+        "tool",
+        "rid",
+        "prv",
+        "iat",
+        "exp",
+        "jti"
+      ],
+      "properties": {
+        "sub": {
+          "description": "sub from the IdP token (C1), unchanged.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "not": {
+            "pattern": "^system:"
+          }
+        },
+        "usr": {
+          "description": "preferred_username",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "grp": {
+          "description": "User groups from C9, only those with the mcp- prefix.",
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/GroupName"
+          },
+          "uniqueItems": true
+        },
+        "azp": {
+          "description": "OAuth client id of the AI client (C1).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "vs": {
+          "$ref": "common.schema.json#/$defs/VirtualServerSlug"
+        },
+        "tool": {
+          "$ref": "common.schema.json#/$defs/ToolName"
+        },
+        "mfa": {
+          "description": "Seconds since the last authentication at an MFA acr level. Absent means unknown.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "ServiceClaims": {
+      "description": "Gateway call without a user. Accepted only for initialize, tools/list, ping and GET /mcp-manifest.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/Common"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "iss",
+        "aud",
+        "sub",
+        "grp",
+        "rid",
+        "prv",
+        "iat",
+        "exp",
+        "jti"
+      ],
+      "properties": {
+        "sub": {
+          "const": "system:mcp-gateway"
+        },
+        "grp": {
+          "type": "array",
+          "maxItems": 0
+        }
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

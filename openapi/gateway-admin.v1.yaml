@@ -1,0 +1,835 @@
+openapi: 3.1.0
+info:
+  title: MCP Gateway Admin API
+  version: 1.0.0
+  summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
+  description: |
+    Callers and their authentication:
+
+    - portal BFF: mTLS (CN=mcp-portal-bff) and the user's token exchanged in the IdP for aud=mcp-gateway-admin.
+      All "current user" semantics use `sub` of that token.
+    - CI: mTLS with client certificate CN=mcp-registry-ci (registry writes).
+    - admin operations additionally require group mcp-platform-admin in the user's token.
+
+    Tool names in this API are client-visible names `<system>__<tool>`, except under
+    `/admin/v1/registry/servers/{serverId}/tools/{tool}` where `{tool}` is the server-side name from the manifest.
+    Endpoints for MCP clients are `https://<gateway>/s/<serverId>/mcp` and `https://<gateway>/v/<slug>/mcp`
+    (C1 token with aud=mcp-gateway; not described here because they speak MCP, not REST).
+
+    A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
+    Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: https://mcp-gateway.internal:8443
+    description: Internal admin endpoint (TLS, mTLS required).
+tags:
+  - name: catalog
+  - name: virtual-servers
+  - name: registry
+  - name: activity
+  - name: confirmations
+  - name: policy
+paths:
+  /admin/v1/catalog:
+    get:
+      tags: [catalog]
+      operationId: getCatalog
+      summary: Registered servers and tools with the current user's access computed from policy.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: Approved tools of all registered servers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+              examples:
+                jira_reader:
+                  value:
+                    servers:
+                      - serverId: mcp-jira
+                        system: jira
+                        version: 1.4.0
+                        tools:
+                          - name: jira__get_issue
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-jira-read]
+                          - name: jira__update_issue
+                            risk: UPDATE
+                            action: update
+                            access: denied
+                            requiredEntitlements: [mcp-jira-write]
+                      - serverId: mcp-gitlab
+                        system: gitlab
+                        version: 1.0.0
+                        tools:
+                          - name: gitlab__get_project
+                            risk: READ_ONLY
+                            action: read
+                            access: denied
+                            requiredEntitlements: [mcp-gitlab-read]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /admin/v1/virtual-servers:
+    get:
+      tags: [virtual-servers]
+      operationId: listVirtualServers
+      summary: Virtual servers (links) owned by the current user.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: Links of the current user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VirtualServer'
+              examples:
+                one_link:
+                  value:
+                    - slug: team-a-dev
+                      displayName: Team A development
+                      tools: [jira__search_issues, jira__get_issue]
+                      resourceDefaults:
+                        Jira::Project: [ABC]
+                      url: https://mcp-gateway.internal/v/team-a-dev/mcp
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [virtual-servers]
+      operationId: createVirtualServer
+      summary: Create a virtual server owned by the current user.
+      description: |
+        A virtual server only narrows. The gateway rejects tools the user may not call (403) and evaluates
+        policy again on every call, so a link never keeps a permission the user has lost.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VirtualServerCreate'
+            examples:
+              team_a:
+                value:
+                  slug: team-a-dev
+                  displayName: Team A development
+                  tools: [jira__search_issues, jira__get_issue]
+                  resourceDefaults:
+                    Jira::Project: [ABC]
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualServerCreated'
+              examples:
+                created:
+                  value:
+                    slug: team-a-dev
+                    url: https://mcp-gateway.internal/v/team-a-dev/mcp
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: At least one tool is not available to the user (access_denied).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                access_denied:
+                  value:
+                    error: access_denied
+        '409':
+          description: Slug already used.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                slug_taken:
+                  value:
+                    error: slug_taken
+  /admin/v1/virtual-servers/{slug}:
+    parameters:
+      - $ref: '#/components/parameters/Slug'
+    delete:
+      tags: [virtual-servers]
+      operationId: deleteVirtualServer
+      summary: Delete a virtual server; owner only.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '204':
+          description: Deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/v1/registry/servers:
+    get:
+      tags: [registry]
+      operationId: listRegistryServers
+      summary: Registered servers with tools and approval status (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: Registry content.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegistryServer'
+              examples:
+                jira_pending:
+                  value:
+                    - serverId: mcp-jira
+                      system: jira
+                      version: 1.4.0
+                      tools:
+                        - name: get_issue
+                          risk: READ_ONLY
+                          action: read
+                          resourceRefs:
+                            - argument: issueKey
+                              type: Jira::Issue
+                          definitionHash: sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a
+                          status: approved
+                        - name: update_issue
+                          risk: UPDATE
+                          action: update
+                          resourceRefs:
+                            - argument: issueKey
+                              type: Jira::Issue
+                          definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                          status: pending_approval
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/v1/registry/servers/{serverId}:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    put:
+      tags: [registry]
+      operationId: registerServer
+      summary: Register or update a server manifest (CI).
+      description: |
+        Body is the C6 manifest (schemas/server-manifest.schema.json); `serverId` in the body must equal the path.
+        A new tool or a tool whose definitionHash changed becomes pending_approval. The binding
+        serverId -> system/internalUrl comes only from gateway configuration; a manifest that disagrees is
+        rejected with 422 and nothing is stored.
+      security:
+        - mtls: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/server-manifest.schema.json'
+            examples:
+              jira:
+                value:
+                  serverId: mcp-jira
+                  version: 1.4.0
+                  system: jira
+                  internalUrl: https://mcp-jira.internal:8443/mcp/jira
+                  credential:
+                    required: true
+                    acceptedTypes: [user-oauth, user-secret]
+                  resourceTypes:
+                    - type: Jira::Project
+                      attributes: [key, category]
+                    - type: Jira::Issue
+                      parent: Jira::Project
+                  tools:
+                    - name: get_issue
+                      risk: READ_ONLY
+                      action: read
+                      resourceRefs:
+                        - argument: issueKey
+                          type: Jira::Issue
+                      definitionHash: sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a
+      responses:
+        '200':
+          description: Stored; the body shows the resulting status of every tool.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryServer'
+              examples:
+                registered:
+                  value:
+                    serverId: mcp-jira
+                    system: jira
+                    version: 1.4.0
+                    tools:
+                      - name: get_issue
+                        risk: READ_ONLY
+                        action: read
+                        resourceRefs:
+                          - argument: issueKey
+                            type: Jira::Issue
+                        definitionHash: sha256:9a3b5f7f0d3c2e1b4a6d8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a
+                        status: pending_approval
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Manifest conflicts with gateway configuration (system, internalUrl or serverId).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                manifest_rejected:
+                  value:
+                    error: manifest_rejected
+                    message: system does not match gateway configuration for mcp-jira
+  /admin/v1/registry/servers/{serverId}/tools/{tool}/pending:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/Tool'
+    get:
+      tags: [registry]
+      operationId: getPendingTool
+      summary: Approved and pending entry of a tool, for a diff (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: Pending change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingTool'
+              examples:
+                risk_lowered:
+                  value:
+                    approvedEntry:
+                      name: update_issue
+                      risk: UPDATE
+                      action: update
+                      resourceRefs:
+                        - argument: issueKey
+                          type: Jira::Issue
+                      definitionHash: sha256:0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728ff
+                    pendingEntry:
+                      name: update_issue
+                      risk: READ_ONLY
+                      action: update
+                      resourceRefs:
+                        - argument: issueKey
+                          type: Jira::Issue
+                      definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+                    pendingHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/v1/registry/servers/{serverId}/tools/{tool}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/Tool'
+    post:
+      tags: [registry]
+      operationId: approveTool
+      summary: Approve the pending definition of a tool (group mcp-platform-admin).
+      description: definitionHash must equal the current pendingHash, otherwise 409 and nothing changes.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveRequest'
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:1f2e3d4c5b6a79881726354453627180f1e2d3c4b5a6978877665544332211ff
+      responses:
+        '204':
+          description: Approved.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: definitionHash differs from the current pendingHash (the definition changed again).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+  /admin/v1/activity:
+    get:
+      tags: [activity]
+      operationId: listActivity
+      summary: Recent gateway audit events of the current user (without arguments).
+      description: Events are kept for 30 days. Newest first.
+      security:
+        - mtls: []
+          bffUserToken: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Audit events (C8) with component=gateway and sub of the caller.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../schemas/audit-event.schema.json'
+              examples:
+                recent:
+                  value:
+                    - ts: '2026-10-26T20:00:00.123Z'
+                      requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
+                      component: gateway
+                      componentId: mcp-gateway
+                      event: tool_call
+                      sub: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      username: jkowalski
+                      client: claude-code
+                      virtualServer: team-a-dev
+                      server: mcp-jira
+                      tool: get_issue
+                      risk: READ_ONLY
+                      decision: allow
+                      policyRevision: 20261026120000-a1b2c3d
+                      credentialType: user-secret
+                      outcome: ok
+                      errorCode: null
+                      latencyMs: 42
+                      argsLength: 118
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /admin/v1/confirmations/{confirmationId}:
+    parameters:
+      - $ref: '#/components/parameters/ConfirmationId'
+    get:
+      tags: [confirmations]
+      operationId: getConfirmation
+      summary: Preview a pending confirmation; owner only.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: Tool and arguments in a fixed order; long values are truncated and marked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmationView'
+              examples:
+                delete_issue:
+                  value:
+                    confirmationId: cnf_4k9Qe2LxW7tB3mZp
+                    tool: jira__delete_issue
+                    arguments:
+                      - name: issueKey
+                        value: '"ABC-123"'
+                        truncated: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [confirmations]
+      operationId: decideConfirmation
+      summary: Approve or decline a pending confirmation; owner only, fresh MFA required.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmationDecision'
+            examples:
+              approve:
+                value:
+                  decision: approve
+      responses:
+        '204':
+          description: Decision recorded; the waiting tool call continues or is declined.
+        '401':
+          description: Missing token, or MFA not fresh enough (step_up_required).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                step_up_required:
+                  value:
+                    error: step_up_required
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/v1/policy/status:
+    get:
+      tags: [policy]
+      operationId: getPolicyStatus
+      summary: Policy bundle revision loaded by each gateway instance (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: One entry per running instance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyStatus'
+              examples:
+                two_instances:
+                  value:
+                    instances:
+                      - instanceId: mcp-gateway-0
+                        revision: 20261026120000-a1b2c3d
+                      - instanceId: mcp-gateway-1
+                        revision: 20261026120000-a1b2c3d
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: Client certificate from the internal CA; CN=mcp-portal-bff for BFF calls, CN=mcp-registry-ci for registry writes.
+    bffUserToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin.
+  parameters:
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+      example: team-a-dev
+    ServerId:
+      name: serverId
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/ServerId'
+      example: mcp-jira
+    Tool:
+      name: tool
+      in: path
+      required: true
+      description: Server-side tool name (without the system prefix).
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/ToolName'
+      example: update_issue
+    ConfirmationId:
+      name: confirmationId
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
+      example: cnf_4k9Qe2LxW7tB3mZp
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+  responses:
+    BadRequest:
+      description: Malformed request or schema violation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalid_request:
+              value:
+                error: invalid_request
+    Unauthenticated:
+      description: Missing or invalid token or client certificate.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unauthenticated:
+              value:
+                error: unauthenticated
+    Forbidden:
+      description: Caller lacks mcp-platform-admin or uses the wrong client certificate.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            access_denied:
+              value:
+                error: access_denied
+    NotFound:
+      description: Does not exist or is not visible to the caller (not_found_or_denied).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            not_found_or_denied:
+              value:
+                error: not_found_or_denied
+  schemas:
+    Error:
+      type: object
+      description: Generic error body for statuses whose body C5 does not define.
+      required: [error]
+      properties:
+        error:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    Access:
+      type: string
+      enum: [granted, denied]
+    CatalogTool:
+      type: object
+      required: [name, risk, action, access, requiredEntitlements]
+      properties:
+        name:
+          $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        risk:
+          $ref: '../schemas/common.schema.json#/$defs/Risk'
+        action:
+          $ref: '../schemas/common.schema.json#/$defs/ToolAction'
+        access:
+          $ref: '#/components/schemas/Access'
+        requiredEntitlements:
+          description: Groups (C9) that grant this tool according to policy; empty when policy names none.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/GroupName'
+      additionalProperties: false
+    CatalogServer:
+      type: object
+      required: [serverId, system, version, tools]
+      properties:
+        serverId:
+          $ref: '../schemas/common.schema.json#/$defs/ServerId'
+        system:
+          $ref: '../schemas/common.schema.json#/$defs/SystemId'
+        version:
+          $ref: '../schemas/common.schema.json#/$defs/SemVer'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogTool'
+      additionalProperties: false
+    Catalog:
+      type: object
+      required: [servers]
+      properties:
+        servers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogServer'
+      additionalProperties: false
+    ResourceDefaults:
+      type: object
+      description: Narrowing per resource type (C5). Becomes context.vsScopes in Cedar (cedar/entity-builder.md).
+      propertyNames:
+        $ref: '../schemas/common.schema.json#/$defs/ScopeResourceType'
+      additionalProperties:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          type: string
+          minLength: 1
+          maxLength: 255
+    VirtualServerCreate:
+      type: object
+      required: [slug, displayName, tools]
+      properties:
+        slug:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        tools:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        resourceDefaults:
+          $ref: '#/components/schemas/ResourceDefaults'
+      additionalProperties: false
+    VirtualServerCreated:
+      type: object
+      required: [slug, url]
+      properties:
+        slug:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        url:
+          type: string
+          format: uri
+          description: MCP endpoint https://<gateway>/v/<slug>/mcp
+      additionalProperties: false
+    VirtualServer:
+      type: object
+      required: [slug, displayName, tools, url]
+      properties:
+        slug:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        displayName:
+          type: string
+        tools:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        resourceDefaults:
+          $ref: '#/components/schemas/ResourceDefaults'
+        url:
+          type: string
+          format: uri
+      additionalProperties: false
+    RegistryToolStatus:
+      type: string
+      enum: [approved, pending_approval]
+    RegistryTool:
+      description: Manifest tool entry (C6) with its approval status. Pending entries are shown when present.
+      allOf:
+        - $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntryFields'
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/RegistryToolStatus'
+      unevaluatedProperties: false
+    RegistryServer:
+      type: object
+      required: [serverId, system, version, tools]
+      properties:
+        serverId:
+          $ref: '../schemas/common.schema.json#/$defs/ServerId'
+        system:
+          $ref: '../schemas/common.schema.json#/$defs/SystemId'
+        version:
+          $ref: '../schemas/common.schema.json#/$defs/SemVer'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistryTool'
+      additionalProperties: false
+    PendingTool:
+      type: object
+      required: [approvedEntry, pendingEntry, pendingHash]
+      properties:
+        approvedEntry:
+          description: Currently approved entry; null for a new tool.
+          oneOf:
+            - $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntry'
+            - type: 'null'
+        pendingEntry:
+          $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntry'
+        pendingHash:
+          $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
+      additionalProperties: false
+    ApproveRequest:
+      type: object
+      required: [definitionHash]
+      properties:
+        definitionHash:
+          $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
+      additionalProperties: false
+    ConfirmationArgument:
+      type: object
+      required: [name, value, truncated]
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+          description: JSON serialization of the argument value, cut to a gateway limit when truncated is true.
+        truncated:
+          type: boolean
+      additionalProperties: false
+    ConfirmationView:
+      type: object
+      required: [confirmationId, tool, arguments]
+      properties:
+        confirmationId:
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
+        tool:
+          $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        arguments:
+          description: Arguments sorted by name (fixed order), without confirmation_code.
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfirmationArgument'
+      additionalProperties: false
+    ConfirmationDecision:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, decline]
+      additionalProperties: false
+    PolicyStatus:
+      type: object
+      required: [instances]
+      properties:
+        instances:
+          type: array
+          items:
+            type: object
+            required: [instanceId, revision]
+            properties:
+              instanceId:
+                type: string
+              revision:
+                $ref: '../schemas/common.schema.json#/$defs/PolicyRevision'
+            additionalProperties: false
+      additionalProperties: false

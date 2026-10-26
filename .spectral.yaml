@@ -1,0 +1,19 @@
+extends:
+  - spectral:oas
+rules:
+  # Every operation must state who may call it; an operation without security would be anonymous.
+  operation-security-required:
+    description: Every operation declares security requirements.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: security
+      function: truthy
+  operation-operationId: error
+  operation-tags: error
+  operation-description: off
+  # Ownership is described in README; there is no team mailbox to put here.
+  info-contact: off
+  # Examples drive the generated mocks, so a broken example is a broken mock.
+  oas3-valid-media-example: error
+  oas3-valid-schema-example: error

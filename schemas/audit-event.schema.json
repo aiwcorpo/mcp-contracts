@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Audit event (C8)",
+  "description": "One JSON object per line on a dedicated logger/appender shipped to the SIEM. Never contains argument values, tool results, secrets or confirmation codes; additionalProperties is false so such fields cannot be added by accident. Target system of broker events is carried in 'server' (mcp-<system>).",
+  "type": "object",
+  "required": [
+    "ts",
+    "requestId",
+    "component",
+    "componentId",
+    "event"
+  ],
+  "properties": {
+    "ts": {
+      "$ref": "common.schema.json#/$defs/Timestamp"
+    },
+    "requestId": {
+      "$ref": "common.schema.json#/$defs/RequestId"
+    },
+    "clientRequestId": {
+      "description": "X-Request-Id sent by the AI client, recorded by the gateway only (C3). Untrusted text.",
+      "type": "string",
+      "maxLength": 128
+    },
+    "component": {
+      "type": "string",
+      "enum": [
+        "gateway",
+        "broker",
+        "server",
+        "portal"
+      ]
+    },
+    "componentId": {
+      "$ref": "common.schema.json#/$defs/ComponentId"
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "tool_call",
+        "policy_decision",
+        "credential_resolve",
+        "connection_change",
+        "confirmation",
+        "admin_change"
+      ]
+    },
+    "sub": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "username": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "client": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "virtualServer": {
+      "$ref": "common.schema.json#/$defs/VirtualServerSlug"
+    },
+    "server": {
+      "$ref": "common.schema.json#/$defs/ServerId"
+    },
+    "tool": {
+      "$ref": "common.schema.json#/$defs/ToolName"
+    },
+    "risk": {
+      "$ref": "common.schema.json#/$defs/Risk"
+    },
+    "resource": {
+      "type": "object",
+      "required": [
+        "type",
+        "id"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "common.schema.json#/$defs/ResourceType"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "parent": {
+          "description": "Parent as <Namespace>::<Type>::<id>, e.g. Jira::Project::ABC (C8 example format).",
+          "type": "string",
+          "pattern": "^[A-Za-z]+::[A-Za-z]+::.+$",
+          "maxLength": 600
+        }
+      },
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "deny",
+        "confirmation_pending"
+      ]
+    },
+    "reason": {
+      "description": "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64
+    },
+    "policyRevision": {
+      "$ref": "common.schema.json#/$defs/PolicyRevision"
+    },
+    "credentialType": {
+      "$ref": "common.schema.json#/$defs/CredentialType"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "error",
+        "denied"
+      ]
+    },
+    "errorCode": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/ErrorCode"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latencyMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "argsLength": {
+      "description": "Length in bytes of the serialized arguments; the only trace of arguments allowed in audit.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

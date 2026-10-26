@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Policy bundle pointer latest.json (C7)",
+  "description": "GET <bundle-url>/latest.json (served with ETag). Receivers poll every 30 s (overrides: 5 s), then download url and sigUrl. Relative URLs resolve against the URL of latest.json.",
+  "type": "object",
+  "required": [
+    "revision",
+    "url",
+    "sigUrl"
+  ],
+  "properties": {
+    "revision": {
+      "$ref": "common.schema.json#/$defs/PolicyRevision"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri-reference",
+      "pattern": "policies-[0-9]{14}-[0-9a-f]{7}\\.tar\\.gz$"
+    },
+    "sigUrl": {
+      "type": "string",
+      "format": "uri-reference",
+      "pattern": "policies-[0-9]{14}-[0-9a-f]{7}\\.tar\\.gz\\.sig$"
+    }
+  },
+  "additionalProperties": false
+}

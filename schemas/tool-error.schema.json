@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tool error (C10)",
+  "description": "JSON carried in the text content of an MCP tool result with isError: true. One variant per error code; only the fields listed for a code are allowed.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Unauthenticated"
+    },
+    {
+      "$ref": "#/$defs/AccessDenied"
+    },
+    {
+      "$ref": "#/$defs/ToolDisabled"
+    },
+    {
+      "$ref": "#/$defs/ConfirmationRequired"
+    },
+    {
+      "$ref": "#/$defs/ConfirmationFailed"
+    },
+    {
+      "$ref": "#/$defs/ConfirmationDeclined"
+    },
+    {
+      "$ref": "#/$defs/CredentialRequired"
+    },
+    {
+      "$ref": "#/$defs/NotFoundOrDenied"
+    },
+    {
+      "$ref": "#/$defs/InvalidArgument"
+    },
+    {
+      "$ref": "#/$defs/RateLimited"
+    },
+    {
+      "$ref": "#/$defs/StepUpRequired"
+    },
+    {
+      "$ref": "#/$defs/UpstreamUnavailable"
+    },
+    {
+      "$ref": "#/$defs/InternalError"
+    }
+  ],
+  "$defs": {
+    "Message": {
+      "description": "Safe text for the user. Never contains backend responses, secrets, argument values or stack traces.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "Unauthenticated": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "unauthenticated"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccessDenied": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "access_denied"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "requiredEntitlements": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/GroupName"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolDisabled": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "tool_disabled"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmationRequired": {
+      "type": "object",
+      "required": [
+        "error",
+        "message",
+        "confirmationId"
+      ],
+      "properties": {
+        "error": {
+          "const": "confirmation_required"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "confirmationId": {
+          "$ref": "common.schema.json#/$defs/ConfirmationId"
+        },
+        "confirmUrl": {
+          "description": "Portal page /confirm/<confirmationId> (C11 channel 2).",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmationFailed": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "confirmation_failed"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmationDeclined": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "confirmation_declined"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CredentialRequired": {
+      "type": "object",
+      "required": [
+        "error",
+        "message",
+        "system",
+        "connectUrl"
+      ],
+      "properties": {
+        "error": {
+          "const": "credential_required"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "system": {
+          "$ref": "common.schema.json#/$defs/SystemId"
+        },
+        "connectUrl": {
+          "description": "Portal page where the user connects the account.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NotFoundOrDenied": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "not_found_or_denied"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InvalidArgument": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "invalid_argument"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RateLimited": {
+      "type": "object",
+      "required": [
+        "error",
+        "message",
+        "retryAfterSeconds"
+      ],
+      "properties": {
+        "error": {
+          "const": "rate_limited"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "retryAfterSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "StepUpRequired": {
+      "type": "object",
+      "required": [
+        "error",
+        "message",
+        "stepUpUrl"
+      ],
+      "properties": {
+        "error": {
+          "const": "step_up_required"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "stepUpUrl": {
+          "description": "Portal URL that re-authenticates with max_age/acr_values.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpstreamUnavailable": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "upstream_unavailable"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InternalError": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "internal_error"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

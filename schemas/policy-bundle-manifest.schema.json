@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Policy bundle manifest (C7)",
+  "description": "manifest.json at the root of policies-<revision>.tar.gz. The archive also contains schema.cedarschema, policies/**/*.cedar and entities/static.json. The signature policies-<revision>.tar.gz.sig is a raw 64-byte Ed25519 signature over the exact bytes of the .tar.gz file.",
+  "type": "object",
+  "required": [
+    "revision",
+    "gitSha",
+    "createdAt",
+    "schemaVersion"
+  ],
+  "properties": {
+    "revision": {
+      "$ref": "common.schema.json#/$defs/PolicyRevision"
+    },
+    "gitSha": {
+      "description": "Full commit sha of mcp-policies; its first 7 characters equal the sha part of revision.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "createdAt": {
+      "$ref": "common.schema.json#/$defs/Timestamp"
+    },
+    "schemaVersion": {
+      "description": "Version of mcp-contracts whose cedar/mcp.cedarschema is shipped as schema.cedarschema.",
+      "$ref": "common.schema.json#/$defs/SemVer"
+    }
+  },
+  "additionalProperties": false
+}
