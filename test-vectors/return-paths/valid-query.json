@@ -1,0 +1,7 @@
+{
+  "description": "Path with a query.",
+  "value": "/catalog?system=jira&view=list",
+  "expected": {
+    "valid": true
+  }
+}

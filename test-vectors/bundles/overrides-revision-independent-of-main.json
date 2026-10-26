@@ -1,0 +1,17 @@
+{
+  "description": "Overrides revision older than the loaded main bundle but newer than the loaded overrides: accepted, revisions are per channel (CC-028).",
+  "channel": "overrides",
+  "latest": {
+    "revision": "20261026110000-2930415",
+    "url": "policies-20261026110000-2930415.tar.gz",
+    "sigUrl": "policies-20261026110000-2930415.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026110000-2930415.tar.gz",
+  "signature": "files/policies-20261026110000-2930415.tar.gz.sig",
+  "publicKey": "keys/test-policy-overrides.public.pem",
+  "loadedRevision": "20261026100000-0000000",
+  "loadedMainRevision": "20261026130000-b2c3d4e",
+  "expected": {
+    "accept": true
+  }
+}

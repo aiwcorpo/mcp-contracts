@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash, createPublicKey, verify } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
-import { createAjv, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
+import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
+import { manifestEntryHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
 
@@ -48,6 +49,22 @@ test('manifest vectors: schema plus semantic rules', () => {
   }
 });
 
+test('definitionHash recomputed from each valid manifest equals the declared one (CC-005)', () => {
+  for (const { name, data } of listJson('test-vectors', 'manifests').filter((v) => v.data.expected.valid)) {
+    for (const tool of data.manifest.tools) {
+      assert.equal(manifestEntryHash(data.manifest, tool), tool.definitionHash, `${name}: ${tool.name}`);
+    }
+  }
+});
+
+test('ReturnPath vectors (CC-032)', async () => {
+  const spec = await dereferenceOpenApi('credential-broker.v1.yaml');
+  const validate = ajv.compile(structuredClone(spec.components.schemas.ReturnPath));
+  const vectors = listJson('test-vectors', 'return-paths');
+  assert.ok(vectors.length >= 5);
+  for (const { name, data } of vectors) assert.equal(validate(data.value), data.expected.valid, name);
+});
+
 test('valid-jira manifest uses the hashes from definition-hash vectors', () => {
   const manifest = readJson('test-vectors', 'manifests', 'valid-jira.json').manifest;
   for (const tool of manifest.tools) {
@@ -76,48 +93,30 @@ test('every C10 code has a valid tool-error vector', () => {
   for (const code of codes) assert.ok(covered.has(code), code);
 });
 
-// Reference receiver for C7 + CC-008 + CC-026.
-const ts = (revision) => revision.slice(0, 14);
+// Not the reference receiver: signature, revision order and the overrides rules (permit detection needs the
+// Cedar parser) are executed by PolicyBundleVectorTest in java/mcp-cedar-entities. Here only the JSON documents
+// are checked against their schemas.
 const revisionOf = (file, suffix) => file.match(new RegExp(`^policies-([0-9]{14}-[0-9a-f]{7})${suffix}$`))?.[1];
 const validateLatest = schemaValidator(ajv, 'policy-bundle-latest.schema.json');
 const validateBundleManifest = schemaValidator(ajv, 'policy-bundle-manifest.schema.json');
 
-function checkLatest(latest) {
-  if (!validateLatest(latest)) return false;
-  return revisionOf(latest.url, '\\.tar\\.gz') === latest.revision && revisionOf(latest.sigUrl, '\\.tar\\.gz\\.sig') === latest.revision;
+function latestOk(latest) {
+  return validateLatest(latest)
+    && revisionOf(latest.url, '\\.tar\\.gz') === latest.revision
+    && revisionOf(latest.sigUrl, '\\.tar\\.gz\\.sig') === latest.revision;
 }
 
-function containsPermit(policyText) {
-  const code = policyText.replace(/\/\/[^\n]*/g, '');
-  return /\bpermit\s*\(/.test(code);
-}
-
-function receive(c) {
-  if (!checkLatest(c.latest)) return 'invalid_latest';
-  const archive = readFileSync(path('test-vectors', 'bundles', c.bundle));
-  const signature = readFileSync(path('test-vectors', 'bundles', c.signature));
-  const key = createPublicKey(readFileSync(path('test-vectors', c.publicKey)));
-  if (signature.length !== 64 || !verify(null, archive, key, signature)) return 'bad_signature';
-  const files = untarGz(archive);
-  const manifest = JSON.parse(files.get('manifest.json'));
-  if (!validateBundleManifest(manifest)) return 'manifest_invalid';
-  if (manifest.revision !== c.latest.revision || !manifest.gitSha.startsWith(manifest.revision.slice(15))) return 'manifest_mismatch';
-  for (const required of ['schema.cedarschema', 'entities/static.json']) {
-    if (!files.has(required)) return 'archive_incomplete';
-  }
-  if (c.loadedRevision && ts(manifest.revision) <= ts(c.loadedRevision)) return 'not_newer';
-  if (c.channel === 'overrides') {
-    for (const [name, text] of files) if (name.startsWith('policies/') && containsPermit(text)) return 'permit_in_overrides';
-  }
-  return null;
-}
-
-test('policy bundle vectors', () => {
+test('policy bundle vectors: latest.json and manifest.json documents', () => {
   const vectors = listJson('test-vectors', 'bundles');
   assert.ok(vectors.length >= 10);
   for (const { name, data } of vectors) {
-    const reason = data.bundle ? receive(data) : (checkLatest(data.latest) ? null : 'invalid_latest');
-    if (data.expected.accept) assert.equal(reason, null, name);
-    else assert.equal(reason, data.expected.reason, name);
+    const expectInvalidLatest = data.expected.reason === 'invalid_latest';
+    assert.equal(latestOk(data.latest), !expectInvalidLatest, name);
+    if (data.bundle && data.expected.accept) {
+      const files = untarGz(readFileSync(path('test-vectors', 'bundles', data.bundle)));
+      const manifest = JSON.parse(files.get('manifest.json'));
+      assert.ok(validateBundleManifest(manifest), `${name}: ${formatErrors(validateBundleManifest.errors)}`);
+      assert.equal(manifest.revision, data.latest.revision, name);
+    }
   }
 });

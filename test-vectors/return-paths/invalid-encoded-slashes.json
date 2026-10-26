@@ -1,0 +1,7 @@
+{
+  "description": "Encoded slashes that become //evil.test after one decoding.",
+  "value": "/%2F%2Fevil.test",
+  "expected": {
+    "valid": false
+  }
+}

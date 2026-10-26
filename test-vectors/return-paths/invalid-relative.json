@@ -1,0 +1,7 @@
+{
+  "description": "Not starting with a slash.",
+  "value": "catalog",
+  "expected": {
+    "valid": false
+  }
+}

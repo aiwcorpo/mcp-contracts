@@ -4,9 +4,9 @@ Entity builder zamienia tożsamość wywołującego, wpis narzędzia i argumenty
 (`principal`, `action`, `resource`, `context`) i listę encji. Gateway i starter muszą robić to identycznie,
 bo oceniają te same polityki z tej samej paczki. Zgodność sprawdzają wektory w
 `test-vectors/entity-builder/` (wejście -> oczekiwane wyjście) i `test-vectors/policy-decisions/`
-(żądanie -> decyzja). Implementacje referencyjne: `scripts/lib/entity-builder.mjs` (generuje wektory)
-i `src/test/java/pl/aiwcorpo/mcp/contracts/cedar/ReferenceEntityBuilder.java` (wykonuje je w JUnit).
-Propozycja publikacji implementacji Javy jako wspólnego artefaktu: CC-019.
+(żądanie -> decyzja). Implementacja dla gateway'a i startera: biblioteka
+`pl.aiwcorpo.mcp:mcp-cedar-entities` (`java/mcp-cedar-entities`, CC-019), której testy wykonują wszystkie
+wektory. `scripts/lib/entity-builder.mjs` to druga, niezależna implementacja, z której generowane są wektory.
 
 Model encji: `mcp.cedarschema`. Uzupełnienia względem skrótu C7: CC-001, CC-006, CC-007.
 
@@ -14,15 +14,17 @@ Model encji: `mcp.cedarschema`. Uzupełnienia względem skrótu C7: CC-001, CC-0
 
 | Pole | Skąd | Uwagi |
 | --- | --- | --- |
-| `caller.sub`, `usr`, `grp`, `azp`, `vs?`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u |
+| `caller.sub`, `usr`, `grp`, `azp`, `vs?`, `vsc?`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u; `vs` i `vsc` zawsze razem (CC-027) |
 | `tool.serverId`, `system`, `name`, `risk`, `action`, `resourceRefs` | zatwierdzony wpis rejestru (C5/C6) | gateway: z rejestru; starter: z własnego manifestu |
 | `arguments` | `params.arguments` z `tools/call` | bez `confirmation_code` (C11) |
-| `virtualServer.slug`, `resourceDefaults?` | baza wirtualnych serwerów gateway'a | tylko gdy jest `vs` |
 | `resource` | resolver serwera (`@ResourceRef`) | tylko ocena na serwerze |
 
 Gateway buduje `caller` z tokenu C1 tak samo, jak buduje claimy C2: `usr` = `preferred_username`,
 `azp` = `azp`, `grp` = `groups` z prefiksem `mcp-`, `mfa` = sekundy od `auth_time`, gdy `acr` jest na
-poziomie MFA (inaczej brak). Grupy muszą przychodzić bez ścieżki (Keycloak: mapper grup z
+poziomie MFA (inaczej brak). Dla wywołania przez link gateway ustawia `vs` = slug i `vsc` = `resourceDefaults`
+linku przemapowane na pola `vsScopes` (tabela w sekcji 4; `{}`, gdy link nie zawęża zasobów;
+`VirtualServerScope.fromResourceDefaults`). Serwer czyta zawężenie wyłącznie z `vsc`, więc stosuje link
+bez dostępu do bazy gateway'a. Grupy muszą przychodzić bez ścieżki (Keycloak: mapper grup z
 `full.path=false`); `/mcp-jira-read` nie jest rozpoznawane.
 
 ## 2. Principal
@@ -78,7 +80,7 @@ przeniesione do `HR` jest w `HR`, wektor `srv-moved-issue-restricted`).
 | --- | --- |
 | `client` | `azp` (zawsze) |
 | `virtualServer` | `vs`, tylko przy wywołaniu przez link |
-| `vsScopes` | tylko przy linku z niepustym `resourceDefaults`; klucz typu -> pole jak w tabeli niżej |
+| `vsScopes` | z claimu `vsc`, tylko gdy jest niepusty |
 | `mfaAge` | `mfa`, tylko gdy claim jest |
 | `refs` | zawsze (może być `{}`) |
 
@@ -86,6 +88,11 @@ przeniesione do `HR` jest w `HR`, wektor `srv-moved-issue-restricted`).
 `GitLab::Group` -> `gitlabGroups`, `OpenSearch::Index` -> `opensearchIndexPrefixes`, `ServiceDesk::Queue` ->
 `servicedeskQueues`. Inny klucz to błąd konfiguracji linku (`internal_error`, odmowa). Brak pola w
 `vsScopes` znaczy, że link tego typu nie zawęża.
+
+Paczka polityk (ws-09) musi mieć regułę zawężającą dla **każdego** z tych pięciu typów i dla ich typów
+podrzędnych (`Jira::Issue`, `Confluence::Page`, `GitLab::Project`, `ServiceDesk::Ticket`); brak reguły
+cicho poszerza link. Wzór: `cedar/examples/virtual-server.cedar`. Gateway może zawęzić tylko argumenty
+nazywające sam typ zawężany; resztę sprawdza serwer po rozwiązaniu zasobu.
 
 ### `context.refs`
 
@@ -97,7 +104,7 @@ Dla każdego `resourceRef {argument, type}` narzędzia pole `refs.<namespace ma�
 | --- | --- |
 | brak lub `null` | żadne (pole i tak jest obecne, pusty zbiór) |
 | napis | ten napis |
-| liczba całkowita | zapis dziesiętny (`4711` -> `"4711"`) |
+| liczba o wartości całkowitej | zapis dziesiętny (`4711` i `4711.0` -> `"4711"`; parsery JSON różnie typują te zapisy) |
 | tablica napisów / liczb całkowitych | każdy element jak wyżej |
 | cokolwiek innego | błąd `invalid_argument`, wywołanie odrzucone |
 
@@ -116,9 +123,10 @@ dołączane.
 ## 6. Błędy
 
 Każdy błąd buildera kończy się odmową wywołania, nigdy oceną z niepełnym kontekstem:
-`invalid_argument` dla złego argumentu-identyfikatora (C10), `internal_error` dla niespójnej konfiguracji
-(brak definicji linku dla `vs`, nieobsługiwany typ w `resourceDefaults`, brak rodzica przy encji, która go
-wymaga).
+`invalid_argument` dla złego argumentu-identyfikatora (C10), `internal_error` dla niespójnych danych
+platformy: `vs` bez `vsc` lub odwrotnie, nieznane pole `vsc`, nieobsługiwany typ w `resourceDefaults`,
+`risk` spoza `READ_ONLY`/`UPDATE`/`DESTRUCTIVE` albo `action` spoza `read`/`update`/`delete`/`admin`
+(literówka w `risk` ominęłaby reguły porównujące `resource.risk`), brak rodzica przy encji, która go wymaga.
 
 ## 7. Wektory
 
@@ -128,7 +136,7 @@ wymaga).
 {
   "description": "...",
   "level": "gateway | server",
-  "input": { "caller": {}, "tool": {}, "arguments": {}, "virtualServer": {}, "resource": {} },
+  "input": { "caller": {}, "tool": {}, "arguments": {}, "resource": {} },
   "expected": { "principal": {}, "action": {}, "resource": {}, "context": {}, "entities": [] }
 }
 ```
@@ -136,7 +144,8 @@ wymaga).
 albo `"expected": {"error": "invalid_argument"}`. Test implementacji: zbuduj wynik z `input` i porównaj
 z `expected` jako JSON.
 
-`test-vectors/policy-decisions/*.json` mają gotowe `request` i `entities` (wyjście buildera) oraz
+`test-vectors/policy-decisions/*.json` mają gotowe `request` i `entities` (wyjście buildera), wejście
+buildera w `builder` (`level`, `input`, ewentualnie `adjustment: remove-tool-entity`) oraz
 `expected: {decision: "allow" | "deny", determiningPolicies: [@id ...]}`. Polityki: wszystkie pliki
 `cedar/examples/*.cedar`, każda polityka identyfikowana adnotacją `@id`. `covers` oznacza przypadki
 wymagane przez DoD ws-00.

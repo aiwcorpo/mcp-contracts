@@ -2,11 +2,12 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **1.0.0**, tag `v1.0.0`.
+generują z tego klientów, mocki i testy kontraktowe. Wersja **1.1.0**, tag `v1.1.0`; zmiany w
+[`CHANGELOG.md`](CHANGELOG.md). Moduł `mcp-cedar-entities` to wspólny entity builder Cedar dla gateway'a i startera.
 
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
-człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z wariantem
-przyjętym w 1.0.0.
+człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
+wariantem; pozycje CC-001 ... CC-034 są zaakceptowane i wdrożone w 1.1.0.
 
 ## Co jest gdzie
 
@@ -19,7 +20,7 @@ przyjętym w 1.0.0.
 | C7 paczka polityk | `schemas/policy-bundle-manifest.schema.json`, `schemas/policy-bundle-latest.schema.json`, wektory `test-vectors/bundles/` |
 | C7 model Cedar | `cedar/mcp.cedarschema`, `cedar/examples/*.cedar`, `cedar/entity-builder.md` |
 | C8 audyt | `schemas/audit-event.schema.json`, wektory `test-vectors/audit-events/` |
-| C9 grupy | `cedar/entity-builder.md` (parsowanie), `schemas/common.schema.json#/$defs/GroupName` |
+| C9 grupy | `cedar/entity-builder.md` (parsowanie), `java/mcp-cedar-entities` (implementacja), `schemas/common.schema.json#/$defs/GroupName` |
 | C10 błędy narzędzi | `schemas/tool-error.schema.json`, wektory `test-vectors/tool-errors/` |
 | C12 Portal BFF | `openapi/portal-bff.v1.yaml` |
 
@@ -40,9 +41,11 @@ mcp-contracts/
 │   └── policy-decisions/    # żądanie Cedar -> decyzja i polityki rozstrzygające
 ├── mocks/wiremock/          # stuby C4 i C5 (generowane)
 ├── mocks/msw/               # handlery MSW dla C12 (TS)
+├── java/mcp-contracts/      # moduł Maven: jar z zasobami + jar test-vectors (pom, bez kodu)
+├── java/mcp-cedar-entities/ # moduł Maven: entity builder + testy JUnit (Cedar, wektory, paczki)
+├── spectral-functions/      # reguła Spectral dla x-allowed-client-cn
 ├── scripts/                 # generatory i verify-all.sh
-├── test/                    # testy Node (lint, schematy, wektory, mocki)
-└── src/test/java/           # testy JUnit: Cedar (cedar-java), referencyjny entity builder
+└── test/                    # testy Node (lint, schematy, wektory, mocki)
 ```
 
 ## Wersjonowanie (SemVer)
@@ -63,9 +66,11 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.0.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `release/aiwcorpo-mcp-contracts-1.0.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.0.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:1.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:1.1.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:1.1.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:1.1.0` (pom) | rodzic obu modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-1.1.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.1.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -74,20 +79,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/mcp-contracts/1.0.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.0.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-contracts-parent}/1.1.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.1.0.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -96,12 +101,52 @@ npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.0.0.tgz
 Odczyt z classpath: `getResource("/mcp-contracts/cedar/mcp.cedarschema")`,
 `/mcp-contracts/test-vectors/jwt/valid.json` itd.
 
+## mcp-cedar-entities (entity builder)
+
+Wspólna implementacja `cedar/entity-builder.md` dla gateway'a i startera (CC-019). Zależności: cedar-java
+4.10.0 (klasyfikator `uber` z natywnymi bibliotekami), jackson-databind 2.20 (wymagany i tak przez cedar-java,
+nie występuje w API), `mcp-contracts`. Bez Springa. Typy niezmienne, `EntityBuilder` bezstanowy i
+bezpieczny wątkowo.
+
+```xml
+<dependency>
+  <groupId>pl.aiwcorpo.mcp</groupId>
+  <artifactId>mcp-cedar-entities</artifactId>
+  <version>1.1.0</version>
+</dependency>
+```
+
+```java
+EntityBuilder builder = new EntityBuilder();
+Caller caller = Caller.of(claims.sub(), claims.usr(), claims.grp(), claims.azp())
+        .withMfaAge(120)
+        .withVirtualServer(new VirtualServerScope("team-a-dev", vscFromJwt)); // tylko gdy są vs i vsc
+ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read",
+        List.of(new ResourceRef("issueKey", "Jira::Issue")));
+
+// gateway: Action::"call" na Tool
+CedarRequest call = builder.forToolCall(caller, tool, arguments);
+// serwer: akcja narzędzia na zasobie rozwiązanym z systemu
+ResolvedResource issue = ResolvedResource.of("Jira::Issue", "ABC-123", Map.of("key", "ABC-123"))
+        .withParent(ResolvedResource.of("Jira::Project", "HR", Map.of("key", "HR", "category", "Restricted")));
+CedarRequest onResource = builder.forResource(caller, tool, arguments, issue);
+
+AuthorizationResponse r = engine.isAuthorized(
+        onResource.toAuthorizationRequest(bundleSchema), bundlePolicies, onResource.cedarEntities());
+```
+
+`EntityBuilderException` (kod `INVALID_ARGUMENT` albo `INTERNAL_ERROR`, `wireCode()` = kod C10) oznacza
+odmowę wywołania. Gateway tworzy claim `vsc` przez
+`VirtualServerScope.fromResourceDefaults(slug, resourceDefaults).vsScopes()`. `McpCedarSchema.schema()` daje
+schemat tej wersji kontraktów; do oceny polityk używaj schematu z załadowanej paczki.
+
 ## Generowanie klienta
 
 Generatory dostają pliki z `openapi/bundled/`. Sprawdzone: openapi-generator **7.26.0**, generator `java`
 z biblioteką `native` (C4, C5: generuje i kompiluje się) oraz `typescript-angular` (C12). Generator wypisuje
 `ERROR ... Unknown type mutualTLS` dla schematu bezpieczeństwa mTLS; to nie przerywa generowania, mTLS
-konfiguruje się w kliencie HTTP (certyfikat klienta), nie w wygenerowanym kodzie.
+konfiguruje się w kliencie HTTP (certyfikat klienta), nie w wygenerowanym kodzie. Dozwolone CN certyfikatu
+klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (inny CN -> 403).
 
 ### Java (gateway, broker, BFF)
 
@@ -119,7 +164,7 @@ konfiguruje się w kliencie HTTP (certyfikat klienta), nie w wygenerowanym kodzi
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>
@@ -218,7 +263,8 @@ await setupWorker(...createPortalBffHandlers()).start();
 
 W testach Node: `setupServer(...createPortalBffHandlers({ baseUrl: 'http://localhost' }))` z `msw/node`.
 Handlery wymagają na POST/PUT/DELETE nagłówka `X-XSRF-TOKEN` równego ciasteczku `XSRF-TOKEN`
-(403 `csrf_invalid` inaczej); `GET /api/v1/me` ustawia to ciasteczko. Wyłączenie:
+(403 `csrf_invalid` inaczej); `GET /api/v1/me` ustawia to ciasteczko. `GET /api/v1/auth/login` odpowiada 302
+do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 `createPortalBffHandlers({ enforceCsrf: false })`. Pojedynczą odpowiedź do `server.use(...)` daje
 `portalBffExample('getPortalCatalog', 'mixed')`. Wymagane `msw` ^3 (peer dependency).
 
@@ -226,14 +272,15 @@ Handlery wymagają na POST/PUT/DELETE nagłówka `X-XSRF-TOKEN` równego ciastec
 
 | Katalog | Liczba | Co sprawdza |
 | --- | --- | --- |
-| `jwt/` | 28 | odbiorca C2: 9 poprawnych, 19 odrzuceń (podpis, `kid`, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, `tool` != `params.name`, token IdP) |
-| `manifests/` | 14 | manifest C6: schemat i reguły semantyczne |
+| `jwt/` | 38 | odbiorca C2: 15 poprawnych, 23 odrzucenia (podpis, `kid`, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, `tool` != `params.name`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP) |
+| `manifests/` | 20 | manifest C6: schemat, reguły semantyczne, przeliczony `definitionHash` |
 | `definition-hash/` | 10 | `definitionHash` (RFC 8785 + SHA-256), CC-004 |
-| `audit-events/` | 14 | zdarzenia C8, w tym zakaz argumentów, sekretów i kodów |
+| `audit-events/` | 21 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów i znaków sterujących |
 | `tool-errors/` | 18 | każdy kod C10 + przypadki odrzucane |
-| `bundles/` | 16 | paczki C7: podpis Ed25519, rollback, `overrides`, `latest.json` (CC-026) |
-| `entity-builder/` | 15 | wejście buildera -> encje i kontekst Cedar |
-| `policy-decisions/` | 38 | decyzje Cedar na politykach z `cedar/examples` |
+| `bundles/` | 20 | paczki C7: podpis Ed25519, rollback, `overrides` (zawartość, `permit`, rewizje per kanał), `latest.json` |
+| `return-paths/` | 12 | `returnPath` C4/C12 (CC-032) |
+| `entity-builder/` | 19 | wejście buildera -> encje i kontekst Cedar |
+| `policy-decisions/` | 48 | decyzje Cedar na politykach z `cedar/examples` |
 
 Formaty:
 
@@ -255,6 +302,17 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 2. Nazwy narzędzi unikalne w manifeście.
 3. Każdy `resourceRefs[].type` i `resourceTypes[].parent` jest zadeklarowany w `resourceTypes`, a typy w
    `resourceTypes` się nie powtarzają.
+4. `definition.name == name` i `definition.inputSchema` nie deklaruje `confirmation_code` (CC-005).
+5. `definitionHash` przeliczony z `definition`, `risk`, `action`, `resourceRefs`, `system`, `credential`
+   (`scripts/lib/definition-hash.mjs`, CC-004) równa się zadeklarowanemu.
+
+## Wymagania dla odbiorców i paczek polityk
+
+- Odbiorcy C2 w konfiguracji produkcyjnej odrzucają `kid` z prefiksem `test-` (konfigurowalne), więc token
+  podpisany opublikowanym kluczem testowym nigdy nie przejdzie.
+- Paczka polityk (ws-09) musi zawężać linki dla wszystkich pięciu typów z `resourceDefaults` i ich typów
+  podrzędnych (CC-029, `cedar/examples/virtual-server.cedar`).
+- Odbiorca paczek: reguły C7 + CC-008, CC-026, CC-028; referencja w `PolicyBundleVectorTest` (Java).
 
 ## Walidacja lokalna i CI
 
@@ -266,8 +324,9 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
   kompilacja schematów (ajv, strict, 2020-12), przykłady OpenAPI, wektory JWT/manifestów/hashy/audytu/
   błędów/paczek, zgodność plików generowanych (bundled OpenAPI, WireMock, MSW, wektory buildera), MSW.
 - `./mvnw verify` (Java 25): schemat Cedar w trybie strict i polityki przykładowe (cedar-java 4.10.0,
-  klasyfikator `uber` z natywną biblioteką dla macOS/Linux x86_64 i aarch64), wektory entity buildera
-  (referencyjna implementacja w Javie + walidacja encji schematem), wektory decyzji, budowa obu jarów.
+  klasyfikator `uber` z natywną biblioteką dla macOS/Linux x86_64 i aarch64), wektory entity buildera i
+  decyzji wykonywane przez `mcp-cedar-entities` (z walidacją encji schematem i drugim przebiegiem bez
+  `forbid`), referencyjny odbiorca paczek polityk, budowa jarów.
 
 CI: **GitLab CI** (`.gitlab-ci.yml`), bo firmowe repozytoria i serwer MCP dla GitLaba są w GitLabie;
 joby `node`, `java`, `wiremock-smoke` (Docker-in-Docker) i na tagu `package-jar`, `package-npm`.

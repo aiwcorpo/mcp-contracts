@@ -318,6 +318,44 @@ audit('invalid-missing-request-id', 'requestId is required.', {
   ts: auditBase.ts, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
 }, false);
 
+audit('invalid-client-request-id-newline', 'clientRequestId with a line break could forge a second SIEM line (CC-031).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', clientRequestId: 'abc\n{"event":"admin_change"}',
+}, false);
+audit('invalid-client-request-id-spaces', 'clientRequestId outside the log-safe alphabet (CC-031).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', clientRequestId: 'drop table',
+}, false);
+audit('invalid-resource-id-control-char', 'resource.id with a control character (CC-031).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\r\nX' },
+}, false);
+audit('invalid-resource-id-c1-control', 'resource.id with a C1 control character U+0085 (next line).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u0085X' },
+}, false);
+audit('invalid-resource-id-line-separator', 'resource.id with U+2028; JavaScript-based log viewers treat it as a line break.', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u2028X' },
+}, false);
+audit('invalid-resource-id-paragraph-separator', 'resource.id with U+2029.', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u2029X' },
+}, false);
+audit('valid-resource-id-with-slash-and-space', 'resource.id keeps the system alphabet: GitLab path, space allowed.', {
+  ...auditBase, component: 'server', componentId: 'mcp-gitlab', event: 'policy_decision', resource: { type: 'GitLab::Project', id: 'team-a/my app' },
+}, true);
+
+// ---------- ReturnPath (C4, C12, CC-032) ----------
+
+const returnPath = (name, description, value, valid) => write('return-paths', `${name}.json`, { description, value, expected: { valid } });
+returnPath('valid-catalog', 'Plain portal path.', '/catalog', true);
+returnPath('valid-query', 'Path with a query.', '/catalog?system=jira&view=list', true);
+returnPath('invalid-double-encoded-slash', '%252F becomes / after two decoding passes.', '/%252F%252Fevil.test', false);
+returnPath('invalid-percent', 'Any percent sign is rejected, including an encoded percent.', '/catalog%25', false);
+returnPath('invalid-encoded-space', 'No percent-encoding at all, even for harmless characters.', '/catalog?q=a%20b', false);
+returnPath('invalid-absolute', 'Absolute URL (open redirect).', 'https://evil.test/', false);
+returnPath('invalid-protocol-relative', 'Protocol-relative URL.', '//evil.test/', false);
+returnPath('invalid-backslash', 'Backslash, which some browsers treat as a slash.', '/\\evil.test', false);
+returnPath('invalid-encoded-slashes', 'Encoded slashes that become //evil.test after one decoding.', '/%2F%2Fevil.test', false);
+returnPath('invalid-encoded-slash-lowercase', 'Lower-case encoding is the same character.', '/%2f%2fevil.test', false);
+returnPath('invalid-encoded-backslash', 'Encoded backslash.', '/%5Cevil.test', false);
+returnPath('invalid-relative', 'Not starting with a slash.', 'catalog', false);
+
 // ---------- tool errors (C10) ----------
 
 const toolError = (name, description, body, valid) =>
@@ -340,7 +378,7 @@ toolError('not-found-or-denied', 'Missing or not visible resource.', { error: 'n
 toolError('invalid-argument', 'Caller error.', { error: 'invalid_argument', ...safe('issueKey must look like ABC-123.') }, true);
 toolError('rate-limited', 'Rate limit.', { error: 'rate_limited', ...safe('Too many calls.'), retryAfterSeconds: 30 }, true);
 toolError('step-up-required', 'MFA too old for a destructive action.', {
-  error: 'step_up_required', ...safe('Sign in again with MFA.'), stepUpUrl: 'https://mcp-portal.internal/step-up?returnPath=%2F',
+  error: 'step_up_required', ...safe('Sign in again with MFA.'), stepUpUrl: 'https://mcp-portal.internal/api/v1/auth/login?stepUp=true&returnPath=/',
 }, true);
 toolError('upstream-unavailable', 'Broker or system down.', { error: 'upstream_unavailable', ...safe('The system is unavailable.') }, true);
 toolError('internal-error', 'Anything else.', { error: 'internal_error', ...safe('Unexpected error.') }, true);
@@ -363,14 +401,22 @@ const files = (dir) => readdirSync(path(...dir)).filter((n) => n.endsWith('.ceda
 const examplePolicies = files(['cedar', 'examples']).map((n) => [`policies/${n}`, readFileSync(path('cedar', 'examples', n), 'utf8')]);
 const schemaText = readFileSync(path('cedar', 'mcp.cedarschema'), 'utf8');
 
-function buildBundle(revision, gitSha, policies, manifestRevision = revision) {
-  const manifestJson = JSON.stringify({ revision: manifestRevision, gitSha, createdAt: revisionTime(manifestRevision), schemaVersion: '1.0.0' }, null, 2) + '\n';
+const CONTRACTS_VERSION = JSON.parse(readFileSync(path('package.json'), 'utf8')).version;
+const manifestJson = (revision, gitSha) =>
+  JSON.stringify({ revision, gitSha, createdAt: revisionTime(revision), schemaVersion: CONTRACTS_VERSION }, null, 2) + '\n';
+
+function buildBundle(revision, gitSha, policies) {
   return tarGz([
-    ['manifest.json', manifestJson],
+    ['manifest.json', manifestJson(revision, gitSha)],
     ['schema.cedarschema', schemaText],
     ...policies,
     ['entities/static.json', '[]\n'],
   ]);
+}
+
+// Overrides carry only manifest.json and policies; schema and static entities come from the main bundle (CC-028).
+function buildOverrides(revision, gitSha, policies, extra = []) {
+  return tarGz([['manifest.json', manifestJson(revision, gitSha)], ...policies, ...extra]);
 }
 function revisionTime(revision) {
   const t = revision.slice(0, 14);
@@ -384,12 +430,19 @@ const R1_SAME_SECOND = '20261026120000-0f1e2d3';
 const R3 = '20261026140000-c3d4e5f';
 const O1 = '20261026121500-d4e5f60';
 const O2 = '20261026121600-e5f6071';
+const O3 = '20261026121700-f607182';
+const O4 = '20261026121800-0718293';
+const O5 = '20261026121900-1829304';
+const O6 = '20261026110000-2930415';
 
 const overridesForbid = [['policies/overrides/kill-switch.cedar',
   '// Emergency stop for one tool.\n@id("override-disable-jira-delete")\nforbid (principal, action == Action::"call", resource == Tool::"jira__delete_issue");\n']];
 const overridesPermit = [['policies/overrides/bad.cedar',
   '@id("override-disable-jira-delete")\nforbid (principal, action == Action::"call", resource == Tool::"jira__delete_issue");\n'
   + '@id("override-sneaky-permit")\npermit (principal, action == Action::"call", resource);\n']];
+// A regex that strips // comments also strips them inside string literals and misses the permit (review #3).
+const overridesPermitAfterSlashes = [['policies/overrides/tricky.cedar',
+  '@id("override-client-block")\nforbid (principal, action, resource) when { context.client == "a//b" }; permit (principal, action, resource);\n']];
 
 const bundleDir = ['test-vectors', 'bundles', 'files'];
 mkdirSync(path(...bundleDir), { recursive: true });
@@ -408,8 +461,12 @@ store(R1_SAME_SECOND, buildBundle(R1_SAME_SECOND, sha('0f1e2d3'), examplePolicie
 // Old R1 content re-published under a newer name: valid signature, but manifest says R1.
 writeFileSync(path(...bundleDir, `policies-${R3}.tar.gz`), archives[R1]);
 writeFileSync(path(...bundleDir, `policies-${R3}.tar.gz.sig`), sign(null, archives[R1], bundleKey('test-policy-bundle')));
-store(O1, buildBundle(O1, sha('d4e5f60'), overridesForbid), 'test-policy-overrides');
-store(O2, buildBundle(O2, sha('e5f6071'), overridesPermit), 'test-policy-overrides');
+store(O1, buildOverrides(O1, sha('d4e5f60'), overridesForbid), 'test-policy-overrides');
+store(O2, buildOverrides(O2, sha('e5f6071'), overridesPermit), 'test-policy-overrides');
+store(O3, buildOverrides(O3, sha('f607182'), overridesForbid, [['entities/static.json', '[{"uid":{"type":"UserGroup","id":"mcp-jira-destructive"},"attrs":{},"parents":[]}]\n']]), 'test-policy-overrides');
+store(O4, buildOverrides(O4, sha('0718293'), overridesForbid, [['schema.cedarschema', schemaText]]), 'test-policy-overrides');
+store(O5, buildOverrides(O5, sha('1829304'), overridesPermitAfterSlashes), 'test-policy-overrides');
+store(O6, buildOverrides(O6, sha('2930415'), overridesForbid), 'test-policy-overrides');
 {
   const tampered = Buffer.from(archives[R2]);
   tampered[tampered.length - 20] ^= 0x01;
@@ -418,6 +475,7 @@ store(O2, buildBundle(O2, sha('e5f6071'), overridesPermit), 'test-policy-overrid
 writeFileSync(path(...bundleDir, `policies-${R2}.tar.gz.sig-by-overrides-key`), sign(null, archives[R2], bundleKey('test-policy-overrides')));
 writeFileSync(path(...bundleDir, `policies-${O1}.tar.gz.sig-by-main-key`), sign(null, archives[O1], bundleKey('test-policy-bundle')));
 
+// Earlier generator runs may have left files for revisions that no longer exist.
 const latest = (revision) => ({ revision, url: `policies-${revision}.tar.gz`, sigUrl: `policies-${revision}.tar.gz.sig` });
 const MAIN_KEY = 'keys/test-policy-bundle.public.pem';
 const OVERRIDES_KEY = 'keys/test-policy-overrides.public.pem';
@@ -454,6 +512,18 @@ bundleCase('overrides-forbid-only', 'Overrides bundle with only forbid rules, si
 bundleCase('overrides-with-permit', 'Overrides bundle containing a permit rule (C7: reject).', {
   channel: 'overrides', latest: latest(O2), bundle: `files/policies-${O2}.tar.gz`, signature: `files/policies-${O2}.tar.gz.sig`,
   publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'permit_in_overrides' } });
+bundleCase('overrides-with-static-entities', 'Overrides bundle that also ships entities/static.json (CC-028: reject).', {
+  channel: 'overrides', latest: latest(O3), bundle: `files/policies-${O3}.tar.gz`, signature: `files/policies-${O3}.tar.gz.sig`,
+  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'overrides_content_not_allowed' } });
+bundleCase('overrides-with-schema', 'Overrides bundle that also ships schema.cedarschema (CC-028: reject).', {
+  channel: 'overrides', latest: latest(O4), bundle: `files/policies-${O4}.tar.gz`, signature: `files/policies-${O4}.tar.gz.sig`,
+  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'overrides_content_not_allowed' } });
+bundleCase('overrides-permit-after-string-with-slashes', 'permit hidden after a string literal containing //; only a Cedar parser finds it.', {
+  channel: 'overrides', latest: latest(O5), bundle: `files/policies-${O5}.tar.gz`, signature: `files/policies-${O5}.tar.gz.sig`,
+  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'permit_in_overrides' } });
+bundleCase('overrides-revision-independent-of-main', 'Overrides revision older than the loaded main bundle but newer than the loaded overrides: accepted, revisions are per channel (CC-028).', {
+  channel: 'overrides', latest: latest(O6), bundle: `files/policies-${O6}.tar.gz`, signature: `files/policies-${O6}.tar.gz.sig`,
+  publicKey: OVERRIDES_KEY, loadedRevision: '20261026100000-0000000', loadedMainRevision: R2, expected: { accept: true } });
 bundleCase('overrides-signed-with-main-key', 'Overrides bundle signed with the main bundle key (separate keys, C7).', {
   channel: 'overrides', latest: latest(O1), bundle: `files/policies-${O1}.tar.gz`, signature: `files/policies-${O1}.tar.gz.sig-by-main-key`,
   publicKey: OVERRIDES_KEY, loadedRevision: null, expected: { accept: false, reason: 'bad_signature' } });

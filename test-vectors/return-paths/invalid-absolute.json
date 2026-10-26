@@ -1,0 +1,7 @@
+{
+  "description": "Absolute URL (open redirect).",
+  "value": "https://evil.test/",
+  "expected": {
+    "valid": false
+  }
+}

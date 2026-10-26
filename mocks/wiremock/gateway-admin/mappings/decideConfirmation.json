@@ -60,7 +60,7 @@
         },
         "jsonBody": {
           "error": "step_up_required",
-          "stepUpUrl": "https://mcp-portal.internal/api/v1/auth/login?returnPath=%2Fconfirm"
+          "stepUpUrl": "https://mcp-portal.internal/api/v1/auth/login?stepUp=true&returnPath=/confirm/cnf_4k9Qe2LxW7tB3mZp"
         }
       }
     },

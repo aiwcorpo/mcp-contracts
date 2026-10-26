@@ -1,0 +1,17 @@
+{
+  "description": "permit hidden after a string literal containing //; only a Cedar parser finds it.",
+  "channel": "overrides",
+  "latest": {
+    "revision": "20261026121900-1829304",
+    "url": "policies-20261026121900-1829304.tar.gz",
+    "sigUrl": "policies-20261026121900-1829304.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026121900-1829304.tar.gz",
+  "signature": "files/policies-20261026121900-1829304.tar.gz.sig",
+  "publicKey": "keys/test-policy-overrides.public.pem",
+  "loadedRevision": "20261026121500-d4e5f60",
+  "expected": {
+    "accept": false,
+    "reason": "permit_in_overrides"
+  }
+}

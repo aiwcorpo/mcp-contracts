@@ -1,0 +1,17 @@
+{
+  "description": "Overrides bundle that also ships entities/static.json (CC-028: reject).",
+  "channel": "overrides",
+  "latest": {
+    "revision": "20261026121700-f607182",
+    "url": "policies-20261026121700-f607182.tar.gz",
+    "sigUrl": "policies-20261026121700-f607182.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026121700-f607182.tar.gz",
+  "signature": "files/policies-20261026121700-f607182.tar.gz.sig",
+  "publicKey": "keys/test-policy-overrides.public.pem",
+  "loadedRevision": "20261026121500-d4e5f60",
+  "expected": {
+    "accept": false,
+    "reason": "overrides_content_not_allowed"
+  }
+}

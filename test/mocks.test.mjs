@@ -54,11 +54,31 @@ test('MSW: mutating call with matching cookie and header succeeds', async () => 
     body: JSON.stringify({ secret: 'test-only' }),
   });
   assert.equal(put.status, 401);
-  assert.equal((await put.json()).error, 'step_up_required');
+  const body = await put.json();
+  assert.equal(body.error, 'step_up_required');
+  assert.ok(body.stepUpUrl, 'stepUpUrl (CC-010)');
+  assert.equal(body.url, undefined);
 });
 
 test('MSW: OAuth callback redirects', async () => {
   const res = await fetch(`${BASE}/api/v1/oauth/callback?code=c&state=s`, { redirect: 'manual' });
   assert.equal(res.status, 302);
   assert.equal(res.headers.get('location'), '/catalog?connected=gitlab');
+});
+
+test('MSW: login redirects to the IdP without session or CSRF (CC-023)', async () => {
+  const res = await fetch(`${BASE}/api/v1/auth/login?returnPath=/catalog`, { redirect: 'manual' });
+  assert.equal(res.status, 302);
+  assert.match(res.headers.get('location'), /^https:\/\/keycloak\.internal\//);
+});
+
+test('MSW: logout requires the XSRF header (CC-023)', async () => {
+  assert.equal((await fetch(`${BASE}/api/v1/auth/logout`, { method: 'POST' })).status, 403);
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
+  assert.equal((await fetch(`${BASE}/api/v1/auth/logout`, { method: 'POST', headers })).status, 204);
+});
+
+test('MSW: confirmation preview carries expiresAt (CC-015)', async () => {
+  const res = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`);
+  assert.ok((await res.json()).expiresAt);
 });

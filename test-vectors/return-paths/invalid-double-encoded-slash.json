@@ -1,0 +1,7 @@
+{
+  "description": "%252F becomes / after two decoding passes.",
+  "value": "/%252F%252Fevil.test",
+  "expected": {
+    "valid": false
+  }
+}

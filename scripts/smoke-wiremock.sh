@@ -3,15 +3,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 IMAGE="wiremock/wiremock:3.13.2"
-BROKER_PORT=18081
-ADMIN_PORT=18082
+BROKER_PORT="${BROKER_PORT:-28081}"
+ADMIN_PORT="${ADMIN_PORT:-28082}"
 cleanup() { docker rm -f mcp-contracts-broker-mock mcp-contracts-admin-mock >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 cleanup
-docker run -d --name mcp-contracts-broker-mock -p "$BROKER_PORT:8080" \
-  -v "$PWD/mocks/wiremock/credential-broker:/home/wiremock:ro" "$IMAGE" >/dev/null
-docker run -d --name mcp-contracts-admin-mock -p "$ADMIN_PORT:8080" \
-  -v "$PWD/mocks/wiremock/gateway-admin:/home/wiremock:ro" "$IMAGE" >/dev/null
+# docker cp instead of a bind mount: works with Docker-in-Docker and with stale Docker Desktop file sharing.
+start_mock() {
+  docker create --name "$1" -p "$2:8080" "$IMAGE" >/dev/null
+  docker cp "$PWD/mocks/wiremock/$3/." "$1:/home/wiremock/"
+  docker start "$1" >/dev/null
+}
+start_mock mcp-contracts-broker-mock "$BROKER_PORT" credential-broker
+start_mock mcp-contracts-admin-mock "$ADMIN_PORT" gateway-admin
 for port in "$BROKER_PORT" "$ADMIN_PORT"; do
   for _ in $(seq 1 60); do
     curl -fs "http://localhost:$port/__admin/health" >/dev/null 2>&1 && break

@@ -1,0 +1,7 @@
+{
+  "description": "Backslash, which some browsers treat as a slash.",
+  "value": "/\\evil.test",
+  "expected": {
+    "valid": false
+  }
+}

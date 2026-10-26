@@ -1190,8 +1190,8 @@ components:
       additionalProperties: false
     ReturnPath:
       type: string
-      description: Relative path inside the portal. Absolute and protocol-relative URLs, backslashes and encoded slash or backslash (%2F, %5C in any case) are rejected, because browsers or proxies may decode them into //host (open redirect, CC-032).
-      pattern: ^/(?!/)(?!.*%(?:2[fF]|5[cC]))[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$
+      description: Relative path inside the portal, optionally with a query. No percent-encoding at all (portal paths do not need it), no backslash, no absolute or protocol-relative URL, so no number of decoding passes can turn it into //host (open redirect, CC-032). The BFF redirects only to the validated value as is, without decoding it.
+      pattern: ^/(?!/)[A-Za-z0-9._~!$&'()*+,;=:@/?-]*$
       maxLength: 512
     GroupName:
       description: Group / entitlement name from C9. Only the mcp- prefix is used by the platform.
@@ -1644,7 +1644,7 @@ components:
       additionalProperties: false
     AuditEvent:
       title: Audit event (C8)
-      description: One JSON object per line on a dedicated logger/appender shipped to the SIEM. Never contains argument values, tool results, secrets or confirmation codes; additionalProperties is false so such fields cannot be added by accident. Target system of broker events is carried in 'server' (mcp-<system>).
+      description: One JSON object per line on a dedicated logger/appender shipped to the SIEM. Never contains argument values, tool results, secrets or confirmation codes; additionalProperties is false so such fields cannot be added by accident. Target system of broker events is carried in 'server' (mcp-<system>). The serializer must escape control characters, U+2028 and U+2029 in every string value.
       type: object
       required:
         - ts
@@ -1706,9 +1706,9 @@ components:
             type:
               $ref: "#/components/schemas/ResourceType"
             id:
-              description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but control characters are excluded so the line-oriented SIEM format cannot be broken (CC-031).
+              description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but C0 and C1 control characters, DEL, U+2028 and U+2029 are excluded so the line-oriented SIEM format cannot be broken (CC-031). Independently of this, the audit JSON serializer must escape every control character and U+2028/U+2029.
               type: string
-              pattern: ^[^\u0000-\u001f\u007f]{1,512}$
+              pattern: ^[^\u0000-\u001f\u007f-\u009f\u2028\u2029]{1,512}$
             parent:
               description: Parent as <Namespace>::<Type>::<id>, e.g. Jira::Project::ABC (C8 example format).
               type: string

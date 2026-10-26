@@ -1,0 +1,7 @@
+{
+  "description": "No percent-encoding at all, even for harmless characters.",
+  "value": "/catalog?q=a%20b",
+  "expected": {
+    "valid": false
+  }
+}

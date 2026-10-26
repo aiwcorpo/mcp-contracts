@@ -1,0 +1,7 @@
+{
+  "description": "Lower-case encoding is the same character.",
+  "value": "/%2f%2fevil.test",
+  "expected": {
+    "valid": false
+  }
+}

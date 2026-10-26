@@ -1,0 +1,7 @@
+{
+  "description": "Any percent sign is rejected, including an encoded percent.",
+  "value": "/catalog%25",
+  "expected": {
+    "valid": false
+  }
+}

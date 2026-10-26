@@ -1,0 +1,7 @@
+{
+  "description": "Protocol-relative URL.",
+  "value": "//evil.test/",
+  "expected": {
+    "valid": false
+  }
+}

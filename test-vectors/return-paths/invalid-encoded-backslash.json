@@ -1,0 +1,7 @@
+{
+  "description": "Encoded backslash.",
+  "value": "/%5Cevil.test",
+  "expected": {
+    "valid": false
+  }
+}

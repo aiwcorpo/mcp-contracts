@@ -1,0 +1,7 @@
+{
+  "description": "Plain portal path.",
+  "value": "/catalog",
+  "expected": {
+    "valid": true
+  }
+}
