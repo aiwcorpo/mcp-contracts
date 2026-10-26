@@ -4,6 +4,50 @@
     "restricted",
     "forbid_overrides_permit"
   ],
+  "builder": {
+    "level": "server",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000001",
+        "usr": "reader",
+        "grp": [
+          "mcp-jira-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ]
+      },
+      "arguments": {
+        "issueKey": "HR-7"
+      },
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "HR-7",
+        "attrs": {
+          "key": "HR-7"
+        },
+        "parent": {
+          "type": "Jira::Project",
+          "id": "HR",
+          "attrs": {
+            "key": "HR",
+            "category": "Restricted"
+          }
+        }
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

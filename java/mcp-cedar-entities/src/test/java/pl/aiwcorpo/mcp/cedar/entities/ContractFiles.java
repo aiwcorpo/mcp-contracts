@@ -1,4 +1,4 @@
-package pl.aiwcorpo.mcp.contracts;
+package pl.aiwcorpo.mcp.cedar.entities;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

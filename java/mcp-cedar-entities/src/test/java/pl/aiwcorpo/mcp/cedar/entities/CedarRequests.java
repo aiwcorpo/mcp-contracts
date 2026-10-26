@@ -1,4 +1,4 @@
-package pl.aiwcorpo.mcp.contracts.cedar;
+package pl.aiwcorpo.mcp.cedar.entities;
 
 import com.cedarpolicy.CedarJson;
 import com.cedarpolicy.model.AuthorizationRequest;

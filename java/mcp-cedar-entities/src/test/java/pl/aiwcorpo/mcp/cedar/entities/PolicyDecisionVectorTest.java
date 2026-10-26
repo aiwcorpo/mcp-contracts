@@ -1,4 +1,4 @@
-package pl.aiwcorpo.mcp.contracts.cedar;
+package pl.aiwcorpo.mcp.cedar.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -6,13 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.cedarpolicy.BasicAuthorizationEngine;
 import com.cedarpolicy.model.AuthorizationResponse;
 import com.cedarpolicy.model.AuthorizationSuccessResponse;
+import com.cedarpolicy.model.entity.Entity;
 import com.cedarpolicy.model.policy.PolicySet;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -21,7 +24,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import pl.aiwcorpo.mcp.contracts.ContractFiles;
 
 class PolicyDecisionVectorTest {
 
@@ -49,9 +51,10 @@ class PolicyDecisionVectorTest {
         }
     }
 
+    /** The vector's request and entities as given, evaluated directly. */
     @ParameterizedTest(name = "{0}")
     @MethodSource("vectors")
-    void decisionMatches(Path file) throws Exception {
+    void decisionFromVectorRequest(Path file) throws Exception {
         JsonNode vector = read(file);
         assertEquals("cedar/examples", vector.get("policies").asText());
         JsonNode request = vector.get("request");
@@ -59,9 +62,32 @@ class PolicyDecisionVectorTest {
                 CedarRequests.request(request.get("principal"), request.get("action"), request.get("resource"),
                         request.get("context")),
                 policies, CedarRequests.entities(vector.get("entities")));
+        assertDecision(file, vector.get("expected"), response);
+    }
+
+    /** The same request rebuilt by EntityBuilder from the vector's builder input, then evaluated. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("vectors")
+    void decisionThroughEntityBuilder(Path file) throws Exception {
+        JsonNode vector = read(file);
+        JsonNode builder = vector.get("builder");
+        CedarRequest built = VectorInputs.build(builder.get("level").asText(), builder.get("input"));
+        if ("remove-tool-entity".equals(builder.path("adjustment").asText())) {
+            Set<Entity> withoutTool = new LinkedHashSet<>(built.entities());
+            withoutTool.removeIf(e -> "Tool".equals(e.getEUID().getType().toString()));
+            built = new CedarRequest(built.principal(), built.action(), built.resource(), built.context(), withoutTool);
+        }
+        ObjectNode json = VectorInputs.toJson(built);
+        assertEquals(vector.get("request").get("context"), json.get("context"), file::toString);
+        assertEquals(vector.get("entities"), json.get("entities"), file::toString);
+        AuthorizationResponse response = engine.isAuthorized(
+                built.toAuthorizationRequest(CedarFixtures.schema()), policies, built.cedarEntities());
+        assertDecision(file, vector.get("expected"), response);
+    }
+
+    private static void assertDecision(Path file, JsonNode expected, AuthorizationResponse response) {
         assertTrue(response.success.isPresent(), () -> file + ": " + response);
         AuthorizationSuccessResponse success = response.success.orElseThrow();
-        JsonNode expected = vector.get("expected");
         assertEquals(expected.get("decision").asText(), success.isAllowed() ? "allow" : "deny", file::toString);
         Set<String> expectedPolicies = new TreeSet<>();
         expected.get("determiningPolicies").forEach(p -> expectedPolicies.add(p.asText()));

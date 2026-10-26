@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pl.aiwcorpo.mcp:mcp-contracts - contract files as classpath resources (coordinates unchanged since 1.0.0).
+
+  Two artifacts:
+    - mcp-contracts-<v>.jar                 openapi/, schemas/, cedar/, mocks/wiremock/ (safe for runtime classpath)
+    - mcp-contracts-<v>-test-vectors.jar    test-vectors/ incl. TEST keys, use with <scope>test</scope>
+  Keys live only in the classifier jar so that a production component cannot pick up a test JWKS by accident.
+  Everything is placed under the classpath prefix mcp-contracts/ to avoid collisions with consumer resources.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>pl.aiwcorpo.mcp</groupId>
+        <artifactId>mcp-contracts-parent</artifactId>
+        <version>1.1.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mcp-contracts</artifactId>
+    <packaging>jar</packaging>
+    <name>Aiwcorpo MCP Platform :: Contracts</name>
+    <description>OpenAPI, JSON Schema, Cedar schema and test vectors shared by all MCP platform components.</description>
+
+    <properties>
+        <contracts.prefix>mcp-contracts</contracts.prefix>
+        <repo.root>${project.basedir}/../..</repo.root>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${repo.root}/openapi</directory>
+                <targetPath>${contracts.prefix}/openapi</targetPath>
+            </resource>
+            <resource>
+                <directory>${repo.root}/schemas</directory>
+                <targetPath>${contracts.prefix}/schemas</targetPath>
+            </resource>
+            <resource>
+                <directory>${repo.root}/cedar</directory>
+                <targetPath>${contracts.prefix}/cedar</targetPath>
+            </resource>
+            <resource>
+                <directory>${repo.root}/mocks/wiremock</directory>
+                <targetPath>${contracts.prefix}/mocks/wiremock</targetPath>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>stage-test-vectors</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/test-vectors-jar/${contracts.prefix}/test-vectors</outputDirectory>
+                            <resources>
+                                <resource><directory>${repo.root}/test-vectors</directory></resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>test-vectors-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>jar</goal></goals>
+                        <configuration>
+                            <classifier>test-vectors</classifier>
+                            <classesDirectory>${project.build.directory}/test-vectors-jar</classesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

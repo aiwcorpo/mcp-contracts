@@ -1,4 +1,4 @@
-package pl.aiwcorpo.mcp.contracts.cedar;
+package pl.aiwcorpo.mcp.cedar.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,7 +12,6 @@ import com.cedarpolicy.model.schema.Schema;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import pl.aiwcorpo.mcp.contracts.ContractFiles;
 
 class CedarSchemaTest {
 

@@ -102,6 +102,8 @@ builderVector('virtual-server-scopes', 'Virtual server resourceDefaults become c
   tool: tools.createIssue, arguments: { projectKey: 'ABC' } });
 builderVector('virtual-server-without-defaults', 'Virtual server with only a tool list: virtualServer set, no vsScopes.', 'gateway',
   { ...viaVs(users.reader(), vs('my-tools')), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('virtual-server-without-vs-claim', 'Link definition passed for a call without vs claim: inconsistent input, denied.', 'gateway',
+  { caller: users.reader(), virtualServer: vs('team-a-dev', { 'Jira::Project': ['ABC'] }), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('mfa-age', 'mfa claim becomes principal.mfaAge and context.mfaAge.', 'gateway',
   { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('server-jira-issue', 'Server: resolved issue with parent project; project attribute duplicates the parent edge.', 'server',
@@ -126,6 +128,8 @@ const decision = (name, description, level, input, expected, { covers = [], muta
   write('policy-decisions', name, {
     description,
     covers,
+    // How request and entities were produced; implementations can rebuild them from this input.
+    builder: { level, input, ...(mutate && { adjustment: 'remove-tool-entity' }) },
     policies: 'cedar/examples',
     request: { principal: built.principal, action: built.action, resource: built.resource, context: built.context },
     entities: built.entities,

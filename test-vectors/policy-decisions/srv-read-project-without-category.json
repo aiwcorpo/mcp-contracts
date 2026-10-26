@@ -1,6 +1,44 @@
 {
   "description": "Server: project with no category attribute (optional attribute, has-guard).",
   "covers": [],
+  "builder": {
+    "level": "server",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000001",
+        "usr": "reader",
+        "grp": [
+          "mcp-jira-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "search_issues",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectKeys",
+            "type": "Jira::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectKeys": [
+          "ABC"
+        ]
+      },
+      "resource": {
+        "type": "Jira::Project",
+        "id": "ABC",
+        "attrs": {
+          "key": "ABC"
+        }
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

@@ -60,6 +60,7 @@ export function namePrefixes(name) {
 function argumentIds(argumentName, value) {
   if (value === undefined || value === null) return [];
   if (typeof value === 'string') return [value];
+  // Any number with an integral value: JSON parsers disagree on whether 4711.0 is an integer.
   if (Number.isInteger(value)) return [String(value)];
   if (Array.isArray(value)) {
     return value.map((v) => {
@@ -87,6 +88,8 @@ function buildContext({ caller, tool, arguments: args = {}, virtualServer }) {
         context.vsScopes[field] = sortedSet(ids);
       }
     }
+  } else if (virtualServer) {
+    throw new BuilderError('internal_error', 'virtual server given without vs claim');
   }
   if (caller.mfa !== undefined) context.mfaAge = caller.mfa;
   context.refs = {};

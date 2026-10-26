@@ -3,6 +3,53 @@
   "covers": [
     "restricted"
   ],
+  "builder": {
+    "level": "server",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000009",
+        "usr": "confluencereader",
+        "grp": [
+          "mcp-confluence-read",
+          "mcp-confluence-space-ENG"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-confluence",
+        "system": "confluence",
+        "name": "get_page",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "pageId",
+            "type": "Confluence::Page"
+          }
+        ]
+      },
+      "arguments": {
+        "pageId": "90210"
+      },
+      "resource": {
+        "type": "Confluence::Page",
+        "id": "90210",
+        "attrs": {
+          "id": "90210"
+        },
+        "parent": {
+          "type": "Confluence::Space",
+          "id": "LEGAL",
+          "attrs": {
+            "key": "LEGAL",
+            "labels": [
+              "restricted"
+            ]
+          }
+        }
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

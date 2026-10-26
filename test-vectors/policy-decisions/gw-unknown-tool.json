@@ -3,6 +3,29 @@
   "covers": [
     "unknown_tool"
   ],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000001",
+        "usr": "reader",
+        "grp": [
+          "mcp-jira-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "drop_project",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": []
+      },
+      "arguments": {}
+    },
+    "adjustment": "remove-tool-entity"
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

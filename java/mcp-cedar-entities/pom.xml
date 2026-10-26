@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pl.aiwcorpo.mcp:mcp-cedar-entities - the shared Cedar entity builder of the MCP platform (C7, C9, CC-019).
+
+  Used by the gateway (Action::"call" on Tool) and by the starter (action on a resolved system resource) so that
+  both evaluate the same policy bundle on identical entities. Specification: cedar/entity-builder.md.
+  Dependencies are deliberately minimal: cedar-java (uber, with native libraries), its own jackson-databind 2.x and
+  mcp-contracts (resources, for the bundled Cedar schema). No Spring; no Jackson types in this API.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>pl.aiwcorpo.mcp</groupId>
+        <artifactId>mcp-contracts-parent</artifactId>
+        <version>1.1.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mcp-cedar-entities</artifactId>
+    <packaging>jar</packaging>
+    <name>Aiwcorpo MCP Platform :: Cedar entity builder</name>
+    <description>Builds Cedar principal, resource, context and entities for MCP tool calls (C7, C9).</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.cedarpolicy</groupId>
+            <artifactId>cedar-java</artifactId>
+            <classifier>uber</classifier>
+        </dependency>
+        <dependency>
+            <groupId>pl.aiwcorpo.mcp</groupId>
+            <artifactId>mcp-contracts</artifactId>
+        </dependency>
+
+        <!-- Already a runtime dependency of cedar-java; needed at compile time because cedar-java's public
+             constructors (Schema, AuthorizationRequest) mention Jackson types. Not used by this API. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doclint>all,-missing</doclint>
+                    <quiet>true</quiet>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>javadoc-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,6 +1,38 @@
 {
   "description": "Reads are not scope-limited at the gateway; the system enforces the user's own rights.",
   "covers": [],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000001",
+        "usr": "reader",
+        "grp": [
+          "mcp-jira-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "search_issues",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectKeys",
+            "type": "Jira::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectKeys": [
+          "ABC",
+          "HR"
+        ]
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

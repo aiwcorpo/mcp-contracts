@@ -1,6 +1,46 @@
 {
   "description": "Server: index logs-team-a-2026.10 within prefix logs-team-a.",
   "covers": [],
+  "builder": {
+    "level": "server",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000008",
+        "usr": "osreader",
+        "grp": [
+          "mcp-opensearch-read",
+          "mcp-opensearch-idx-logs-team-a"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-opensearch",
+        "system": "opensearch",
+        "name": "search",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "index",
+            "type": "OpenSearch::Index"
+          }
+        ]
+      },
+      "arguments": {
+        "index": "logs-team-a-2026.10"
+      },
+      "resource": {
+        "type": "OpenSearch::Index",
+        "id": "logs-team-a-2026.10",
+        "attrs": {
+          "name": "logs-team-a-2026.10",
+          "tags": [
+            "logs"
+          ]
+        }
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

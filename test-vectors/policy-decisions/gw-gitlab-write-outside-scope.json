@@ -3,6 +3,37 @@
   "covers": [
     "forbid_overrides_permit"
   ],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000007",
+        "usr": "gitlabwriter",
+        "grp": [
+          "mcp-gitlab-read",
+          "mcp-gitlab-write",
+          "mcp-gitlab-grp-team-a"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "create_project",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "groupPath",
+            "type": "GitLab::Group"
+          }
+        ]
+      },
+      "arguments": {
+        "groupPath": "team-b"
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

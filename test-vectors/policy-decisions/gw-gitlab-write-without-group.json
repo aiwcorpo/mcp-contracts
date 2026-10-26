@@ -3,6 +3,36 @@
   "covers": [
     "write_without_write_group"
   ],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "gitlabreader",
+        "grp": [
+          "mcp-gitlab-read",
+          "mcp-gitlab-grp-team-a"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "create_project",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "groupPath",
+            "type": "GitLab::Group"
+          }
+        ]
+      },
+      "arguments": {
+        "groupPath": "team-a"
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

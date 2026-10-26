@@ -3,6 +3,47 @@
   "covers": [
     "virtual_server_narrowing"
   ],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000003",
+        "usr": "writer2",
+        "grp": [
+          "mcp-jira-read",
+          "mcp-jira-write",
+          "mcp-jira-proj-ABC",
+          "mcp-jira-proj-DEF"
+        ],
+        "azp": "claude-code",
+        "vs": "team-a-dev"
+      },
+      "virtualServer": {
+        "slug": "team-a-dev",
+        "resourceDefaults": {
+          "Jira::Project": [
+            "ABC"
+          ]
+        }
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "create_issue",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "projectKey",
+            "type": "Jira::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectKey": "ABC"
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

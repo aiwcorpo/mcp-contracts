@@ -3,6 +3,38 @@
   "covers": [
     "forbid_overrides_permit"
   ],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000002",
+        "usr": "writer",
+        "grp": [
+          "mcp-jira-read",
+          "mcp-jira-write",
+          "mcp-jira-proj-ABC"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "create_issue",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "projectKey",
+            "type": "Jira::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectKey": "DEF",
+        "summary": "x"
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {

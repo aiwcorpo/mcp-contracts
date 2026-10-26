@@ -1,4 +1,4 @@
-package pl.aiwcorpo.mcp.contracts.cedar;
+package pl.aiwcorpo.mcp.cedar.entities;
 
 import com.cedarpolicy.model.exception.InternalException;
 import com.cedarpolicy.model.policy.Policy;
@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import pl.aiwcorpo.mcp.contracts.ContractFiles;
 
 final class CedarFixtures {
 

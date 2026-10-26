@@ -1,6 +1,35 @@
 {
   "description": "GitLab reader.",
   "covers": [],
+  "builder": {
+    "level": "gateway",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "gitlabreader",
+        "grp": [
+          "mcp-gitlab-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "get_project",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectPath",
+            "type": "GitLab::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectPath": "team-a/app"
+      }
+    }
+  },
   "policies": "cedar/examples",
   "request": {
     "principal": {
