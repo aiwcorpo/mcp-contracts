@@ -1,0 +1,16 @@
+{
+  "description": "Status no_access.",
+  "input": {
+    "status": "no_access",
+    "supportedTypes": [
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": false
+  },
+  "expected": {
+    "actions": [
+      "request_access"
+    ]
+  }
+}

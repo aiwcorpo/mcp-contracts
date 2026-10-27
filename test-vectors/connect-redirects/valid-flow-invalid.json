@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code flow_invalid.",
+  "location": "/catalog?connectError=flow_invalid",
+  "expected": {
+    "valid": true
+  }
+}

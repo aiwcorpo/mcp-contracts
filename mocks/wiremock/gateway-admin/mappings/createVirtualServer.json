@@ -41,7 +41,7 @@
         },
         "jsonBody": {
           "slug": "team-a-dev",
-          "url": "https://mcp-gateway.internal/v/team-a-dev/mcp"
+          "url": "https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"
         }
       }
     },
@@ -67,6 +67,31 @@
         },
         "jsonBody": {
           "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "createVirtualServer 400 resource_defaults_unsupported",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/virtual-servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=resource_defaults_unsupported($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "resource_defaults_unsupported"
         }
       }
     },

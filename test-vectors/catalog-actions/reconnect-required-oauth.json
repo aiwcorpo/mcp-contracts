@@ -1,0 +1,18 @@
+{
+  "description": "Status reconnect_required.",
+  "input": {
+    "status": "reconnect_required",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false
+  },
+  "expected": {
+    "actions": [
+      "disconnect",
+      "reconnect"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Status request_pending.",
+  "input": {
+    "status": "request_pending",
+    "supportedTypes": [
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": false
+  },
+  "expected": {
+    "actions": [
+      "view_request"
+    ]
+  }
+}

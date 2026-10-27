@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 2.1.1
+  version: 2.2.0
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -13,8 +13,12 @@ info:
 
     Tool names in this API are client-visible names `<system>__<tool>`, except under
     `/admin/v1/registry/servers/{serverId}/tools/{tool}` where `{tool}` is the server-side name from the manifest.
-    Endpoints for MCP clients are `https://<gateway>/s/<serverId>/mcp` and `https://<gateway>/v/<slug>/mcp`
-    (C1 token with aud=mcp-gateway; not described here because they speak MCP, not REST).
+    Endpoints for MCP clients are `<publicBaseUrl>/s/<serverId>/mcp` and `<publicBaseUrl>/v/<slug>/mcp`
+    (C1 token with aud=mcp-gateway; not described here because they speak MCP, not REST). The portal and the
+    gateway share one public origin behind a reverse proxy (CC-089): `/` web, `/api` BFF, `/s/`, `/v/` and
+    `/.well-known/oauth-protected-resource*` gateway. `publicBaseUrl` is configuration, never derived from the
+    `Host` or `X-Forwarded-Host` of a request. The gateway answers MCP clients only with `application/json` and
+    `text/event-stream` and does not forward the `Cookie` header.
 
     A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
     Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
@@ -59,6 +63,7 @@ paths:
                         version: 1.4.0
                         tools:
                           - name: jira__get_issue
+                            title: Pobranie zgłoszenia
                             description: Returns one Jira issue by key.
                             risk: READ_ONLY
                             action: read
@@ -70,6 +75,14 @@ paths:
                             action: update
                             access: denied
                             requiredEntitlements: [mcp-jira-write]
+                          - name: jira__delete_issue
+                            title: Usunięcie zgłoszenia
+                            description: Deletes an issue permanently.
+                            risk: DESTRUCTIVE
+                            action: delete
+                            access: denied
+                            requiredEntitlements: [mcp-jira-destructive]
+                            requiresConfirmation: true
                       - serverId: mcp-gitlab
                         system: gitlab
                         version: 1.0.0
@@ -80,6 +93,7 @@ paths:
                             action: read
                             access: denied
                             requiredEntitlements: [mcp-gitlab-read]
+                            disabled: true
         '401':
           $ref: '#/components/responses/Unauthenticated'
   /admin/v1/virtual-servers:
@@ -108,9 +122,7 @@ paths:
                     - slug: team-a-dev
                       displayName: Team A development
                       tools: [jira__search_issues, jira__get_issue]
-                      resourceDefaults:
-                        Jira::Project: [ABC]
-                      url: https://mcp-gateway.internal/v/team-a-dev/mcp
+                      url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
         '401':
           $ref: '#/components/responses/Unauthenticated'
     post:
@@ -136,8 +148,6 @@ paths:
                   slug: team-a-dev
                   displayName: Team A development
                   tools: [jira__search_issues, jira__get_issue]
-                  resourceDefaults:
-                    Jira::Project: [ABC]
       responses:
         '201':
           description: Created.
@@ -149,9 +159,20 @@ paths:
                 created:
                   value:
                     slug: team-a-dev
-                    url: https://mcp-gateway.internal/v/team-a-dev/mcp
+                    url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Malformed request, or a non-empty resourceDefaults (resource narrowing is dormant, CC-085).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_request:
+                  value:
+                    error: invalid_request
+                resource_defaults_unsupported:
+                  value:
+                    error: resource_defaults_unsupported
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -852,6 +873,18 @@ components:
           uniqueItems: true
           items:
             $ref: '../schemas/common.schema.json#/$defs/GroupName'
+        title:
+          type: string
+          minLength: 1
+          description: definition.title of the approved manifest entry (CC-042, CC-082), a short display name for the UI. Absent when the tool has no title; the UI then falls back to description.
+        disabled:
+          type: boolean
+          default: false
+          description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts) (CC-081). A disabled tool cannot be added to a virtual server (POST /virtual-servers answers 403 access_denied).
+        requiresConfirmation:
+          type: boolean
+          default: false
+          description: 'True when every call needs a confirmation (C11), risk DESTRUCTIVE or a policy requires it. Computed by the gateway (CC-081).'
       additionalProperties: false
     CatalogServer:
       type: object
@@ -879,7 +912,7 @@ components:
       additionalProperties: false
     ResourceDefaults:
       type: object
-      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). Ids follow the per-system patterns of common.schema.json (OpenSearch::Index takes index prefixes). At most 50 ids per type keep the internal JWT small.
+      description: 'Dormant (CC-085); the gateway answers 400 resource_defaults_unsupported for a non-empty value, absent or {} is accepted. Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). Ids follow the per-system patterns of common.schema.json (OpenSearch::Index takes index prefixes). At most 50 ids per type keep the internal JWT small.'
       properties:
         Jira::Project:
           $ref: '#/components/schemas/JiraProjectKeys'
@@ -944,6 +977,7 @@ components:
           items:
             $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
         resourceDefaults:
+          description: 'Dormant (CC-085). The gateway answers 400 resource_defaults_unsupported for a non-empty value; absent or {} is accepted.'
           $ref: '#/components/schemas/ResourceDefaults'
       additionalProperties: false
     VirtualServerCreated:
@@ -955,7 +989,7 @@ components:
         url:
           type: string
           format: uri
-          description: MCP endpoint https://<gateway>/v/<slug>/mcp
+          description: Public MCP endpoint <publicBaseUrl>/v/<slug>/mcp (CC-089).
       additionalProperties: false
     VirtualServer:
       type: object
@@ -971,10 +1005,12 @@ components:
           items:
             $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
         resourceDefaults:
+          description: 'Dormant (CC-085); never present in responses.'
           $ref: '#/components/schemas/ResourceDefaults'
         url:
           type: string
           format: uri
+          description: Public MCP endpoint <publicBaseUrl>/v/<slug>/mcp (CC-089).
       additionalProperties: false
     RegistryToolStatus:
       type: string
@@ -999,6 +1035,10 @@ components:
           $ref: '../schemas/common.schema.json#/$defs/SystemId'
         version:
           $ref: '../schemas/common.schema.json#/$defs/SemVer'
+        enabled:
+          type: boolean
+          default: true
+          description: False when the server is disabled in gateway configuration or by an overrides policy. All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only; the portal has no switch.
         tools:
           type: array
           items:

@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code identity_mismatch.",
+  "location": "/catalog?connectError=identity_mismatch",
+  "expected": {
+    "valid": true
+  }
+}

@@ -50,14 +50,39 @@ test('MSW: mutating call with matching cookie and header succeeds', async () => 
   const del = await fetch(`${BASE}/api/v1/connections/jira`, { method: 'DELETE', headers });
   assert.equal(del.status, 204);
   const put = await fetch(`${BASE}/api/v1/connections/jira/secret`, {
-    method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'example=step_up_required' },
+    method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({ secret: 'test-only' }),
   });
-  assert.equal(put.status, 401);
-  const body = await put.json();
+  assert.equal(put.status, 200, 'no step-up for PUT secret (CC-090)');
+  const bad = await fetch(`${BASE}/api/v1/connections/jira/secret`, {
+    method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'example=expires_at_invalid' },
+    body: JSON.stringify({ secret: 'test-only', expiresAt: '2020-01-01T00:00:00Z' }),
+  });
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).error, 'expires_at_invalid');
+  const stepUp = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`, { headers: { Prefer: 'example=step_up_required' } });
+  assert.equal(stepUp.status, 401);
+  const body = await stepUp.json();
   assert.equal(body.error, 'step_up_required');
   assert.ok(body.stepUpUrl, 'stepUpUrl (CC-010)');
   assert.equal(body.url, undefined);
+});
+
+test('MSW: non-empty resourceDefaults is rejected (CC-085)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  const base = { slug: 'team-a-dev', displayName: 'Team A', tools: ['jira__get_issue'] };
+  const rejected = await fetch(`${BASE}/api/v1/virtual-servers`, { method: 'POST', headers, body: JSON.stringify({ ...base, resourceDefaults: { 'Jira::Project': ['ABC'] } }) });
+  assert.equal(rejected.status, 400);
+  assert.equal((await rejected.json()).error, 'resource_defaults_unsupported');
+  for (const extra of [{}, { resourceDefaults: {} }]) {
+    const ok = await fetch(`${BASE}/api/v1/virtual-servers`, { method: 'POST', headers, body: JSON.stringify({ ...base, ...extra }) });
+    assert.equal(ok.status, 201);
+  }
+});
+
+test('MSW: every response carries X-Request-Id (CC-087)', async () => {
+  const res = await fetch(`${BASE}/api/v1/catalog`);
+  assert.match(res.headers.get('x-request-id') ?? '', /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 });
 
 test('MSW: OAuth callback redirects', async () => {

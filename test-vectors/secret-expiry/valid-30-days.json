@@ -1,0 +1,9 @@
+{
+  "description": "30 days ahead. Default broker limit.",
+  "now": "2026-10-27T10:00:00Z",
+  "maxDays": 366,
+  "expiresAt": "2026-11-26T10:00:00Z",
+  "expected": {
+    "valid": true
+  }
+}

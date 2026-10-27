@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code provider_error.",
+  "location": "/catalog?connectError=provider_error",
+  "expected": {
+    "valid": true
+  }
+}

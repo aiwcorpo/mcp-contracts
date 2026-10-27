@@ -48,6 +48,7 @@
               "tools": [
                 {
                   "name": "jira__get_issue",
+                  "title": "Pobranie zgłoszenia",
                   "description": "Returns one Jira issue by key.",
                   "risk": "READ_ONLY",
                   "action": "read",
@@ -65,6 +66,18 @@
                   "requiredEntitlements": [
                     "mcp-jira-write"
                   ]
+                },
+                {
+                  "name": "jira__delete_issue",
+                  "title": "Usunięcie zgłoszenia",
+                  "description": "Deletes an issue permanently.",
+                  "risk": "DESTRUCTIVE",
+                  "action": "delete",
+                  "access": "denied",
+                  "requiredEntitlements": [
+                    "mcp-jira-destructive"
+                  ],
+                  "requiresConfirmation": true
                 }
               ]
             },
@@ -81,7 +94,8 @@
                   "access": "denied",
                   "requiredEntitlements": [
                     "mcp-gitlab-read"
-                  ]
+                  ],
+                  "disabled": true
                 }
               ]
             }

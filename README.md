@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.1.1**, tag `v2.1.1` (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.0**, tag `v2.2.0` (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -42,6 +42,7 @@ mcp-contracts/
 │   ├── jwt/  manifests/  definition-hash/  audit-events/  tool-errors/  bundles/
 │   ├── untrusted-text/      # kształt UntrustedText (CC-072)
 │   ├── confirmation-binding/  # kod potwierdzenia C11 (CC-077)
+│   ├── connect-redirects/  secret-expiry/  catalog-actions/  # CC-086, CC-084, CC-083
 │   ├── servicedesk-service-account/  # reguła kolejek konta serwisowego (CC-076)
 │   ├── entity-builder/      # wejście buildera -> encje i kontekst Cedar
 │   └── policy-decisions/    # żądanie Cedar -> decyzja i polityki rozstrzygające
@@ -87,13 +88,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.1.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.1.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.1.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.1.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.1.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.1.1` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.1.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.1.1.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.2.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.2.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -102,20 +103,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.1.1/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.1.1.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.0.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>2.1.1</version>
+  <version>2.2.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>2.1.1</version>
+  <version>2.2.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -147,7 +148,7 @@ i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>2.1.1</version>
+  <version>2.2.0</version>
 </dependency>
 ```
 
@@ -308,6 +309,37 @@ próby i działa raz (`test-vectors/confirmation-binding/`). Elicitation URL mo�
 zatwierdzenie bez kodu niczego nie wykonuje. `ConfirmationCodeSender` to opcjonalny kanał dostarczenia kodu poza
 modelem.
 
+## Jedna domena (CC-089)
+
+Portal i gateway mają jeden publiczny origin za reverse proxy:
+
+| Ścieżka | Cel |
+| --- | --- |
+| `/` | aplikacja web (fallback tras SPA na `index.html`) |
+| `/api` | BFF (także callback OIDC BFF: `redirect_uri` pod `/api`) |
+| `/s/`, `/v/` | gateway (MCP) |
+| `/.well-known/oauth-protected-resource*` | gateway (RFC 9728, wariant ze ścieżką leży w korzeniu domeny) |
+
+Zasady: adres publiczny (`url`, `clientConfigs`, `resource_metadata`) pochodzi z konfiguracji `publicBaseUrl`, nigdy z
+`Host`/`X-Forwarded-Host` żądania; gateway ufa `X-Forwarded-*` tylko od proxy. Ciasteczka `__Host-session` i
+`__Host-XSRF-TOKEN` mają `Path=/` (prefiks `__Host-` i odczyt przez SPA nie pozwalają na `/api`), więc proxy usuwa
+nagłówek `Cookie` na trasach gateway'a, a gateway nie przekazuje `Cookie` dalej (do nagłówków usuwanych w C3:
+`X-MCP-*`, `X-PAT-*`, `Authorization`, `X-Request-Id` dochodzi `Cookie`). Odpowiedzi gateway'a dla klientów MCP to
+wyłącznie `application/json` i `text/event-stream`; proxy dokłada na `/s/` i `/v/` `X-Content-Type-Options: nosniff` i
+`Content-Security-Policy: default-src 'none'; sandbox`, także na własnych stronach błędów. Proxy nie nadpisuje
+`X-Request-Id` z BFF. Angular Router nie definiuje tras zaczynających się od `/api`, `/s/`, `/v/`, `/.well-known/`.
+
+## Zawężenie zasobów jest uśpione (CC-085)
+
+Kreator linków nie zawęża zasobów. `resourceDefaults` zostaje w schematach, ale gateway (C5) i BFF (C12) odpowiadają
+`400 resource_defaults_unsupported` dla niepustej wartości; brak pola lub `{}` jest przyjęte, a odpowiedzi nigdy go
+nie zawierają. Mechanika `vsc` (C2), `context.vsScopes` (Cedar) i wektory na niej oparte są bez zmian.
+
+## Zapis tokenu (CC-090)
+
+`PUT /api/v1/connections/{system}/secret` wymaga ważnej sesji i `X-XSRF-TOKEN`, bez step-up MFA. Ochroną zapisu jest
+`identity_mismatch` (C4.1). `expiresAt` musi być w przyszłości i najdalej za 366 dni (`400 expires_at_invalid`).
+
 ## Whoami (C4.1)
 
 Broker weryfikuje tożsamość po zapisie sekretu lub wymianie kodu OAuth wywołaniem systemu docelowego:
@@ -372,7 +404,7 @@ klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (i
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>2.1.1</version>
+            <version>2.2.0</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>

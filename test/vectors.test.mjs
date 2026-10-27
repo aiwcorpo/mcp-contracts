@@ -190,3 +190,63 @@ test('policy bundle vectors: latest.json and manifest.json documents', () => {
     }
   }
 });
+
+test('connectError redirect vectors (CC-086)', async () => {
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  const codes = spec.components.schemas.ConnectErrorCode.enum;
+  const allowed = new Set([
+    '/?loginError=session_expired', '/catalog?connected=gitlab',
+    ...codes.map((c) => `/catalog?connectError=${c}`),
+    ...codes.map((c) => `/connect/gitlab?step=2&connectError=${c}`),
+  ]);
+  const vectors = listJson('test-vectors', 'connect-redirects');
+  for (const code of codes) assert.ok(vectors.some((v) => v.data.expected.valid && v.data.location.endsWith(`connectError=${code}`)), code);
+  for (const { name, data } of vectors) assert.equal(allowed.has(data.location), data.expected.valid, name);
+});
+
+test('secret expiry vectors (CC-084)', () => {
+  const vectors = listJson('test-vectors', 'secret-expiry');
+  assert.ok(vectors.length >= 5);
+  for (const { name, data } of vectors) {
+    const now = Date.parse(data.now);
+    const at = Date.parse(data.expiresAt);
+    assert.equal(at > now && at <= now + data.maxDays * 86400000, data.expected.valid, name);
+    if (!data.expected.valid) assert.equal(data.expected.error, 'expires_at_invalid', name);
+  }
+});
+
+// Reference table of CC-083: the actions the BFF returns per catalog status.
+function catalogActions({ status, supportedTypes, connectionType, someToolDenied }) {
+  const connectable = supportedTypes.some((t) => t === 'user-oauth' || t === 'user-secret');
+  const renew = connectionType === 'user-oauth' ? 'reconnect' : 'add_secret';
+  const out = [];
+  switch (status) {
+    case 'connected':
+      out.push('copy_link');
+      if (connectable) out.push('disconnect');
+      if (someToolDenied) out.push('request_access');
+      break;
+    case 'expiring': out.push('copy_link', renew, 'disconnect'); break;
+    case 'reconnect_required': out.push(renew, 'disconnect'); break;
+    case 'not_connected':
+      if (supportedTypes.includes('user-oauth')) out.push('connect_oauth');
+      if (supportedTypes.includes('user-secret')) out.push('add_secret');
+      break;
+    case 'request_pending': out.push('view_request'); break;
+    case 'no_access': out.push('request_access'); break;
+    default: throw new Error(status);
+  }
+  return out.sort();
+}
+
+test('catalog action vectors (CC-083)', async () => {
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  const statuses = spec.components.schemas.CatalogStatus.enum;
+  const actions = new Set(spec.components.schemas.CatalogAction.enum);
+  const vectors = listJson('test-vectors', 'catalog-actions');
+  for (const status of statuses) assert.ok(vectors.some((v) => v.data.input.status === status), status);
+  for (const { name, data } of vectors) {
+    assert.deepEqual(catalogActions(data.input), data.expected.actions, name);
+    for (const a of data.expected.actions) assert.ok(actions.has(a), `${name}: ${a}`);
+  }
+});

@@ -1,0 +1,7 @@
+{
+  "description": "The account name is not put into the URL.",
+  "location": "/catalog?connected=gitlab&backendUser=anna.nowak",
+  "expected": {
+    "valid": false
+  }
+}

@@ -1051,14 +1051,14 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 
 ---
 
-## Projekty do zatwierdzenia: CC-080 ... CC-098 (stan 2026-10-27)
+## CC-080 ... CC-098 (decyzje człowieka z 2026-10-27)
 
-Wpisy poniżej są **projektami** przygotowanymi przez ws-00 do zatwierdzenia przez człowieka. Żaden nie ma statusu
-`accepted`, w repozytorium nie zmieniono YAML, schematów ani wektorów, nie ma wydania ani tagu. Szkice YAML/JSON
-pokazują zamierzoną zmianę plików; po decyzji wchodzą do wydania razem z mockami (MSW, WireMock), wektorami i
-testami. Źródła: decyzje człowieka z 2026-10-27 (tabela w `mcp-platform-plan/STATUS.md`), analiza luk
-`mcp-platform-plan/design/luki-api-makiety.md` (G-01 ... G-25) i pivot potwierdzeń (kod z aplikacji
-Authenticator). Wpisy nie zmieniają tekstu CC-034, CC-048, CC-053 ani CC-077; zakres, w jakim je zastępuje pivot,
+Decyzje człowieka z 2026-10-27: CC-080 ... CC-090 `accepted`, wydanie 2.2.0 (CC-085 formalnie major, brak
+konsumentów, adnotacja w `CHANGELOG.md`); CC-091 ... CC-094 i CC-098 `accepted-for-3.0.0` (pivot potwierdzeń,
+wydanie 3.0.0 przed M3, nie w 2.2.0); CC-095 ... CC-097 nadal `proposed` (kamienie M3/M4). Szkice YAML/JSON we
+wpisach CC-091 ... CC-098 są projektami do wydania 3.0.0 albo późniejszego. Źródła: tabela decyzji w
+`mcp-platform-plan/STATUS.md`, analiza luk `mcp-platform-plan/design/luki-api-makiety.md` (G-01 ... G-25) i pivot
+potwierdzeń. Wpisy nie zmieniają tekstu CC-034, CC-048, CC-053 ani CC-077; zakres, w jakim je zastępuje pivot,
 opisuje CC-091.
 
 | CC | Tytuł | Źródło | Kamień | SemVer (wg README) |
@@ -1144,7 +1144,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor (nowe pola opcjonalne). Uczynienie ich wymaganymi kiedyś = major.
 - **Wpływ na strumienie:** ws-07 (zlepia dane, które już ma), ws-08 (kolumna "Sposób", baner z `backendUser`);
   ws-05 i ws-06 bez zmian.
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-081 | C5/C12 | `disabled` i `requiresConfirmation` w `CatalogTool`
 
@@ -1184,7 +1184,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor.
 - **Wpływ na strumienie:** ws-05 (źródło obu pól), ws-07 (przezroczyste), ws-08 (stany w kreatorze), ws-09
   (jeśli polityka ma wskazywać narzędzia wymagające potwierdzenia, potrzebne źródło w paczce; poza kontraktem).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-082 | C5/C12 | `title` w `CatalogTool`
 
@@ -1214,7 +1214,7 @@ G-15, G-16, G-18, G-22.
   `definition.title` zatwierdzonego wpisu w przykładzie rejestru.
 - **SemVer:** minor.
 - **Wpływ na strumienie:** ws-05 (przekazanie z rejestru), ws-04 (tytuły narzędzi i test manifestu), ws-08.
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-083 | C12 | Reguła status -> `actions[]` w katalogu
 
@@ -1246,7 +1246,7 @@ G-15, G-16, G-18, G-22.
   Wektory są nowe, więc nie zmieniają istniejących oczekiwań.
 - **SemVer:** patch (opis, przykłady, nowe wektory zgodne ze schematem).
 - **Wpływ na strumienie:** ws-07 (wyliczanie), ws-08 (renderowanie akcji bez własnej logiki).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-084 | C4/C12 | `400 expires_at_invalid` przy zapisie tokenu
 
@@ -1289,7 +1289,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor (nowy udokumentowany kod w istniejącym `400`).
 - **Wpływ na strumienie:** ws-06 (walidacja, konfiguracja limitu), ws-07 (przekazanie kodu; BFF nie przekazuje
   ciał upstreamu, mapuje `400` brokera na własne `400` z tym samym kodem), ws-08 (komunikat pod polem).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-085 | C5/C12 | `resourceDefaults` uśpione: `400 resource_defaults_unsupported`
 
@@ -1338,7 +1338,7 @@ G-15, G-16, G-18, G-22.
   3.0.0 (CC-091), a gateway w M2 odrzuca pole z konfiguracji (zachowanie fail-closed nie wymaga kontraktu).
 - **Wpływ na strumienie:** ws-05 (odrzucenie, test), ws-07 (walidacja po stronie BFF), ws-08 (kreator o trzy
   kroki: nazwa, narzędzia, gotowe; bez makiet 13, bez wiersza "Zawężenie" w 08/14/27), ws-10 (test API wprost).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-086 | C12 | `ConnectErrorCode` z `cancelled` i callback OAuth bez sesji
 
@@ -1372,7 +1372,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor (nowy schemat; istniejące wartości w opisie bez zmian). Zmiana `security` operacji na `[]`
   to zmiana opisu: klient generowany nie ma już założenia, że callback zwraca 401 JSON.
 - **Wpływ na strumienie:** ws-07 (mapowanie, przekierowanie bez sesji), ws-08 (komunikat "Połączenie anulowane.").
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-087 | C12 | `X-Request-Id` na każdej odpowiedzi BFF i `Error.requestId`
 
@@ -1412,7 +1412,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor (nowy nagłówek odpowiedzi, nowe pole opcjonalne).
 - **Wpływ na strumienie:** ws-07 (filtr serwletowy ustawiający nagłówek także na odpowiedziach błędów i
   przekierowaniach), ws-08 (wyświetlanie), ws-01/reverse proxy (nie nadpisywać i nie usuwać nagłówka, CC-089).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-088 | C5 | `enabled` w `RegistryServer`
 
@@ -1442,7 +1442,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor.
 - **Wpływ na strumienie:** ws-05 (wyliczenie), ws-07 (przezroczyste), ws-08 (administracja, tylko etykieta), ws-09
   (jeśli `overrides` ma wyłączać serwer, konwencja identyfikatora reguły; poza kontraktem).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-089 | C1/C3/C5/C12 | Jedna domena: reverse proxy przed web, BFF i gateway'em
 
@@ -1500,8 +1500,7 @@ G-15, G-16, G-18, G-22.
   Keycloaka), ws-05 (`publicBaseUrl`, zaufanie do `X-Forwarded-*`, usuwanie `Cookie`, tylko JSON/SSE), ws-07
   (callback pod `/api`, `publicBaseUrl` w `clientConfigs`), ws-08 (zarezerwowane prefiksy tras), ws-10 (testy
   powyżej). Pytanie do człowieka: czy piąta trasa (`/.well-known/oauth-protected-resource*`) jest akceptowana.
-- **Status:** proposed - kierunek (jedna domena) zatwierdzony przez człowieka 2026-10-27; punkty 2 (piąta trasa) i 3
-  (`Path=/` zamiast `/api`) są ustaleniami ws-00 do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-090 | C12 | Zapis PAT bez step-up MFA
 
@@ -1546,7 +1545,7 @@ G-15, G-16, G-18, G-22.
 - **Wpływ na strumienie:** ws-07 (zdjęcie wymogu step-up z `PUT secret`, zostaje dla CC-093), ws-08 (formularz bez
   przekierowania do MFA, uproszczenie stanu "Powrót z MFA"), ws-10 (test: zapis PAT innego konta -> 422
   `identity_mismatch` bez MFA).
-- **Status:** proposed - decyzja człowieka 2026-10-27 (kierunek), tekst i ocena ryzyka do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
 ## CC-091 | C11/C10/C5/C12 | Potwierdzenia akcji destrukcyjnych kodem TOTP z aplikacji (pivot)
 
@@ -1733,8 +1732,7 @@ G-15, G-16, G-18, G-22.
   gateway'a, czy ma wejść do kontraktu (rekomendacja: konfiguracja); (3) czy reguła
   `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (rekomendacja: tak, żeby użytkownik nie miał dwóch
   mechanizmów); (4) czy `confirmation_declined` ma zniknąć ze schematu (rekomendacja: tak).
-- **Status:** proposed (do decyzji człowieka; kierunek "kod z Authenticatora + link podglądu" zatwierdzony
-  2026-10-27, szczegóły i SemVer do akceptacji)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-092 | C4 | Broker: rejestracja i weryfikacja Authenticatora (TOTP)
 
@@ -2097,7 +2095,7 @@ G-15, G-16, G-18, G-22.
 - **Pytania do człowieka:** (1) kto może resetować cudzą rejestrację: ten sam CN `mcp-offboarding` co `purge`
   (rekomendacja: tak, jeden kanał helpdesk/IGA, osobny CN dopiero gdy pojawi się inny proces); (2) czy limity
   (5 błędnych, 15 min) i TTL rejestracji (10 min) są akceptowalne jako wartości domyślne.
-- **Status:** proposed (do decyzji człowieka razem z CC-091)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-093 | C12 | BFF: rejestracja Authenticatora ze step-up MFA Entra
 
@@ -2146,7 +2144,7 @@ G-15, G-16, G-18, G-22.
 - **Wpływ na strumienie:** ws-07 (proxy, step-up przez istniejący mechanizm, `enrollmentId` w sesji, bez logowania
   ciał), ws-08 (nowa strona rejestracji Authenticatora z kreatorem QR / klucz ręczny / pierwszy kod, stan i usunięcie rejestracji, baner o braku rejestracji przy narzędziach z `requiresConfirmation`, strona podglądu tylko do odczytu; lista pełna w raporcie koordynatora), ws-06 (CC-092), ws-10 (test: żadne logi BFF ani brokera nie zawierają
   ziarna ani `otpauthUri`; rejestracja bez świeżego MFA odrzucona).
-- **Status:** proposed (do decyzji człowieka razem z CC-091)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-094 | C8 | Zdarzenia audytu dla Authenticatora i potwierdzeń kodem
 
@@ -2185,7 +2183,7 @@ G-15, G-16, G-18, G-22.
   Wariant A: minor (nowe znane wartości `reason`). Rekomendacja ws-00: B przy 3.0.0, A przy wyjątku w 2.2.0.
 - **Wpływ na strumienie:** ws-06, ws-05, ws-07 (emisja), ws-10 (test: ani kod, ani ziarno nie występują w logach i
   audycie; jeden `requestId` obejmuje BFF, broker i gateway), operator SIEM (nowa wartość `event`).
-- **Status:** proposed (do decyzji człowieka razem z CC-091)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-095 | C5/C12 | `GET /api/v1/activity/calls` i rzut `ActivityCall`
 
@@ -2468,4 +2466,4 @@ G-15, G-16, G-18, G-22.
 - **Wektory / testy:** test przykładów (`delete_issue` z `resource: {type: Jira::Issue, id: ABC-123, parent: Jira::Project::ABC}`).
 - **SemVer:** minor. Jeśli pivot wychodzi w 3.0.0, wchodzi razem z nim.
 - **Wpływ na strumienie:** ws-05 (wyliczenie), ws-07 (przezroczyste), ws-08 (wiersz zasobu na podglądzie).
-- **Status:** proposed (dopisane przez ws-00, do decyzji człowieka)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)

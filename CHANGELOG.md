@@ -4,6 +4,43 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.2.0 - 2026-10-27
+
+Wydanie dla M2: CC-080 ... CC-090 (decyzje człowieka z 2026-10-27). `cedar/mcp.cedarschema` bez zmian (bajtowo jak w
+2.0.0). Pivot potwierdzeń (CC-091 ... CC-094, CC-098) jest `accepted-for-3.0.0` i nie wchodzi do tego wydania;
+C11, `ConfirmationView`, `ConfirmationOutcome` i `confirmation-binding/` bez zmian.
+
+### Zmiany
+
+- CC-080 (minor): `PortalCatalogServer.credential` (`CatalogCredential`) i `connection` (`Connection` albo `null`).
+- CC-081 (minor): `CatalogTool.disabled`, `CatalogTool.requiresConfirmation`.
+- CC-082 (minor): `CatalogTool.title`.
+- CC-083 (patch): tabela status -> `actions[]` w opisie `getPortalCatalog`; wektory `catalog-actions/`.
+- CC-084 (minor): `400 expires_at_invalid` w `putMySecret` (BFF i broker); wektory `secret-expiry/`.
+- CC-085 (formalnie major, patrz niżej): `resourceDefaults` uśpione, `400 resource_defaults_unsupported` w C5 i C12.
+- CC-086 (minor): schemat `ConnectErrorCode` (+ `cancelled`), `oauthCallback` bez sesji przekierowuje na
+  `/?loginError=session_expired` (`security: []`); wektory `connect-redirects/`.
+- CC-087 (minor): nagłówek `X-Request-Id` na każdej odpowiedzi C12, `Error.requestId`.
+- CC-088 (minor): `RegistryServer.enabled`.
+- CC-089 (patch): jedna domena (opisy, README, przykłady z hostem `mcp.aiwcorpo.pl`); `Cookie` dochodzi do nagłówków
+  usuwanych przez gateway (C3), piąta trasa proxy `/.well-known/oauth-protected-resource*`.
+- CC-090 (minor, łagodzenie): `putMySecret` nie wymaga step-up MFA; z odpowiedzi znika `step_up_required`.
+
+### Wyjątek SemVer
+
+CC-085 jest według tabeli w README zaostrzeniem walidacji (major). Wydane jako 2.2.0 na decyzję człowieka: żaden
+komponent nie implementuje jeszcze CRUD linków (gateway M2), a BFF i web na M1 nie wysyłają pola.
+
+### Wpływ na konsumentów
+
+- ws-05 (gateway): odrzucenie niepustego `resourceDefaults`; `disabled`, `requiresConfirmation`, `title`, `enabled`;
+  `publicBaseUrl`, bez przekazywania `Cookie`, tylko JSON i SSE, metadane RFC 9728 pod `/.well-known/...`.
+- ws-06 (broker): `400 expires_at_invalid` (limit domyślnie 366 dni).
+- ws-07 (BFF): `credential`/`connection` w katalogu, tabela akcji, `ConnectErrorCode`, callback bez sesji, nagłówek
+  `X-Request-Id` i `Error.requestId`, zapis PAT bez step-up, własna walidacja `resourceDefaults`, callback OIDC pod `/api`.
+- ws-08 (web): mocki MSW z nowymi polami; kreator bez kroku zawężenia; brak przekierowania do MFA przy zapisie tokenu.
+- ws-01: nginx z pięcioma trasami i regułami z README ("Jedna domena").
+
 ## 2.1.1 - 2026-10-27
 
 Wydanie poprawkowe po automatycznym przeglądzie bezpieczeństwa 2.1.0 (2 x MEDIUM). `cedar/mcp.cedarschema` bez zmian.

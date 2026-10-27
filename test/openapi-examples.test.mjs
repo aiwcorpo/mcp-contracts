@@ -44,3 +44,12 @@ for (const file of OPENAPI_FILES) {
     }
   });
 }
+
+test('portal-bff.v1.yaml: every response declares X-Request-Id (CC-087)', async () => {
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  for (const { route, method, operation } of operations(spec)) {
+    for (const [status, response] of Object.entries(operation.responses)) {
+      assert.ok(response.headers?.['X-Request-Id'], `${method.toUpperCase()} ${route} ${status}`);
+    }
+  }
+});

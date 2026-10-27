@@ -1,0 +1,7 @@
+{
+  "description": "Code outside ConnectErrorCode.",
+  "location": "/catalog?connectError=access_denied",
+  "expected": {
+    "valid": false
+  }
+}

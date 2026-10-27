@@ -1,0 +1,18 @@
+{
+  "description": "Status expiring.",
+  "input": {
+    "status": "expiring",
+    "supportedTypes": [
+      "user-oauth"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "reconnect"
+    ]
+  }
+}

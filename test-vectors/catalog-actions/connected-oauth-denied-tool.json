@@ -1,0 +1,19 @@
+{
+  "description": "Status connected.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": true
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "request_access"
+    ]
+  }
+}

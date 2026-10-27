@@ -18,6 +18,7 @@ export const portalBffExamples: OperationExamples[] = [
         "status": 302,
         "name": "status-302",
         "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
           "Location": "https://keycloak.internal/realms/corp/protocol/openid-connect/auth?client_id=mcp-portal&response_type=code&scope=openid&state=st-login-1&code_challenge=Zx8-test&code_challenge_method=S256"
         }
       },
@@ -26,6 +27,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -38,13 +42,19 @@ export const portalBffExamples: OperationExamples[] = [
     "responses": [
       {
         "status": 204,
-        "name": "status-204"
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -52,6 +62,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -74,6 +87,9 @@ export const portalBffExamples: OperationExamples[] = [
             "mcp-jira-proj-ABC"
           ],
           "isAdmin": false
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -87,6 +103,9 @@ export const portalBffExamples: OperationExamples[] = [
             "mcp-jira-read"
           ],
           "isAdmin": true
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -102,6 +121,9 @@ export const portalBffExamples: OperationExamples[] = [
           ],
           "isAdmin": false,
           "mfaFreshUntil": "2026-10-27T10:30:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -109,6 +131,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -128,16 +153,33 @@ export const portalBffExamples: OperationExamples[] = [
               "serverId": "mcp-jira",
               "system": "jira",
               "version": "1.4.0",
-              "url": "https://mcp-gateway.internal/s/mcp-jira/mcp",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-jira/mcp",
               "status": "connected",
               "actions": [
                 "copy_link",
                 "request_access",
                 "disconnect"
               ],
+              "credential": {
+                "supportedTypes": [
+                  "user-secret",
+                  "user-oauth"
+                ],
+                "defaultType": "user-secret"
+              },
+              "connection": {
+                "system": "jira",
+                "type": "user-secret",
+                "status": "connected",
+                "backendUser": "jkowalski",
+                "expiresAt": "2027-01-31T00:00:00Z",
+                "connectedAt": "2026-10-01T08:00:00Z",
+                "lastUsedAt": "2026-10-26T19:58:00Z"
+              },
               "tools": [
                 {
                   "name": "jira__get_issue",
+                  "title": "Pobranie zgłoszenia",
                   "description": "Returns one Jira issue by key.",
                   "risk": "READ_ONLY",
                   "action": "read",
@@ -154,7 +196,8 @@ export const portalBffExamples: OperationExamples[] = [
                   "access": "denied",
                   "requiredEntitlements": [
                     "mcp-jira-destructive"
-                  ]
+                  ],
+                  "requiresConfirmation": true
                 }
               ]
             },
@@ -162,12 +205,20 @@ export const portalBffExamples: OperationExamples[] = [
               "serverId": "mcp-gitlab",
               "system": "gitlab",
               "version": "1.0.0",
-              "url": "https://mcp-gateway.internal/s/mcp-gitlab/mcp",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-gitlab/mcp",
               "status": "not_connected",
               "actions": [
                 "connect_oauth",
                 "add_secret"
               ],
+              "credential": {
+                "supportedTypes": [
+                  "user-oauth",
+                  "user-secret"
+                ],
+                "defaultType": "user-oauth"
+              },
+              "connection": null,
               "tools": [
                 {
                   "name": "gitlab__get_project",
@@ -185,11 +236,18 @@ export const portalBffExamples: OperationExamples[] = [
               "serverId": "mcp-confluence",
               "system": "confluence",
               "version": "1.0.0",
-              "url": "https://mcp-gateway.internal/s/mcp-confluence/mcp",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-confluence/mcp",
               "status": "request_pending",
               "actions": [
                 "view_request"
               ],
+              "credential": {
+                "supportedTypes": [
+                  "user-secret"
+                ],
+                "defaultType": "user-secret"
+              },
+              "connection": null,
               "tools": [
                 {
                   "name": "confluence__get_page",
@@ -204,6 +262,9 @@ export const portalBffExamples: OperationExamples[] = [
               ]
             }
           ]
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -211,6 +272,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -218,6 +282,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -241,13 +308,19 @@ export const portalBffExamples: OperationExamples[] = [
             "connectedAt": "2026-10-01T08:00:00Z",
             "lastUsedAt": "2026-10-26T19:58:00Z"
           }
-        ]
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -255,6 +328,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -270,6 +346,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "gitlab",
         "body": {
           "authorizeUrl": "https://gitlab.internal/oauth/authorize?client_id=mcp-broker&response_type=code&state=st-7Q2xk9&code_challenge=Zx8-test&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fmcp-portal.internal%2Fapi%2Fv1%2Foauth%2Fcallback"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -277,6 +356,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -284,6 +366,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -291,6 +376,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -298,6 +386,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -312,6 +403,7 @@ export const portalBffExamples: OperationExamples[] = [
         "status": 302,
         "name": "status-302",
         "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
           "Location": "/catalog?connected=gitlab"
         }
       }
@@ -330,6 +422,9 @@ export const portalBffExamples: OperationExamples[] = [
           "status": "connected",
           "backendUser": "jkowalski",
           "expiresAt": "2027-01-31T00:00:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -337,14 +432,29 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "expires_at_invalid",
+        "body": {
+          "error": "expires_at_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
         "status": 401,
-        "name": "step_up_required",
+        "name": "unauthenticated",
         "body": {
-          "error": "step_up_required",
-          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -352,6 +462,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -359,6 +472,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "secret_invalid",
         "body": {
           "error": "secret_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -366,6 +482,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "identity_mismatch",
         "body": {
           "error": "identity_mismatch"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -373,6 +492,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -385,13 +507,19 @@ export const portalBffExamples: OperationExamples[] = [
     "responses": [
       {
         "status": 204,
-        "name": "status-204"
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 400,
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -399,6 +527,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -406,6 +537,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -413,6 +547,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -440,6 +577,7 @@ export const portalBffExamples: OperationExamples[] = [
           "expiresAt": "2026-10-26T20:02:00Z"
         },
         "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
           "Cache-Control": "no-store",
           "Pragma": "no-cache"
         }
@@ -450,6 +588,9 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "step_up_required",
           "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -457,6 +598,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -464,6 +608,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -484,6 +631,7 @@ export const portalBffExamples: OperationExamples[] = [
           "attemptsLeft": 3
         },
         "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
           "Cache-Control": "no-store",
           "Pragma": "no-cache"
         }
@@ -494,6 +642,9 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "step_up_required",
           "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -501,6 +652,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -508,6 +662,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -515,6 +672,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -536,13 +696,19 @@ export const portalBffExamples: OperationExamples[] = [
             "createdAt": "2026-10-25T09:00:00Z",
             "requestUrl": "https://iga.internal/requests/REQ-2026-0042"
           }
-        ]
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -558,6 +724,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "created",
         "body": {
           "requestId": "REQ-2026-0043"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -565,6 +734,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "redirect",
         "body": {
           "requestUrl": "https://iga.internal/catalog/request?entitlement=mcp-confluence-read"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -572,6 +744,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -579,6 +754,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -586,6 +764,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -607,25 +788,26 @@ export const portalBffExamples: OperationExamples[] = [
               "jira__search_issues",
               "jira__get_issue"
             ],
-            "resourceDefaults": {
-              "Jira::Project": [
-                "ABC"
-              ]
-            },
-            "url": "https://mcp-gateway.internal/v/team-a-dev/mcp",
+            "url": "https://mcp.aiwcorpo.pl/v/team-a-dev/mcp",
             "clientConfigs": {
-              "claudeCode": "claude mcp add --transport http team-a-dev https://mcp-gateway.internal/v/team-a-dev/mcp",
-              "copilot": "{\"servers\":{\"team-a-dev\":{\"type\":\"http\",\"url\":\"https://mcp-gateway.internal/v/team-a-dev/mcp\"}}}",
-              "codex": "[mcp_servers.team-a-dev]\nurl = \"https://mcp-gateway.internal/v/team-a-dev/mcp\"\n"
+              "claudeCode": "claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp",
+              "copilot": "{\"servers\":{\"team-a-dev\":{\"type\":\"http\",\"url\":\"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"}}}",
+              "codex": "[mcp_servers.team-a-dev]\nurl = \"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"\n"
             }
           }
-        ]
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -633,6 +815,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -648,12 +833,15 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "created",
         "body": {
           "slug": "team-a-dev",
-          "url": "https://mcp-gateway.internal/v/team-a-dev/mcp",
+          "url": "https://mcp.aiwcorpo.pl/v/team-a-dev/mcp",
           "clientConfigs": {
-            "claudeCode": "claude mcp add --transport http team-a-dev https://mcp-gateway.internal/v/team-a-dev/mcp",
-            "copilot": "{\"servers\":{\"team-a-dev\":{\"type\":\"http\",\"url\":\"https://mcp-gateway.internal/v/team-a-dev/mcp\"}}}",
-            "codex": "[mcp_servers.team-a-dev]\nurl = \"https://mcp-gateway.internal/v/team-a-dev/mcp\"\n"
+            "claudeCode": "claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp",
+            "copilot": "{\"servers\":{\"team-a-dev\":{\"type\":\"http\",\"url\":\"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"}}}",
+            "codex": "[mcp_servers.team-a-dev]\nurl = \"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"\n"
           }
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -661,6 +849,19 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "resource_defaults_unsupported",
+        "body": {
+          "error": "resource_defaults_unsupported"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -668,6 +869,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -675,6 +879,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "access_denied",
         "body": {
           "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -682,6 +889,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -689,6 +899,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "slug_taken",
         "body": {
           "error": "slug_taken"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -696,6 +909,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -708,13 +924,19 @@ export const portalBffExamples: OperationExamples[] = [
     "responses": [
       {
         "status": 204,
-        "name": "status-204"
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -722,6 +944,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -729,6 +954,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -736,6 +964,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -768,13 +999,19 @@ export const portalBffExamples: OperationExamples[] = [
             "latencyMs": 42,
             "argsLength": 118
           }
-        ]
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -782,6 +1019,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -843,13 +1083,19 @@ export const portalBffExamples: OperationExamples[] = [
               }
             ]
           }
-        ]
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -857,6 +1103,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "access_denied",
         "body": {
           "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -864,6 +1113,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -919,6 +1171,9 @@ export const portalBffExamples: OperationExamples[] = [
             "definitionHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
           },
           "pendingHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -926,6 +1181,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -933,6 +1191,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "access_denied",
         "body": {
           "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -940,6 +1201,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -947,6 +1211,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]
@@ -959,13 +1226,19 @@ export const portalBffExamples: OperationExamples[] = [
     "responses": [
       {
         "status": 204,
-        "name": "status-204"
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       },
       {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -973,6 +1246,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "access_denied",
         "body": {
           "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -980,6 +1256,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -987,6 +1266,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "hash_mismatch",
         "body": {
           "error": "hash_mismatch"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -994,6 +1276,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "upstream_unavailable",
         "body": {
           "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       }
     ]

@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code cancelled.",
+  "location": "/catalog?connectError=cancelled",
+  "expected": {
+    "valid": true
+  }
+}

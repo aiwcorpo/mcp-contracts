@@ -92,6 +92,12 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
       if (await invalidReturnPath(operation.operationId, request)) {
         return HttpResponse.json({ error: 'invalid_request' }, { status: 400 });
       }
+      if (operation.operationId === 'createMyVirtualServer') {
+        const body = (await request.clone().json().catch(() => null)) as { resourceDefaults?: Record<string, unknown> } | null;
+        if (body?.resourceDefaults && Object.keys(body.resourceDefaults).length > 0) {
+          return HttpResponse.json({ error: 'resource_defaults_unsupported' }, { status: 400 });
+        }
+      }
       const extra: Record<string, string> = operation.operationId === 'getMe'
         ? { 'Set-Cookie': `${XSRF_COOKIE}=${MOCK_XSRF_TOKEN}; Path=/; Secure; SameSite=Strict` }
         : {};

@@ -1,0 +1,17 @@
+{
+  "description": "Status connected.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-secret"
+    ],
+    "connectionType": "user-secret",
+    "someToolDenied": false
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect"
+    ]
+  }
+}

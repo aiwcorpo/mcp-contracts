@@ -1,0 +1,18 @@
+{
+  "description": "Status not_connected.",
+  "input": {
+    "status": "not_connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": false
+  },
+  "expected": {
+    "actions": [
+      "add_secret",
+      "connect_oauth"
+    ]
+  }
+}

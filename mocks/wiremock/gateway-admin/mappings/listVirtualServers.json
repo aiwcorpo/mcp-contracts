@@ -47,12 +47,7 @@
               "jira__search_issues",
               "jira__get_issue"
             ],
-            "resourceDefaults": {
-              "Jira::Project": [
-                "ABC"
-              ]
-            },
-            "url": "https://mcp-gateway.internal/v/team-a-dev/mcp"
+            "url": "https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"
           }
         ]
       }

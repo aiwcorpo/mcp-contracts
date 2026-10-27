@@ -1,0 +1,7 @@
+{
+  "description": "Provider details must never reach the URL.",
+  "location": "/catalog?connectError=provider_error&error_description=invalid_client",
+  "expected": {
+    "valid": false
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "description": "Successful connection; no connectError.",
+  "location": "/catalog?connected=gitlab",
+  "expected": {
+    "valid": true
+  }
+}

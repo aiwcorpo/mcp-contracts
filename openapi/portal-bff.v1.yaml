@@ -1,12 +1,17 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.1.1
+  version: 2.2.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
     (HttpOnly, Secure, SameSite=Lax) created by the OIDC login run by the BFF; the frontend never sees tokens.
-    The frontend (Angular) is served by the BFF from the same origin. CSRF follows the Angular convention:
+    The frontend (Angular) is served from the same origin: portal and gateway share one public domain behind a
+    reverse proxy (CC-089): `/` web, `/api` this BFF, `/s/`, `/v/` and `/.well-known/oauth-protected-resource*`
+    the gateway. The proxy removes the `Cookie` header on the gateway routes, never rewrites `X-Request-Id`, and
+    the web application defines no route starting with `/api`, `/s/`, `/v/` or `/.well-known/`. Public URLs
+    in responses (`url`, `clientConfigs`) come from the `publicBaseUrl` configuration, never from the request.
+    CSRF follows the Angular convention:
     the BFF sets the cookie `__Host-XSRF-TOKEN` (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain; the
     `__Host-` prefix stops sibling subdomains from planting it, CC-055) and the frontend sends its value in the
     header `X-XSRF-TOKEN` for POST, PUT and DELETE (Angular: `withXsrfConfiguration({cookieName:
@@ -17,8 +22,10 @@ info:
     Operations backed by the broker (C4) or the gateway admin API (C5) answer `503 upstream_unavailable` when
     those (or the IdP token exchange) fail; there are no partial answers (CC-050).
 
-    Correlation: the BFF creates a requestId (UUIDv7) per request and sends it to the broker and gateway in
-    `X-Request-Id`, so their audit events and the portal's share one requestId (CC-047).
+    Correlation: the BFF creates a requestId (UUIDv7) per request (a value sent by the client is ignored) and
+    sends it to the broker and gateway in `X-Request-Id`, so their audit events and the portal's share one
+    requestId (CC-047). Every response of `/api/v1/*`, including redirects and errors, carries it in
+    `X-Request-Id`, and `Error.requestId` repeats it; the UI shows its first 8 characters next to an error (CC-087).
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -56,6 +63,10 @@ paths:
         `access_denied` from the IdP), `idp_error` (IdP error or failed code exchange), `session_expired` (unknown
         or expired `state`/flow), `step_up_failed` (step-up returned another `sub` or did not reach the MFA level).
         Details from the IdP never appear in the URL.
+
+        The `redirect_uri` registered at the IdP for the BFF's own callback lies under `/api` (for example
+        `<publicBaseUrl>/api/v1/auth/callback`, name agreed with the BFF; not an operation of this API) so that the
+        reverse proxy routes it to the BFF (CC-089).
       security: []
       parameters:
         - name: returnPath
@@ -75,6 +86,8 @@ paths:
           x-login-error-code:
             $ref: '#/components/schemas/LoginErrorCode'
           headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
             Location:
               required: true
               schema:
@@ -95,6 +108,9 @@ paths:
           csrf: []
       responses:
         '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Logged out; the frontend navigates to its start page.
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -109,6 +125,9 @@ paths:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Identity from the OIDC login.
           content:
             application/json:
@@ -150,10 +169,26 @@ paths:
         3. the system's default credential type is `service-account` or `token-exchange` (nothing to connect): `connected`
         4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error` -> `reconnect_required`
         5. no connection: `not_connected`
+
+        Actions per status (the BFF returns exactly these; `credential.supportedTypes` decides the type, CC-083):
+
+        - `connected`: `copy_link`, `disconnect` (+ `request_access` when some tool of the server is denied); no
+          `disconnect` when the system has nothing to disconnect (`service-account`, `token-exchange`)
+        - `expiring`: `copy_link`, `add_secret` (user-secret) or `reconnect` (user-oauth), `disconnect`
+        - `reconnect_required`: `reconnect` (user-oauth) or `add_secret` (user-secret), `disconnect`
+        - `not_connected`: `connect_oauth` and/or `add_secret`, one per type in `credential.supportedTypes`
+        - `request_pending`: `view_request`
+        - `no_access`: `request_access`
+
+        `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
+        (CC-080).
       security:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Catalog for the current user.
           content:
             application/json:
@@ -166,11 +201,23 @@ paths:
                       - serverId: mcp-jira
                         system: jira
                         version: 1.4.0
-                        url: https://mcp-gateway.internal/s/mcp-jira/mcp
+                        url: https://mcp.aiwcorpo.pl/s/mcp-jira/mcp
                         status: connected
                         actions: [copy_link, request_access, disconnect]
+                        credential:
+                          supportedTypes: [user-secret, user-oauth]
+                          defaultType: user-secret
+                        connection:
+                          system: jira
+                          type: user-secret
+                          status: connected
+                          backendUser: jkowalski
+                          expiresAt: '2027-01-31T00:00:00Z'
+                          connectedAt: '2026-10-01T08:00:00Z'
+                          lastUsedAt: '2026-10-26T19:58:00Z'
                         tools:
                           - name: jira__get_issue
+                            title: Pobranie zgłoszenia
                             description: Returns one Jira issue by key.
                             risk: READ_ONLY
                             action: read
@@ -182,12 +229,17 @@ paths:
                             action: delete
                             access: denied
                             requiredEntitlements: [mcp-jira-destructive]
+                            requiresConfirmation: true
                       - serverId: mcp-gitlab
                         system: gitlab
                         version: 1.0.0
-                        url: https://mcp-gateway.internal/s/mcp-gitlab/mcp
+                        url: https://mcp.aiwcorpo.pl/s/mcp-gitlab/mcp
                         status: not_connected
                         actions: [connect_oauth, add_secret]
+                        credential:
+                          supportedTypes: [user-oauth, user-secret]
+                          defaultType: user-oauth
+                        connection: null
                         tools:
                           - name: gitlab__get_project
                             description: Returns one GitLab project by path.
@@ -198,9 +250,13 @@ paths:
                       - serverId: mcp-confluence
                         system: confluence
                         version: 1.0.0
-                        url: https://mcp-gateway.internal/s/mcp-confluence/mcp
+                        url: https://mcp.aiwcorpo.pl/s/mcp-confluence/mcp
                         status: request_pending
                         actions: [view_request]
+                        credential:
+                          supportedTypes: [user-secret]
+                          defaultType: user-secret
+                        connection: null
                         tools:
                           - name: confluence__get_page
                             description: Returns one Confluence page.
@@ -221,6 +277,9 @@ paths:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Same items as C4 GET /v1/connections.
           content:
             application/json:
@@ -267,6 +326,9 @@ paths:
                   returnPath: /catalog
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Provider authorization URL.
           content:
             application/json:
@@ -292,10 +354,14 @@ paths:
       description: |
         The BFF checks that the flow belongs to the current session, calls C4 oauth/complete and redirects to
         `returnPath` with `connected=<system>` appended (`?` when returnPath has no query, `&` otherwise). On
-        failure it appends `connectError=<code>` the same way, code `identity_mismatch`, `flow_invalid` or
-        `provider_error` (CC-022). Never returns JSON.
-      security:
-        - session: []
+        failure it appends `connectError=<code>` the same way with a code from `ConnectErrorCode` only
+        (CC-022, CC-086): `cancelled` when the provider reports `error=access_denied`, `provider_error` for any other
+        `error` or a failed exchange, `identity_mismatch`, `flow_invalid`. Provider details never appear in the URL.
+        Without a valid session the browser goes to `/?loginError=session_expired` (the BFF checks the session
+        itself). Never returns JSON.
+      x-connect-error-code:
+        $ref: '#/components/schemas/ConnectErrorCode'
+      security: []
       parameters:
         - name: code
           in: query
@@ -317,6 +383,8 @@ paths:
         '302':
           description: Back to the portal.
           headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
             Location:
               required: true
               schema:
@@ -326,13 +394,17 @@ paths:
                   value: /catalog?connected=gitlab
                 failed:
                   value: /catalog?connectError=identity_mismatch
+                cancelled:
+                  value: /catalog?connectError=cancelled
+                no_session:
+                  value: /?loginError=session_expired
   /api/v1/connections/{system}/secret:
     parameters:
       - $ref: '#/components/parameters/System'
     put:
       tags: [connections]
       operationId: putMySecret
-      summary: Store a PAT / API key; requires fresh MFA.
+      summary: Store a PAT / API key. A valid session and the CSRF header are enough (CC-090); identity_mismatch (C4.1) protects the write.
       security:
         - session: []
           csrf: []
@@ -349,6 +421,9 @@ paths:
                   expiresAt: '2027-01-31T00:00:00Z'
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Validated in the system and stored.
           content:
             application/json:
@@ -361,12 +436,29 @@ paths:
                     backendUser: jkowalski
                     expiresAt: '2027-01-31T00:00:00Z'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Malformed request or an invalid expiry (expiresAt in the past, or later than the broker limit, default 366 days) (CC-084).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_request:
+                  value:
+                    error: invalid_request
+                expires_at_invalid:
+                  value:
+                    error: expires_at_invalid
         '401':
-          $ref: '#/components/responses/StepUpOrUnauthenticated'
+          $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/CsrfInvalid'
         '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Rejected by the system or belongs to another user.
           content:
             application/json:
@@ -396,6 +488,9 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Disconnected.
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -421,6 +516,8 @@ paths:
         '200':
           description: Tool and arguments to confirm.
           headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
             Cache-Control:
               $ref: '#/components/headers/NoStore'
             Pragma:
@@ -467,6 +564,8 @@ paths:
         '200':
           description: Decision recorded; approval returns the one-time code for the MCP client session, it never executes the action.
           headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
             Cache-Control:
               $ref: '#/components/headers/NoStore'
             Pragma:
@@ -499,6 +598,9 @@ paths:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Requests and their status.
           content:
             application/json:
@@ -535,6 +637,9 @@ paths:
                   entitlement: mcp-confluence-read
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Either a URL of the IGA form (redirect the browser) or the id of a created request.
           content:
             application/json:
@@ -562,6 +667,9 @@ paths:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Proxy of C5 plus clientConfigs.
           content:
             application/json:
@@ -575,13 +683,11 @@ paths:
                     - slug: team-a-dev
                       displayName: Team A development
                       tools: [jira__search_issues, jira__get_issue]
-                      resourceDefaults:
-                        Jira::Project: [ABC]
-                      url: https://mcp-gateway.internal/v/team-a-dev/mcp
+                      url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
                       clientConfigs:
-                        claudeCode: claude mcp add --transport http team-a-dev https://mcp-gateway.internal/v/team-a-dev/mcp
-                        copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp-gateway.internal/v/team-a-dev/mcp"}}}'
-                        codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp-gateway.internal/v/team-a-dev/mcp\"\n"
+                        claudeCode: claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
+                        copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"}}}'
+                        codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"\n"
         '401':
           $ref: '#/components/responses/Unauthenticated'
         "503":
@@ -605,10 +711,11 @@ paths:
                   slug: team-a-dev
                   displayName: Team A development
                   tools: [jira__search_issues, jira__get_issue]
-                  resourceDefaults:
-                    Jira::Project: [ABC]
       responses:
         '201':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Created.
           content:
             application/json:
@@ -618,16 +725,33 @@ paths:
                 created:
                   value:
                     slug: team-a-dev
-                    url: https://mcp-gateway.internal/v/team-a-dev/mcp
+                    url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
                     clientConfigs:
-                      claudeCode: claude mcp add --transport http team-a-dev https://mcp-gateway.internal/v/team-a-dev/mcp
-                      copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp-gateway.internal/v/team-a-dev/mcp"}}}'
-                      codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp-gateway.internal/v/team-a-dev/mcp\"\n"
+                      claudeCode: claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
+                      copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"}}}'
+                      codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"\n"
         '400':
-          $ref: '#/components/responses/BadRequest'
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Malformed request, or a non-empty resourceDefaults (resource narrowing is dormant, CC-085; the BFF checks the field itself and does not call the gateway).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_request:
+                  value:
+                    error: invalid_request
+                resource_defaults_unsupported:
+                  value:
+                    error: resource_defaults_unsupported
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: CSRF token invalid, or a tool is not available to the user (access_denied).
           content:
             application/json:
@@ -641,6 +765,9 @@ paths:
                   value:
                     error: csrf_invalid
         '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Slug already used.
           content:
             application/json:
@@ -669,6 +796,9 @@ paths:
           csrf: []
       responses:
         '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Deleted.
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -696,6 +826,9 @@ paths:
             default: 50
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Proxy of C5 GET /admin/v1/activity.
           content:
             application/json:
@@ -735,6 +868,9 @@ paths:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Registered servers.
           content:
             application/json:
@@ -795,6 +931,9 @@ paths:
         - session: []
       responses:
         '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Approved vs pending entry.
           content:
             application/json:
@@ -864,6 +1003,9 @@ paths:
                   definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
       responses:
         '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: Approved.
         '401':
           $ref: '#/components/responses/Unauthenticated'
@@ -872,6 +1014,9 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
           description: The definition changed again; reload the diff.
           content:
             application/json:
@@ -885,6 +1030,12 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
 components:
   headers:
+    RequestId:
+      description: requestId (UUIDv7) of this request, the same value as in the audit events of the BFF, broker and gateway (CC-047, CC-087). Not a secret; the UI shows its first 8 characters next to an error.
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/RequestId'
+      example: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
     NoStore:
       description: Required on responses carrying a one-time confirmation code or the arguments of a pending call (CC-077); intermediaries and clients must not cache them.
       required: true
@@ -934,6 +1085,9 @@ components:
       example: update_issue
   responses:
     BadRequest:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: Malformed request.
       content:
         application/json:
@@ -944,6 +1098,9 @@ components:
               value:
                 error: invalid_request
     Unauthenticated:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: No valid session; the frontend navigates to GET /api/v1/auth/login (CC-023).
       content:
         application/json:
@@ -954,6 +1111,9 @@ components:
               value:
                 error: unauthenticated
     StepUpOrUnauthenticated:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: No valid session, or the operation needs a fresh MFA login (step_up_required with stepUpUrl, CC-010).
       content:
         application/json:
@@ -967,6 +1127,9 @@ components:
                 error: step_up_required
                 stepUpUrl: /api/v1/auth/login?stepUp=true&returnPath=/catalog
     CsrfInvalid:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: Missing or wrong X-XSRF-TOKEN header (must equal the XSRF-TOKEN cookie).
       content:
         application/json:
@@ -977,6 +1140,9 @@ components:
               value:
                 error: csrf_invalid
     Forbidden:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: Not an admin (mcp-platform-admin), or CSRF token invalid.
       content:
         application/json:
@@ -987,6 +1153,9 @@ components:
               value:
                 error: access_denied
     NotFound:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: Does not exist or is not visible to the user.
       content:
         application/json:
@@ -997,6 +1166,9 @@ components:
               value:
                 error: not_found_or_denied
     UpstreamUnavailable:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
       description: "The broker, the gateway admin API or the IdP token exchange did not answer or answered with an error the BFF does not pass on (CC-050). No partial data: the catalog is either complete or 503. Upstream bodies are never forwarded."
       content:
         application/json:
@@ -1018,6 +1190,8 @@ components:
         message:
           type: string
           maxLength: 500
+        requestId:
+          $ref: '../schemas/common.schema.json#/$defs/RequestId'
       additionalProperties: false
     StepUpRequired:
       type: object
@@ -1051,7 +1225,7 @@ components:
           type: boolean
           description: Member of mcp-platform-admin.
         mfaFreshUntil:
-          description: Until when the last MFA authentication counts as fresh for step-up protected operations (CC-053). Absent when MFA is not fresh or unknown. Informational only; the BFF still enforces step-up on PUT secret and confirmations, so the frontend uses it to start step-up before showing a secret field.
+          description: Until when the last MFA authentication counts as fresh for step-up protected operations (CC-053). Absent when MFA is not fresh or unknown. Informational only; the BFF still enforces step-up on the operations that need it (confirmations until the confirmation channel changes; PUT secret does not, CC-090), so the frontend uses it to start step-up before showing a form that needs it.
           $ref: '../schemas/common.schema.json#/$defs/Timestamp'
       additionalProperties: false
     CatalogStatus:
@@ -1060,10 +1234,35 @@ components:
     CatalogAction:
       type: string
       enum: [copy_link, connect_oauth, add_secret, reconnect, request_access, view_request, disconnect]
+    CatalogCredential:
+      type: object
+      description: Credential types of the system (C4 GET /v1/systems) (CC-080).
+      required: [supportedTypes, defaultType]
+      properties:
+        supportedTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/CredentialType'
+        defaultType:
+          $ref: '../schemas/common.schema.json#/$defs/CredentialType'
+      additionalProperties: false
+    ConnectErrorCode:
+      type: string
+      description: Value of `connectError` appended to returnPath after a failed OAuth connection (CC-022, CC-086). Closed list. cancelled = the user cancelled at the provider (error=access_denied).
+      enum: [identity_mismatch, flow_invalid, provider_error, cancelled]
     PortalCatalogServer:
       type: object
       required: [serverId, system, version, url, status, actions, tools]
       properties:
+        credential:
+          $ref: '#/components/schemas/CatalogCredential'
+        connection:
+          description: The current user's connection to the system (C4 GET /v1/connections). null when there is none or when nothing is to be connected (service-account, token-exchange). Never contains a secret value (CC-080).
+          oneOf:
+            - $ref: 'credential-broker.v1.yaml#/components/schemas/Connection'
+            - type: 'null'
         serverId:
           $ref: '../schemas/common.schema.json#/$defs/ServerId'
         system:
@@ -1073,7 +1272,7 @@ components:
         url:
           type: string
           format: uri
-          description: Full MCP endpoint https://<gateway>/s/<serverId>/mcp, used by copy_link (CC-021).
+          description: Public MCP endpoint <publicBaseUrl>/s/<serverId>/mcp, used by copy_link (CC-021, CC-089).
         status:
           $ref: '#/components/schemas/CatalogStatus'
         actions:

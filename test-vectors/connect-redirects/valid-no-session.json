@@ -1,0 +1,7 @@
+{
+  "description": "No session at the callback: login error, never JSON.",
+  "location": "/?loginError=session_expired",
+  "expected": {
+    "valid": true
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "description": "returnPath with a query gets & instead of ?.",
+  "location": "/connect/gitlab?step=2&connectError=cancelled",
+  "expected": {
+    "valid": true
+  }
+}
