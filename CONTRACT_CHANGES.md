@@ -1048,3 +1048,1424 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   według tabeli w README to zmiana niezgodna dla klientów generowanych z 2.0.x, wydana jako minor na decyzję
   człowieka (endpoint nie był jeszcze używany przez żaden komponent poza mockami).
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+---
+
+## Projekty do zatwierdzenia: CC-080 ... CC-098 (stan 2026-10-27)
+
+Wpisy poniżej są **projektami** przygotowanymi przez ws-00 do zatwierdzenia przez człowieka. Żaden nie ma statusu
+`accepted`, w repozytorium nie zmieniono YAML, schematów ani wektorów, nie ma wydania ani tagu. Szkice YAML/JSON
+pokazują zamierzoną zmianę plików; po decyzji wchodzą do wydania razem z mockami (MSW, WireMock), wektorami i
+testami. Źródła: decyzje człowieka z 2026-10-27 (tabela w `mcp-platform-plan/STATUS.md`), analiza luk
+`mcp-platform-plan/design/luki-api-makiety.md` (G-01 ... G-25) i pivot potwierdzeń (kod z aplikacji
+Authenticator). Wpisy nie zmieniają tekstu CC-034, CC-048, CC-053 ani CC-077; zakres, w jakim je zastępuje pivot,
+opisuje CC-091.
+
+| CC | Tytuł | Źródło | Kamień | SemVer (wg README) |
+| --- | --- | --- | --- | --- |
+| CC-080 | `credential` i `connection` w wierszu katalogu | G-01 | M2 | minor |
+| CC-081 | `disabled` i `requiresConfirmation` w `CatalogTool` | G-02 | M2 | minor |
+| CC-082 | `title` w `CatalogTool` | G-03 | M2 | minor |
+| CC-083 | Tabela status -> `actions[]` | G-04 | M2 | patch |
+| CC-084 | `400 expires_at_invalid` przy zapisie tokenu | G-05 | M2 | minor |
+| CC-085 | `resourceDefaults` uśpione: `400 resource_defaults_unsupported` | G-09 (zmienione) | M2 | formalnie major (zaostrzenie walidacji), skutek zerowy |
+| CC-086 | `ConnectErrorCode` z `cancelled`, callback OAuth bez sesji | G-20 | M2 | minor |
+| CC-087 | `X-Request-Id` na każdej odpowiedzi BFF, `Error.requestId` | G-21 | M2 | minor |
+| CC-088 | `enabled` w `RegistryServer` | G-25 | M2 (decyzja człowieka; analiza: M4) | minor |
+| CC-089 | Jedna domena: reverse proxy przed web, BFF i gateway'em | decyzja człowieka | M2 | patch (opisy, przykłady) |
+| CC-090 | Zapis PAT bez step-up MFA | decyzja człowieka | M2 | minor (łagodzenie) |
+| CC-091 | Potwierdzenia kodem TOTP z aplikacji (C11, C10, C5, C12) | pivot | M3 | major dla C11 |
+| CC-092 | Broker: rejestracja i weryfikacja Authenticatora (C4) | pivot | M3 | minor (część pakietu major) |
+| CC-093 | BFF: rejestracja Authenticatora ze step-up MFA (C12) | pivot | M3 (ekran rejestracji od M2/M3) | minor (część pakietu major) |
+| CC-094 | Audyt C8 dla Authenticatora | pivot | M3 | major, jeśli nowy `event`; minor w wariancie bez |
+| CC-095 | `GET /api/v1/activity/calls` i `ActivityCall` | G-11, G-12, G-13 | M3 | minor |
+| CC-096 | Odpowiedzi błędów wniosków o dostęp | G-19 | M4 | minor |
+| CC-097 | `change` i wersje w rejestrze (przed/po) | G-23 | M4 | minor |
+| CC-098 | `resource` w `ConfirmationView` | G-17 | M3 | minor |
+
+Podział wydań (rekomendacja ws-00): **2.2.0** dla M2 = CC-080 ... CC-090 (CC-085 z udokumentowanym wyjątkiem, jak
+w 2.1.0), bo ws-08 startuje na MSW od 2.2.0; **3.0.0** przed startem M3 = pakiet pivotu CC-091 ... CC-094 razem z
+CC-098 (powody w CC-091); CC-095 ... CC-097 wchodzą z kamieniami M3/M4 do najbliższego wydania. Bez wpisu (decyzja
+nie dotyka kontraktu): G-24 (przycisk "Odrzuć" usunięty z administracji, brak endpointu), narzędzie `delete_issue`
+w `mcp-server-jira` (brief ws-04; `Jira::Issue`, `mcp-jira-destructive` i wektory z `delete_issue` istnieją już w
+2.1.1, więc nic nie wymaga zmiany w kontrakcie), G-06, G-07 (pole z identyfikatorami, bez listowania), G-08, G-10,
+G-15, G-16, G-18, G-22.
+
+---
+
+## CC-080 | C12 | `credential` i `connection` w wierszu katalogu portalu
+
+- **Zgłasza:** analiza luk G-01; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** `GET /api/v1/catalog` nie niesie typu logowania systemu ani danych połączenia. `GET /connections`
+  zwraca tylko systemy z połączeniem, więc dla "Niepołączone", "Wniosek oczekuje" i "Brak uprawnienia" nie ma
+  kolumny "Sposób" (OAuth / token PAT), a baner po powrocie z OAuth ("Połączono jako anna.nowak") potrzebuje
+  `backendUser`. Dwa wywołania z łączeniem we frontendzie mogą dać niespójny obraz (CC-050 wymaga całości albo 503).
+- **Wariant:** BFF dokłada do `PortalCatalogServer` opcjonalne `credential` (z C4 `GET /v1/systems`) i `connection`
+  (z C4 `GET /v1/connections`); obie odpowiedzi BFF już zbiera do wyliczenia `status`. Żadnego sekretu: `connection`
+  ma kształt `Connection` z C4. Dla systemów bez niczego do połączenia (`service-account`, `token-exchange`)
+  `connection` jest `null`.
+- **Alternatywy:** (a) dwa wywołania i słownik typów we frontendzie (rozjeżdża się z konfiguracją brokera);
+  (b) osobny `GET /api/v1/systems` (trzeci request na ekran, brak zalet).
+- **Zmiany plików:**
+  - `openapi/portal-bff.v1.yaml`, `components.schemas`:
+
+```yaml
+    CatalogCredential:
+      type: object
+      description: Credential types of the system (C4 GET /v1/systems).
+      required: [supportedTypes, defaultType]
+      properties:
+        supportedTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/CredentialType'
+        defaultType:
+          $ref: '../schemas/common.schema.json#/$defs/CredentialType'
+      additionalProperties: false
+    PortalCatalogServer:
+      properties:
+        credential:
+          $ref: '#/components/schemas/CatalogCredential'
+        connection:
+          description: The current user's connection to the system (C4 GET /v1/connections). null when there is none or when nothing is to be connected (service-account, token-exchange). Never contains a secret value.
+          oneOf:
+            - $ref: 'credential-broker.v1.yaml#/components/schemas/Connection'
+            - type: 'null'
+```
+
+  - Pola poza `required`. Przykłady `getPortalCatalog` i MSW (`portal-bff.examples.ts`) dostają `credential` i
+    `connection` dla każdego z sześciu statusów; `mocks/wiremock` bez zmian (C5 nie zmienia się).
+  - README: zdanie w opisie katalogu, że `credential` i `connection` pochodzą z jednego, spójnego odczytu C4.
+- **Wektory / testy:** brak nowych plików wektorów; test przykładów OpenAPI (`openapi-examples.test.mjs`) obejmuje
+  nowe przykłady; test MSW sprawdza, że dla `service-account` `connection` jest `null`.
+- **SemVer:** minor (nowe pola opcjonalne). Uczynienie ich wymaganymi kiedyś = major.
+- **Wpływ na strumienie:** ws-07 (zlepia dane, które już ma), ws-08 (kolumna "Sposób", baner z `backendUser`);
+  ws-05 i ws-06 bez zmian.
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-081 | C5/C12 | `disabled` i `requiresConfirmation` w `CatalogTool`
+
+- **Zgłasza:** analiza luk G-02; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** `CatalogTool.access` ma tylko `granted` i `denied`. Kreator linków (makieta 12) pokazuje powód
+  niedostępności "wyłączone przez administratora" i dopisek, że użycie wymaga potwierdzenia. Pierwszy powód nie ma
+  źródła w katalogu (C10 zna `tool_disabled`), drugi wynika z `risk` tylko częściowo (ws-05 pkt 7 dopuszcza
+  potwierdzenie także dla narzędzi wskazanych polityką).
+- **Wariant:** dwa opcjonalne pola w C5 `CatalogTool` (C12 dziedziczy przez `$ref`), liczone przez gateway.
+  Enum `Access` bez zmian (nowa wartość = major). W M2 `disabled` wynika z konfiguracji serwera i hasha
+  oczekującego na zatwierdzenie; źródło `overrides` Cedar dochodzi w M3 i M4.
+- **Zależność od pivotu (CC-091):** znaczenie `requiresConfirmation` jest neutralne wobec źródła kodu ("każde
+  wywołanie wymaga potwierdzenia kodem wg C11"), więc pole przeżywa pivot bez zmian. Zmienia się tylko tekst
+  ekranu ("kod z aplikacji Authenticator", a nie "kod z portalu") i to, że użytkownik bez zarejestrowanego
+  Authenticatora nie wykona takiego narzędzia (stan rejestracji: CC-093, `GET /api/v1/authenticator`). Opis pola
+  w YAML nie wymienia kanału kodu, żeby nie trzeba było go zmieniać po decyzji o CC-091.
+- **Alternatywy:** (a) usunąć wiersz "wyłączone" z makiety (użytkownik nie wie, czemu narzędzie zniknęło);
+  (b) `requiresConfirmation` z `risk === DESTRUCTIVE` we frontendzie (nie pokrywa potwierdzeń z polityki).
+- **Zmiany plików:** `openapi/gateway-admin.v1.yaml`, `components.schemas.CatalogTool.properties`:
+
+```yaml
+        disabled:
+          type: boolean
+          default: false
+          description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts). A disabled tool cannot be added to a virtual server (POST /virtual-servers answers 403 access_denied).
+        requiresConfirmation:
+          type: boolean
+          default: false
+          description: True when every call needs a confirmation (C11): risk DESTRUCTIVE or a policy requires it. Computed by the gateway.
+```
+
+  Przykłady C5, C12 (`getCatalog`, `getPortalCatalog`) i mocki (WireMock `getCatalog.json`, MSW) z `jira__delete_issue`
+  jako `requiresConfirmation: true`.
+- **Wektory / testy:** brak plików wektorów; test przykładów; reguła Spectral (opcjonalna): `requiresConfirmation`
+  nie może być `false` przy `risk: DESTRUCTIVE` w przykładach.
+- **SemVer:** minor.
+- **Wpływ na strumienie:** ws-05 (źródło obu pól), ws-07 (przezroczyste), ws-08 (stany w kreatorze), ws-09
+  (jeśli polityka ma wskazywać narzędzia wymagające potwierdzenia, potrzebne źródło w paczce; poza kontraktem).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-082 | C5/C12 | `title` w `CatalogTool`
+
+- **Zgłasza:** analiza luk G-03; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** `CatalogTool.description` to tekst dla modelu (angielski, techniczny). Makiety mają krótkie polskie
+  etykiety ("Wyszukiwanie zgłoszeń (JQL)"). Zatwierdzona definicja ma `definition.title` (wchodzi do
+  `definitionHash`, CC-042), którego katalog nie przekazuje.
+- **Wariant:** opcjonalne `CatalogTool.title` z `definition.title` zatwierdzonego wpisu. Serwery ws-04 wystawiają
+  tytuły (po polsku, jeśli taka jest decyzja produktowa). Tytuł jest przypięty hashem, więc UI nie pokaże tekstu,
+  którego nikt nie zatwierdził. Brak tytułu: UI pokazuje `description`.
+- **Alternatywy:** (a) słownik etykiet we frontendzie (nowe narzędzie czeka na wydanie frontendu); (b) makieta po
+  angielsku.
+- **Zmiany plików:** `openapi/gateway-admin.v1.yaml`, `CatalogTool.properties`:
+
+```yaml
+        title:
+          type: string
+          minLength: 1
+          description: definition.title of the approved manifest entry (CC-042), a short display name for the UI. Absent when the tool has no title; the UI then falls back to description.
+```
+
+  Bez `maxLength`, bo `title` w `server-manifest.schema.json` ma tylko `minLength: 1`; dopisanie limitu do
+  manifestu byłoby zaostrzeniem walidacji (major), więc UI obcina długi tytuł po swojej stronie. Przykłady i
+  mocki z `title`.
+- **Wektory / testy:** test przykładów; test, że wartość `title` w katalogu (mock) jest identyczna z
+  `definition.title` zatwierdzonego wpisu w przykładzie rejestru.
+- **SemVer:** minor.
+- **Wpływ na strumienie:** ws-05 (przekazanie z rejestru), ws-04 (tytuły narzędzi i test manifestu), ws-08.
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-083 | C12 | Reguła status -> `actions[]` w katalogu
+
+- **Zgłasza:** analiza luk G-04; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** C12 podaje enum `CatalogAction`, ale nie mówi, które akcje dostaje każdy status (przykład w YAML ma
+  tylko `connected`). Implementacja BFF i mock MSW mogą się rozjechać; makieta pokazuje "Odnów", "Połącz",
+  "Dodaj token" i "-" przy "Wniosek oczekuje".
+- **Wariant:** tabela w opisie `getPortalCatalog` plus przykład MSW dla każdego statusu. `actions[]` jest
+  jedynym źródłem tego, co UI może zaoferować (ws-07 pkt 3). Dla `request_pending` akcja `view_request` (link
+  "Zobacz wniosek"), nie "-". Po CC-090 `add_secret` nie wymaga step-up MFA.
+- **Alternatywa:** frontend wylicza akcje ze statusu i `credential` (logika zdublowana, `actions[]` traci sens).
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml`, opis `getPortalCatalog` (po liście reguł statusu):
+
+```yaml
+        Actions per status (the BFF returns exactly these; `credential.supportedTypes` of CC-080 decides the type):
+          connected            -> copy_link, disconnect (+ request_access when some tool of the server is denied)
+          expiring             -> copy_link, add_secret (user-secret) or reconnect (user-oauth), disconnect
+          reconnect_required   -> reconnect (user-oauth) or add_secret (user-secret), disconnect
+          not_connected        -> connect_oauth and/or add_secret, one per type in credential.supportedTypes
+          request_pending      -> view_request
+          no_access            -> request_access
+```
+
+  W `connected` bez `disconnect`, gdy system nie ma niczego do rozłączenia (`service-account`, `token-exchange`).
+  Przykłady MSW: po jednym serwerze na każdy status.
+- **Wektory / testy:** nowy plik `test-vectors/catalog-actions/*.json` (wejście: status, `credential`, czy są
+  odmowy; oczekiwanie: lista `actions`) i referencyjna kontrola w teście Node, żeby BFF i mock miały jedną tabelę.
+  Wektory są nowe, więc nie zmieniają istniejących oczekiwań.
+- **SemVer:** patch (opis, przykłady, nowe wektory zgodne ze schematem).
+- **Wpływ na strumienie:** ws-07 (wyliczanie), ws-08 (renderowanie akcji bez własnej logiki).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-084 | C4/C12 | `400 expires_at_invalid` przy zapisie tokenu
+
+- **Zgłasza:** analiza luk G-05; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** `PutSecretRequest.expiresAt` istnieje, ale zła data (przeszłość, zbyt odległa) daje tylko ogólne
+  `400 invalid_request`, więc pole formularza nie dostanie komunikatu. Makieta obiecuje "Przypomnimy o
+  odnowieniu", a nikt nie zaplanował powiadomień (ws-06 M4: zdarzenie audytu i flaga `expiring`). Termin jest
+  deklaracją użytkownika (broker nie zna prawdziwego terminu PAT), brak daty = brak `expiring`.
+- **Wariant:** odpowiedź `400` z `error: expires_at_invalid` (kształt `Error`, kod to wolny ciąg wg wzorca):
+  `expiresAt` musi być w przyszłości i nie dalej niż limit brokera (konfiguracja, domyślnie 366 dni). Tekst w
+  formularzu zmienia się na obietnicę, którą system spełnia: "Oznaczymy token jako wygasający 7 dni przed
+  terminem" (status `expiring` < 7 dni już istnieje). Kanał powiadomień (e-mail, Teams) to osobna decyzja M4.
+  Frontend zamienia datę z `<input type=date>` na koniec dnia czasu lokalnego w UTC.
+- **Alternatywy:** (a) jak wyżej plus kanał powiadomień (nowe SPI, infrastruktura poczty); (b) tylko walidacja
+  we frontendzie (broker przyjmie datę z przeszłości, status od razu `expired`).
+- **Zmiany plików:**
+  - `openapi/portal-bff.v1.yaml`, `putMySecret.responses` (analogicznie `credential-broker.v1.yaml`, `putSecret`):
+
+```yaml
+        '400':
+          description: Malformed request or an invalid expiry (expiresAt in the past, or later than the broker limit, default 366 days).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_request:
+                  value:
+                    error: invalid_request
+                expires_at_invalid:
+                  value:
+                    error: expires_at_invalid
+```
+
+  - README (C4): zdanie o limicie i o tym, że `expiring` zależy od deklarowanej daty.
+- **Wektory / testy:** nowy `test-vectors/secret-expiry/*.json` (pola `now`, `expiresAt`, `maxDays: 366`,
+  `expected.valid`): `valid-30-days`, `valid-366-days`, `invalid-past`, `invalid-equal-now`, `invalid-367-days`;
+  kontrola referencyjna w teście Node. Limit 366 to wartość domyślna, wektory dotyczą domyślnej konfiguracji.
+- **SemVer:** minor (nowy udokumentowany kod w istniejącym `400`).
+- **Wpływ na strumienie:** ws-06 (walidacja, konfiguracja limitu), ws-07 (przekazanie kodu; BFF nie przekazuje
+  ciał upstreamu, mapuje `400` brokera na własne `400` z tym samym kodem), ws-08 (komunikat pod polem).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-085 | C5/C12 | `resourceDefaults` uśpione: `400 resource_defaults_unsupported`
+
+- **Zgłasza:** analiza luk G-09 (wariant zmieniony decyzją człowieka 2026-10-27)
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** C5 przyjmuje `resourceDefaults` od M2, a egzekwowanie `vsScopes` startuje w M3 (ws-05). Link zawężony
+  do projektu ABC działałby bez zawężenia, a UI obiecywałoby zawężenie (fail-open obietnicy, sprzeczne z
+  niezmiennikiem 6).
+- **Decyzja człowieka (zamiast wariantu "do M3"):** krok "Zawężenie" znika z kreatora **na stałe** (link = nazwa +
+  wybór narzędzi). Gateway odrzuca niepuste `resourceDefaults` kodem `400 resource_defaults_unsupported`. Możliwość
+  zostaje w kontrakcie jako uśpiona: pole i schemat `ResourceDefaults` nie są usuwane, mechanika `vsc` (C2),
+  `context.vsScopes` (Cedar) i egzekwowanie zawężeń po stronie serwerów (CC-027, CC-029, CC-036, CC-041, CC-058)
+  pozostaje w kontraktach bez zmian, bo gateway i starter nadal ją znają, a wektory na niej oparte zostają ważne.
+  Przywrócenie funkcji = nowa decyzja i wydanie, w którym odrzucenie znika.
+- **Alternatywy:** (a) ukryć krok tylko w UI (brak ochrony przed wywołaniem API wprost); (b) usunąć pole
+  (major, odrzucone przez człowieka); (c) flaga wyłączana w M3 (zastąpiona decyzją o trwałym uśpieniu).
+- **Zmiany plików:**
+  - `openapi/gateway-admin.v1.yaml`: opis `VirtualServerCreate.resourceDefaults` i `VirtualServer.resourceDefaults`:
+    "Dormant (CC-085). The gateway answers 400 resource_defaults_unsupported for a non-empty value; absent or `{}`
+    is accepted. Responses never contain it." Odpowiedź `400` operacji `createVirtualServer` z przykładem:
+
+```yaml
+        '400':
+          description: Malformed request, or a non-empty resourceDefaults (resource narrowing is dormant, CC-085).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                resource_defaults_unsupported:
+                  value:
+                    error: resource_defaults_unsupported
+```
+
+  - `openapi/portal-bff.v1.yaml`, `createMyVirtualServer.responses.400`: ten sam przykład; BFF sprawdza pole sam
+    (nie wywołuje gateway'a) i odpowiada własnym ciałem, bo ciał upstreamu nie przekazuje (CC-050). Gateway odrzuca
+    niezależnie (obrona w głąb, wywołania wprost do C5).
+  - Przykłady `listMyVirtualServers`/`createMyVirtualServer` bez `resourceDefaults`; ten sam przykład w
+    WireMock (`createVirtualServer.json`) i MSW; handler MSW zwraca 400 dla niepustego pola.
+  - README: akapit "Zawężenie zasobów jest uśpione" z odesłaniem do CC-085.
+- **Wektory / testy:** żadne istniejące wektory (Cedar `vsScopes`, `entity-builder`, JWT `vsc`) się nie zmieniają.
+  Test mocków: niepuste `resourceDefaults` -> 400 z kodem; puste lub brak -> 201.
+- **SemVer:** według tabeli README to **zaostrzenie walidacji, czyli formalnie major**. Skutek praktyczny zerowy:
+  CRUD linków w gateway'u to M2 (jeszcze nie istnieje), a BFF/web na M1 nie wysyłają pola. Rekomendacja: 2.2.0 z
+  udokumentowanym wyjątkiem w `CHANGELOG.md` (jak CC-071/074 w 2.1.0). Wariant bez wyjątku: ten wpis przechodzi do
+  3.0.0 (CC-091), a gateway w M2 odrzuca pole z konfiguracji (zachowanie fail-closed nie wymaga kontraktu).
+- **Wpływ na strumienie:** ws-05 (odrzucenie, test), ws-07 (walidacja po stronie BFF), ws-08 (kreator o trzy
+  kroki: nazwa, narzędzia, gotowe; bez makiet 13, bez wiersza "Zawężenie" w 08/14/27), ws-10 (test API wprost).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-086 | C12 | `ConnectErrorCode` z `cancelled` i callback OAuth bez sesji
+
+- **Zgłasza:** analiza luk G-20; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** (1) kody `connectError` są wymienione tylko w opisie `oauthCallback`, nie w schemacie (w
+  odróżnieniu od `LoginErrorCode`), więc wygenerowany klient nie ma typu; (2) kontrakt nie mówi, jaki kod dostaje
+  użytkownik, który anulował u dostawcy (`error=access_denied`); (3) `oauthCallback` ma `security: session`, więc
+  bez ważnej sesji przeglądarka dostałaby 401 JSON, choć opis mówi "Never returns JSON".
+- **Wariant:** schemat `ConnectErrorCode` (zamknięta lista: `identity_mismatch`, `flow_invalid`, `provider_error`,
+  `cancelled`). Mapowanie: parametr `error=access_denied` dostawcy -> `cancelled`, inny `error` -> `provider_error`.
+  Bez sesji: `302` na `/?loginError=session_expired` (istniejący `LoginErrorCode`), bez JSON. Szczegóły dostawcy
+  nigdy w URL. Nazwa konta (`backendUser`) nie trafia do adresu, baner czyta ją z `connection` (CC-080).
+- **Alternatywa:** anulowanie jako `provider_error` (mylący komunikat po świadomym anulowaniu).
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml`:
+
+```yaml
+    ConnectErrorCode:
+      type: string
+      description: Value of `connectError` appended to returnPath after a failed OAuth connection (CC-022). Closed list. cancelled = the user cancelled at the provider (error=access_denied).
+      enum: [identity_mismatch, flow_invalid, provider_error, cancelled]
+```
+
+  `oauthCallback`: `security: []` (sesję sprawdza BFF ręcznie), opis zdania o braku sesji, `x-connect-error-code`
+  wskazujące na schemat (jak `x-login-error-code`), odpowiedź `302` z dwoma przykładami `Location`
+  (`/catalog?connectError=cancelled`, `/?loginError=session_expired`). MSW `oauthCallback` analogicznie.
+- **Wektory / testy:** nowy `test-vectors/connect-redirects/*.json` w formacie `login-redirects`
+  (`location`, `expected.valid`): `valid-cancelled`, `valid-identity-mismatch`, `valid-flow-invalid`,
+  `valid-provider-error`, `valid-no-session` (`/?loginError=session_expired`), `invalid-unknown-code`,
+  `invalid-provider-details` (np. `...&error_description=...`). Kontrola w teście Node.
+- **SemVer:** minor (nowy schemat; istniejące wartości w opisie bez zmian). Zmiana `security` operacji na `[]`
+  to zmiana opisu: klient generowany nie ma już założenia, że callback zwraca 401 JSON.
+- **Wpływ na strumienie:** ws-07 (mapowanie, przekierowanie bez sesji), ws-08 (komunikat "Połączenie anulowane.").
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-087 | C12 | `X-Request-Id` na każdej odpowiedzi BFF i `Error.requestId`
+
+- **Zgłasza:** analiza luk G-21; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** BFF tworzy `requestId` na każde żądanie (CC-047) i wysyła go do brokera i gateway'a, ale nie zwraca
+  go przeglądarce. Makieta pokazuje "Identyfikator do zgłoszenia" pod komunikatem 503; użytkownik nie ma co podać
+  helpdeskowi, a administrator nie znajdzie zdarzeń w SIEM po wartości z ekranu (niezmiennik 10).
+- **Wariant:** nagłówek `X-Request-Id` (UUIDv7) na każdej odpowiedzi `/api/v1/*`, także 302, 401, 4xx i 5xx, oraz
+  opcjonalne `Error.requestId`. `requestId` to nie sekret (zawiera czas). Wartość z żądania klienta BFF ignoruje
+  (generuje własną); zapis jej w audycie jako `clientRequestId` jest tylko w gateway'u (C3). Frontend pokazuje
+  pierwsze 8 znaków drobnym drukiem.
+- **Alternatywa:** usunąć wiersz z makiety (brak korelacji ekranu z audytem).
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml`:
+
+```yaml
+  components:
+    headers:
+      RequestId:
+        description: requestId (UUIDv7) of this request, the same value as in the audit events of the BFF, broker and gateway (CC-047). Not a secret; the UI shows its first 8 characters next to an error.
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    schemas:
+      Error:
+        properties:
+          requestId:
+            $ref: '../schemas/common.schema.json#/$defs/RequestId'
+```
+
+  Nagłówek dopisany przez `$ref` do każdej odpowiedzi (najpierw `components.responses`: `BadRequest`,
+  `Unauthenticated`, `StepUpOrUnauthenticated`, `CsrfInvalid`, `Forbidden`, `NotFound`, `UpstreamUnavailable`).
+  Opis `info.description`: akapit o korelacji uzupełniony o odpowiedź do przeglądarki. Reguła Spectral
+  (`spectral-functions`): każda odpowiedź operacji C12 ma nagłówek `X-Request-Id`.
+- **Wektory / testy:** bez nowych wektorów; test mocków MSW/WireMock: każda odpowiedź ma nagłówek zgodny ze wzorcem.
+- **SemVer:** minor (nowy nagłówek odpowiedzi, nowe pole opcjonalne).
+- **Wpływ na strumienie:** ws-07 (filtr serwletowy ustawiający nagłówek także na odpowiedziach błędów i
+  przekierowaniach), ws-08 (wyświetlanie), ws-01/reverse proxy (nie nadpisywać i nie usuwać nagłówka, CC-089).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-088 | C5 | `enabled` w `RegistryServer`
+
+- **Zgłasza:** analiza luk G-25; człowiek umieścił w 2.2.0 (analiza: M4)
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** widok administracji (makieta 07) pokazuje stan serwera "Wyłączony"; `RegistryServer` nie ma stanu
+  włączenia. Jedyne mechanizmy wyłączenia w planie to `overrides` (zakazy Cedar), niezatwierdzony hash i
+  konfiguracja serwera w gateway'u (IaC).
+- **Wariant:** opcjonalne `RegistryServer.enabled` (domyślnie `true`), wyliczane przez gateway z konfiguracji i z
+  `overrides`; ten sam mechanizm daje `disabled` w CC-081 (wszystkie narzędzia wyłączonego serwera mają
+  `disabled: true`). Tylko odczyt: w portalu nie ma przełącznika (brak nowej powierzchni zmian).
+- **Alternatywy:** (a) usunąć stan z makiety; (b) akcja wyłącz/włącz w portalu (nowa operacja administracyjna z
+  audytem i MFA, poza zakresem makiet).
+- **Zmiany plików:** `openapi/gateway-admin.v1.yaml`, `RegistryServer.properties`:
+
+```yaml
+        enabled:
+          type: boolean
+          default: true
+          description: False when the server is disabled in gateway configuration or by an overrides policy. All tools of a disabled server report disabled=true in the catalog (CC-081). Read only; the portal has no switch.
+```
+
+  `RegistryServer` ma `additionalProperties: false`, więc pole dopisane w `properties`. Przykład z serwerem
+  wyłączonym w `listRegistryServers` (C5, C12) i w mockach.
+- **Wektory / testy:** test przykładów; test spójności przykładów katalogu i rejestru (`enabled: false` -> wszystkie
+  narzędzia `disabled: true`).
+- **SemVer:** minor.
+- **Wpływ na strumienie:** ws-05 (wyliczenie), ws-07 (przezroczyste), ws-08 (administracja, tylko etykieta), ws-09
+  (jeśli `overrides` ma wyłączać serwer, konwencja identyfikatora reguły; poza kontraktem).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-089 | C1/C3/C5/C12 | Jedna domena: reverse proxy przed web, BFF i gateway'em
+
+- **Zgłasza:** człowiek (decyzja 2026-10-27, STATUS koordynatora)
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** od M2 portal i gateway mają być pod jedną domeną: `/` -> web, `/api` -> BFF, `/s/` i `/v/` ->
+  gateway, serwery MCP tylko za gateway'em. Sprawdzono, co to zmienia w kontraktach. **Schematów ani ścieżek nie
+  zmienia nic**, ale cztery rzeczy wymagają zapisu, a jedna założona w decyzji nie zadziała.
+- **Wynik przeglądu:**
+  1. **Adres publiczny.** `PortalCatalogServer.url`, `VirtualServer.url`, `VirtualServerCreated.url` i
+     `clientConfigs` zawierają dziś w przykładach host `mcp-gateway.internal`, a opis mówi `https://<gateway>/...`.
+     Kontrakt nie określa, skąd BFF i gateway biorą host. Zapis: adres publiczny pochodzi wyłącznie z konfiguracji
+     (`publicBaseUrl`, np. `https://mcp.aiwcorpo.pl`), nigdy z nagłówka `Host`/`X-Forwarded-Host` żądania (host
+     header injection w `resource_metadata` i w `url`); gateway ufa `X-Forwarded-*` tylko od proxy. Przykłady w YAML,
+     MSW i WireMock zmieniają host na publiczny z makiet.
+  2. **Metadane chronionego zasobu (RFC 9728, C1).** Wariant ze ścieżką ma postać
+     `/.well-known/oauth-protected-resource/s/<serverId>/mcp`, czyli leży **w korzeniu domeny**, poza czterema
+     prefiksami z decyzji. Bez piątej reguły proxy `/.well-known/oauth-protected-resource*` -> gateway aplikacja web
+     (fallback SPA na `index.html`) odpowiedziałaby 200 z HTML-em, a klient MCP nie znalazłby metadanych.
+     `WWW-Authenticate: Bearer resource_metadata="..."` i pole `resource` w metadanych używają `publicBaseUrl`.
+     Reszta C1 bez zmian: `aud` = `mcp-gateway` (stała, jak dotąd), serwer autoryzacji = IdP.
+  3. **Ciasteczko sesji ograniczone do `/api` nie jest możliwe przy obecnych nazwach.** Prefiks `__Host-` wymaga
+     `Path=/` (CC-055 wybrał go przeciwko cookie tossing), a `__Host-XSRF-TOKEN` musi mieć `Path=/`, żeby kod SPA
+     na dowolnej trasie mógł go odczytać (`document.cookie` widzi tylko ciasteczka pasujące do ścieżki dokumentu).
+     Skutek: przeglądarka wyśle `__Host-session` także na `/s/` i `/v/`. Wariant rekomendowany (A): nazwy bez zmian,
+     proxy usuwa nagłówek `Cookie` na `/s/`, `/v/` i `/.well-known/oauth-protected-resource*`, a gateway dodatkowo
+     nie przekazuje `Cookie` dalej (do listy nagłówków usuwanych w C3: `X-MCP-*`, `X-PAT-*`, `Authorization`,
+     `X-Request-Id` dochodzi `Cookie`). Wariant B: zmienić `__Host-session` na `__Secure-session` z `Path=/api`;
+     traci ochronę przed cookie tossing z CC-055, więc odradzany. Wariant C: osobna subdomena gateway'a (odrzucona
+     przez człowieka).
+  4. **Jedna domena = jeden origin dla odpowiedzi gateway'a.** Odpowiedź z `/s/` lub `/v/` renderowana w
+     przeglądarce wykonywałaby się z uprawnieniami portalu (ciasteczko XSRF jest czytelne dla JS). Gateway odpowiada
+     wyłącznie `application/json` i `text/event-stream`; proxy dokłada na `/s/` i `/v/` `X-Content-Type-Options:
+     nosniff` oraz `Content-Security-Policy: default-src 'none'; sandbox`, również do własnych stron błędów.
+  5. **Callback OIDC BFF musi leżeć pod `/api`.** C12 opisuje go jako wewnętrzny endpoint poza API. Proxy kieruje
+     do BFF tylko `/api`, więc domyślna ścieżka Spring Security (`/login/oauth2/code/<id>`, jeśli ws-07 jej
+     używa) trafiłaby do aplikacji web. Zapis w opisie `login`: `redirect_uri` IdP = `<publicBaseUrl>/api/v1/auth/callback`
+     (nazwa do uzgodnienia z ws-07; nie jest to operacja kontraktu). To samo dotyczy URL-i wylogowania w IdP.
+  6. **Trasy zarezerwowane.** Angular Router nie definiuje tras zaczynających się od `/api`, `/s/`, `/v/`,
+     `/.well-known/`; `VirtualServerSlug` nie koliduje, bo slug leży pod `/v/`. `X-Request-Id` z BFF przechodzi
+     przez proxy bez zmian (CC-087); proxy nie wstawia własnego, bo BFF wymaga UUIDv7 albo generuje swój.
+  7. **Opis C12:** "serwowany przez BFF z tego samego originu" zmienia się na "serwowany spod tego samego origin
+     przez reverse proxy (aplikacja web może być osobnym serwerem statycznym)". Brief ws-07 pkt 1a (BFF
+     serwuje SPA) pozostaje dopuszczalną opcją dev.
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml` (`info.description`: origin, opis `login`, opisy `url`, przykłady),
+  `openapi/gateway-admin.v1.yaml` (opisy `url`, przykłady), `README.md` (nowa sekcja "Jedna domena" z tabelą
+  tras: `/` -> web, `/api` -> BFF, `/s/`, `/v/`, `/.well-known/oauth-protected-resource*` -> gateway, nagłówki z
+  punktu 4, usuwanie `Cookie`), akapit C3 o `Cookie`, mocki (host w przykładach). Schematy JSON i Cedar bez zmian.
+- **Wektory / testy:** brak zmian w istniejących wektorach. Nowy test w ws-05/ws-10 (poza kontraktem): żądanie z
+  `Cookie` na `/s/` nie dociera do serwera MCP; `GET /.well-known/oauth-protected-resource/s/mcp-jira/mcp` zwraca
+  JSON metadanych, nie HTML; żądanie z fałszywym `X-Forwarded-Host` nie zmienia `resource_metadata`.
+- **SemVer:** patch (opisy i przykłady). Dopisanie `Cookie` do nagłówków usuwanych w C3 doprecyzowuje zachowanie
+  gateway'a, nie zmienia schematu; jeśli człowiek woli traktować to jako zaostrzenie, wchodzi z CC-091 w 3.0.0.
+- **Wpływ na strumienie:** ws-01 (nginx w compose, 5 tras, nagłówki, TLS z jednym certyfikatem, `redirect_uri`
+  Keycloaka), ws-05 (`publicBaseUrl`, zaufanie do `X-Forwarded-*`, usuwanie `Cookie`, tylko JSON/SSE), ws-07
+  (callback pod `/api`, `publicBaseUrl` w `clientConfigs`), ws-08 (zarezerwowane prefiksy tras), ws-10 (testy
+  powyżej). Pytanie do człowieka: czy piąta trasa (`/.well-known/oauth-protected-resource*`) jest akceptowana.
+- **Status:** proposed - kierunek (jedna domena) zatwierdzony przez człowieka 2026-10-27; punkty 2 (piąta trasa) i 3
+  (`Path=/` zamiast `/api`) są ustaleniami ws-00 do akceptacji
+
+## CC-090 | C12 | Zapis PAT bez step-up MFA
+
+- **Zgłasza:** człowiek (decyzja 2026-10-27: MFA przy `PUT /connections/{system}/secret` uznane za nadmiarowe)
+- **Kamień:** M2, wydanie 2.2.0
+- **Problem:** C12 wymaga świeżego MFA przy zapisie sekretu (`401 step_up_required`, `Me.mfaFreshUntil` z CC-053,
+  `returnPath` w `stepUpUrl` z CC-048). Człowiek uznał to za nadmiarowe dla użytkownika, który wkleja własny token.
+- **Wariant:** `PUT /api/v1/connections/{system}/secret` wymaga ważnej sesji i nagłówka `X-XSRF-TOKEN`; bez
+  step-up. Główną ochroną jest `identity_mismatch` (C4.1): broker wywołuje whoami systemu z nowym sekretem i
+  odrzuca token, którego tożsamość nie zgadza się z użytkownikiem SSO; nic się nie zapisuje.
+  - **Co zostaje:** `Me.mfaFreshUntil` i `stepUpUrl` z `returnPath` (CC-053, CC-048) służą dalej rejestracji i
+    usunięciu Authenticatora (CC-093) oraz ewentualnym przyszłym operacjom wrażliwym. `step_up_required` w C10
+    zostaje dla polityk (reguła `destructive-requires-fresh-mfa` jest przykładem, patrz CC-091).
+  - **Co znika:** `401 StepUpOrUnauthenticated` w `putMySecret` (zostaje `Unauthenticated`), przykład MSW
+    `step_up_required` dla tej operacji, test "zapis sekretu bez świeżego MFA -> step_up_required" z briefu ws-07,
+    ekran "Wymagane ponowne MFA przed zapisem" (makieta 05, stan "Powrót z MFA"), sprawdzanie `mfaFreshUntil` przed
+    pokazaniem pola na token w ws-08.
+- **Ryzyko (jawnie):** kradzież sesji portalu (cookie `__Host-session` jest HttpOnly, więc w praktyce: przejęty
+  komputer, rozszerzenie przeglądarki, XSS) pozwala atakującemu zapisać sekret. Ocena:
+  - Atakujący musi mieć token **tego samego konta** w systemie docelowym. Token innego konta kończy się
+    `identity_mismatch`, także przy OAuth (podrzucony link autoryzacji). Kto ma taki token, miał już dostęp do
+    konta w Jirze/GitLabie, więc zapis do portalu niczego mu nie poszerza.
+  - Realny skutek kradzieży sesji to zerwanie lub podmiana własnego połączenia ofiary (DoS). `DELETE
+    /connections/{system}` już dziś nie wymaga MFA, więc ten wariant wyrównuje oba kierunki.
+  - Czego MFA przy zapisie by nie zatrzymało: atakujący z sesją i tak może wywołać operacje tylko-sesyjne
+    (tworzenie linków, odczyt aktywności, usunięcie połączeń).
+  - Warunek utrzymania oceny: mapowanie tożsamości w C4.1 to dokładne porównanie (bez dopasowania podciągu),
+    a e-mail liczy się tylko przy `email_verified` (uwaga z recenzji brokera M1). Krótkie sesje (8 h, bezczynność
+    30 min) i audyt `connection_change` zostają.
+  - Wartość użytkownika: zapis PAT przestaje wymagać push z telefonu; sekret nadal przechodzi tylko
+    przeglądarka -> BFF -> broker (niezmiennik 4).
+- **Alternatywy:** (a) status quo (MFA przy każdym zapisie); (b) MFA tylko przy zapisie, gdy połączenie już
+  istnieje (podmiana); (c) powiadomienie użytkownika o zmianie połączenia (kanał nie istnieje, M4).
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml`: `putMySecret` -> `summary: Store a PAT / API key.`,
+  `'401': $ref: '#/components/responses/Unauthenticated'`; opis `Me.mfaFreshUntil`: "...step-up protected
+  operations (authenticator registration and removal, CC-093)", bez wzmianki o `PUT secret` i potwierdzeniach.
+  MSW: usunięcie przykładu `step_up_required` z `putMySecret`. README: jedno zdanie o `identity_mismatch` jako
+  ochronie zapisu.
+- **Wektory / testy:** bez zmian w wektorach; `test/mocks.test.mjs` traci przypadek step-up dla `putMySecret`.
+- **SemVer:** minor (łagodzenie: z odpowiedzi znika wariant 401, istniejący klient obsługujący `step_up_required`
+  dalej działa). Tabela w README nie opisuje wprost zawężenia zestawu odpowiedzi; rekomendacja ws-00: minor.
+- **Wpływ na strumienie:** ws-07 (zdjęcie wymogu step-up z `PUT secret`, zostaje dla CC-093), ws-08 (formularz bez
+  przekierowania do MFA, uproszczenie stanu "Powrót z MFA"), ws-10 (test: zapis PAT innego konta -> 422
+  `identity_mismatch` bez MFA).
+- **Status:** proposed - decyzja człowieka 2026-10-27 (kierunek), tekst i ocena ryzyka do akceptacji
+
+## CC-091 | C11/C10/C5/C12 | Potwierdzenia akcji destrukcyjnych kodem TOTP z aplikacji (pivot)
+
+- **Zgłasza:** człowiek (decyzja 2026-10-27: "kod z Authenticatora + link podglądu")
+- **Kamień:** M3 (gateway C11 powstaje w M3; wydanie rekomendowane 3.0.0, patrz SemVer)
+- **Problem:** przepływ z CC-077 (portal -> świeże MFA Entra -> kod wydany przez gateway -> wklejenie w kliencie)
+  wymaga od użytkownika MFA na każde potwierdzenie i jest ciężki. Człowiek chce prostszej ścieżki: stałe,
+  osobne konto "MCP Platform" w aplikacji TOTP (Microsoft Authenticator), kod wpisywany w kliencie, a portal tylko
+  jako opcjonalny podgląd operacji. Kodów konta Entra nie da się weryfikować poza logowaniem Entra, dlatego
+  potrzebne jest osobne konto TOTP, którego sekret zna platforma (CC-092).
+- **Wariant (przepływ):**
+  1. Agent wywołuje narzędzie wymagające potwierdzenia (`DESTRUCTIVE` albo wskazane polityką). Gateway po decyzji
+     `allow` i pomyślnym `resolve` pyta brokera o stan Authenticatora użytkownika (`GET /v1/authenticator`, CC-092).
+  2. **Brak rejestracji (`none`):** fail-closed. Gateway nie tworzy oczekującego wywołania i odpowiada
+     `confirmation_required` z `registerUrl` (strona rejestracji w portalu, CC-093). Żaden kod nie zostanie
+     przyjęty. Broker niedostępny: `upstream_unavailable`.
+  3. **Rejestracja aktywna:** gateway zapisuje w Redis oczekujące wywołanie pod kluczem
+     `(sub, serverId, tool, sha256(argumenty kanonicznie, BEZ confirmation_code))`: `confirmationId` (losowy,
+     nieprzewidywalny), `system`, `createdAt`, `expiresAt` (TTL 120 s), `attemptsLeft` (3), `previewViewedAt` (puste).
+     Powtórzone pierwsze wywołanie z tymi samymi argumentami zwraca ten sam rekord (TTL nie jest przedłużany).
+     Limit oczekujących na `sub` (konfiguracja, domyślnie 3); powyżej `rate_limited`.
+  4. Odpowiedź `confirmation_required` niesie: `confirmationId`, `description` (opis operacji liczony przez
+     gateway: nazwa kwalifikowana narzędzia, system, argumenty posortowane po nazwie, serializowane do JSON i
+     obcięte tymi samymi limitami co `ConfirmationView`), `previewUrl` (`/confirm/<confirmationId>`) i `expiresAt`.
+     Treść `message` jest stała i mówi, co zrobić ("Wpisz bieżący 6-cyfrowy kod z konta MCP Platform w aplikacji
+     Authenticator i ponów wywołanie z `confirmation_code`").
+  5. **Podgląd (opcjonalny):** człowiek otwiera `previewUrl`. Portal pokazuje system, narzędzie i argumenty z
+     gateway'a (`GET /api/v1/confirmations/{id}`): tylko odczyt, tylko właściciel, sesja bez świeżego MFA,
+     `Cache-Control: no-store`, bez przycisków decyzji. Gateway zapisuje `previewViewedAt` (skutek uboczny `GET`
+     opisany w kontrakcie).
+  6. Człowiek wpisuje bieżący kod z aplikacji w kliencie; agent ponawia wywołanie z tymi samymi argumentami i
+     `confirmation_code` (kształt jak dotąd: 6 cyfr, pole dokładane do `inputSchema` w `tools/list` poza
+     `definitionHash`, usuwane przed hashem i przed serwerem). Gateway liczy hash argumentów, odnajduje oczekujące
+     wywołanie po kluczu z punktu 3 i woła brokera `POST /v1/authenticator/verify {code}`. Weryfikacja TOTP
+     (RFC 6238: SHA-1, 6 cyfr, 30 s, okno +-1 krok, jednorazowość kroku czasowego, limity i blokada) jest w brokerze;
+     gateway dostaje tylko wynik.
+  7. Wynik `ok`: gateway atomowo zużywa oczekujące wywołanie (nie da się go użyć dwa razy) i wykonuje narzędzie;
+     audyt `reason: user_confirmed`. Inne wyniki wg tabeli:
+
+| Sytuacja przy ponowieniu | Odpowiedź klientowi |
+| --- | --- |
+| brak oczekującego wywołania, wygasło, argumenty inne niż w pierwszym wywołaniu | `confirmation_failed` |
+| podgląd wymagany (konfiguracja), a właściciel go nie otworzył | `confirmation_required` z tym samym `confirmationId`; kod nie jest sprawdzany i nie zużywa próby ani kroku czasowego |
+| kod błędny (`invalid`) | `confirmation_failed`, `attemptsLeft` -1; przy 0 oczekujące wywołanie jest usuwane |
+| kod już użyty w tym kroku lub starszym (`replayed`) | `confirmation_failed`, `attemptsLeft` -1 |
+| blokada użytkownika w brokerze (`locked`) | `rate_limited` z `retryAfterSeconds` |
+| rejestracja zniknęła w międzyczasie (`not_registered`) | `confirmation_required` z `registerUrl` |
+| broker niedostępny | `upstream_unavailable` (fail-closed, kod nie jest "oddawany") |
+
+  8. Kanał elicitation URL (C11, kanał 1) może tylko otworzyć `previewUrl`; kod nigdy nie idzie przez elicitation
+     w trybie form. Kod i tak wpisuje człowiek w kliencie, a klient jest niezaufany.
+- **Co znika, co zostaje:**
+
+| Element | Los |
+| --- | --- |
+| CC-034 (świeże MFA także dla podglądu) | **zastąpione**: podgląd wymaga tylko sesji właściciela (ta sama zmiana co G-14, wariant B). `GET /admin/v1/confirmations/{id}` i `GET /api/v1/confirmations/{id}` nie zwracają już `step_up_required`. Reszta CC-034 (tylko właściciel, `no-store`) zostaje |
+| CC-077 pkt 1-2 (`confirmation_required`, ekran z narzędziem, systemem i argumentami z gateway'a, `ConfirmationView.system`) | **zostają** (zmiana nazwy pola `confirmUrl` -> `previewUrl`, dodatki `description`, `registerUrl`, `expiresAt`) |
+| CC-077 pkt 3-4 (MFA przy "Zatwierdź", `POST .../confirmations/{id}`, `ConfirmationOutcome` z kodem wydanym przez gateway, `codeExpiresAt`, `attemptsLeft`) | **znikają**: kod nie jest wydawany przez platformę; brak endpointu decyzji; brak "Odrzuć" (odmowa = nie wpisać kodu, wygaśnięcie 120 s) |
+| CC-077 pkt 5 (agent ponawia z `confirmation_code`, związanie z `(sub, serverId, tool, sha256 argumentów)`, TTL 120 s, 3 próby, jednorazowość) | **zostaje**, ale rekord wiąże się z oczekującym wywołaniem w gateway'u, nie z wydanym kodem; kod to TOTP |
+| `ConfirmationCodeSender` (SPI, D8) | **bezprzedmiotowe**: platforma nie wysyła kodów. D8 do aktualizacji w `02-decisions.md` (człowiek) |
+| `confirmation_declined` (C10) | bez emitującego; rekomendacja: usunąć z `tool-error.schema.json` w 3.0.0 |
+| CC-053 `Me.mfaFreshUntil`, CC-048 `returnPath` w `stepUpUrl` | **zostają**, ale służą rejestracji i usunięciu Authenticatora (CC-093), nie potwierdzeniom ani PAT (CC-090) |
+| `definitionHash`, pole `confirmation_code` poza hashem, wektory `definition-hash/`, `manifests/invalid-confirmation-code-in-definition` | **bez zmian** |
+| `test-vectors/confirmation-binding/` (12) | **przepisane**: znika `issued.code` jako kod wydany; wektory sprawdzają związanie oczekującego wywołania (sub, serwer, narzędzie, hash, TTL, próby, jednorazowość), a wynik weryfikacji TOTP wchodzi jako dana wejściowa. Nowe: `test-vectors/totp/` (CC-092) |
+| polityka Cedar `destructive-requires-fresh-mfa` (`cedar/examples/step-up.cedar`, wektory `gw-destructive-*-mfa`) | **przykład i wektory bez zmian**. Uwaga: wdrożenie tej reguły w paczce produkcyjnej (ws-09) wymusza świeże MFA w tokenie klienta (`step_up_required`) **oprócz** kodu TOTP. Do decyzji człowieka, czy dla narzędzi objętych kodem TOTP reguła ma wypaść z paczki produkcyjnej (zmiana w ws-09, nie w kontrakcie) |
+
+- **Zmiany plików (szkic):**
+  - `schemas/tool-error.schema.json`, definicja `ConfirmationRequired` (wariant 3.0.0):
+
+```json
+    "ConfirmationRequired": {
+      "type": "object",
+      "required": ["error", "message"],
+      "properties": {
+        "error": { "const": "confirmation_required" },
+        "message": { "$ref": "#/$defs/Message" },
+        "confirmationId": { "$ref": "common.schema.json#/$defs/ConfirmationId" },
+        "description": {
+          "description": "Operation as the gateway computed it from the arguments it received: qualified tool name, system and arguments sorted by name, JSON-serialized, truncated like ConfirmationView. Not model text. Unlike message it carries argument values (the client already has them). A client shows it to the user, but a client is untrusted: the portal preview is the reference.",
+          "type": "string", "minLength": 1, "maxLength": 1000
+        },
+        "previewUrl": {
+          "description": "Read-only portal page /confirm/<confirmationId> (owner only, session without fresh MFA).",
+          "type": "string", "format": "uri"
+        },
+        "registerUrl": {
+          "description": "Portal page where the user registers the authenticator. Present exactly when the user has no active authenticator; no pending call exists then.",
+          "type": "string", "format": "uri"
+        },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/Timestamp" }
+      },
+      "oneOf": [
+        { "required": ["confirmationId", "description", "previewUrl", "expiresAt"] },
+        {
+          "required": ["registerUrl"],
+          "not": {
+            "anyOf": [
+              { "required": ["confirmationId"] },
+              { "required": ["description"] },
+              { "required": ["previewUrl"] },
+              { "required": ["expiresAt"] }
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    }
+```
+
+    `Message` zachowuje zakaz wartości argumentów; wyjątek dotyczy wyłącznie pola `description`. Dwie
+    gałęzie `oneOf` wykluczają się: albo pełny zestaw oczekującego wywołania, albo samo `registerUrl` (wektory
+    poniżej sprawdzają obie strony).
+  - `openapi/gateway-admin.v1.yaml`: usunięcie `post` z `/admin/v1/confirmations/{confirmationId}` oraz schematów
+    `ConfirmationDecision` i `ConfirmationOutcome`; `getConfirmation`: `summary: Read-only preview of a pending
+    confirmation; owner only, valid session, no fresh MFA`, odpowiedzi `401` -> `Unauthenticated`, opis skutku
+    ubocznego ("a successful call records that the owner viewed the preview"), `no-store` zostaje.
+    `ConfirmationView` bez zmian w polach (dodatek `resource`: CC-098).
+  - `openapi/portal-bff.v1.yaml`: usunięcie `post` (`decideMyConfirmation`) z `/api/v1/confirmations/{id}`;
+    `getMyConfirmation`: `security: [session]`, `401` -> `Unauthenticated`; opis o braku wymogu MFA.
+  - `schemas/common.schema.json`: `ConfirmationCode` zostaje (6 cyfr), opis: "Code typed by the user from the
+    authenticator app (RFC 6238), sent by the agent as confirmation_code; not issued by the platform".
+  - `README.md`: sekcja "Potwierdzenia (C11, kanał kodu)" przepisana wg powyższego przepływu; tabela C2 (CC-092):
+    wywołania `GET /v1/authenticator` i `POST /v1/authenticator/verify` z gateway'a niosą wariant użytkownika z
+    `tool`.
+  - Mocki: WireMock `decideConfirmation.json` usunięty, `getConfirmation.json` bez MFA; MSW bez handlera POST,
+    przykłady `confirmation_required` z `previewUrl`/`registerUrl`.
+- **Wektory (nowe i zmienione):** `test-vectors/tool-errors/confirmation-required.json` (z `description`,
+  `previewUrl`, `expiresAt`), `confirmation-required-register.json` (z samym `registerUrl`),
+  `invalid-confirmation-required-both.json` (`previewUrl` i `registerUrl` razem),
+  `invalid-confirmation-required-register-with-id.json`; usunięte `confirmation-declined.json`;
+  `confirmation-binding/` przepisane (opis wyżej); `audit-events/` patrz CC-094.
+- **SemVer (uczciwie):** pivot zawiera zmiany niezgodne według tabeli README: usunięcie endpointów i schematów
+  (`POST` decyzji, `ConfirmationDecision`, `ConfirmationOutcome`), usunięcie pola `confirmUrl` i kodu błędu
+  `confirmation_declined`, zmiana wymaganych pól `confirmation_required`, zmiana oczekiwań w istniejących
+  wektorach (`confirmation-binding/`), zmiana semantyki C11 (kod nie jest wydawany przez platformę). Zmiany
+  łagodzące (podgląd bez MFA) i nowe pola są minor. **Razem: major dla C11.** Dwie opcje, wybiera człowiek:
+  - **A. 2.2.0 z udokumentowanym wyjątkiem** jak w 2.1.0 (CC-071/074/077). Za: jedno wydanie, ws-08 dostaje
+    wszystko na MSW od razu; według STATUS żaden komponent poza mockami nie używa C11 (gateway M3 nie istnieje, BFF i
+    web są na M1). Przeciw: od 2.0.0 obowiązuje ścisły SemVer, a to byłby drugi kolejny wyjątek dotykający tej samej
+    operacji (`POST` decyzji zmienił się z 204 na 200 w 2.1.0 i znika w 2.2.0); klient wygenerowany z 2.1.x
+    dalej wołałby usunięty endpoint, bez ostrzeżenia w typach.
+  - **B. 3.0.0 (rekomendacja ws-00).** 2.2.0 zawiera wtedy tylko CC-080 ... CC-090 (po decyzji o CC-085), a pivot
+    wychodzi jako 3.0.0 przed startem M3, bo C11 nie jest potrzebne w M2. Koszt: broker, BFF, web, gateway i ws-09
+    podnoszą zależność o jeszcze jeden major (nic z C11 nie jest zaimplementowane, więc migracja jest mechaniczna).
+    Paczki polityk: `cedar/mcp.cedarschema` bez zmian bajtowo, a `BundleVerifier` sprawdza tylko format
+    `schemaVersion` i bajty schematu, więc istniejące paczki działają. W 3.0.0 mieszczą się też bez wyjątku CC-094
+    (nowy `event`) i CC-085, gdyby człowiek wolał nie robić wyjątku w 2.2.0.
+- **Ryzyko rezydualne (do zapisania w planie):**
+  1. **Kod TOTP uwierzytelnia obecność człowieka, nie operację.** W CC-077 człowiek zatwierdzał w portalu
+     konkretne argumenty i dopiero wtedy powstawał kod związany z ich hashem. Teraz kod nie zależy od operacji:
+     każde oczekujące wywołanie tego użytkownika może go zużyć w ciągu okna. Jeśli człowiek nie otworzy podglądu,
+     jego wiedza o tym, co zatwierdza, pochodzi z opisu pokazanego w **niezaufanym kliencie**; zmanipulowany
+     agent (prompt injection) może pokazać opis operacji A, mając oczekujące wywołanie B, i użyć kodu wpisanego
+     przez człowieka dla B.
+  2. Kod wpisany w kliencie widzi agent. Okno +-1 krok (do ok. 90 s) i jednorazowość kroku (CC-092) ograniczają
+     jego użycie do jednego wywołania, ale nie do tego, które człowiek miał na myśli.
+  3. Niezmiennik 9 (potwierdzenie związane z `(user, narzędzie, argumenty)`, jednorazowe, z TTL) jest spełniony
+     w sensie formalnym (związane jest oczekujące wywołanie), a **intencja** niezmiennika (człowiek zatwierdza
+     te argumenty) zachodzi tylko wtedy, gdy człowiek je przeczytał w zaufanym kanale (podgląd) albo w surowym
+     widoku wywołania narzędzia, który pokazuje klient.
+  4. Blokada po błędnych kodach (CC-092) daje zmanipulowanemu agentowi możliwość zablokowania potwierdzeń
+     destrukcyjnych użytkownika (DoS fail-closed; odczyty i zapisy bez potwierdzenia działają).
+  5. Seed TOTP jest sekretem współdzielonym i jednorazowo widocznym w przeglądarce przy rejestracji (CC-093);
+     agent z kontrolą przeglądarki zalogowanego użytkownika mógłby go odczytać, dlatego rejestracja wymaga
+     świeżego MFA Entra.
+- **Środki ograniczające (propozycje):** (a) konfiguracja gateway'a `confirmation.previewRequired` (per ryzyko
+  lub per narzędzie): kod jest przyjmowany dopiero po tym, jak właściciel załadował podgląd danego
+  `confirmationId` z sesji portalu. Agent nie ma sesji portalu, więc przy włączeniu człowiek co najmniej widział
+  prawdziwą operację w zaufanym kanale. **Rekomendacja ws-00: włączone dla `DESTRUCTIVE`**, bo bez tego
+  potwierdzenie chroni przed działaniem agenta bez człowieka, ale nie przed agentem zmanipulowanym w trakcie
+  żywej sesji; (b) jedno aktywne oczekujące wywołanie na (sub, tool); (c) opis operacji i audyt zawierają to samo
+  `confirmationId`, a audyt rejestruje, czy podgląd był otwarty (CC-094); (d) wiele klientów pokazuje surowe
+  argumenty wywołania narzędzia niezależnie od modelu (nie gwarancja kontraktu); (e) rozważenie w przyszłości
+  WebAuthn z wyzwaniem równym hashowi operacji, który wiąże zatwierdzenie z operacją (poza decyzją o
+  Authenticatorze).
+- **Wpływ na strumienie:** ws-05 (oczekujące wywołania, opis, flaga podglądu, wołanie brokera, tabela odpowiedzi,
+  usunięcie ścieżki decyzji), ws-06 (CC-092), ws-07 (podgląd bez MFA, brak POST, CC-093), ws-08 (patrz CC-093 i
+  lista ekranów), ws-09 (decyzja o regule `destructive-requires-fresh-mfa`), ws-10 (testy: powtórzenie kodu,
+  blokada, inne argumenty, brak rejestracji, podgląd wymagany), ws-01 (generator TOTP do dev, np. `make totp`).
+  Plan do aktualizacji przez człowieka: niezmienniki 4 i 9 w `00-overview.md`, C4/C5/C10/C11/C12 w
+  `01-contracts.md`, D8 w `02-decisions.md`, briefy ws-05/06/07/08.
+- **Pytania do człowieka:** (1) 2.2.0 z wyjątkiem czy 3.0.0 (rekomendacja: 3.0.0); (2) czy `previewRequired` ma
+  być domyślnie włączone dla `DESTRUCTIVE` (rekomendacja: tak) i czy przy włączeniu zostaje to konfiguracją
+  gateway'a, czy ma wejść do kontraktu (rekomendacja: konfiguracja); (3) czy reguła
+  `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (rekomendacja: tak, żeby użytkownik nie miał dwóch
+  mechanizmów); (4) czy `confirmation_declined` ma zniknąć ze schematu (rekomendacja: tak).
+- **Status:** proposed (do decyzji człowieka; kierunek "kod z Authenticatora + link podglądu" zatwierdzony
+  2026-10-27, szczegóły i SemVer do akceptacji)
+
+## CC-092 | C4 | Broker: rejestracja i weryfikacja Authenticatora (TOTP)
+
+- **Zgłasza:** człowiek (pivot, decyzja 2026-10-27); część pakietu CC-091
+- **Kamień:** M3 (gateway weryfikuje w M3; rejestracja może powstać wcześniej, bo ekran jest niezależny od C11)
+- **Problem:** kod TOTP musi być zweryfikowany przez komponent, który zna sekret konta "MCP Platform". Sekret nie
+  może trafić do gateway'a, logów ani odpowiedzi poza jednym pokazem przy rejestracji. Użytkownik musi móc
+  zarejestrować, sprawdzić i usunąć swoją rejestrację; admin musi móc ją zresetować.
+- **Wariant (rekomendowany): weryfikuje broker, zwraca tylko wynik.** Nowa grupa operacji `/v1/authenticator`
+  w C4. Sekret (ziarno) nie opuszcza brokera po rejestracji; gateway dostaje `ok` albo powód odmowy. Ziarno
+  zapisuje się tak jak poświadczenia: w `SecretStore` (OpenBao, Transit; ścieżka np.
+  `mcp/authenticators/<sha256(sub)>`, odszyfrowany rekord zawiera `sub` porównywany z żądaniem), a w bazie
+  brokera tylko metadane (stan, `registeredAt`, `lastUsedAt`, `lastAcceptedStep`, licznik niepowodzeń,
+  `lockedUntil`). Zegar: czas serwera brokera (NTP); czas klienta nie bierze udziału.
+- **Parametry TOTP:** RFC 6238 z HMAC-SHA-1, 6 cyfr, krok 30 s, ziarno 20 losowych bajtów z CSPRNG (160 bit,
+  zalecenie RFC 4226), kod porównywany jako napis w stałym czasie (kod z zerem wiodącym `081804` to nie liczba).
+  **SHA-1 a zgodność:** aplikacje (w tym Microsoft Authenticator dla kont dodanych kodem QR) w praktyce respektują
+  tylko wartości domyślne SHA-1, 6 cyfr, 30 s; parametry `algorithm`, `digits`, `period` w URI bywają ignorowane,
+  więc inne wartości dałyby kody, które aplikacja liczy inaczej. HMAC-SHA-1 nie jest podatny na znane ataki
+  kolizyjne na SHA-1 (HMAC nie opiera się na odporności na kolizje), więc ryzykiem nie jest SHA-1, tylko 6 cyfr i
+  wspólny sekret, ograniczane limitami poniżej. Zgodność z konkretną wersją Microsoft Authenticator wynika z mojej
+  wiedzy, nie z testu; **ws-08 lub człowiek potwierdza ją na prawdziwej aplikacji przed zatwierdzeniem wpisu**.
+- **Reguły weryfikacji (`verify`):**
+  - Okno: kroki `t-1`, `t`, `t+1` (do ok. 90 s ważności fizycznej jednego kodu). Brak resynchronizacji zegara
+    telefonu poza oknem; dryf większy niż 30 s kończy się `invalid` (użytkownik poprawia czas w telefonie).
+  - Jednorazowość: broker trzyma `lastAcceptedStep`; kod z kroku `s` jest przyjęty tylko gdy `s >
+    lastAcceptedStep`, a przyjęcie ustawia `lastAcceptedStep = s` jednym atomowym, warunkowym zapisem
+    (`UPDATE ... WHERE last_accepted_step < :s`). Kod z kroku równego lub starszego niż ostatnio przyjęty to
+    `replayed`. Skutek: dwa potwierdzenia w tym samym kroku wymagają dwóch różnych kodów (użytkownik czeka do
+    następnego kroku, najwyżej 30 s). Stan przeżywa restart (baza, nie pamięć), więc restart brokera nie otwiera
+    okna na powtórzenie.
+  - Limity: 5 kolejnych niepowodzeń (`invalid` lub `replayed`) w 15 minut blokują weryfikację użytkownika na 15
+    minut (konfiguracja). W blokadzie `verify` zwraca `locked` bez sprawdzania kodu (nie zdradza, czy był dobry).
+    Sukces zeruje licznik. Limit 3 prób na oczekujące wywołanie jest w gateway'u (CC-091).
+  - `verify` dla użytkownika bez aktywnej rejestracji: `not_registered`.
+- **Rejestracja:**
+  - `POST /v1/authenticator/enrollment` (BFF): tworzy ziarno i zwraca `otpauthUri` oraz `secret` (Base32) **jeden
+    raz**; TTL rejestracji w toku 10 min; ponowne wywołanie zastępuje poprzednią rejestrację w toku. Przy aktywnej
+    rejestracji `409 already_registered` (najpierw trzeba ją usunąć). Odpowiedź ma `Cache-Control: no-store`.
+  - `POST /v1/authenticator/enrollment/confirm` (BFF): kod z aplikacji musi być poprawnym TOTP nowego ziarna
+    (okno +-1); sukces aktywuje rejestrację i ustawia `lastAcceptedStep` na krok tego kodu, więc ten sam kod nie
+    zadziała zaraz potem jako potwierdzenie operacji. Trzy błędne kody niszczą rejestrację w toku
+    (`enrollment_invalid`).
+  - `otpauthUri` ma stałą postać `otpauth://totp/MCP%20Platform:<username>?secret=<Base32>&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30`
+    (`username` kodowany procentowo). QR rysuje frontend lokalnie; URI nigdy nie trafia do zewnętrznego
+    generatora QR.
+- **Zmiany plików (szkic `openapi/credential-broker.v1.yaml`):**
+
+```yaml
+  /v1/authenticator:
+    get:
+      tags: [authenticator]
+      operationId: getAuthenticator
+      x-allowed-client-cn: [mcp-portal-bff, mcp-gateway]
+      summary: State of the current user's authenticator registration (no secret).
+      security:
+        - mtls: []
+          bffUserToken: []
+        - mtls: []
+          gatewayInternalJwt: []
+      responses:
+        '200':
+          description: State of the registration of the calling user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatorStatus'
+              examples:
+                none:
+                  value:
+                    state: none
+                active:
+                  value:
+                    state: active
+                    registeredAt: '2026-10-27T09:00:00Z'
+                    lastUsedAt: '2026-10-27T09:30:00Z'
+                locked:
+                  value:
+                    state: active
+                    registeredAt: '2026-10-27T09:00:00Z'
+                    lockedUntil: '2026-10-27T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    delete:
+      tags: [authenticator]
+      operationId: deleteAuthenticator
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Remove the current user's registration. Idempotent.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '204':
+          description: Removed (or there was none).
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /v1/authenticator/enrollment:
+    post:
+      tags: [authenticator]
+      operationId: startAuthenticatorEnrollment
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Create a seed and show it once. The only response of C4 besides resolve that carries a secret.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '201':
+          description: Seed shown once; it cannot be read again.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/PragmaNoCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatorEnrollment'
+        '409':
+          description: A registration is already active; remove it first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                already_registered:
+                  value:
+                    error: already_registered
+        '429':
+          description: Too many enrollment starts for this user (broker limit).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                rate_limited:
+                  value:
+                    error: rate_limited
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /v1/authenticator/enrollment/confirm:
+    post:
+      tags: [authenticator]
+      operationId: confirmAuthenticatorEnrollment
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Activate the registration with the first code from the app.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticatorEnrollmentConfirm'
+      responses:
+        '200':
+          description: Registration active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatorStatus'
+        '422':
+          description: invalid_code (try again) or enrollment_invalid (expired, unknown, destroyed after three wrong codes).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatorEnrollmentError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /v1/authenticator/verify:
+    post:
+      tags: [authenticator]
+      operationId: verifyAuthenticatorCode
+      x-allowed-client-cn: [mcp-gateway]
+      summary: Verify a code of the calling user (internal JWT user variant with tool). Returns only the result.
+      security:
+        - mtls: []
+          gatewayInternalJwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticatorVerifyRequest'
+      responses:
+        '200':
+          description: Result of the check; the seed never appears. Any other status is a failure for the caller (fail-closed).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatorVerifyResult'
+              examples:
+                ok:
+                  value:
+                    result: ok
+                locked:
+                  value:
+                    result: locked
+                    retryAfterSeconds: 840
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /v1/admin/users/{sub}/authenticator/reset:
+    parameters:
+      - name: sub
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+    post:
+      tags: [admin]
+      operationId: resetUserAuthenticator
+      x-allowed-client-cn: [mcp-offboarding]
+      summary: Remove the registration of a user (lost phone after Entra MFA was lost too). Idempotent.
+      security:
+        - mtls: []
+      responses:
+        '204':
+          description: Removed (or there was none).
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+```
+
+```yaml
+    AuthenticatorStatus:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [none, active]
+        registeredAt:
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        lastUsedAt:
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        lockedUntil:
+          description: Present while verification is blocked after repeated wrong codes.
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+      additionalProperties: false
+    AuthenticatorEnrollment:
+      type: object
+      required: [enrollmentId, otpauthUri, secret, expiresAt]
+      properties:
+        enrollmentId:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{16,128}$'
+        otpauthUri:
+          type: string
+          format: uri
+          pattern: '^otpauth://totp/'
+        secret:
+          description: Seed, Base32 without padding, shown once for manual entry. Never logged, audited or stored by the BFF or the browser.
+          type: string
+          pattern: '^[A-Z2-7]{32}$'
+        expiresAt:
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+      additionalProperties: false
+    AuthenticatorEnrollmentConfirm:
+      type: object
+      required: [enrollmentId, code]
+      properties:
+        enrollmentId:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{16,128}$'
+        code:
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationCode'
+      additionalProperties: false
+    AuthenticatorEnrollmentError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_code, enrollment_invalid]
+      additionalProperties: false
+    AuthenticatorVerifyRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationCode'
+      additionalProperties: false
+    AuthenticatorVerifyResult:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [ok, invalid, replayed, locked, not_registered]
+        retryAfterSeconds:
+          description: Present with locked.
+          type: integer
+          minimum: 1
+      additionalProperties: false
+      if:
+        properties:
+          result:
+            const: locked
+        required: [result]
+      then:
+        required: [retryAfterSeconds]
+```
+
+  Dodatkowo: `POST /v1/admin/users/{sub}/purge` usuwa także rejestrację Authenticatora; README, tabela C2: nowe wiersze
+  "broker `GET /v1/authenticator` i `POST /v1/authenticator/verify` z gateway'a: tylko wariant użytkownika, `tool`
+  wymagany (narzędzie, które jest potwierdzane)"; opis `info`: ziarno Authenticatora wychodzi z brokera tylko
+  w `201` rejestracji do właściciela. `ConfirmationCode` w opisach C4 jako "kod 6 cyfr z aplikacji".
+  Wszystkie nowe operacje dziedziczą `503 upstream_unavailable` (CC-064) i `X-Request-Id` (CC-047).
+- **Alternatywy dla miejsca weryfikacji:**
+  - A. Weryfikuje broker (rekomendowane, jak wyżej).
+  - B. Gateway pobiera ziarno z brokera i liczy sam. Odrzucone: ziarno opuszcza broker i trafia do pamięci
+    gateway'a, `resolve` musiałby je zwracać (rozszerzenie niezmiennika 4), a cache złamałby jednorazowość kroku
+    między instancjami.
+  - C. Silnik TOTP w OpenBao (ziarno nie trafia nawet do pamięci brokera). Jeśli używana wersja OpenBao go ma
+    (do sprawdzenia przez ws-06), jest dopuszczalną implementacją wariantu A, o ile zachowuje reguły
+    jednorazowości (krok, nie czas), okna +-1 i blokady z powyższej listy; kontrakt się nie zmienia.
+- **Wektory (nowe, `test-vectors/totp/`):** ziarno testowe z RFC 6238 (`12345678901234567890`, Base32
+  `GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ`, oznaczone NOT FOR PRODUCTION jak klucze w `keys/`). Wartości policzone i
+  sprawdzone skryptem, 6 cyfr to ostatnie 6 z 8-cyfrowych wartości z RFC 6238, dodatek B:
+  - `rfc6238-sha1.json`: `t=59 -> 287082`, `1111111109 -> 081804`, `1111111111 -> 050471`, `1234567890 -> 005924`,
+    `2000000000 -> 279037`, `20000000000 -> 353130`.
+  - `verify-*.json` (stały czas `at` = 1792000030, 2026-10-14T17:47:10Z, krok 59733334; kody kroków: 59733332
+    `738171`, 59733333 `405874`, 59733334 `705202`, 59733335 `165886`, 59733336 `129711`; pola: `secret`, `at`,
+    `lastAcceptedStep`, `code`, `expected.result`):
+    `valid-current` (`705202`, brak historii -> ok, nowy `lastAcceptedStep` 59733334), `valid-previous-step`
+    (`405874` -> ok), `valid-next-step` (`165886` -> ok), `invalid-two-steps-back` (`738171` -> invalid),
+    `invalid-two-steps-ahead` (`129711` -> invalid), `replayed-same-step` (`705202`, last 59733334 -> replayed),
+    `replayed-older-step` (`405874`, last 59733334 -> replayed), `valid-next-step-after-use` (`165886`, last
+    59733334 -> ok), `invalid-format-5-digits`, `invalid-format-7-digits`, `invalid-format-letter`,
+    `invalid-format-leading-space`, `leading-zero-is-text` (`081804` przy `at`=1111111109 -> ok; `81804` ->
+    invalid format).
+  - `lockout-*.json`: sekwencja (czas, kod, wynik): 5 błędnych w 15 minut -> szósty (nawet poprawny) `locked`;
+    po 15 minutach poprawny -> ok; sukces między błędnymi zeruje licznik; 4 błędne + poprawny -> ok.
+  - `enrollment-*.json`: poprawny kod aktywuje i ustawia `lastAcceptedStep`; kod użyty przy rejestracji jest po
+    chwili `replayed`; trzy błędne niszczą rejestrację w toku; po TTL 10 min `enrollment_invalid`.
+  - `otpauth-uri.json`: `username=jkowalski` -> dokładny URI; `username=a b` (spacja) -> `a%20b`.
+  - Kontrola referencyjna w `test/` (Node, `node:crypto`) i w teście Javy; broker (ws-06) i gateway (stub brokera)
+    używają tych samych plików.
+  - Audyt: wektory w CC-094.
+- **SemVer:** nowe endpointy, schematy i wektory = minor. Pakiet pivotu jako całość: patrz CC-091.
+- **Wpływ na strumienie:** ws-06 (całość: endpointy, SecretStore, metadane, blokada, zegar, audyt, `purge`), ws-05
+  (klient brokera, fail-closed), ws-07 (CC-093), ws-01 (OpenBao: ścieżka, polityka dla brokera; NTP; generator
+  kodów dla dev i testów e2e), ws-10 (testy z wektorów, brak ziarna w logach).
+  **Niezmiennik 4** (`00-overview.md`: "Żaden endpoint nie zwraca sekretu do przeglądarki") wymaga zapisu wyjątku:
+  ziarno TOTP jest widoczne dla właściciela raz, przy rejestracji (człowiek aktualizuje plan).
+- **Pytania do człowieka:** (1) kto może resetować cudzą rejestrację: ten sam CN `mcp-offboarding` co `purge`
+  (rekomendacja: tak, jeden kanał helpdesk/IGA, osobny CN dopiero gdy pojawi się inny proces); (2) czy limity
+  (5 błędnych, 15 min) i TTL rejestracji (10 min) są akceptowalne jako wartości domyślne.
+- **Status:** proposed (do decyzji człowieka razem z CC-091)
+
+## CC-093 | C12 | BFF: rejestracja Authenticatora ze step-up MFA Entra
+
+- **Zgłasza:** człowiek (pivot, decyzja 2026-10-27); część pakietu CC-091
+- **Kamień:** M3 (ekran rejestracji może wejść w M2, jeśli broker ma endpointy wcześniej)
+- **Problem:** użytkownik rejestruje w portalu osobne konto "MCP Platform" w aplikacji TOTP, przez kod QR
+  (`otpauth` URI). Portal musi też pokazać stan rejestracji, pozwolić ją usunąć i obsłużyć brak rejestracji przy
+  próbie potwierdzenia (link `registerUrl` z CC-091).
+- **Wariant:** endpointy C12 jako cienkie proxy do CC-092 (sub zawsze z sesji, ziarno nie jest zapisywane w
+  sesji ani logowane):
+
+| Metoda i ścieżka | Opis | Step-up MFA |
+| --- | --- | --- |
+| `GET /api/v1/authenticator` | `AuthenticatorStatus` (`none` / `active`, `registeredAt`, `lastUsedAt`, `lockedUntil`) | nie |
+| `POST /api/v1/authenticator/enrollment` | `201 AuthenticatorEnrollment` (`otpauthUri`, `secret`, `expiresAt`), `no-store`; BFF zapisuje w sesji tylko `enrollmentId` | **tak** |
+| `POST /api/v1/authenticator/enrollment/confirm` | body `{enrollmentId, code}`; `200 AuthenticatorStatus` albo `422 invalid_code` / `enrollment_invalid`; `enrollmentId` musi należeć do bieżącej sesji | nie (rejestracja w toku powstała pod świeżym MFA) |
+| `DELETE /api/v1/authenticator` | usuwa własną rejestrację, `204` | **tak** |
+
+  Wszystkie modyfikujące wymagają `X-XSRF-TOKEN`. Brak świeżego MFA: `401 StepUpOrUnauthenticated` z `stepUpUrl`
+  (`returnPath` = strona rejestracji, CC-048). `409 already_registered` przy starcie, gdy rejestracja jest aktywna
+  (użytkownik najpierw ją usuwa, ze step-up). `429 rate_limited` z limitu brokera. `503` jak w CC-050.
+- **Dlaczego rejestracja i reset wymagają MFA Entra, a każde potwierdzenie nie:** rejestracja jest
+  **korzeniem zaufania** całego mechanizmu. Kto potrafi zarejestrować własną aplikację, może potem zatwierdzać
+  akcje destrukcyjne. Bez step-up wystarczy przejęta sesja portalu albo agent sterujący przeglądarką zalogowanego
+  użytkownika (computer use): zarejestrowałby własny sekret, odczytałby go z ekranu i sam zatwierdzał swoje
+  wywołania. Świeże MFA Entra (push z numerem na telefonie użytkownika) to niezależny czynnik, którego taki
+  napastnik nie ma. Rejestracja i usunięcie zdarzają się rzadko, więc koszt dla użytkownika jest znikomy, a
+  codzienne potwierdzenia pozostają szybkie (sam kod). Utrata telefonu: użytkownik loguje się z MFA Entra,
+  usuwa rejestrację i rejestruje nową; utrata także czynnika Entra: reset przez helpdesk/IGA (CC-092) i ponowna
+  rejestracja ze step-up.
+- **Wymagania dla ekranu (do briefu ws-08):** QR rysowany lokalnie z `otpauthUri` (bez zewnętrznych usług QR),
+  `secret` do ręcznego wpisania, wartości tylko w pamięci komponentu (bez `localStorage`, adresu, tytułu karty,
+  historii), `autocomplete=off`, czyszczenie po zakończeniu i przy opuszczeniu strony; zgodność z konkretną
+  aplikacją Authenticator (CC-092).
+- **Zmiany plików (szkic `openapi/portal-bff.v1.yaml`):** tag `authenticator`; cztery operacje z tabeli
+  (`getMyAuthenticator`, `startMyAuthenticatorEnrollment`, `confirmMyAuthenticatorEnrollment`,
+  `deleteMyAuthenticator`) z `$ref` do schematów C4 (`credential-broker.v1.yaml#/components/schemas/Authenticator*`),
+  nagłówkami `NoStore` na `201` oraz odpowiedziami `StepUpOrUnauthenticated`, `CsrfInvalid`,
+  `UpstreamUnavailable`; `info.description`: zdanie "Secrets go only from the browser to the BFF" uzupełnione o
+  wyjątek "oraz jednorazowy pokaz ziarna Authenticatora przy rejestracji (CC-093)"; `Me.mfaFreshUntil` (opis z
+  CC-090). `getMyConfirmation`: link do rejestracji nie jest w tym widoku (jest w `registerUrl` błędu C10).
+- **Wektory / testy:** przykłady OpenAPI i MSW (`Prefer: example=...`: `none`, `active`, `locked`,
+  `step_up_required`, `already_registered`, `invalid_code`, `enrollment_invalid`); test mocków: odpowiedź `201`
+  ma `Cache-Control: no-store`, a żadna inna odpowiedź C12 nie zawiera pola `secret` ani `otpauthUri`.
+- **SemVer:** nowe endpointy i schematy = minor. Pakiet pivotu: CC-091.
+- **Wpływ na strumienie:** ws-07 (proxy, step-up przez istniejący mechanizm, `enrollmentId` w sesji, bez logowania
+  ciał), ws-08 (nowa strona rejestracji Authenticatora z kreatorem QR / klucz ręczny / pierwszy kod, stan i usunięcie rejestracji, baner o braku rejestracji przy narzędziach z `requiresConfirmation`, strona podglądu tylko do odczytu; lista pełna w raporcie koordynatora), ws-06 (CC-092), ws-10 (test: żadne logi BFF ani brokera nie zawierają
+  ziarna ani `otpauthUri`; rejestracja bez świeżego MFA odrzucona).
+- **Status:** proposed (do decyzji człowieka razem z CC-091)
+
+## CC-094 | C8 | Zdarzenia audytu dla Authenticatora i potwierdzeń kodem
+
+- **Zgłasza:** człowiek (pivot); część pakietu CC-091
+- **Kamień:** M3
+- **Problem:** rejestracja, reset, weryfikacja kodu (ok, błąd, powtórzenie, blokada) i potwierdzenia kodem muszą
+  być w audycie jednym `requestId` z wywołaniem narzędzia (niezmiennik 10), bez kodu, ziarna i `otpauthUri`
+  (niezmiennik 7). Dziś `event: confirmation` ma znane powody `user_confirmed`, `user_declined`,
+  `confirmation_expired`.
+- **Wariant B (rekomendowany z wydaniem 3.0.0): nowa wartość `event: "authenticator"`.** Jedno zdarzenie dla cyklu
+  życia rejestracji i weryfikacji kodu; SIEM filtruje po `event`. Znane wartości `reason` (wzorzec, nie enum):
+  - rejestracja (broker i BFF, `outcome: ok|denied`): `authenticator_enrollment_started`, `authenticator_registered`,
+    `authenticator_enrollment_failed`, `authenticator_removed`, `authenticator_reset_by_admin` (broker, `sub`
+    celu; aktor to CN klienta mTLS, bez pola `actor` w C8);
+  - weryfikacja (broker, `decision: allow|deny`): `totp_verified`, `totp_invalid`, `totp_replayed`,
+    `totp_locked`, `totp_not_registered`; zdarzenie niesie `tool` i `virtualServer`/`client` z JWT od gateway'a;
+  - gateway zostaje przy `event: confirmation` (powstanie oczekującego: `decision: confirmation_pending`; skutek:
+    `user_confirmed`, `user_confirmed_no_preview` gdy podgląd nie był otwarty, `confirmation_expired`,
+    `attempts_exhausted`, `preview_not_viewed`, `authenticator_not_registered`), a wykonane narzędzie to `tool_call`
+    z tym samym `requestId` ponowienia. `user_declined` nie jest już emitowane.
+  Schemat: `event` dostaje `"authenticator"`; reguła `allOf` wymaga dla niego `outcome` i `reason`; opis `reason`
+  uzupełniony o nowe znane wartości; opis pliku: "Never ... confirmation codes, TOTP codes, authenticator seeds or
+  otpauth URIs". Pola bez zmian (`additionalProperties: false` nadal blokuje pole `code`).
+- **Wariant A (bez zmiany enum, minor):** weryfikacja jako `confirmation` (`decision` allow/deny, te same
+  `reason`), cykl życia rejestracji jako `admin_change`. Wada: zdarzenia rejestracji mieszają się z zatwierdzaniem
+  definicji narzędzi przez adminów w tym samym `event`.
+- **Wektory:** `audit-events/broker-authenticator-registered.json`, `broker-authenticator-verify-ok.json`,
+  `broker-authenticator-verify-replayed.json`, `broker-authenticator-verify-locked.json`,
+  `portal-authenticator-removed.json`, `broker-authenticator-reset-by-admin.json`,
+  `gateway-confirmation-user-confirmed.json`, `gateway-confirmation-preview-not-viewed.json`; odrzucane:
+  `invalid-authenticator-with-code.json` (pole `code`), `invalid-authenticator-with-secret.json`,
+  `invalid-authenticator-without-reason.json`, `invalid-authenticator-outcome-missing.json`. Istniejący
+  `audit-events/invalid-confirmation-code.json` zostaje.
+- **SemVer:** wariant B: nowa wartość enum, według README **major** (SIEM i testy walidujące `event` zamkniętą listą
+  muszą dodać `authenticator` przed aktualizacją producentów, jak przy CC-071); mieści się w 3.0.0 bez wyjątku.
+  Wariant A: minor (nowe znane wartości `reason`). Rekomendacja ws-00: B przy 3.0.0, A przy wyjątku w 2.2.0.
+- **Wpływ na strumienie:** ws-06, ws-05, ws-07 (emisja), ws-10 (test: ani kod, ani ziarno nie występują w logach i
+  audycie; jeden `requestId` obejmuje BFF, broker i gateway), operator SIEM (nowa wartość `event`).
+- **Status:** proposed (do decyzji człowieka razem z CC-091)
+
+## CC-095 | C5/C12 | `GET /api/v1/activity/calls` i rzut `ActivityCall`
+
+- **Zgłasza:** analiza luk G-11, G-12, G-13; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M3 (ekran logów od M2 jako lista na starym `GET /activity`; filtry i stany od M3), wydanie z kamieniem M3
+- **Problem:** `GET /api/v1/activity` zwraca surowe zdarzenia C8 z samym `limit`. (G-11) Brak filtrów
+  (szukaj, okres, wynik) i stronicowania; filtrowanie w przeglądarce na 200 rekordach daje niepełny obraz bez
+  ostrzeżenia, a gateway trzyma 30 dni. (G-12) Jedno wywołanie to kilka zdarzeń (`policy_decision`,
+  `confirmation`, `tool_call`); przy kanale kodu pierwsze wywołanie i ponowienie mają różne `requestId`, a C8 nie
+  ma `confirmationId`, więc tylko gateway powiąże "czeka na potwierdzenie" z rozstrzygnięciem. (G-13) Kolumna
+  "Zasób" i pełna nazwa narzędzia (`<system>__<tool>`) powinny być liczone w jednym miejscu.
+- **Wariant (zatwierdzony kierunek):** nowy endpoint `GET /api/v1/activity/calls` (proxy do C5 `GET
+  /admin/v1/activity/calls`), jedna pozycja = jedno wywołanie, rzut `ActivityCall` liczony w gateway'u z jego
+  zdarzeń i wewnętrznego powiązania z `confirmationId` (które nie wychodzi poza gateway: ani do C8, ani do
+  przeglądarki). Filtry `from`, `to`, `result` (grupa), `q`, kursor w nagłówku `X-Next-Cursor`. Stary
+  `GET /api/v1/activity` zostaje bez zmian (odpowiedź tablicą zdarzeń C8). `sub` zawsze z tokenu BFF, nigdy z
+  parametru; `q` dopasowuje tylko nazwę narzędzia i `resource.id` (argumentów nie ma w danych), długość ograniczona,
+  zapytanie parametryzowane. Ograniczenie: gateway widzi tylko swoje zdarzenia (`component: gateway`); odmowa
+  serwera MCP na zasobie (`not_found_or_denied`) jest widoczna tylko jako `result: error`, `errorCode:
+  not_found_or_denied` w wywołaniu, które przeszło przez gateway.
+- **Adnotacja pivotu (CC-091):** po zmianie kanału potwierdzeń stan "Odrzucone przez Ciebie" (`declined`) nie
+  powstaje (brak decyzji w portalu); "Potwierdzone kodem" = `confirmed` zostaje (kod z aplikacji), a niewpisany kod
+  kończy się `expired`, wyczerpane próby `confirmation_failed`.
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml` i `openapi/gateway-admin.v1.yaml`:
+
+```yaml
+  /api/v1/activity/calls:
+    get:
+      tags: [activity]
+      operationId: listMyActivityCalls
+      summary: My tool calls, one row per call, with filters (from gateway audit, without arguments).
+      security:
+        - session: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: from
+          in: query
+          required: false
+          schema:
+            $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        - name: to
+          in: query
+          required: false
+          schema:
+            $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        - name: result
+          in: query
+          required: false
+          description: Result group. confirmation covers pending, confirmed, expired and failed confirmations.
+          schema:
+            type: string
+            enum: [ok, denied, error, confirmation]
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring of the qualified tool name or of resource.id. Never matches argument values (they are not stored).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque value of the X-Next-Cursor header of the previous page.
+          schema:
+            type: string
+            maxLength: 256
+      responses:
+        '200':
+          description: Newest first; at most 30 days back. X-Next-Cursor is present when more rows exist.
+          headers:
+            X-Next-Cursor:
+              required: false
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ActivityCall'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+```
+
+```yaml
+    ActivityCall:
+      type: object
+      required: [requestId, ts, tool, result]
+      properties:
+        requestId:
+          $ref: '../schemas/common.schema.json#/$defs/RequestId'
+        ts:
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        client:
+          type: string
+          maxLength: 255
+          description: Client id (azp), e.g. claude-code; the UI maps it to a display name.
+        virtualServer:
+          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        tool:
+          $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        risk:
+          $ref: '../schemas/common.schema.json#/$defs/Risk'
+        resource:
+          type: object
+          required: [type, id]
+          properties:
+            type:
+              $ref: '../schemas/common.schema.json#/$defs/ResourceType'
+            id:
+              type: string
+              maxLength: 512
+            parent:
+              type: string
+              maxLength: 600
+          additionalProperties: false
+        result:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+          maxLength: 64
+          description: |
+            Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
+            tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
+            expired, confirmation_failed. A client must show an unknown value as a generic label.
+        errorCode:
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/ErrorCode'
+            - type: 'null'
+      additionalProperties: false
+```
+
+  `result` jest otwartym ciągiem ze znanymi wartościami (jak `reason` w C8), bo zamknięty enum wymagałby wydania
+  major przy każdej nowej wartości. Odpowiednik C5 z `x-allowed-client-cn: [mcp-portal-bff]`. Stronicowanie
+  nagłówkiem zamiast `{items, next}` utrzymuje odpowiedź tablicą. Do opisu `reason` w `audit-event.schema.json`
+  dopisana znana wartość `link_scope` (odmowa przez regułę zawężenia linku; patch, bo `reason` ma wzorzec).
+  Mapowanie makiety: "Czeka na potwierdzenie" = `confirmation_pending` (po 120 s `expired`), "Potwierdzone kodem" =
+  `confirmed`, "Odmowa: poza zakresem linku" = `denied_link_scope`, "Odmowa: brak uprawnienia" =
+  `denied_not_granted`. Poprawić dane makiet: `logs-app-*` (gwiazdka zabroniona w `OpenSearchIndexName`) na prefiks
+  `logs-app`, `payments/api !412` (MR nie jest typem zasobu) na `payments/api`, `GitLab: payments/*` na `payments`
+  z dopiskiem "z podgrupami"; kolejność argumentów w makietach potwierdzenia wg nazwy (`pageId`, `spaceKey`, ...).
+- **Wektory / testy:** `test-vectors/activity-calls/`: przykłady `ActivityCall` (`valid-ok`,
+  `valid-confirmation-pending`, `valid-unknown-result`, `valid-no-resource`), odrzucane (`invalid-result-uppercase`,
+  `invalid-contains-arguments`, `invalid-contains-code`, `invalid-resource-extra-field`) oraz
+  `aggregation-*.json` (wejście: zdarzenia C8 jednego wywołania i ponowienia, wraz z mapowaniem na wiersz;
+  oczekiwanie: jeden `ActivityCall`), z referencyjną kontrolą w teście Node, żeby gateway i mock liczyły tak
+  samo. Wektory są nowe, istniejące oczekiwania się nie zmieniają.
+- **SemVer:** minor (nowy endpoint, nowe schematy, nowe wektory).
+- **Wpływ na strumienie:** ws-05 (agregacja, indeksy po `sub` i `ts`, zapytanie parametryzowane, limit 30 dni), ws-07
+  (proxy), ws-08 (filtry, słownik etykiet `result`, obsługa nieznanej wartości), ws-10 (test: filtr `q` nie
+  dopasowuje argumentów; `sub` z parametru ignorowany).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-096 | C12 | Odpowiedzi błędów wniosków o dostęp
+
+- **Zgłasza:** analiza luk G-19; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M4 (IGA, C13), wydanie z kamieniem M4
+- **Problem:** `GET/POST /api/v1/access-requests` nie mają `503 upstream_unavailable` (IGA to nowy upstream wobec
+  CC-050). `POST` nie opisuje: wniosek już istnieje, adapter bez obiegu wniosków (`keycloak-groups`: katalog bez
+  wniosków), nieznane uprawnienie.
+- **Wariant:** `503` dla obu operacji; `POST`: duplikat zwraca idempotentnie `200` z `requestId` istniejącego
+  wniosku bieżącego użytkownika (użytkownik chce przejść do wniosku, nie czytać błędu), adapter bez obiegu lub
+  nieznane uprawnienie to `422 not_requestable`.
+- **Alternatywa:** `409 request_exists` z `requestId` (UI musi obsłużyć błąd, który jest sukcesem z punktu widzenia
+  użytkownika).
+- **Zmiany plików:** `openapi/portal-bff.v1.yaml`, `createAccessRequest.responses` i `listAccessRequests.responses`:
+
+```yaml
+        '422':
+          description: The IGA adapter has no request flow (keycloak-groups) or does not know the entitlement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_requestable:
+                  value:
+                    error: not_requestable
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+```
+
+  Opis `POST`: "When a request for the entitlement is already pending, the BFF answers 200 with the requestId of
+  that request." Opis `UpstreamUnavailable` rozszerzony o IGA. Mocki MSW: przykłady `not_requestable` i duplikat.
+- **Wektory / testy:** test przykładów i mocków; bez nowych wektorów.
+- **SemVer:** minor (nowe odpowiedzi).
+- **Wpływ na strumienie:** ws-07 (idempotencja duplikatu, mapowanie błędów adaptera), ws-08 (komunikaty).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-097 | C5/C12 | `change` i wersje definicji w rejestrze (przed/po)
+
+- **Zgłasza:** analiza luk G-23; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Kamień:** M4 (przypinanie definicji i widok administracji), wydanie z kamieniem M4
+- **Problem:** `RegistryTool.status` to `approved` albo `pending_approval`; makieta 07 rozróżnia "nowe" i "zmienione"
+  (bez N+1 wywołań `/pending`) i pokazuje wersje serwera "Przed (1.4.2) / Po (1.5.0)". `PendingTool` nie ma wersji.
+- **Wariant:** `RegistryTool.change` (`new` | `changed`, tylko przy `pending_approval`),
+  `RegistryTool.approvedInVersion` (SemVer albo `null`), `PendingTool.approvedInVersion` i `pendingVersion`.
+  Pola informacyjne; decyzja nadal wiąże `definitionHash`. Przycisk "Odrzuć" (G-24) jest usunięty z makiety i
+  **nie ma endpointu** (brak zatwierdzenia = narzędzie zostaje `pending_approval` i ukryte, fail-closed);
+  "Zatwierdź zmiany" na poziomie serwera to seria `approve` w frontendzie z raportem, które się nie udały.
+  Frontend pokazuje pełny diff `ToolEntry` z wyróżnieniem `risk`, `action`, `resourceRefs`, `annotations` (N-7).
+- **Alternatywa:** liczyć "nowe/zmienione" jednym `/pending` na narzędzie oczekujące i pominąć wersje.
+- **Zmiany plików:** `openapi/gateway-admin.v1.yaml`:
+
+```yaml
+    RegistryTool:
+      properties:
+        change:
+          type: string
+          enum: [new, changed]
+          description: Present when status is pending_approval. new = no approved entry exists; changed = an approved entry exists and differs.
+        approvedInVersion:
+          description: Server version (manifest version) at which the approved entry was approved; null for a new tool.
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/SemVer'
+            - type: 'null'
+    PendingTool:
+      properties:
+        approvedInVersion:
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/SemVer'
+            - type: 'null'
+        pendingVersion:
+          $ref: '../schemas/common.schema.json#/$defs/SemVer'
+```
+
+  `RegistryTool` ma `unevaluatedProperties: false` i składa się z `ToolEntryFields`; nowe pola dopisać w `properties`
+  obok `status`. Przykłady `listRegistryServers`, `getPendingTool` i mocki z nowymi polami.
+- **Wektory / testy:** test przykładów; reguła spójności w teście: `change` obecne wtedy i tylko wtedy, gdy
+  `status: pending_approval`.
+- **SemVer:** minor.
+- **Wpływ na strumienie:** ws-05 (rejestr zapisuje wersję manifestu przy rejestracji i zatwierdzeniu), ws-07
+  (przezroczyste), ws-08 (widok diffu).
+- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+
+## CC-098 | C5/C12 | `resource` w `ConfirmationView`
+
+- **Zgłasza:** analiza luk G-17; **nie jest na liście decyzji człowieka z 2026-10-27**, dopisane przez ws-00, bo
+  `ConfirmationView` zmienia się przy pivocie i jest to ta sama operacja (usunąć z pakietu, jeśli człowiek woli)
+- **Kamień:** M3, razem z pakietem CC-091
+- **Problem:** makieta potwierdzenia pokazuje zasób ("DEV / 48213"), a `ConfirmationView` ma `tool`, `system`,
+  `arguments[]`, `expiresAt`. Frontend nie wie, które argumenty są zasobem. Po pivocie ekran podglądu jest jedynym
+  zaufanym miejscem, w którym człowiek widzi operację (CC-091, ryzyko rezydualne), więc czytelne wskazanie zasobu
+  ma większe znaczenie niż w CC-077.
+- **Wariant:** opcjonalne `ConfirmationView.resource` (`type`, `id`, `parent`) liczone przez gateway z
+  `resourceRefs` (to samo, co trafia do audytu C8); brak pola, gdy narzędzie nie przyjmuje identyfikatora zasobu.
+  Argumenty pozostają posortowane po nazwie (kontrakt), makieta do poprawy.
+- **Alternatywa:** ekran bez wydzielonego zasobu, tylko lista argumentów.
+- **Zmiany plików:** `openapi/gateway-admin.v1.yaml`, `ConfirmationView.properties`:
+
+```yaml
+        resource:
+          description: Main resource of the call from resourceRefs (type, id, parent), computed by the gateway; absent when the tool takes no resource identifier.
+          type: object
+          required: [type, id]
+          properties:
+            type:
+              $ref: '../schemas/common.schema.json#/$defs/ResourceType'
+            id:
+              type: string
+              maxLength: 512
+            parent:
+              type: string
+              maxLength: 600
+          additionalProperties: false
+```
+
+  Nie robić pola wymaganego (zmiana wymaganych pól byłaby kolejnym major).
+- **Wektory / testy:** test przykładów (`delete_issue` z `resource: {type: Jira::Issue, id: ABC-123, parent: Jira::Project::ABC}`).
+- **SemVer:** minor. Jeśli pivot wychodzi w 3.0.0, wchodzi razem z nim.
+- **Wpływ na strumienie:** ws-05 (wyliczenie), ws-07 (przezroczyste), ws-08 (wiersz zasobu na podglądzie).
+- **Status:** proposed (dopisane przez ws-00, do decyzji człowieka)
