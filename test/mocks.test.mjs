@@ -2,7 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { setupServer } from 'msw/node';
-import { createPortalBffHandlers, MOCK_XSRF_TOKEN } from '../dist/msw/index.js';
+import { createPortalBffHandlers, LOGIN_ERROR_CODES, MOCK_XSRF_TOKEN } from '../dist/msw/index.js';
 import { generateMswExamples, generateWiremock } from '../scripts/generate-mocks.mjs';
 import { path } from '../scripts/lib/contracts.mjs';
 
@@ -89,4 +89,15 @@ test('MSW: invalid returnPath gives 400 (CC-032)', async () => {
   const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
   const start = await fetch(`${BASE}/api/v1/connections/gitlab/oauth`, { method: 'POST', headers, body: JSON.stringify({ returnPath: '/%252Fevil' }) });
   assert.equal(start.status, 400);
+});
+
+test('MSW: /me can report mfaFreshUntil (CC-053) and login error codes are exported (CC-051)', async () => {
+  const res = await fetch(`${BASE}/api/v1/me`, { headers: { Prefer: 'example=mfa_fresh' } });
+  assert.match((await res.json()).mfaFreshUntil, /Z$/);
+  assert.deepEqual([...LOGIN_ERROR_CODES], ['cancelled', 'idp_error', 'session_expired', 'step_up_failed']);
+});
+
+test('WireMock stubs of C4 send X-Request-Id (CC-047)', () => {
+  const stub = JSON.parse(readFileSync(path('mocks', 'wiremock', 'credential-broker', 'mappings', 'resolveCredential.json'), 'utf8'));
+  for (const mapping of stub.mappings) assert.ok(mapping.response.headers['X-Request-Id'], mapping.name);
 });

@@ -1,10 +1,19 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **1.2.0**, tag `v1.2.0` (poprzednio `v1.1.0`, `v1.0.0`). Zmiany i lista niezgodności: `CHANGELOG.md`.
+Ostatnie wydanie **1.2.0** (tag `v1.2.0`). W przygotowaniu **1.2.1** (bez tagu): CC-046 ... CC-053 wdrożone,
+czeka na wyniki recenzji 1.2.0. Zmiany i zgodność: `CHANGELOG.md`.
 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`, `./mvnw verify` w trzech modułach),
 `npm run smoke:wiremock` zielony lokalnie. Testy modułów Java przechodzą także z jackson-databind 2.21.4
 (wersja zarządzana przez Spring Boot 4.1.0).
+
+## Zrobione w 1.2.1 (bez tagu)
+
+- CC-046 (`credential.invalidated` po zastąpieniu poświadczenia), CC-047 (`X-Request-Id` w C4, także w stubach
+  WireMock), CC-048 (`returnPath` w `stepUpUrl`), CC-049 (tylko token w `PutSecretRequest`), CC-050 (503 w 14
+  operacjach C12), CC-051 (kody `loginError`, wektory `login-redirects/`), CC-052 (port C13 z `Requester`,
+  README), CC-053 (`Me.mfaFreshUntil`, MSW).
+- `release/` trzyma tarballe wszystkich wydań; `scripts/pack-release.mjs` nie nadpisuje tarballi wydanych wersji.
 
 ## Zrobione w 1.2.0
 
@@ -41,5 +50,4 @@ Walidacja: `./scripts/verify-all.sh` zielony (`npm test`, `./mvnw verify` w trze
 
 ## Otwarte pytania
 
-- CC-046 (ws-06): `credential.invalidated` także po zastąpieniu sekretu.
-- CC-047 (ws-06): `X-Request-Id` w wywołaniach BFF -> broker.
+- Brak otwartych pozycji w `CONTRACT_CHANGES.md`; 1.2.1 czeka na wyniki recenzji 1.2.0.

@@ -2,7 +2,7 @@
 
 Plik zbiera miejsca, w których `01-contracts.md` jest nieprecyzyjny albo sprzeczny, oraz propozycje zmian
 od agentów. Każda pozycja ma przyjęty wariant, który **już jest** zaimplementowany w `mcp-contracts` 1.0.0,
-i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0); odrzucenie wariantu oznacza nowe wydanie
+i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-053 rozstrzygnięte 2026-10-27, wydanie 1.2.1); odrzucenie wariantu oznacza nowe wydanie
 kontraktów (patrz SemVer w `README.md`).
 
 Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alternatywy, status.
@@ -536,7 +536,8 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   połączenie nie publikuje niczego). Treść zdarzenia bez zmian.
 - **Propozycja:** dopisać w C4.3 i w opisie `credential-invalidated-event.schema.json`: "także po zastąpieniu
   poświadczenia (`PUT secret`, `oauth/complete`) dla istniejącego połączenia". Zmiana opisowa (patch).
-- **Status:** open
+- **Weszło w 1.2.1:** opis C4 (`info`, `putSecret`, `completeOAuth`) i `credential-invalidated-event.schema.json`: zdarzenie także po zastąpieniu poświadczenia istniejącego połączenia; pierwsze połączenie nic nie publikuje.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
 
 ## CC-047 | C4/C8 | `X-Request-Id` w wywołaniach BFF -> broker
 
@@ -552,9 +553,10 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** w `credential-broker.v1.yaml` dodać opcjonalny parametr nagłówka `X-Request-Id`
   (`common.schema.json#/$defs/RequestId`) dla operacji BFF i nagłówek odpowiedzi `X-Request-Id` dla wszystkich
   operacji; w C12 zapisać, że BFF przekazuje swój `requestId` do brokera. Nowe pole opcjonalne (minor).
-- **Status:** open
+- **Weszło w 1.2.1:** opcjonalny parametr nagłówka `X-Request-Id` (`RequestId`) w operacjach BFF->broker, nagłówek odpowiedzi `X-Request-Id` we wszystkich odpowiedziach C4 (także stuby WireMock); w C12 zapis, że BFF przekazuje swój requestId do brokera i gateway'a.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
 
-## CC-??? | C12 | `returnPath` w `stepUpUrl` dla operacji wywoływanych z formularza
+## CC-048 | C12 | `returnPath` w `stepUpUrl` dla operacji wywoływanych z formularza
 
 - **Zgłasza:** ws-08
 - **Problem:** `PUT /api/v1/connections/{system}/secret` (i `GET/POST /api/v1/confirmations/{id}`) wywołuje
@@ -569,9 +571,10 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** dopisać w opisie `StepUpRequired.stepUpUrl` w `portal-bff.v1.yaml`: "`returnPath` w
   `stepUpUrl` jest wartością domyślną; frontend może go zastąpić ścieżką portalu zgodną z `ReturnPath`".
   Zmiana opisowa (patch).
-- **Status:** open
+- **Weszło w 1.2.1:** opis `StepUpRequired.stepUpUrl`: `returnPath` w `stepUpUrl` jest wartością domyślną; frontend może go zastąpić ścieżką portalu zgodną z `ReturnPath` (z `stepUp=true`).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
 
-## CC-??? | C4/C12 | Poświadczenie typu Basic w `PutSecretRequest`
+## CC-049 | C4/C12 | Poświadczenie typu Basic w `PutSecretRequest`
 
 - **Zgłasza:** ws-08
 - **Problem:** brief ws-08 mówi o formularzu "Token (PAT/Basic)", a `PutSecretRequest` ma jedno pole `secret`.
@@ -583,9 +586,10 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** albo zapisać w C4, że `user-secret` to zawsze pojedynczy token (PAT, klucz API) i Basic nie
   jest obsługiwany, albo dodać do `PortalCatalogServer` opcjonalne pole `secretFormat` (`token` | `basic`) i do
   `PutSecretRequest` opcjonalne `username` dla `basic` (minor).
-- **Status:** open
+- **Weszło w 1.2.1 (wariant "tylko token"):** `user-secret` dla użytkowników to zawsze pojedynczy token (PAT, klucz API) w polu `secret`; Basic dla użytkowników nie jest obsługiwany w v1, system tylko z Basic (np. service desk) łączy się przez `service-account` (D10). Zapis w opisie C4 i `PutSecretRequest.secret`; bez nowych pól.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
 
-## CC-??? | C12 | `503 upstream_unavailable` w operacjach BFF opartych na C4/C5
+## CC-050 | C12 | `503 upstream_unavailable` w operacjach BFF opartych na C4/C5
 
 - **Zgłasza:** ws-07
 - **Problem:** `GET /api/v1/catalog`, `GET /api/v1/connections`, `PUT .../secret` i `DELETE /api/v1/connections/{system}`
@@ -598,9 +602,10 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** dodać w `portal-bff.v1.yaml` odpowiedź `503` (`#/components/responses/UpstreamUnavailable`,
   przykład `upstream_unavailable`) do operacji proxy do C4/C5 (także przyszłych: wirtualne serwery,
   aktywność, potwierdzenia, admin). Nowa odpowiedź opcjonalna (minor).
-- **Status:** open
+- **Weszło w 1.2.1:** `components/responses/UpstreamUnavailable` (503, `Error`, przykład `upstream_unavailable`) w 14 operacjach C12 opartych na C4/C5 (katalog, połączenia, OAuth start, sekret, odłączenie, potwierdzenia, wirtualne serwery, aktywność, admin); zasada w opisie API: także przyszłe operacje, katalog w całości 503, bez treści upstream. Stuby MSW (wybór `Prefer: example=upstream_unavailable`).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
 
-## CC-??? | C12 | Callback logowania OIDC i błąd logowania
+## CC-051 | C12 | Callback logowania OIDC i błąd logowania
 
 - **Zgłasza:** ws-07
 - **Problem:** CC-023 dodało `GET /api/v1/auth/login`, ale C12 nie mówi, gdzie IdP wraca po logowaniu ani dokąd
@@ -611,9 +616,10 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `returnPath`. Porażka: 302 na `/?loginError=true`, bez kodu błędu IdP.
 - **Propozycja:** dopisać to w opisie `GET /api/v1/auth/login` (zmiana opisowa, patch); ewentualnie
   `loginError=<kod>` z zamkniętą listą kodów, jeśli frontend ma rozróżniać przyczyny.
-- **Status:** open
+- **Weszło w 1.2.1 (wariant z zamkniętą listą kodów):** opis `GET /api/v1/auth/login`: `redirect_uri` IdP to wewnętrzny endpoint BFF (poza API frontendu); sukces -> zwalidowany `returnPath`; porażka -> `/?loginError=<kod>`, enum `LoginErrorCode` = `cancelled`, `idp_error`, `session_expired`, `step_up_failed`; szczegóły IdP nigdy w URL. Wektory `test-vectors/login-redirects/`, stała `LOGIN_ERROR_CODES` w paczce MSW.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
 
-## CC-??? | C13 | Tożsamość w `requestsOf` i `request`
+## CC-052 | C13 | Tożsamość w `requestsOf` i `request`
 
 - **Zgłasza:** ws-07
 - **Problem:** C13 ma `requestsOf(String sub)` i `request(String sub, ...)`. Produkty IGA (i adapter `mock`)
@@ -623,4 +629,15 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   wpis po `sub` albo po `preferred_username`. Obie wartości pochodzą z logowania OIDC, nigdy z przeglądarki.
 - **Propozycja:** zapisać w C13 sygnatury z `Requester {sub, username}` (zmiana opisowa portu wewnętrznego BFF,
   bez wpływu na OpenAPI).
-- **Status:** open
+- **Weszło w 1.2.1 (wariant C):** port przyjmuje `Requester` ze wszystkimi atrybutami tożsamości z tokenu OIDC (`sub`, `username`, `email`, mapa pozostałych claimów), wyłącznie z sesji BFF, nigdy z przeglądarki; każdy adapter IGA wybiera identyfikator wnioskodawcy z konfiguracji (np. `requester-id-claim`, domyślnie `preferred_username`); brak claimu -> błąd adaptera (fail-closed). Opis w README (sekcja "Port IGA (C13)"); bez wpływu na OpenAPI.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+
+## CC-053 | C12 | `mfaFreshUntil` w `GET /api/v1/me`
+
+- **Problem (recenzja web):** frontend dowiaduje się o potrzebie step-up dopiero po wysłaniu sekretu (401), więc
+  użytkownik wpisuje sekret dwa razy.
+- **Przyjęty wariant:** `Me.mfaFreshUntil` (opcjonalne, date-time UTC; brak = MFA nieświeże albo nieznane).
+  Frontend przed pokazaniem pola na sekret sprawdza świeżość i w razie potrzeby najpierw prowadzi na step-up.
+  Pole jest informacyjne: BFF nadal egzekwuje step-up przy `PUT .../secret` i potwierdzeniach. Przykład MSW
+  `mfa_fresh` (`Prefer: example=mfa_fresh`).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)

@@ -3,6 +3,8 @@ import type { OperationExamples } from './types.js';
 
 export const RETURN_PATH_PATTERN = "^/(?!/)[A-Za-z0-9._~!$&'()*+,;=:@/?-]*$";
 
+export const LOGIN_ERROR_CODES = ["cancelled","idp_error","session_expired","step_up_failed"] as const;
+
 export const portalBffExamples: OperationExamples[] = [
   {
     "operationId": "login",
@@ -83,6 +85,21 @@ export const portalBffExamples: OperationExamples[] = [
             "mcp-jira-read"
           ],
           "isAdmin": true
+        }
+      },
+      {
+        "status": 200,
+        "name": "mfa_fresh",
+        "body": {
+          "username": "jkowalski",
+          "displayName": "Jan Kowalski",
+          "groups": [
+            "mcp-jira-read",
+            "mcp-jira-write",
+            "mcp-jira-proj-ABC"
+          ],
+          "isAdmin": false,
+          "mfaFreshUntil": "2026-10-27T10:30:00Z"
         }
       },
       {
@@ -193,6 +210,13 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "unauthenticated"
         }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        }
       }
     ]
   },
@@ -222,6 +246,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -258,6 +289,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -327,6 +365,13 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "identity_mismatch"
         }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        }
       }
     ]
   },
@@ -352,6 +397,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -392,6 +444,13 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "not_found_or_denied"
         }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        }
       }
     ]
   },
@@ -425,6 +484,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -537,6 +603,13 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "unauthenticated"
         }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        }
       }
     ]
   },
@@ -593,6 +666,13 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "slug_taken"
         }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        }
       }
     ]
   },
@@ -625,6 +705,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -664,6 +751,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -739,6 +833,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "access_denied",
         "body": {
           "error": "access_denied"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]
@@ -816,6 +917,13 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "error": "not_found_or_denied"
         }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        }
       }
     ]
   },
@@ -855,6 +963,13 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "hash_mismatch",
         "body": {
           "error": "hash_mismatch"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         }
       }
     ]

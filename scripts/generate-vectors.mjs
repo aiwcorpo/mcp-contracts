@@ -389,6 +389,16 @@ returnPath('invalid-encoded-slash-lowercase', 'Lower-case encoding is the same c
 returnPath('invalid-encoded-backslash', 'Encoded backslash.', '/%5Cevil.test', false);
 returnPath('invalid-relative', 'Not starting with a slash.', 'catalog', false);
 
+// ---------- login failure redirects (C12, CC-051) ----------
+
+const loginRedirect = (name, description, location, valid) => write('login-redirects', `${name}.json`, { description, location, expected: { valid } });
+for (const code of ['cancelled', 'idp_error', 'session_expired', 'step_up_failed']) {
+  loginRedirect(`valid-${code.replaceAll('_', '-')}`, `Login failed with code ${code}.`, `/?loginError=${code}`, true);
+}
+loginRedirect('invalid-unknown-code', 'Code outside the closed list.', '/?loginError=true', false);
+loginRedirect('invalid-idp-details', 'IdP error details must never reach the URL.', '/?loginError=idp_error&error_description=invalid_client_secret', false);
+loginRedirect('invalid-other-path', 'Failures always land on /.', '/catalog?loginError=cancelled', false);
+
 // ---------- tool errors (C10) ----------
 
 const toolError = (name, description, body, valid) =>

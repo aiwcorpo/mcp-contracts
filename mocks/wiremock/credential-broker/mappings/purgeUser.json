@@ -8,7 +8,10 @@
         "urlPathTemplate": "/v1/admin/users/{sub}/purge"
       },
       "response": {
-        "status": 204
+        "status": 204,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
       }
     },
     {
@@ -26,6 +29,7 @@
       "response": {
         "status": 403,
         "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {

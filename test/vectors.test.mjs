@@ -65,6 +65,15 @@ test('ReturnPath vectors (CC-032)', async () => {
   for (const { name, data } of vectors) assert.equal(validate(data.value), data.expected.valid, name);
 });
 
+test('login failure redirect vectors (CC-051)', async () => {
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  const codes = spec.components.schemas.LoginErrorCode.enum;
+  const allowed = new Set(codes.map((c) => `/?loginError=${c}`));
+  const vectors = listJson('test-vectors', 'login-redirects');
+  assert.equal(vectors.filter((v) => v.data.expected.valid).length, codes.length);
+  for (const { name, data } of vectors) assert.equal(allowed.has(data.location), data.expected.valid, name);
+});
+
 test('valid-jira manifest uses the hashes from definition-hash vectors', () => {
   const manifest = readJson('test-vectors', 'manifests', 'valid-jira.json').manifest;
   for (const tool of manifest.tools) {

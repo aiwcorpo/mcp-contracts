@@ -1,0 +1,7 @@
+{
+  "description": "Login failed with code cancelled.",
+  "location": "/?loginError=cancelled",
+  "expected": {
+    "valid": true
+  }
+}

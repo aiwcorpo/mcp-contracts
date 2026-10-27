@@ -1,0 +1,7 @@
+{
+  "description": "Code outside the closed list.",
+  "location": "/?loginError=true",
+  "expected": {
+    "valid": false
+  }
+}

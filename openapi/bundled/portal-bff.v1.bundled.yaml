@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 1.2.0
+  version: 1.2.1
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -13,6 +13,11 @@ info:
 
     Secrets go only from the browser to the BFF (`PUT /connections/{system}/secret`); no response contains one.
     Error bodies for statuses whose body C12 does not define use the generic `Error` shape (CC-012).
+    Operations backed by the broker (C4) or the gateway admin API (C5) answer `503 upstream_unavailable` when
+    those (or the IdP token exchange) fail; there are no partial answers (CC-050).
+
+    Correlation: the BFF creates a requestId (UUIDv7) per request and sends it to the broker and gateway in
+    `X-Request-Id`, so their audit events and the portal's share one requestId (CC-047).
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -44,6 +49,13 @@ paths:
         (default `/`). With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication (`max_age=0` and the
         MFA `acr_values`) and accepts the result only if `sub` equals the `sub` of the existing session; otherwise
         it ends the session. Open to anonymous callers; never returns JSON. An invalid `returnPath` gives 400.
+
+        Result of the IdP callback (CC-051): the IdP returns to an internal endpoint of the BFF (its OIDC
+        `redirect_uri`, outside this API). On success the browser goes to the validated `returnPath`. On failure it
+        goes to `/?loginError=<code>` with a code from `LoginErrorCode` only: `cancelled` (user cancelled,
+        `access_denied` from the IdP), `idp_error` (IdP error or failed code exchange), `session_expired` (unknown
+        or expired `state`/flow), `step_up_failed` (step-up returned another `sub` or did not reach the MFA level).
+        Details from the IdP never appear in the URL.
       security: []
       parameters:
         - name: returnPath
@@ -59,7 +71,9 @@ paths:
             default: false
       responses:
         "302":
-          description: To the IdP authorization endpoint.
+          description: To the IdP authorization endpoint. After the IdP callback the browser lands on returnPath or on /?loginError=<code> (x-login-error-code).
+          x-login-error-code:
+            $ref: "#/components/schemas/LoginErrorCode"
           headers:
             Location:
               required: true
@@ -120,6 +134,16 @@ paths:
                       - mcp-platform-admin
                       - mcp-jira-read
                     isAdmin: true
+                mfa_fresh:
+                  value:
+                    username: jkowalski
+                    displayName: Jan Kowalski
+                    groups:
+                      - mcp-jira-read
+                      - mcp-jira-write
+                      - mcp-jira-proj-ABC
+                    isAdmin: false
+                    mfaFreshUntil: 2026-10-27T10:30:00Z
         "401":
           $ref: "#/components/responses/Unauthenticated"
   /api/v1/catalog:
@@ -207,6 +231,8 @@ paths:
                               - mcp-confluence-read
         "401":
           $ref: "#/components/responses/Unauthenticated"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/connections:
     get:
       tags:
@@ -236,6 +262,8 @@ paths:
                       lastUsedAt: 2026-10-26T19:58:00Z
         "401":
           $ref: "#/components/responses/Unauthenticated"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/connections/{system}/oauth:
     parameters:
       - $ref: "#/components/parameters/System"
@@ -277,6 +305,8 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/CsrfInvalid"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/oauth/callback:
     get:
       tags:
@@ -374,6 +404,8 @@ paths:
                 identity_mismatch:
                   value:
                     error: identity_mismatch
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/connections/{system}:
     parameters:
       - $ref: "#/components/parameters/System"
@@ -392,6 +424,8 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/CsrfInvalid"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/confirmations/{id}:
     parameters:
       - name: id
@@ -428,6 +462,8 @@ paths:
           $ref: "#/components/responses/StepUpOrUnauthenticated"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
     post:
       tags:
         - confirmations
@@ -455,6 +491,8 @@ paths:
           $ref: "#/components/responses/CsrfInvalid"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/access-requests:
     get:
       tags:
@@ -557,6 +595,8 @@ paths:
                           url = "https://mcp-gateway.internal/v/team-a-dev/mcp"
         "401":
           $ref: "#/components/responses/Unauthenticated"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
     post:
       tags:
         - virtual-servers
@@ -627,6 +667,8 @@ paths:
                 slug_taken:
                   value:
                     error: slug_taken
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/virtual-servers/{slug}:
     parameters:
       - name: slug
@@ -652,6 +694,8 @@ paths:
           $ref: "#/components/responses/CsrfInvalid"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/activity:
     get:
       tags:
@@ -699,6 +743,8 @@ paths:
                       argsLength: 118
         "401":
           $ref: "#/components/responses/Unauthenticated"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry:
     get:
       tags:
@@ -755,6 +801,8 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry/servers/{serverId}/tools/{tool}/pending:
     parameters:
       - $ref: "#/components/parameters/ServerId"
@@ -812,6 +860,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry/servers/{serverId}/tools/{tool}/approve:
     parameters:
       - $ref: "#/components/parameters/ServerId"
@@ -853,6 +903,8 @@ paths:
                 hash_mismatch:
                   value:
                     error: hash_mismatch
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
 components:
   securitySchemes:
     session:
@@ -951,6 +1003,16 @@ components:
             not_found_or_denied:
               value:
                 error: not_found_or_denied
+    UpstreamUnavailable:
+      description: "The broker, the gateway admin API or the IdP token exchange did not answer or answered with an error the BFF does not pass on (CC-050). No partial data: the catalog is either complete or 503. Upstream bodies are never forwarded."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            upstream_unavailable:
+              value:
+                error: upstream_unavailable
   schemas:
     Error:
       type: object
@@ -976,8 +1038,16 @@ components:
         stepUpUrl:
           type: string
           format: uri-reference
-          description: Where the browser goes to re-authenticate with max_age / acr_values; normally GET /api/v1/auth/login with stepUp=true.
+          description: Where the browser goes to re-authenticate with max_age / acr_values; normally GET /api/v1/auth/login with stepUp=true. The returnPath inside it is a default; the frontend may replace it with any portal path that matches ReturnPath (e.g. back to the form), keeping stepUp=true (CC-048).
       additionalProperties: false
+    LoginErrorCode:
+      type: string
+      description: Value of `loginError` in `/?loginError=<code>` after a failed login (CC-051). Closed list.
+      enum:
+        - cancelled
+        - idp_error
+        - session_expired
+        - step_up_failed
     Me:
       type: object
       required:
@@ -998,6 +1068,9 @@ components:
         isAdmin:
           type: boolean
           description: Member of mcp-platform-admin.
+        mfaFreshUntil:
+          description: Until when the last MFA authentication counts as fresh for step-up protected operations (CC-053). Absent when MFA is not fresh or unknown. Informational only; the BFF still enforces step-up on PUT secret and confirmations, so the frontend uses it to start step-up before showing a secret field.
+          $ref: "#/components/schemas/Timestamp"
       additionalProperties: false
     CatalogStatus:
       type: string
@@ -1203,6 +1276,11 @@ components:
       type: string
       pattern: ^mcp-[A-Za-z0-9][A-Za-z0-9._-]*$
       maxLength: 255
+    Timestamp:
+      description: ISO 8601 date-time in UTC (suffix Z).
+      type: string
+      format: date-time
+      pattern: Z$
     ServerId:
       description: MCP server id; always mcp-<system>, one server per system (C5).
       type: string
@@ -1292,11 +1370,6 @@ components:
         - expired
         - revoked
         - error
-    Timestamp:
-      description: ISO 8601 date-time in UTC (suffix Z).
-      type: string
-      format: date-time
-      pattern: Z$
     Connection:
       type: object
       required:
@@ -1338,6 +1411,7 @@ components:
           minLength: 1
           maxLength: 4096
           writeOnly: true
+          description: Single token (PAT or API key), never login and password (CC-049).
         expiresAt:
           $ref: "#/components/schemas/Timestamp"
       additionalProperties: false

@@ -2,13 +2,15 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **1.2.0**, tag `v1.2.0`; zmiany w
+generują z tego klientów, mocki i testy kontraktowe. Wersja **1.2.1** (w przygotowaniu, bez tagu; ostatnie
+wydanie: `v1.2.0`); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
 
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
-wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-035 odrzucone.
+wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-053 w 1.2.1,
+CC-035 odrzucone.
 
 ## Co jest gdzie
 
@@ -78,12 +80,12 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.2.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:1.2.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:1.2.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:1.2.0` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-1.2.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.2.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:1.2.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:1.2.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:1.2.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:1.2.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:1.2.1` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-1.2.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.2.1.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -92,20 +94,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-contracts-parent}/1.2.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.2.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-contracts-parent}/1.2.1/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.2.1.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -137,7 +139,7 @@ i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
 </dependency>
 ```
 
@@ -200,6 +202,31 @@ strict (overrides schematem paczki głównej, CC-040), encje statyczne i mapowan
 Lint dla potoku ws-09: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides]
 policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd).
 
+## Port IGA (C13)
+
+Port wewnętrzny BFF (bez wpływu na OpenAPI, CC-052). Wnioskodawca to `Requester` z atrybutami tożsamości z
+tokenu OIDC sesji BFF, nigdy z przeglądarki:
+
+```java
+record Requester(String sub, String username, Optional<String> email, Map<String, Object> claims) {}
+
+interface AccessGovernance {
+  List<Entitlement> catalog(String system);
+  List<AccessRequest> requestsOf(Requester requester);
+  RequestResult request(Requester requester, String entitlement);
+}
+```
+
+Każdy adapter IGA wybiera identyfikator wnioskodawcy z konfiguracji (np. `requester-id-claim`, domyślnie
+`preferred_username`); brak tego claimu w `Requester` to błąd adaptera i odmowa (fail-closed). Kształty
+`AccessRequest` i `RequestResult`: CC-024.
+
+## Korelacja żądań
+
+Każde żądanie ma jeden `requestId` (UUIDv7) od wejścia do audytu: gateway nadaje go w `rid` i `X-Request-Id`
+(C2/C3), BFF tworzy własny i wysyła go w `X-Request-Id` do brokera i gateway'a (CC-047). Broker zwraca użyty
+identyfikator w nagłówku `X-Request-Id` każdej odpowiedzi.
+
 ## Generowanie klienta
 
 Generatory dostają pliki z `openapi/bundled/`. Sprawdzone: openapi-generator **7.26.0**, generator `java`
@@ -224,7 +251,7 @@ klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (i
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.1</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>

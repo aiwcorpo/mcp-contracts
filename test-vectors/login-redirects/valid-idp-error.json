@@ -1,0 +1,7 @@
+{
+  "description": "Login failed with code idp_error.",
+  "location": "/?loginError=idp_error",
+  "expected": {
+    "valid": true
+  }
+}

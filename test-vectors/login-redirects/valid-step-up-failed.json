@@ -1,0 +1,7 @@
+{
+  "description": "Login failed with code step_up_failed.",
+  "location": "/?loginError=step_up_failed",
+  "expected": {
+    "valid": true
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "description": "IdP error details must never reach the URL.",
+  "location": "/?loginError=idp_error&error_description=invalid_client_secret",
+  "expected": {
+    "valid": false
+  }
+}

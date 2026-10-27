@@ -1,0 +1,7 @@
+{
+  "description": "Login failed with code session_expired.",
+  "location": "/?loginError=session_expired",
+  "expected": {
+    "valid": true
+  }
+}

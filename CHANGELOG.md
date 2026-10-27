@@ -4,11 +4,30 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Do czasu pierwszych konsumentów zmiany niezgodne wychodzą jako minor (README, wyjątek od tabeli SemVer);
 każda jest wymieniona w sekcji "Niezgodne z poprzednią wersją".
 
-## Unreleased
+## 1.2.1 - w przygotowaniu (bez tagu)
 
-- Dystrybucja: `release/` znów zawiera tarballe 1.0.0 i 1.1.0 (bajtowo z tagów); od teraz trzyma tarballe
-  wszystkich wydań. `npm run pack` (`scripts/pack-release.mjs`) nie usuwa starych tarballi i nie nadpisuje
-  tarballa wersji, która ma tag.
+Decyzje człowieka z 2026-10-27: CC-046 ... CC-053 `accepted`. Wydanie czeka na wyniki recenzji 1.2.0.
+
+### Zgodność z 1.2.0
+
+Wszystkie zmiany są addytywne albo opisowe; klient i serwer zgodne z 1.2.0 pozostają zgodne:
+- nowe opcjonalne pole odpowiedzi `Me.mfaFreshUntil` (CC-053);
+- nowa odpowiedź `503 upstream_unavailable` w operacjach C12 opartych na C4/C5 (CC-050); klient wygenerowany z
+  1.2.0 potraktuje ją jak nieopisany błąd;
+- nowy opcjonalny nagłówek żądania `X-Request-Id` w C4 i wymagany nagłówek odpowiedzi `X-Request-Id` (broker
+  musi go wysyłać, CC-047);
+- nowy schemat `LoginErrorCode` i zasada przekierowania po nieudanym logowaniu (CC-051): BFF zgodny z 1.2.0
+  wysyłał `/?loginError=true`, co od 1.2.1 jest poza listą kodów;
+- opisy: `credential.invalidated` po zastąpieniu poświadczenia (CC-046), `returnPath` w `stepUpUrl` (CC-048),
+  tylko token w `PutSecretRequest` (CC-049), port C13 z `Requester` (CC-052, README).
+- Wersja w artefaktach 1.2.1; wektory paczek polityk wygenerowane ponownie (`schemaVersion` 1.2.1), co zmienia
+  ich bajty i podpisy.
+
+### Dystrybucja
+
+- `release/` znów zawiera tarballe 1.0.0 i 1.1.0 (bajtowo z tagów); od teraz trzyma tarballe wszystkich wydań.
+  `npm run pack` (`scripts/pack-release.mjs`) nie usuwa starych tarballi i nie nadpisuje tarballa wersji, która
+  ma tag.
 
 ## 1.2.0 - 2026-10-27
 

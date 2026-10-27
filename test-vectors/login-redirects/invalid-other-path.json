@@ -1,0 +1,7 @@
+{
+  "description": "Failures always land on /.",
+  "location": "/catalog?loginError=cancelled",
+  "expected": {
+    "valid": false
+  }
+}
