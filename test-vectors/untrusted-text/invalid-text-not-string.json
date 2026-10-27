@@ -1,0 +1,14 @@
+{
+  "description": "text is a string.",
+  "value": {
+    "kind": "untrusted-data",
+    "format": "text/plain",
+    "text": [
+      "x"
+    ],
+    "truncated": false
+  },
+  "expected": {
+    "valid": false
+  }
+}

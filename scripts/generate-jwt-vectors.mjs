@@ -95,6 +95,9 @@ await add('valid-within-skew', 'Verified 29 s after exp; inside the 30 s clock s
 await add('valid-virtual-server-mfa', 'Call through a virtual server: vs with its narrowing vsc (CC-027) and mfa.', {
   token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] }, mfa: 120, tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000005' }), 'test-gateway-jwt-a'),
   request: toolsCall('delete_issue'), valid: true });
+await add('valid-tools-call-input-responses', 'Retry of tools/call with inputResponses after an InputRequiredResult (MRTR, MCP 2026-07-28): an ordinary tools/call with a fresh token and tool == params.name (CC-069).', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000061' }), 'test-gateway-jwt-a'),
+  request: { ...toolsCall('get_issue'), inputResponses: true }, valid: true });
 await add('valid-broker', 'User variant sent to the credential broker for resolve.', {
   token: await sign(userClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000006' }), 'test-gateway-jwt-a'),
   request: http('POST', '/v1/credentials/resolve'),
@@ -107,6 +110,8 @@ for (const [suffix, request, jti] of [
   ['tools-list', rpc('tools/list', USER_RID), '41'],
   ['ping', rpc('ping', USER_RID), '42'],
   ['manifest', http('GET', '/mcp-manifest'), '43'],
+  ['discover', rpc('server/discover', USER_RID), '55'],
+  ['subscriptions-listen', rpc('subscriptions/listen', USER_RID), '56'],
 ]) {
   const claims = userClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` });
   delete claims.tool;
@@ -121,6 +126,7 @@ for (const [suffix, request, jti] of [
   ['tools-list', rpc('tools/list'), '11'],
   ['ping', rpc('ping'), '12'],
   ['manifest', http('GET', '/mcp-manifest', SERVICE_RID), '13'],
+  ['discover', rpc('server/discover'), '14'],
 ]) {
   await add(`valid-service-${suffix}`, `Service variant accepted for ${request.method} ${request.path ?? ''}`.trim() + '.', {
     token: await sign(serviceClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` }), 'test-gateway-jwt-a'),
@@ -204,7 +210,19 @@ await add('user-variant-tools-list-with-tool', 'tool claim on a tools/list reque
 {
   const claims = userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000051' });
   delete claims.tool;
-  await add('tools-call-without-tool', 'tools/call with a user token that has no tool claim (CC-038).', {
+  await add('user-variant-discover-with-tool', 'tool claim on server/discover (MCP 2026-07-28); tool is present only for tools/call (CC-069).', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000057' }), 'test-gateway-jwt-a'),
+  request: rpc('server/discover', USER_RID), valid: false, reason: 'tool_not_allowed' });
+await add('user-variant-subscriptions-listen-with-tool', 'tool claim on subscriptions/listen (MCP 2026-07-28) (CC-069).', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000058' }), 'test-gateway-jwt-a'),
+  request: rpc('subscriptions/listen', USER_RID), valid: false, reason: 'tool_not_allowed' });
+await add('service-variant-subscriptions-listen', 'Service variant used for subscriptions/listen; the stream belongs to a user, so only the user variant is accepted (CC-069).', {
+  token: await sign(serviceClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000059' }), 'test-gateway-jwt-a'),
+  request: rpc('subscriptions/listen'), valid: false, reason: 'service_token_not_allowed' });
+await add('service-variant-other-notification', 'Service variant used for notifications/initialized; the service variant exists only without a session, requests of a session carry the user variant (CC-070).', {
+  token: await sign(serviceClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000060' }), 'test-gateway-jwt-a'),
+  request: rpc('notifications/initialized'), valid: false, reason: 'service_token_not_allowed' });
+await add('tools-call-without-tool', 'tools/call with a user token that has no tool claim (CC-038).', {
     token: await sign(claims, 'test-gateway-jwt-a'), request: toolsCall('get_issue'), valid: false, reason: 'tool_missing' });
 }
 {

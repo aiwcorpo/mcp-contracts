@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.0.2
+  version: 2.1.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -414,7 +414,7 @@ paths:
     get:
       tags: [confirmations]
       operationId: getMyConfirmation
-      summary: Confirmation page data (proxy to C5); owner only, fresh MFA required (CC-034).
+      summary: Confirmation page data (proxy to C5; tool, system and arguments come from the gateway, never from the client); owner only, fresh MFA required (CC-034, CC-077).
       security:
         - session: []
       responses:
@@ -429,6 +429,7 @@ paths:
                   value:
                     confirmationId: cnf_4k9Qe2LxW7tB3mZp
                     tool: jira__delete_issue
+                    system: jira
                     arguments:
                       - name: issueKey
                         value: '"ABC-123"'
@@ -443,7 +444,7 @@ paths:
     post:
       tags: [confirmations]
       operationId: decideMyConfirmation
-      summary: Approve or decline; requires fresh MFA.
+      summary: Approve or decline; requires fresh MFA. Approval returns the one-time confirmation code (CC-077).
       security:
         - session: []
           csrf: []
@@ -458,8 +459,19 @@ paths:
                 value:
                   decision: approve
       responses:
-        '204':
-          description: Decision recorded.
+        '200':
+          description: Decision recorded; approval returns the one-time code for the MCP client session, it never executes the action.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ConfirmationOutcome'
+              examples:
+                approved:
+                  value:
+                    decision: approve
+                    code: '493201'
+                    codeExpiresAt: '2026-10-26T20:02:00Z'
+                    attemptsLeft: 3
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':

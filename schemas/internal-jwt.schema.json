@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Internal JWT claims (C2)",
-  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (dev/test only, CC-044), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tool present and == params.name for tools/call, tool present for the broker resolve, tool absent for every other request (CC-038), service variant only for initialize, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems. Any failure -> HTTP 401.",
+  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (dev/test only, CC-044), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tool present and == params.name for tools/call, tool present for the broker resolve, tool absent for every other request (CC-038), service variant only for initialize, server/discover, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems, and only outside a session (stateless, CC-070): notifications/*, GET/DELETE on the MCP endpoint, subscriptions/listen and every other request of a session carry the user variant without tool. A tools/call retry with inputResponses (MRTR, MCP 2026-07-28) is an ordinary tools/call with a fresh token (CC-069). Any failure -> HTTP 401.",
   "oneOf": [
     {
       "$ref": "#/$defs/UserClaims"
@@ -48,6 +48,7 @@
           "$ref": "common.schema.json#/$defs/RequestId"
         },
         "prv": {
+          "description": "Policy revision of the gateway (C7). 00000000000000-0000000 means a gateway without a loaded bundle (M1 only); receivers must not infer anything about policy from it (CC-068).",
           "$ref": "common.schema.json#/$defs/PolicyRevision"
         },
         "iat": {
@@ -172,7 +173,7 @@
           "additionalProperties": false
         },
         "tool": {
-          "description": "Server-side name of the tool being called. Present exactly for tools/call (and for the broker resolve that serves it); absent for initialize, tools/list, ping and GET /mcp-manifest (CC-038).",
+          "description": "Server-side name of the tool being called. Present exactly for tools/call (and for the broker resolve that serves it); absent for initialize, server/discover, subscriptions/listen, tools/list, ping and GET /mcp-manifest (CC-038, CC-069).",
           "$ref": "common.schema.json#/$defs/ToolName"
         },
         "mfa": {
@@ -192,7 +193,7 @@
       }
     },
     "ServiceClaims": {
-      "description": "Gateway call without a user. Accepted only for initialize, tools/list, ping and GET /mcp-manifest.",
+      "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping and GET /mcp-manifest (CC-069, CC-070).",
       "allOf": [
         {
           "$ref": "#/$defs/Common"

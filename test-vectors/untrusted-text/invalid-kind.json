@@ -1,0 +1,12 @@
+{
+  "description": "kind must be the constant untrusted-data.",
+  "value": {
+    "kind": "data",
+    "format": "text/plain",
+    "text": "x",
+    "truncated": false
+  },
+  "expected": {
+    "valid": false
+  }
+}

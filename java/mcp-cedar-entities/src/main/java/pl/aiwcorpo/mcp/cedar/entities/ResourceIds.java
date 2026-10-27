@@ -26,8 +26,8 @@ public final class ResourceIds {
             "^(?!.*\\.(?:git|atom)$)" + GITLAB_SEGMENT + "(?:/" + GITLAB_SEGMENT + "){0,19}$");
     private static final Pattern GITLAB_PROJECT = Pattern.compile(
             "^(?!.*\\.(?:git|atom)$)" + GITLAB_SEGMENT + "(?:/" + GITLAB_SEGMENT + "){1,20}$");
-    private static final Pattern OPENSEARCH_INDEX = Pattern.compile("^(?!\\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,254}$");
-    private static final Pattern OPENSEARCH_PREFIX = Pattern.compile("^(?!\\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$");
+    private static final Pattern OPENSEARCH_INDEX = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,254}$");
+    private static final Pattern OPENSEARCH_PREFIX = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$");
     private static final Pattern SERVICEDESK_ID = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$");
     private static final int GITLAB_MAX_LENGTH = 1024;
 

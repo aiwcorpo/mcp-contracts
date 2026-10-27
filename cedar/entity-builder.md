@@ -240,7 +240,7 @@ claimie `vsc` (C2, 401) i id zakresów w `static.json` (odrzucenie paczki).
 | `Confluence::Page` | `^[1-9][0-9]{0,18}$` | id treści Confluence (liczba 64-bitowa) |
 | `GitLab::Group` | segmenty `[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*` rozdzielone `/`, 1..20, bez końcówki `.git`/`.atom`, maks. 1024 | GitLab "Reserved project and group names" (litery, cyfry, `_`, `.`, `-`; początek i koniec litera/cyfra; bez kolejnych znaków specjalnych; bez `.git`/`.atom`), "Subgroups": do 20 poziomów |
 | `GitLab::Project` | jak grupa, 2..21 segmentów | ścieżka grupy + ścieżka projektu |
-| `OpenSearch::Index` | `^(?!\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,254}$` | OpenSearch "Create index": małe litery, bez spacji, przecinków i `: " * + / \ \| ? # > <`, nie zaczyna się od `_` ani `-`; dodatkowo tylko ASCII i maks. 255 (konkretna nazwa: bez aliasów-wzorców, wildcardów, list, date math) |
+| `OpenSearch::Index` | `^[a-z0-9][a-z0-9._-]{0,254}$` | OpenSearch "Create index": małe litery, bez spacji, przecinków i `: " * + / \ \| ? # > <`, nie zaczyna się od `_` ani `-`; dodatkowo tylko ASCII, maks. 255 i początek litera lub cyfra, więc indeksy ukryte i systemowe (`.security`, `.kibana`, `.ds-*`) są poza wzorcem (CC-074); konkretna nazwa: bez aliasów-wzorców, wildcardów, list, date math) |
 | `OpenSearch::Index` (zakres) | jak wyżej, bez końcowego `-` i `.` | prefiks nazwy |
 | `ServiceDesk::Queue`, `ServiceDesk::Ticket` | `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` | adapter generyczny (D10): alfabet zachowawczy; w kolejnych wersjach konfigurowalny per adapter |
 
@@ -249,7 +249,7 @@ claimie `vsc` (C2, 401) i id zakresów w `static.json` (odrzucenie paczki).
 Wzorce są zachowawcze, więc część istniejących zasobów jest niedostępna przez MCP (fail-closed, odmowa jak dla
 zasobu bez uprawnień): starsze ścieżki GitLaba ze znakiem `_` lub `.` na początku albo końcu segmentu, klucze
 projektów Jiry dłuższe niż 10 znaków (przy zmienionym limicie w Jirze), przestrzenie osobiste Confluence (`~user`).
-Ukryte indeksy OpenSearch (`.nazwa`) są przyjmowane przez wzorzec; dostęp do nich i tak zależy od zakresów.
+Ukryte i systemowe indeksy OpenSearch (`.nazwa`, w tym `.ds-*` strumieni danych) nie pasują do wzorca od 2.1.0 (CC-074): argument z taką nazwą to `invalid_argument`, zasób z resolvera to `internal_error`, prefiks z wiodącą kropką w mapowaniu zakresów odrzuca paczka. Strumienie danych jako zasób (nazwa strumienia, nie indeks zapasowy) to osobna decyzja w M2.
 
 ## 10. Każda wartość każdego `resourceRef` (CC-061)
 

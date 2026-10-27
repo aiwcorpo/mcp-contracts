@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 2.0.2
+  version: 2.1.0
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -594,6 +594,7 @@ paths:
                   value:
                     confirmationId: cnf_4k9Qe2LxW7tB3mZp
                     tool: jira__delete_issue
+                    system: jira
                     arguments:
                       - name: issueKey
                         value: '"ABC-123"'
@@ -607,7 +608,7 @@ paths:
       tags: [confirmations]
       operationId: decideConfirmation
       x-allowed-client-cn: [mcp-portal-bff]
-      summary: Approve or decline a pending confirmation; owner only, fresh MFA required.
+      summary: Approve or decline a pending confirmation; owner only, fresh MFA required. Approval returns the one-time code (CC-077).
       security:
         - mtls: []
           bffUserToken: []
@@ -624,8 +625,25 @@ paths:
       responses:
         '403':
           $ref: '#/components/responses/Forbidden'
-        '204':
-          description: Decision recorded; the waiting tool call continues or is declined.
+        '200':
+          description: |
+            Decision recorded. Approval returns the one-time confirmation code; approving never executes the
+            action. The user pastes the code into the MCP client session and the agent retries the call with the
+            same arguments plus confirmation_code (C11, CC-077). Decline returns no code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmationOutcome'
+              examples:
+                approved:
+                  value:
+                    decision: approve
+                    code: '493201'
+                    codeExpiresAt: '2026-10-26T20:02:00Z'
+                    attemptsLeft: 3
+                declined:
+                  value:
+                    decision: decline
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '404':
@@ -996,12 +1014,15 @@ components:
       additionalProperties: false
     ConfirmationView:
       type: object
-      required: [confirmationId, tool, arguments, expiresAt]
+      required: [confirmationId, tool, system, arguments, expiresAt]
       properties:
         confirmationId:
           $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
         tool:
           $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
+        system:
+          description: System the tool acts on; the portal shows it next to the tool (CC-077). Read by the gateway from its own record of the pending call, never from the client.
+          $ref: '../schemas/common.schema.json#/$defs/SystemId'
         arguments:
           description: Arguments sorted by name (fixed order), without confirmation_code.
           type: array
@@ -1011,6 +1032,27 @@ components:
           description: End of the confirmation TTL (C11, 120 s after creation); the portal shows a countdown.
           $ref: '../schemas/common.schema.json#/$defs/Timestamp'
       additionalProperties: false
+    ConfirmationOutcome:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, decline]
+        code:
+          description: Present exactly when decision is approve.
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationCode'
+        codeExpiresAt:
+          description: End of the code TTL (120 s); present with code.
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        attemptsLeft:
+          description: Remaining verification attempts of the code (3 at issue); present with code.
+          type: integer
+          minimum: 0
+          maximum: 3
+      additionalProperties: false
+      dependentRequired:
+        code: [codeExpiresAt, attemptsLeft]
     ConfirmationDecision:
       type: object
       required: [decision]

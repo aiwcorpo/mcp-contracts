@@ -1,0 +1,12 @@
+{
+  "description": "Empty content is still marked.",
+  "value": {
+    "kind": "untrusted-data",
+    "format": "text/plain",
+    "text": "",
+    "truncated": false
+  },
+  "expected": {
+    "valid": true
+  }
+}

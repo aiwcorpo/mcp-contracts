@@ -1,0 +1,19 @@
+{
+  "description": "A queue resource is evaluated by its own id.",
+  "input": {
+    "credentialType": "service-account",
+    "bundleQueueGrants": [
+      "42"
+    ],
+    "serverConfiguredQueues": [],
+    "resource": {
+      "type": "ServiceDesk::Queue",
+      "id": "7",
+      "queueReturnedBySystem": "7"
+    }
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "not_found_or_denied"
+  }
+}

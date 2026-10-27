@@ -1,0 +1,11 @@
+{
+  "description": "Without kind the text is not marked.",
+  "value": {
+    "format": "text/plain",
+    "text": "x",
+    "truncated": false
+  },
+  "expected": {
+    "valid": false
+  }
+}

@@ -88,6 +88,53 @@ test('login failure redirect vectors (CC-051)', async () => {
   for (const { name, data } of vectors) assert.equal(allowed.has(data.location), data.expected.valid, name);
 });
 
+test('UntrustedText vectors (CC-072)', () => {
+  const validate = schemaValidator(ajv, 'common.schema.json#/$defs/UntrustedText');
+  const vectors = listJson('test-vectors', 'untrusted-text');
+  assert.ok(vectors.some((v) => v.data.expected.valid) && vectors.some((v) => !v.data.expected.valid));
+  for (const { name, data } of vectors) assert.equal(validate(data.value), data.expected.valid, `${name}: ${formatErrors(validate.errors)}`);
+});
+
+// Reference rule of CC-076, executed by the server before Cedar: with a service account the queue returned by
+// the system for the resource must be granted in the bundle or in the server configuration.
+function serviceDeskServiceAccountDecision({ credentialType, bundleQueueGrants, serverConfiguredQueues, resource }) {
+  if (credentialType !== 'service-account') return { decision: 'continue' };
+  const queue = resource.type === 'ServiceDesk::Queue' ? resource.id : resource.queueReturnedBySystem;
+  return [...bundleQueueGrants, ...serverConfiguredQueues].includes(queue)
+    ? { decision: 'continue' } : { decision: 'deny', errorCode: 'not_found_or_denied' };
+}
+
+test('service desk service account vectors (CC-076)', () => {
+  const vectors = listJson('test-vectors', 'servicedesk-service-account');
+  assert.ok(vectors.some((v) => v.data.expected.decision === 'deny') && vectors.some((v) => v.data.expected.decision === 'continue'));
+  for (const { name, data } of vectors) assert.deepEqual(serviceDeskServiceAccountDecision(data.input), data.expected, name);
+  for (const required of ['srv-servicedesk-service-account-no-queue-grant', 'srv-servicedesk-ticket-moved-out-of-granted-queue']) {
+    assert.equal(vectors.find((v) => v.name === `${required}.json`)?.data.expected.decision, 'deny', required);
+  }
+});
+
+// Reference check of C11 (CC-077): the code is bound to (sub, serverId, tool, sha256 of the canonical arguments
+// without confirmation_code), valid 120 s, 3 attempts, one-time.
+function checkConfirmationCode({ issued, state, attempt }) {
+  const { confirmation_code: _omitted, ...args } = attempt.arguments;
+  const hash = 'sha256:' + createHash('sha256').update(canonicalize(args), 'utf8').digest('hex');
+  if (state.used) return { valid: false, reason: 'already_used' };
+  if (state.failedAttempts >= issued.maxAttempts) return { valid: false, reason: 'attempts_exhausted' };
+  if (Date.parse(attempt.at) > Date.parse(issued.issuedAt) + issued.ttlSeconds * 1000) return { valid: false, reason: 'expired' };
+  if (attempt.sub !== issued.sub || attempt.serverId !== issued.serverId || attempt.tool !== issued.tool || hash !== issued.argsSha256) {
+    return { valid: false, reason: 'binding_mismatch' };
+  }
+  return attempt.arguments.confirmation_code === issued.code ? { valid: true } : { valid: false, reason: 'wrong_code' };
+}
+
+test('confirmation code binding vectors (CC-077)', () => {
+  const pattern = new RegExp(readJson('schemas', 'common.schema.json').$defs.ConfirmationCode.pattern);
+  for (const { name, data } of listJson('test-vectors', 'confirmation-binding')) {
+    assert.ok(pattern.test(data.issued.code), name);
+    assert.deepEqual(checkConfirmationCode(data), data.expected, name);
+  }
+});
+
 test('valid-jira manifest uses the hashes from definition-hash vectors', () => {
   const manifest = readJson('test-vectors', 'manifests', 'valid-jira.json').manifest;
   for (const tool of manifest.tools) {

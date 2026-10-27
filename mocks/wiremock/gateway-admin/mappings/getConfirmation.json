@@ -42,6 +42,7 @@
         "jsonBody": {
           "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
           "tool": "jira__delete_issue",
+          "system": "jira",
           "arguments": [
             {
               "name": "issueKey",

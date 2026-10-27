@@ -4,7 +4,8 @@
   "valid": [
     "logs-team-a-2026.10",
     "logs",
-    ".kibana_1"
+    "kibana_1",
+    "0logs"
   ],
   "invalid": [
     "logs-team-a-x,secret-y",
@@ -17,6 +18,10 @@
     "<logs-{now/d}>",
     "logs team",
     ".",
-    ".."
+    "..",
+    ".security",
+    ".kibana_1",
+    ".opendistro_security",
+    ".ds-logs-000001"
   ]
 }

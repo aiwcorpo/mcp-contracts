@@ -2,7 +2,7 @@
 
 Plik zbiera miejsca, w których `01-contracts.md` jest nieprecyzyjny albo sprzeczny, oraz propozycje zmian
 od agentów. Każda pozycja ma przyjęty wariant, który **już jest** zaimplementowany w `mcp-contracts` 1.0.0,
-i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-067 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno)); odrzucenie wariantu oznacza nowe wydanie
+i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-067 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno); CC-068 ... CC-077 rozstrzygnięte 2026-10-27, wydanie 2.1.0); odrzucenie wariantu oznacza nowe wydanie
 kontraktów (patrz SemVer w `README.md`).
 
 Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alternatywy, status.
@@ -818,3 +818,233 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   odmowa. Wektory `srv-jira-restricted-*` (`restricted`, `Restricted `, `RESTRICTED`),
   `srv-opensearch-restricted-index`, `entity-builder/classification-normalized`, `classification-wrong-shape`.
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-068 | C2 | `prv` przed załadowaniem pierwszej paczki polityk
+
+- **Zgłasza:** ws-05
+- **Problem:** `prv` jest wymagany w wariancie użytkownika i serwisowym (wzorzec `^[0-9]{14}-[0-9a-f]{7}$`), a
+  gateway w M1 nie ładuje paczki C7 (ocena Cedar od M2). Nie ma wartości, która mówi "brak paczki".
+- **Wariant w `mcp-gateway` M1:** konfigurowalna wartość `MCP_POLICY_REVISION`, domyślnie
+  `00000000000000-0000000` (zgodna ze wzorcem, starsza od każdej prawdziwej rewizji). Od M2 `prv` pochodzi z
+  `PolicyStore`, a gateway bez załadowanej paczki nie wstaje (C7), więc wartość zniknie z ruchu.
+- **Przyjęty wariant (opisowy):** `00000000000000-0000000` oznacza "gateway bez załadowanej paczki"; odbiorca nie
+  może z niej wnioskować o polityce (nie jest to rewizja żadnej paczki i nie porównuje się jej z rewizją
+  odbiorcy). Od M2 gateway bez paczki nie wstaje, więc wartość nie pojawia się w ruchu. Opis w
+  `common.schema.json` (`PolicyRevision`) i `internal-jwt.schema.json` (`prv`). Zmiana opisowa, wzorzec bez
+  zmian (patch).
+- **Alternatywa odrzucona:** zakaz wywołań bez paczki także w M1 (walking skeleton wymagałby paczki).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-069 | C2 | Metody protokołu MCP 2026-07-28 w regułach `tool` i wariantu serwisowego
+
+- **Zgłasza:** ws-05
+- **Problem:** reguły C2 (CC-030, CC-033, CC-038) wymieniają metody ery "legacy": `initialize`, `tools/list`,
+  `ping`, `GET /mcp-manifest`. Rewizja MCP 2026-07-28 usuwa `initialize` i sesje, dodaje `server/discover`
+  (wymagany u serwera) i `subscriptions/listen`, a interakcje serwer -> klient (elicitation, sampling) przenosi do
+  wyników `InputRequiredResult` ponawianego `tools/call` (MRTR). Serwer w nowej erze nie ma reguły dla tych
+  metod: wektor `tool_not_allowed`/`service_token_not_allowed` nie mówi, czy wariant serwisowy wolno użyć dla
+  `server/discover`.
+- **Wariant w `mcp-gateway` M1:** po stronie klienta gateway obsługuje obie ery (2026-07-28 i 2025-03-26 ..
+  2025-11-25); do serwerów mówi 2025-11-25 (starter na Spring AI 2.0 / MCP SDK 2.0.x zna wersje do 2025-11-25),
+  zawsze wariantem użytkownika, `tool` tylko przy `tools/call`.
+- **Przyjęty wariant (minor):**
+  - `server/discover` jak `initialize`: wariant serwisowy dozwolony, `tool` zabroniony.
+  - `subscriptions/listen` bez `tool`, tylko wariant użytkownika (wariant serwisowy: `service_token_not_allowed`).
+  - Ponowienie `tools/call` z `inputResponses` (MRTR) jest zwykłym `tools/call`: nowy JWT, `tool` == `params.name`.
+  - Wektory `jwt/valid-service-discover`, `jwt/valid-user-variant-discover`, `jwt/user-variant-discover-with-tool`,
+    `jwt/valid-user-variant-subscriptions-listen`, `jwt/user-variant-subscriptions-listen-with-tool`,
+    `jwt/service-variant-subscriptions-listen`, `jwt/valid-tools-call-input-responses`.
+  - C11: w erze 2026-07-28 kanał "elicitation URL" to `InputRequiredResult` z żądaniem elicitation w trybie URL;
+    semantyka potwierdzenia bez zmian (opis w README, sekcja "Metody MCP i JWT").
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-070 | C2 | Wariant serwisowy a `notifications/*` i żądania transportu (GET/DELETE sesji)
+
+- **Zgłasza:** ws-02
+- **Problem:** C2 dopuszcza wariant serwisowy wyłącznie dla `initialize`, `tools/list`, `ping` i
+  `GET /mcp-manifest`. Klient MCP po `initialize` wysyła `notifications/initialized`, w transporcie streamable HTTP
+  otwiera `GET` (strumień SSE) i kończy sesję `DELETE`; żadne z nich nie ma metody z listy. Gateway, który zrobi
+  `tools/list` wariantem serwisowym (np. przy starcie, bez użytkownika), dostanie 401 na `notifications/initialized`
+  i jego klient MCP może uznać sesję za zepsutą. Nie ma wektora dla tych żądań.
+- **Wariant w `mcp-starter-lib` 3.0.0-alpha-1:** dosłownie według C2: wariant serwisowy tylko dla czterech
+  wymienionych żądań, wszystko inne (także `notifications/*`, odpowiedzi JSON-RPC, `GET`/`DELETE` sesji) tylko
+  wariantem użytkownika, bez `tool`. Działa z wariantem ws-05 (gateway zawsze wariantem użytkownika, CC wyżej).
+- **Przyjęty wariant (zmieniona forma propozycji):** lista metod wariantu serwisowego bez zmian (poza
+  `server/discover` z CC-069). `notifications/*` i `GET`/`DELETE` na endpoincie MCP nie dostają wariantu
+  serwisowego. Reguła: wariant serwisowy jest używany wyłącznie bez sesji (bezstanowo); wszystkie żądania w
+  ramach sesji (`notifications/initialized`, `notifications/cancelled`, `GET` strumienia, `DELETE` sesji, odpowiedzi
+  JSON-RPC) idą wariantem użytkownika. Wektor `jwt/service-variant-other-notification` (odrzucenie
+  `service_token_not_allowed`) pilnuje, że odbiorca nie rozszerza listy.
+- **Alternatywa odrzucona:** dopuszczenie wariantu serwisowego dla `notifications/initialized`,
+  `notifications/cancelled`, `GET` i `DELETE`.
+- **Status:** accepted w zmienionej formie (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-071 | C8 | Zdarzenie audytu dla odrzuconego uwierzytelnienia na serwerze
+
+- **Zgłasza:** ws-02
+- **Problem:** serwer odrzuca żądania bez poprawnego wewnętrznego JWT (401) i bez certyfikatu gateway'a, ale C8
+  nie ma typu zdarzenia na nieudane uwierzytelnienie (`event` to `tool_call`, `policy_decision`, ...). Próby
+  ominięcia gateway'a (niezmiennik 3) są ważnym sygnałem dla SIEM, a teraz trafiają tylko do zwykłego logu
+  aplikacji (`event=internal_jwt_rejected reason=<kod wektora>`).
+- **Wariant w `mcp-starter-lib` 3.0.0-alpha-1:** linia logu aplikacji (WARN) z powodem, metodą, ścieżką i
+  `requestId`; bez zdarzenia C8. `tool_call` z `outcome: denied`, `errorCode: unauthenticated` jest emitowany
+  tylko wtedy, gdy narzędzie zostało wywołane bez powiązanego wywołującego.
+- **Przyjęty wariant (minor):** nowa wartość `event: "authentication"` z `outcome: "denied"`, `reason` = kod
+  odrzucenia z wektorów JWT (`bad_signature`, `replayed_jti`, ...), bez `sub` (niezweryfikowany) i bez treści
+  tokenu. Schemat `audit-event.schema.json` wymusza `outcome: denied`, wymaga `reason` i zabrania `sub` oraz `username` (też pochodzi z niezweryfikowanego tokenu);
+  `requestId` jest nadal wymagany (generowany przez odbiorcę, gdy żądanie go nie niesie). Wektory
+  `audit-events/server-authentication-denied` oraz dwa odrzucane (`invalid-authentication-with-sub`,
+  `invalid-authentication-outcome-ok`).
+- **Uwaga SemVer:** nowa wartość enum jest według tabeli w README zmianą major; wydanie jako 2.1.0 to wyraźna
+  decyzja człowieka. Odbiorcy walidujący `event` zamkniętą listą (SIEM, testy) muszą dodać `authentication`
+  przed aktualizacją producentów.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-072 | C10/C6 | Wspólne oznaczenie treści z systemu w wynikach narzędzi
+
+- **Zgłasza:** ws-04 (mcp-confluence)
+- **Problem:** brief ws-04 wymaga, żeby treść z systemu w wynikach była "oznaczona jako dane (nie instrukcje)",
+  ale kontrakt nie ma na to kształtu. Każdy serwer wymyśli własny (pole, nazwa, wartości), więc gateway, klienci
+  i testy ws-10 nie mogą tego sprawdzać jedną regułą, a różnica między serwerami nie trafia do `definitionHash`
+  w przewidywalny sposób (wynik nie ma `outputSchema`).
+- **Wariant w `mcp-server-confluence` M1:** `get_page` zwraca treść strony w obiekcie
+  `body: {kind: "untrusted-data", format: "text/plain", text, omittedMacros, truncated}`; tytuły i pozostałe pola
+  z systemu są zwykłymi polami.
+- **Przyjęty wariant (minor):** w `common.schema.json` definicja `UntrustedText`: `kind` = const
+  `"untrusted-data"`, `format` z zamkniętej listy `text/plain` | `text/markdown`, `text`, `truncated`; pola
+  dodatkowe per system dozwolone (np. `omittedMacros`). Serwery stosują ją dla każdej treści swobodnej z systemu
+  (opis strony, komentarz, treść zgłoszenia, wiersz logu). Zalecenie: narzędzie zwracające taką treść deklaruje
+  `outputSchema` odwołujące się do kształtu `UntrustedText`, żeby kształt wyniku był objęty `definitionHash`
+  (pole `outputSchema` już wchodzi do hasha, CC-004). Wektory `untrusted-text/`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-073 | C4.1 | Whoami Confluence Data Center
+
+- **Zgłasza:** ws-04 (mcp-confluence)
+- **Problem:** C4.1 podaje dla Jiry i Confluence ten sam endpoint weryfikacji tożsamości `/rest/api/2/myself`.
+  To endpoint REST API Jiry; Confluence Data Center nie ma `/rest/api/2/...`, a bieżącego użytkownika zwraca
+  `GET /rest/api/user/current` (pola `username`, `userKey`, `displayName`; dla tokenu bez dostępu 401). Broker
+  zbudowany dosłownie według C4.1 odrzuci każdy poprawny PAT Confluence jako `secret_invalid`.
+- **Przyjęty wariant (patch):** C4.1: Jira `GET /rest/api/2/myself` (porównanie po `name`, bez zmian), Confluence
+  `GET /rest/api/user/current` (porównanie po `username`). Opis w `credential-broker.v1.yaml` i README, sekcja
+  "Whoami (C4.1)".
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-074 | C7 | `OpenSearchIndexName` bez wiodącej kropki (indeksy ukryte i systemowe)
+
+- **Zgłasza:** ws-04 (mcp-opensearch)
+- **Problem:** `OpenSearchIndexName` (`^(?!\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,254}$`) przyjmuje nazwy zaczynające
+  się od `.`: `.security`, `.kibana`, `.opendistro_security`, `.ds-<strumień>-000001`. To indeksy ukryte i
+  systemowe; żadne narzędzie platformy nie powinno ich adresować, a prefiks `OpenSearchIndexPrefix` z wiodącą
+  kropką (np. `.ds-logs`) dałby grant na indeksy zapasowe strumieni danych z pominięciem nazwy strumienia.
+- **Wariant w `mcp-server-opensearch` M1:** serwer odrzuca wiodącą kropkę w argumentach (`invalid_argument`) i w
+  konfiguracji prefiksów (brak startu), mimo że wzorzec kontraktu ją przyjmuje; indeksy z atrybutem `hidden` z
+  `_resolve/index` dają `not_found_or_denied`.
+- **Przyjęty wariant (zawężenie wzorca):** `OpenSearchIndexName` = `^[a-z0-9][a-z0-9._-]{0,254}$`,
+  `OpenSearchIndexPrefix` = `^[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$`; zmiana we wszystkich miejscach
+  (schemat, `ResourceIds`, `entity-builder.md`, bundled OpenAPI). Wektory: `resource-ids/opensearch-index` i
+  `opensearch-prefix` (`.security`, `.ds-logs-000001`, `.ds-logs` jako niepoprawne), `entity-builder/
+  resolved-resource-invalid-id-security` i `-data-stream`, `refs-opensearch-index-leading-dot`. Strumienie danych
+  jako osobna decyzja w M2 (zasób = nazwa strumienia, nie indeks zapasowy).
+- **Uwaga SemVer:** zaostrzenie walidacji jest według tabeli w README zmianą major; wydanie jako 2.1.0 to wyraźna
+  decyzja człowieka. Wcześniej poprawne konfiguracje z wiodącą kropką (`opensearchIndexPrefixes` w
+  `resourceDefaults`, `vsc`, `static.json`) przestają przechodzić walidację.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-075 | C6 | `ticketId` w wektorze `valid-servicedesk-service-account` niezgodny z `ServiceDeskTicketId`
+
+- **Zgłasza:** ws-04 (mcp-servicedesk)
+- **Problem:** `test-vectors/manifests/valid-servicedesk-service-account.json` deklaruje `get_ticket` z
+  `ticketId: {"type": "integer", "minimum": 1}`, a `ResourceIdPatterns` każe dla `ServiceDesk::Ticket` stosować
+  `ServiceDeskTicketId` (string, `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`). Serwer zbudowany według wektora przyjmie
+  liczbę, której builder potem nie dopasuje do wzorca, a serwer według wzorca ma inny schemat i inny
+  `definitionHash` niż wektor. Ten sam wektor ma `internalUrl` `.../mcp/servicedesk`, a serwery z template'u
+  słuchają na `/mcp` (README gateway'a: `internal-url: .../mcp`).
+- **Wariant w `mcp-server-servicedesk` M1:** `ticketId` i `queue` jako string ze wzorcem z `common.schema.json`,
+  `minLength` 1, `maxLength` 64, `additionalProperties: false`; endpoint `/mcp`.
+- **Przyjęty wariant (patch):** w wektorze `ticketId` jako `{"type": "string", "pattern": <ServiceDeskTicketId>}`,
+  `internalUrl` `https://mcp-servicedesk.internal:8443/mcp`, przeliczony `definitionHash`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-076 | C7 | Konto serwisowe: zakres kolejek wymagany, brak zakresu = odmowa
+
+- **Zgłasza:** ws-04 (mcp-servicedesk)
+- **Problem:** przy `service-account` (D10) service desk nie zna użytkownika i zwraca wszystko, co widzi konto
+  platformy. Kontrakt nie mówi, co serwer robi, gdy dla takiego wywołania nie ma zakresu kolejek (brak
+  `vsc`, brak grantu w paczce, M1 bez Cedar): czy to "bez ograniczeń", czy odmowa. Gateway, polityki i serwer
+  mogą to rozumieć różnie, a pomyłka otwiera wszystkie kolejki.
+- **Wariant w `mcp-server-servicedesk` M1:** fail-closed. Lista kolejek z konfiguracji serwera
+  (`MCP_SERVICEDESK_ALLOWED_QUEUES`); pusta lista w trybie `service-account` = `not_found_or_denied` dla
+  wszystkiego bez wołania systemu. Poświadczenie z `X-MCP-Credential-Type: service-account` jest trzymane listą
+  także, gdy serwer skonfigurowano na `user-secret`. Kolejka oceniana na wartości zwróconej przez system w
+  chwili wywołania (zgłoszenie przeniesione = nowa kolejka), nie na argumencie.
+- **Przyjęty wariant (minor):** w C7 zdanie: "Dla poświadczenia `service-account` serwer ocenia każdy zasób
+  `ServiceDesk::*` względem kolejki zwróconej przez system; brak grantu kolejki w paczce i w konfiguracji
+  serwera = odmowa (niezmiennik 6)". Wektory `srv-servicedesk-service-account-no-queue-grant` (deny) i
+  `srv-servicedesk-ticket-moved-out-of-granted-queue` (deny) są w `test-vectors/servicedesk-service-account/`, nie
+  w `policy-decisions/`: model Cedar nie niesie typu poświadczenia, a przykładowa polityka `servicedesk-read`
+  (zasób czytany według własnych praw użytkownika w systemie) nie wymaga grantu kolejki, więc decyzja Cedar nie
+  odróżni konta serwisowego bez zmiany `mcp.cedarschema` (zamrożony w 2.x). Reguła jest egzekwowana przez serwer
+  przed Cedar; referencyjna implementacja w testach Node. Pytanie, czy lista z konfiguracji serwera zostaje po
+  M3 jako dodatkowe zawężenie, czy znika na rzecz paczki, pozostaje otwarte (do planowania M3).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
+
+## CC-??? | C6/C10 | `inputSchema` zamknięty i walidowany przez serwer; treść `invalid_argument` przy naruszeniu schematu
+
+- **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
+- **Status:** open
+- **Problem:** MCP SDK 2.0.x waliduje argumenty względem `inputSchema` przed audytem serwera i odpowiada tekstem
+  spoza C10 (`Tool (x) input validation failed`), bez zdarzenia C8. Kontrakt nie wymaga ani zamkniętego schematu
+  (`additionalProperties: false`), ani określonej treści `invalid_argument` przy naruszeniu schematu, więc
+  gateway (walidujący argumenty względem schematu z manifestu) i serwer mogą się rozjechać co do tego, co jest
+  poprawne, a serwer bez zamkniętego schematu przepuści nieznane argumenty.
+- **Wariant w starterze alpha-6:** serwer wyłącza walidację SDK i sam waliduje argumenty względem `inputSchema`
+  (JSON Schema 2020-12) w opakowaniu audytu; poza profilem `dev` brak schematu albo schemat bez `type: object`
+  i `additionalProperties: false` zatrzymuje start. Odpowiedź: C10 `invalid_argument`, komunikat z nazwą
+  argumentu (tylko zadeklarowanego w schemacie) i regułą, bez wartości argumentu i bez nazw spoza schematu;
+  zdarzenie C8 `tool_call` z `outcome=error`, `errorCode=invalid_argument`.
+- **Propozycja (minor):** (1) w `server-manifest.schema.json` `definition.inputSchema` wymaga `type: object` i
+  `additionalProperties: false` na poziomie głównym (reguła semantyczna lub schemat); (2) w C10 zdanie: "przy
+  naruszeniu `inputSchema` serwer zwraca `invalid_argument`; komunikat może wskazać argument zadeklarowany w
+  schemacie i naruszoną regułę, nigdy wartość argumentu ani nazwę niezadeklarowaną"; (3) wektor w
+  `test-vectors` dla odrzuconego manifestu bez zamkniętego schematu.
+
+## CC-??? | C6 | Nazwy `$defs` w `common.schema.json` jako stabilne API dla serwerów
+
+- **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
+- **Status:** open
+- **Problem:** serwery kopiowały wzorce identyfikatorów (`JiraIssueKey`, `GitLabProjectPath`, ...) do własnych
+  stałych. Starter publikuje teraz `@ArgumentLimits(contractPattern = "<nazwa $defs>")`, które czyta `pattern` i
+  `maxLength` z `common.schema.json` jara kontraktów w chwili rejestracji narzędzia. Zmiana nazwy albo usunięcie
+  definicji zatrzymałoby start serwerów.
+- **Propozycja:** w README kontraktów lista definicji używanych przez serwery (`Jira*`, `Confluence*`,
+  `GitLab*`, `OpenSearch*`, `ServiceDesk*`) jako stabilnych w linii 2.x; zmiana nazwy lub usunięcie = major. Do
+  decyzji, czy `pattern` definicji ma obejmować to, co `ResourceIds` w `mcp-cedar-entities` (patrz CC-074: różnica
+  w `OpenSearchIndexName`).
+
+## CC-077 | C11/C5/C12 | Kanał kodu domyślny dla wszystkich klientów
+
+- **Zgłasza:** człowiek (decyzja 2026-10-27, po przeglądzie makiet portalu)
+- **Problem:** C11 dopuszcza potwierdzenie przez elicitation (kanał 1) albo kod (kanał 2), a makieta portalu
+  zakładała zatwierdzanie samym step-up MFA bez pokazania argumentów. Zatwierdzenie bez widocznych argumentów nie
+  chroni przed podmianą wywołania, a elicitation nie jest dostępne u wszystkich klientów.
+- **Przyjęty wariant (minor):** kanał kodu jest domyślny dla wszystkich klientów:
+  1. Agent wywołuje narzędzie wymagające potwierdzenia, gateway odpowiada `confirmation_required`
+     `{confirmationId, confirmUrl}`.
+  2. Człowiek otwiera `confirmUrl`; portal pokazuje narzędzie, system i argumenty (obcięte, z oznaczeniem)
+     pobrane z gateway'a po `confirmationId` (`GET /api/v1/confirmations/{id}`, `ConfirmationView` z nowym polem
+     `system`), nigdy od klienta.
+  3. "Zatwierdź" wymaga świeżego MFA (istniejące `stepUpUrl` i `mfaFreshUntil`).
+  4. Po MFA `POST /api/v1/confirmations/{id}` (C5 `decideConfirmation`) zwraca `200 ConfirmationOutcome` z
+     jednorazowym kodem (`ConfirmationCode`, 6 cyfr), `codeExpiresAt` i `attemptsLeft`; wcześniej odpowiedź to
+     `204` bez treści. Odrzucenie zwraca `200` bez kodu. Kod jest związany z (`sub`, `serverId`, `tool`, SHA-256
+     kanonicznych argumentów bez `confirmation_code`), TTL 120 s, 3 próby, jednorazowy.
+  5. Człowiek wkleja kod w sesji klienta MCP, agent ponawia wywołanie z tymi samymi argumentami i
+     `confirmation_code`, gateway sprawdza powiązanie. Zatwierdzenie samo nie wykonuje akcji.
+  Elicitation URL (kanał 1) może jedynie otwierać ten sam `confirmUrl`. SPI `ConfirmationCodeSender` zostaje jako
+  opcjonalny kanał dostarczenia kodu poza modelem. Odrzucone: zatwierdzanie samym MFA bez pokazania argumentów.
+  Wektory `confirmation-binding/` (12), referencyjna kontrola w testach Node.
+- **Uwaga SemVer:** status odpowiedzi POST zmienia się z 204 na 200 i `system` wchodzi do wymaganych pól widoku;
+  według tabeli w README to zmiana niezgodna dla klientów generowanych z 2.0.x, wydana jako minor na decyzję
+  człowieka (endpoint nie był jeszcze używany przez żaden komponent poza mockami).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)

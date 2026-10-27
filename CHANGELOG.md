@@ -4,6 +4,101 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.1.0 - 2026-10-27
+
+Decyzje człowieka z 2026-10-27: CC-068 ... CC-077 `accepted` (CC-070 w zmienionej formie). Zmiany minor i patch
+razem. `cedar/mcp.cedarschema` jest bajtowo taki jak w 2.0.0 (test skrótu w Node i Javie przechodzi); polityki
+przykładowe, wektory decyzji Cedar i `static-entities.json` bez zmian.
+
+### Zmiany
+
+- CC-068 (patch): opis `prv` i `PolicyRevision`: `00000000000000-0000000` = gateway bez załadowanej paczki, bez
+  wniosków o polityce; od M2 gateway bez paczki nie wstaje.
+- CC-069 (minor): `server/discover` jak `initialize` (wariant serwisowy dozwolony, `tool` zabroniony);
+  `subscriptions/listen` bez `tool`, tylko wariant użytkownika; ponowienie `tools/call` z `inputResponses` (MRTR)
+  jak każde `tools/call`. Nowe wektory JWT (9): `valid-service-discover`, `valid-user-variant-discover`,
+  `user-variant-discover-with-tool`, `valid-user-variant-subscriptions-listen`,
+  `user-variant-subscriptions-listen-with-tool`, `service-variant-subscriptions-listen`,
+  `valid-tools-call-input-responses`; C11: kanał "elicitation URL" w erze 2026-07-28 to `InputRequiredResult`
+  (README, sekcja "Metody MCP i JWT"). Istniejące tokeny JWT nie zostały przegenerowane.
+- CC-070 (minor, zmieniona forma): lista metod wariantu serwisowego bez zmian; wariant serwisowy tylko bez sesji,
+  żądania w sesji (`notifications/*`, `GET`/`DELETE`, odpowiedzi JSON-RPC) wariantem użytkownika; wektor
+  `service-variant-other-notification`.
+- CC-071 (minor): C8 `event: "authentication"` (`outcome: denied`, `reason` = kod odrzucenia JWT, bez `sub` i
+  `username`); `audit-event.schema.json` wymusza to warunkiem `if/then`; wektory `server-authentication-denied` i
+  trzy odrzucane.
+- CC-072 (minor): `UntrustedText` w `common.schema.json`, zalecenie `outputSchema` dla narzędzi zwracających treść
+  swobodną z systemu; wektory `untrusted-text/` (8).
+- CC-073 (patch): whoami Confluence DC `GET /rest/api/user/current`, porównanie po `username`; Jira bez zmian.
+  Opis w `credential-broker.v1.yaml` i README.
+- CC-074 (zawężenie wzorca): `OpenSearchIndexName` = `^[a-z0-9][a-z0-9._-]{0,254}$`, `OpenSearchIndexPrefix`
+  zaczyna się od `[a-z0-9]`; schemat, `ResourceIds`, `entity-builder.md`, bundled OpenAPI. Wektory
+  `resource-ids/opensearch-*` (`.security`, `.ds-logs-000001`, `.ds-logs` niepoprawne),
+  `entity-builder/resolved-resource-invalid-id-security`, `-data-stream`, `refs-opensearch-index-leading-dot`.
+  Strumienie danych: osobna decyzja w M2.
+- CC-075 (patch): `valid-servicedesk-service-account`: `ticketId` jako string ze wzorcem `ServiceDeskTicketId`,
+  `internalUrl` `https://mcp-servicedesk.internal:8443/mcp`, przeliczony `definitionHash`
+  (`sha256:7601e0f8...7031a`).
+- CC-076 (minor): w C7 reguła kolejek dla `service-account`; wektory `servicedesk-service-account/` (6), w tym
+  `srv-servicedesk-service-account-no-queue-grant` i `srv-servicedesk-ticket-moved-out-of-granted-queue` (deny).
+  Poza `policy-decisions/`, bo decyzja Cedar nie odróżni konta serwisowego bez zmiany zamrożonego schematu (opis w
+  `CONTRACT_CHANGES.md`).
+
+- CC-077 (minor): C11 kanał kodu domyślny dla wszystkich klientów. `ConfirmationView.system` (wymagane),
+  `POST /api/v1/confirmations/{id}` i `POST /admin/v1/confirmations/{confirmationId}` zwracają `200
+  ConfirmationOutcome` (`code`, `codeExpiresAt`, `attemptsLeft`) zamiast `204`; `ConfirmationCode` w
+  `common.schema.json`; wektory `confirmation-binding/` (12). Elicitation URL tylko otwiera `confirmUrl`.
+
+### Uwaga SemVer
+
+Według tabeli w README CC-071 (nowa wartość enum), CC-074 (zaostrzenie walidacji) i CC-077 (204 -> 200, nowe pole wymagane) są zmianami major. Wydanie jako
+2.1.0 jest wyraźną decyzją człowieka z 2026-10-27. Skutki: producent zdarzenia `authentication` nie przejdzie
+walidacji u odbiorcy audytu na 2.0.x; konfiguracja i `vsc`/`resourceDefaults`/`static.json` z prefiksem indeksu
+zaczynającym się od kropki przestają przechodzić walidację. Dlatego wszystkie komponenty przechodzą na 2.1.0
+razem (schematy audytu u konsumentów też).
+
+### Wpływ na konsumentów
+
+- Wszyscy: aktualizacja z 2.0.2 do 2.1.0 bez zmian schematu Cedar i bez zmian API bibliotek Java.
+- ws-02 (starter): emitować zdarzenie audytu `authentication` zamiast samej linii logu przy odrzuceniu JWT
+  (`reason` = kod odrzucenia, bez `sub`, `username` i treści tokenu); odbiornik wariantu serwisowego rozpoznaje
+  także `server/discover`, a `subscriptions/listen`, `notifications/*`, `GET`/`DELETE` przyjmuje tylko z wariantem
+  użytkownika; `UntrustedText` jako wspólny typ treści z systemu (pomocnik/typ w starterze) i `outputSchema` w
+  `definitionHash`; wzorce `ResourceIds` z OpenSearch bez kropki; reguła kolejek konta serwisowego do wspólnego
+  kodu serwerów (CC-076).
+- ws-05 (gateway): `prv` `00000000000000-0000000` bez załadowanej paczki (M1) jest opisanym wzorcem, nie
+  specjalnym przypadkiem; metody 2026-07-28: `server/discover` wariantem serwisowym lub użytkownika bez `tool`,
+  `subscriptions/listen` wariantem użytkownika, ponowienie `tools/call` z `inputResponses` z nowym JWT i
+  `tool` == `params.name`; wariant serwisowy tylko bez sesji (żadnego w ramach sesji); nowe wzorce OpenSearch w
+  walidacji `ResourceDefaults` i `vsc`.
+- ws-06 (broker): whoami Confluence `GET /rest/api/user/current` (porównanie po `username`) zamiast
+  `/rest/api/2/myself`; Jira bez zmian.
+- ws-04 (serwery): mcp-confluence i pozostałe zwracają treść z systemu jako `UntrustedText` z `outputSchema`;
+  mcp-opensearch odrzuca nazwy z wiodącą kropką zgodnie z kontraktem (można usunąć ręczny filtr); mcp-servicedesk
+  przyjmuje `ticketId` jako string ze wzorcem `ServiceDeskTicketId`, endpoint `/mcp`, reguła kolejek konta
+  serwisowego (lista z konfiguracji lub grant w paczce, kolejka z odpowiedzi systemu, pusta = odmowa).
+- ws-09 (polityki): bez zmian w schemacie i w paczce; service desk dla konta serwisowego deny gdy kolejka bez
+  grantu: egzekwuje to serwer przed Cedar, polityki muszą tylko dalej wydawać granty `mcp-servicedesk-queue-<id>`
+  w `static.json`; prefiksy indeksów OpenSearch w mapowaniu nie mogą zaczynać się od kropki.
+- ws-10 (e2e): scenariusze nadużyć: indeksy ukryte OpenSearch (`.security`), treść z systemu oznaczona
+  `UntrustedText`, odrzucone JWT widoczne w audycie jako `authentication`, konto serwisowe service desku bez
+  grantu kolejki i zgłoszenie przeniesione poza kolejkę z grantem.
+- CC-077: ws-05 (gateway, M3) trzyma rekord oczekującego wywołania (`confirmationId`, `sub`, `serverId`, `tool`,
+  system, argumenty), odpowiada `confirmation_required`, wydaje kod po `decideConfirmation` z approve, wiąże go z
+  (`sub`, `serverId`, `tool`, SHA-256 kanonicznych argumentów bez `confirmation_code`), TTL 120 s, 3 próby,
+  jednorazowo; ws-07 (BFF) przekazuje `ConfirmationView` z gateway'a, wymaga step-up przed GET i POST i zwraca
+  `200 ConfirmationOutcome` zamiast `204` (regeneracja klienta); ws-08 (web) ekran `/confirm/<id>` pokazuje
+  narzędzie, system i argumenty (z oznaczeniem obciętych), przycisk "Zatwierdź" prowadzi przez step-up i pokazuje
+  kod z odliczaniem (nie zatwierdza samym MFA); ws-02 (starter) bez zmian w kontrakcie, ale kod wraca do serwera
+  tylko jako `confirmation_code` zdjęty przez gateway; ws-10: scenariusze podmiany argumentów po zatwierdzeniu,
+  ponownego użycia i wygaśnięcia kodu.
+- ws-01 (środowisko): bez zmian. ws-07/ws-08: poza CC-077 regeneracja klientów z bundled OpenAPI (wzorzec
+  `OpenSearchIndexPrefix` w `ResourceDefaults`).
+
+### Dystrybucja
+
+- `release/aiwcorpo-mcp-contracts-2.1.0.tgz` obok tarballi 1.0.0 ... 2.0.2.
+
 ## 2.0.2 - 2026-10-27
 
 Wydanie poprawkowe po automatycznym przeglądzie bezpieczeństwa 2.0.1 (realizacja CC-061, bez zmiany kontraktu;

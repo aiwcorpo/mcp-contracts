@@ -4,11 +4,11 @@ import { existsSync } from 'node:fs';
 import { compactVerify, importJWK } from 'jose';
 import { createAjv, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
 
-const SERVICE_METHODS = new Set(['initialize', 'tools/list', 'ping']);
+const SERVICE_METHODS = new Set(['initialize', 'server/discover', 'tools/list', 'ping']);
 const ajv = createAjv();
 const validateClaims = schemaValidator(ajv, 'internal-jwt.schema.json');
 
-// Server: initialize, tools/list, ping, GET /mcp-manifest. Broker: GET /v1/systems only (CC-030).
+// Server: initialize, server/discover (CC-069), tools/list, ping, GET /mcp-manifest. Broker: GET /v1/systems only (CC-030).
 function serviceRequestAllowed(request, audience) {
   if (audience === 'mcp-credential-broker') return request.method === 'GET' && request.path === '/v1/systems';
   if (request.kind === 'jsonrpc') return SERVICE_METHODS.has(request.method);

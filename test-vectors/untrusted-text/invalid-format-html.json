@@ -1,0 +1,12 @@
+{
+  "description": "format is a closed list; HTML is converted by the server.",
+  "value": {
+    "kind": "untrusted-data",
+    "format": "text/html",
+    "text": "<b>x</b>",
+    "truncated": false
+  },
+  "expected": {
+    "valid": false
+  }
+}

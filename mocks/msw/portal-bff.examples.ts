@@ -429,6 +429,7 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
           "tool": "jira__delete_issue",
+          "system": "jira",
           "arguments": [
             {
               "name": "issueKey",
@@ -467,11 +468,17 @@ export const portalBffExamples: OperationExamples[] = [
     "operationId": "decideMyConfirmation",
     "method": "POST",
     "route": "/api/v1/confirmations/{id}",
-    "defaultExample": "status-204",
+    "defaultExample": "approved",
     "responses": [
       {
-        "status": 204,
-        "name": "status-204"
+        "status": 200,
+        "name": "approved",
+        "body": {
+          "decision": "approve",
+          "code": "493201",
+          "codeExpiresAt": "2026-10-26T20:02:00Z",
+          "attemptsLeft": 3
+        }
       },
       {
         "status": 401,

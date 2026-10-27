@@ -1,0 +1,11 @@
+{
+  "description": "truncated is required so that clients know whether text is complete.",
+  "value": {
+    "kind": "untrusted-data",
+    "format": "text/plain",
+    "text": "x"
+  },
+  "expected": {
+    "valid": false
+  }
+}

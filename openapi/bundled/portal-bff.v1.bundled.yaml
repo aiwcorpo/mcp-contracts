@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.0.2
+  version: 2.1.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -443,7 +443,7 @@ paths:
       tags:
         - confirmations
       operationId: getMyConfirmation
-      summary: Confirmation page data (proxy to C5); owner only, fresh MFA required (CC-034).
+      summary: Confirmation page data (proxy to C5; tool, system and arguments come from the gateway, never from the client); owner only, fresh MFA required (CC-034, CC-077).
       security:
         - session: []
       responses:
@@ -458,6 +458,7 @@ paths:
                   value:
                     confirmationId: cnf_4k9Qe2LxW7tB3mZp
                     tool: jira__delete_issue
+                    system: jira
                     arguments:
                       - name: issueKey
                         value: '"ABC-123"'
@@ -473,7 +474,7 @@ paths:
       tags:
         - confirmations
       operationId: decideMyConfirmation
-      summary: Approve or decline; requires fresh MFA.
+      summary: Approve or decline; requires fresh MFA. Approval returns the one-time confirmation code (CC-077).
       security:
         - session: []
           csrf: []
@@ -488,8 +489,19 @@ paths:
                 value:
                   decision: approve
       responses:
-        "204":
-          description: Decision recorded.
+        "200":
+          description: Decision recorded; approval returns the one-time code for the MCP client session, it never executes the action.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmationOutcome"
+              examples:
+                approved:
+                  value:
+                    decision: approve
+                    code: "493201"
+                    codeExpiresAt: 2026-10-26T20:02:00Z
+                    attemptsLeft: 3
         "401":
           $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
@@ -1471,6 +1483,7 @@ components:
       required:
         - confirmationId
         - tool
+        - system
         - arguments
         - expiresAt
       properties:
@@ -1478,6 +1491,9 @@ components:
           $ref: "#/components/schemas/ConfirmationId"
         tool:
           $ref: "#/components/schemas/QualifiedToolName"
+        system:
+          description: System the tool acts on; the portal shows it next to the tool (CC-077). Read by the gateway from its own record of the pending call, never from the client.
+          $ref: "#/components/schemas/SystemId"
         arguments:
           description: Arguments sorted by name (fixed order), without confirmation_code.
           type: array
@@ -1498,6 +1514,36 @@ components:
             - approve
             - decline
       additionalProperties: false
+    ConfirmationCode:
+      description: "One-time confirmation code shown in the portal after approval with fresh MFA (C11, CC-077): 6 digits, valid 120 s, 3 attempts, bound to (sub, serverId, tool, sha256 of the canonical arguments without confirmation_code)."
+      type: string
+      pattern: ^[0-9]{6}$
+    ConfirmationOutcome:
+      type: object
+      required:
+        - decision
+      properties:
+        decision:
+          type: string
+          enum:
+            - approve
+            - decline
+        code:
+          description: Present exactly when decision is approve.
+          $ref: "#/components/schemas/ConfirmationCode"
+        codeExpiresAt:
+          description: End of the code TTL (120 s); present with code.
+          $ref: "#/components/schemas/Timestamp"
+        attemptsLeft:
+          description: Remaining verification attempts of the code (3 at issue); present with code.
+          type: integer
+          minimum: 0
+          maximum: 3
+      additionalProperties: false
+      dependentRequired:
+        code:
+          - codeExpiresAt
+          - attemptsLeft
     VirtualServerSlug:
       description: Virtual server slug; used in the URL path /v/<slug>/mcp (C5).
       type: string
@@ -1539,7 +1585,7 @@ components:
     OpenSearchIndexPrefix:
       description: "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'."
       type: string
-      pattern: ^(?!\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$
+      pattern: ^[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$
     OpenSearchIndexPrefixes:
       type: array
       minItems: 1
@@ -1623,7 +1669,7 @@ components:
         - ServiceDesk::Queue
         - ServiceDesk::Ticket
     PolicyRevision:
-      description: Policy bundle revision YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part.
+      description: Policy bundle revision YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without a loaded bundle' (M1 only, CC-068); it is not the revision of any bundle and a receiver must not infer anything about policy from it.
       type: string
       pattern: ^[0-9]{14}-[0-9a-f]{7}$
     ErrorCode:
@@ -1816,6 +1862,7 @@ components:
             - connection_change
             - confirmation
             - admin_change
+            - authentication
         sub:
           type: string
           minLength: 1
@@ -1859,7 +1906,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited. For event authentication it is the rejection code of the internal JWT vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
@@ -1884,4 +1931,25 @@ components:
           description: Length in bytes of the serialized arguments; the only trace of arguments allowed in audit.
           type: integer
           minimum: 0
+      allOf:
+        - description: "Rejected authentication (CC-071): emitted by a receiver of the internal JWT (server, broker). Carries the rejection code in reason and never sub (the token is not verified) or any part of the token."
+          if:
+            properties:
+              event:
+                const: authentication
+            required:
+              - event
+          then:
+            required:
+              - outcome
+              - reason
+            properties:
+              outcome:
+                const: denied
+            not:
+              anyOf:
+                - required:
+                    - sub
+                - required:
+                    - username
       additionalProperties: false

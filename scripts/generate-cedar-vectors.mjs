@@ -167,6 +167,14 @@ builderVector('refs-gitlab-path-traversal', 'GitLab path with .. segments.', 'ga
 builderVector('resolved-resource-invalid-id', 'Resolver returned an index id with a comma; the builder refuses to build it.', 'server', {
   caller: users.osReader(), tool: tools.searchIndex, arguments: {},
   resource: { type: 'OpenSearch::Index', id: 'logs-team-a,secret', attrs: { name: 'logs-team-a,secret', tags: [] } } });
+builderVector('resolved-resource-invalid-id-security', 'Resolver returned the hidden system index .security: refused (CC-074).', 'server', {
+  caller: users.osReader(), tool: tools.searchIndex, arguments: {},
+  resource: { type: 'OpenSearch::Index', id: '.security', attrs: { name: '.security', tags: [] } } });
+builderVector('resolved-resource-invalid-id-data-stream', 'Resolver returned a data stream backing index .ds-logs-000001: refused (CC-074).', 'server', {
+  caller: users.osReader(), tool: tools.searchIndex, arguments: {},
+  resource: { type: 'OpenSearch::Index', id: '.ds-logs-000001', attrs: { name: '.ds-logs-000001', tags: [] } } });
+builderVector('refs-opensearch-index-leading-dot', 'Index argument naming a hidden system index (CC-074).', 'gateway',
+  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: '.security' } });
 builderVector('vsc-invalid-id', 'vsc id outside the Jira key pattern.', 'gateway',
   { caller: { ...users.reader(), vs: 'team-a-dev', vsc: { jiraProjects: ['ABC) OR project in (HR'] } }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('tool-unknown-resource-type', 'resourceRefs with a type outside the model: denied.', 'gateway',

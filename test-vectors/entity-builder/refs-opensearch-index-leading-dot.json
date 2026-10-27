@@ -1,0 +1,35 @@
+{
+  "description": "Index argument naming a hidden system index (CC-074).",
+  "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000008",
+      "usr": "osreader",
+      "grp": [
+        "mcp-opensearch-read",
+        "mcp-opensearch-idx-logs-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-opensearch",
+      "system": "opensearch",
+      "name": "search",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "index",
+          "type": "OpenSearch::Index"
+        }
+      ]
+    },
+    "arguments": {
+      "index": ".security"
+    }
+  },
+  "expected": {
+    "error": "invalid_argument"
+  }
+}

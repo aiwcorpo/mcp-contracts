@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.0.2**, tag `v2.0.2` (poprawki do 2.0.0; 1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.1.0**, tag `v2.1.0` (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -10,7 +10,7 @@ startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
 wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-067 w 2.0.0,
-CC-035 odrzucone.
+CC-068 ... CC-077 w 2.1.0, CC-035 odrzucone.
 
 ## Co jest gdzie
 
@@ -40,6 +40,9 @@ mcp-contracts/
 ├── test-vectors/
 │   ├── keys/                # KLUCZE TESTOWE, NOT FOR PRODUCTION
 │   ├── jwt/  manifests/  definition-hash/  audit-events/  tool-errors/  bundles/
+│   ├── untrusted-text/      # kształt UntrustedText (CC-072)
+│   ├── confirmation-binding/  # kod potwierdzenia C11 (CC-077)
+│   ├── servicedesk-service-account/  # reguła kolejek konta serwisowego (CC-076)
 │   ├── entity-builder/      # wejście buildera -> encje i kontekst Cedar
 │   └── policy-decisions/    # żądanie Cedar -> decyzja i polityki rozstrzygające
 ├── mocks/wiremock/          # stuby C4 i C5 (generowane)
@@ -67,6 +70,10 @@ Od 2.0.0 obowiązuje ścisły SemVer według tabeli powyżej. Wydania 1.1.0 i 1.
 oznaczone jako minor; broker (ws-06), BFF (ws-07) i frontend (ws-08) zależą od 1.1.0, więc pełna lista zmian
 niezgodnych względem 1.1.0 i ich wpływ na konsumentów są w `CHANGELOG.md` przy 2.0.0.
 
+Wyjątek: w 2.1.0 CC-071 (nowa wartość enum `event: "authentication"`) i CC-074 (zawężenie wzorców indeksów
+OpenSearch) są według tej tabeli zmianami major, a wydane jako minor na wyraźną decyzję człowieka z 2026-10-27;
+skutki dla konsumentów opisuje `CHANGELOG.md`.
+
 `release/` przechowuje tarballe npm **wszystkich** wydań (konsumenci zależą od nich przez ścieżkę
 `file:../mcp-contracts/release/aiwcorpo-mcp-contracts-<wersja>.tgz`). Starych tarballi się nie usuwa, a
 tarballa wersji, która ma już tag, się nie nadpisuje (`npm run pack` tego odmawia), więc suma integralności w
@@ -80,13 +87,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.0.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.0.2:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.0.2` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.0.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.0.2` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.0.2` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.0.2.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.0.2.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.1.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.1.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.1.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.1.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.1.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.1.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.1.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -95,20 +102,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.0.2/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.0.2.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.1.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.1.0.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>2.0.2</version>
+  <version>2.1.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>2.0.2</version>
+  <version>2.1.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -140,7 +147,7 @@ i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>2.0.2</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
@@ -261,11 +268,72 @@ Testy (Node i Java) porównują skrót SHA-256 pliku. Potok ws-09 kopiuje plik b
 
 Identyfikatory każdego typu zasobu mają wzorzec zgodny z dokumentacją systemu (CC-056, tabela w
 `cedar/entity-builder.md` sekcja 9, `schemas/common.schema.json` `ResourceIdPatterns`, w Javie `ResourceIds`).
-Niepasujące identyfikatory są odrzucane w `resourceDefaults`, `vsc`, argumentach narzędzi, zasobach z resolvera
+Nazwy indeksów OpenSearch zaczynają się od litery lub cyfry, więc indeksy ukryte i systemowe (`.security`, `.ds-*`) nie
+przechodzą (CC-074). Niepasujące identyfikatory są odrzucane w `resourceDefaults`, `vsc`, argumentach narzędzi, zasobach z resolvera
 i mapowaniu zakresów. Walidatory JSON Schema w Javie często dopasowują wzorzec przez `Matcher.find()`, przy którym
 `$` przepuszcza końcowe `\n` (`"ABC\n"`); gateway (ws-05) przy zapisie `ResourceDefaults` i odbiorcy `vsc` wołają
 dodatkowo `ResourceIds.isValid`, które dopasowuje całość. Serwer mimo to cytuje identyfikatory w JQL/CQL i buduje wzorce OpenSearch w postaci
 `p,p-*`.
+
+## Metody MCP i JWT (C2, C11)
+
+Reguły wariantów JWT (CC-030, CC-033, CC-038, CC-069, CC-070):
+
+| Żądanie | Wariant | `tool` |
+| --- | --- | --- |
+| `tools/call` (także ponowienie z `inputResponses` po `InputRequiredResult`, MRTR) | użytkownika | wymagany, `== params.name`, nowy JWT przy każdym ponowieniu |
+| `initialize`, `server/discover`, `tools/list`, `ping`, `GET /mcp-manifest` | użytkownika albo serwisowy | zabroniony |
+| `subscriptions/listen`, `notifications/*`, odpowiedzi JSON-RPC, `GET`/`DELETE` na endpoincie MCP | tylko użytkownika | zabroniony |
+| broker `POST /v1/credentials/resolve` | tylko użytkownika | wymagany |
+| broker `GET /v1/systems` | użytkownika albo serwisowy | zabroniony |
+
+Wariant serwisowy jest używany wyłącznie bez sesji (bezstanowo): wszystkie żądania w ramach sesji, w tym
+`notifications/initialized` i `notifications/cancelled`, idą wariantem użytkownika (CC-070).
+
+`prv` równe `00000000000000-0000000` oznacza gateway bez załadowanej paczki polityk (M1). To nie jest rewizja żadnej
+paczki; odbiorca nie wnioskuje z niej o polityce. Od M2 gateway bez paczki nie wstaje (CC-068).
+
+C11: w erze MCP 2026-07-28 kanał potwierdzenia "elicitation URL" to `InputRequiredResult` z żądaniem elicitation w
+trybie URL, ponawiany `tools/call` niesie `inputResponses`. Semantyka potwierdzenia (kod, wygaśnięcie, świeże MFA)
+bez zmian.
+
+## Potwierdzenia (C11, kanał kodu)
+
+Kanał kodu jest domyślny dla wszystkich klientów (CC-077): `confirmation_required` z `confirmationId` i `confirmUrl`
+-> portal pokazuje narzędzie, system i argumenty z gateway'a (`GET /api/v1/confirmations/{id}`) -> "Zatwierdź"
+wymaga świeżego MFA -> `POST /api/v1/confirmations/{id}` zwraca jednorazowy kod (`ConfirmationOutcome`) -> człowiek
+wkleja kod w sesji klienta, agent ponawia wywołanie z tymi samymi argumentami i `confirmation_code`. Kod jest
+związany z (`sub`, `serverId`, `tool`, SHA-256 kanonicznych argumentów bez `confirmation_code`), ma TTL 120 s, 3
+próby i działa raz (`test-vectors/confirmation-binding/`). Elicitation URL może tylko otwierać ten sam `confirmUrl`;
+zatwierdzenie bez kodu niczego nie wykonuje. `ConfirmationCodeSender` to opcjonalny kanał dostarczenia kodu poza
+modelem.
+
+## Whoami (C4.1)
+
+Broker weryfikuje tożsamość po zapisie sekretu lub wymianie kodu OAuth wywołaniem systemu docelowego:
+
+| System | Żądanie | Pole porównywane z tożsamością SSO |
+| --- | --- | --- |
+| Jira Data Center | `GET /rest/api/2/myself` | `name` |
+| Confluence Data Center | `GET /rest/api/user/current` (CC-073) | `username` |
+
+Odpowiedź 401 z systemu to `secret_invalid`.
+
+## Treść z systemu w wynikach narzędzi (C10, C6)
+
+Treść swobodna pochodząca z systemu (opis strony, komentarz, treść zgłoszenia, wiersz logu) jest zwracana jako
+obiekt `UntrustedText` (`schemas/common.schema.json#/$defs/UntrustedText`, CC-072): `kind: "untrusted-data"`,
+`format` (`text/plain` albo `text/markdown`), `text`, `truncated`; serwer może dodać własne pola (np.
+`omittedMacros`). Narzędzie zwracające taką treść powinno deklarować `outputSchema` z tym kształtem, wtedy wchodzi on
+do `definitionHash` (C6, CC-004). Gateway, klienci i testy ws-10 sprawdzają jedną regułę zamiast kształtów per serwer.
+
+## Konto serwisowe service desku (C7)
+
+Dla poświadczenia `service-account` serwer ocenia każdy zasób `ServiceDesk::*` względem kolejki zwróconej przez
+system w chwili wywołania (zgłoszenie przeniesione do innej kolejki ma nową kolejkę, argument się nie liczy); brak
+grantu kolejki w paczce i w konfiguracji serwera oznacza odmowę (niezmiennik 6, CC-076). Reguła działa przed
+Cedar, bo model Cedar nie niesie typu poświadczenia (`mcp.cedarschema` jest zamrożony w 2.x); wektory w
+`test-vectors/servicedesk-service-account/`, a nie w `policy-decisions/`.
 
 ## Korelacja żądań
 
@@ -304,7 +372,7 @@ klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (i
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>2.0.2</version>
+            <version>2.1.0</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>
@@ -413,16 +481,20 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 
 | Katalog | Liczba | Co sprawdza |
 | --- | --- | --- |
-| `jwt/` | 42 | odbiorca C2: 15 poprawnych, 27 odrzuceń (podpis, `kid`, klucz testowy, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP) |
+| `jwt/` | 51 | odbiorca C2: 19 poprawnych, 32 odrzucenia (podpis, `kid`, klucz testowy, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą) |
 | `manifests/` | 26 | manifest C6: schemat, reguły semantyczne, przeliczony `definitionHash` |
 | `definition-hash/` | 11 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 22 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, znaków sterujących i bidi |
+| `audit-events/` | 26 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071) |
 | `tool-errors/` | 18 | każdy kod C10 + przypadki odrzucane |
-| `bundles/` | 33 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
+| `bundles/` | 40 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 12 | `returnPath` C4/C12 (CC-032) |
-| `entity-builder/` | 22 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
-| `policy-decisions/` | 60 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
-| `result-filter/` | 2 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
+| `entity-builder/` | 36 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
+| `policy-decisions/` | 69 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
+| `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
+| `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
+| `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
+| `confirmation-binding/` | 12 | powiązanie i ważność kodu potwierdzenia (CC-077) |
+| `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
 
 Formaty:
 

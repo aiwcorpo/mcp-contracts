@@ -4,13 +4,17 @@
   "valid": [
     "logs-team-a",
     "logs",
-    "a"
+    "a",
+    "0"
   ],
   "invalid": [
     "logs-",
     "logs.",
     "logs-*",
     "logs,x",
-    "_x"
+    "_x",
+    ".ds-logs",
+    ".security",
+    "."
   ]
 }

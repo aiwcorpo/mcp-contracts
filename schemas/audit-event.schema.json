@@ -42,7 +42,8 @@
         "credential_resolve",
         "connection_change",
         "confirmation",
-        "admin_change"
+        "admin_change",
+        "authentication"
       ]
     },
     "sub": {
@@ -103,7 +104,7 @@
       ]
     },
     "reason": {
-      "description": "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited.",
+      "description": "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited. For event authentication it is the rejection code of the internal JWT vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed).",
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*$",
       "maxLength": 64
@@ -142,5 +143,45 @@
       "minimum": 0
     }
   },
+  "allOf": [
+    {
+      "description": "Rejected authentication (CC-071): emitted by a receiver of the internal JWT (server, broker). Carries the rejection code in reason and never sub (the token is not verified) or any part of the token.",
+      "if": {
+        "properties": {
+          "event": {
+            "const": "authentication"
+          }
+        },
+        "required": [
+          "event"
+        ]
+      },
+      "then": {
+        "required": [
+          "outcome",
+          "reason"
+        ],
+        "properties": {
+          "outcome": {
+            "const": "denied"
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "sub"
+              ]
+            },
+            {
+              "required": [
+                "username"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

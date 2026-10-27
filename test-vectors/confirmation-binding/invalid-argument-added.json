@@ -1,0 +1,36 @@
+{
+  "description": "An extra argument changes the hash.",
+  "issued": {
+    "code": "493201",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "arguments": {
+      "issueKey": "ABC-123"
+    },
+    "issuedAt": "2026-10-26T20:00:00Z",
+    "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+    "ttlSeconds": 120,
+    "maxAttempts": 3
+  },
+  "state": {
+    "failedAttempts": 0,
+    "used": false
+  },
+  "attempt": {
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "code": "493201",
+    "at": "2026-10-26T20:01:00Z",
+    "arguments": {
+      "issueKey": "ABC-123",
+      "notify": true,
+      "confirmation_code": "493201"
+    }
+  },
+  "expected": {
+    "valid": false,
+    "reason": "binding_mismatch"
+  }
+}

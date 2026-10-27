@@ -1,0 +1,19 @@
+{
+  "description": "Queue 42 is granted, but the system now returns queue 7 for the ticket: the queue returned by the system decides, not the one the ticket had earlier.",
+  "input": {
+    "credentialType": "service-account",
+    "bundleQueueGrants": [
+      "42"
+    ],
+    "serverConfiguredQueues": [],
+    "resource": {
+      "type": "ServiceDesk::Ticket",
+      "id": "501",
+      "queueReturnedBySystem": "7"
+    }
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "not_found_or_denied"
+  }
+}
