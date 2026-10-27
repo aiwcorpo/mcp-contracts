@@ -2,7 +2,7 @@
 
 Plik zbiera miejsca, w których `01-contracts.md` jest nieprecyzyjny albo sprzeczny, oraz propozycje zmian
 od agentów. Każda pozycja ma przyjęty wariant, który **już jest** zaimplementowany w `mcp-contracts` 1.0.0,
-i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-053 rozstrzygnięte 2026-10-27, wydanie 1.2.1); odrzucenie wariantu oznacza nowe wydanie
+i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-053 i CC-056 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno); CC-054, CC-055, CC-057, CC-058 otwarte); odrzucenie wariantu oznacza nowe wydanie
 kontraktów (patrz SemVer w `README.md`).
 
 Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alternatywy, status.
@@ -537,7 +537,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** dopisać w C4.3 i w opisie `credential-invalidated-event.schema.json`: "także po zastąpieniu
   poświadczenia (`PUT secret`, `oauth/complete`) dla istniejącego połączenia". Zmiana opisowa (patch).
 - **Weszło w 1.2.1:** opis C4 (`info`, `putSecret`, `completeOAuth`) i `credential-invalidated-event.schema.json`: zdarzenie także po zastąpieniu poświadczenia istniejącego połączenia; pierwsze połączenie nic nie publikuje.
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-047 | C4/C8 | `X-Request-Id` w wywołaniach BFF -> broker
 
@@ -554,7 +554,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   (`common.schema.json#/$defs/RequestId`) dla operacji BFF i nagłówek odpowiedzi `X-Request-Id` dla wszystkich
   operacji; w C12 zapisać, że BFF przekazuje swój `requestId` do brokera. Nowe pole opcjonalne (minor).
 - **Weszło w 1.2.1:** opcjonalny parametr nagłówka `X-Request-Id` (`RequestId`) w operacjach BFF->broker, nagłówek odpowiedzi `X-Request-Id` we wszystkich odpowiedziach C4 (także stuby WireMock); w C12 zapis, że BFF przekazuje swój requestId do brokera i gateway'a.
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-048 | C12 | `returnPath` w `stepUpUrl` dla operacji wywoływanych z formularza
 
@@ -572,7 +572,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `stepUpUrl` jest wartością domyślną; frontend może go zastąpić ścieżką portalu zgodną z `ReturnPath`".
   Zmiana opisowa (patch).
 - **Weszło w 1.2.1:** opis `StepUpRequired.stepUpUrl`: `returnPath` w `stepUpUrl` jest wartością domyślną; frontend może go zastąpić ścieżką portalu zgodną z `ReturnPath` (z `stepUp=true`).
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-049 | C4/C12 | Poświadczenie typu Basic w `PutSecretRequest`
 
@@ -587,7 +587,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   jest obsługiwany, albo dodać do `PortalCatalogServer` opcjonalne pole `secretFormat` (`token` | `basic`) i do
   `PutSecretRequest` opcjonalne `username` dla `basic` (minor).
 - **Weszło w 1.2.1 (wariant "tylko token"):** `user-secret` dla użytkowników to zawsze pojedynczy token (PAT, klucz API) w polu `secret`; Basic dla użytkowników nie jest obsługiwany w v1, system tylko z Basic (np. service desk) łączy się przez `service-account` (D10). Zapis w opisie C4 i `PutSecretRequest.secret`; bez nowych pól.
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-050 | C12 | `503 upstream_unavailable` w operacjach BFF opartych na C4/C5
 
@@ -603,7 +603,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   przykład `upstream_unavailable`) do operacji proxy do C4/C5 (także przyszłych: wirtualne serwery,
   aktywność, potwierdzenia, admin). Nowa odpowiedź opcjonalna (minor).
 - **Weszło w 1.2.1:** `components/responses/UpstreamUnavailable` (503, `Error`, przykład `upstream_unavailable`) w 14 operacjach C12 opartych na C4/C5 (katalog, połączenia, OAuth start, sekret, odłączenie, potwierdzenia, wirtualne serwery, aktywność, admin); zasada w opisie API: także przyszłe operacje, katalog w całości 503, bez treści upstream. Stuby MSW (wybór `Prefer: example=upstream_unavailable`).
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-051 | C12 | Callback logowania OIDC i błąd logowania
 
@@ -617,7 +617,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** dopisać to w opisie `GET /api/v1/auth/login` (zmiana opisowa, patch); ewentualnie
   `loginError=<kod>` z zamkniętą listą kodów, jeśli frontend ma rozróżniać przyczyny.
 - **Weszło w 1.2.1 (wariant z zamkniętą listą kodów):** opis `GET /api/v1/auth/login`: `redirect_uri` IdP to wewnętrzny endpoint BFF (poza API frontendu); sukces -> zwalidowany `returnPath`; porażka -> `/?loginError=<kod>`, enum `LoginErrorCode` = `cancelled`, `idp_error`, `session_expired`, `step_up_failed`; szczegóły IdP nigdy w URL. Wektory `test-vectors/login-redirects/`, stała `LOGIN_ERROR_CODES` w paczce MSW.
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-052 | C13 | Tożsamość w `requestsOf` i `request`
 
@@ -630,7 +630,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** zapisać w C13 sygnatury z `Requester {sub, username}` (zmiana opisowa portu wewnętrznego BFF,
   bez wpływu na OpenAPI).
 - **Weszło w 1.2.1 (wariant C):** port przyjmuje `Requester` ze wszystkimi atrybutami tożsamości z tokenu OIDC (`sub`, `username`, `email`, mapa pozostałych claimów), wyłącznie z sesji BFF, nigdy z przeglądarki; każdy adapter IGA wybiera identyfikator wnioskodawcy z konfiguracji (np. `requester-id-claim`, domyślnie `preferred_username`); brak claimu -> błąd adaptera (fail-closed). Opis w README (sekcja "Port IGA (C13)"); bez wpływu na OpenAPI.
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-053 | C12 | `mfaFreshUntil` w `GET /api/v1/me`
 
@@ -640,7 +640,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   Frontend przed pokazaniem pola na sekret sprawdza świeżość i w razie potrzeby najpierw prowadzi na step-up.
   Pole jest informacyjne: BFF nadal egzekwuje step-up przy `PUT .../secret` i potwierdzeniach. Przykład MSW
   `mfa_fresh` (`Prefer: example=mfa_fresh`).
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1, wchodzi w 2.0.0)
 
 ## CC-054 | C12 | `400 invalid_request` dla `DELETE /api/v1/connections/{system}`
 
@@ -665,4 +665,53 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** C12: ciasteczko `__Host-XSRF-TOKEN`; Angular ustawia
   `withXsrfConfiguration({cookieName: '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`. Zmiana nazwy (major,
   można połączyć z 2.0.0).
+- **Status:** open
+
+## CC-056 | C2/C5/C7 | Wzorce identyfikatorów per system
+
+- **Problem (przegląd 1.2.0, H1 i H2):** identyfikatory zasobów nie miały gramatyki: indeks OpenSearch
+  `logs-team-a-x,secret-y` albo `logs-team-a-*,*` przechodził ocenę zakresu `logs-team-a`, a klucz projektu
+  `ABC) OR project in (HR` wracał z `queryConstraint` bez zmian i mógł trafić do JQL. Nie było też powiedziane,
+  co znaczy puste `granted` i puste zawężenie oraz jak zawęzić zapytanie o strony Confluence.
+- **Przyjęty wariant (decyzja człowieka: wzorce per system, nie wspólny alfabet):** wzorce w
+  `schemas/common.schema.json` (`JiraProjectKey`, `JiraIssueKey`, `ConfluenceSpaceKey`, `ConfluencePageId`,
+  `GitLabGroupPath`, `GitLabProjectPath`, `OpenSearchIndexName`, `OpenSearchIndexPrefix`, `ServiceDeskQueueId`,
+  `ServiceDeskTicketId`, mapa `ResourceIdPatterns`), zgodne z dokumentacją systemów (tabela w
+  `cedar/entity-builder.md` sekcja 9; service desk zachowawczo, konfigurowalny w przyszłości). Stosowane w
+  `ResourceDefaults` (C5, schemat per typ), `vsc` (C2), `refs` (`invalid_argument`), zasobach z resolvera i
+  `static.json`. Specyfikacja (sekcja 8): obowiązek cytowania identyfikatorów w JQL/CQL, kanoniczny wzorzec
+  OpenSearch `p,p-*`, puste `granted` = brak zapytania, puste `virtualServer` = brak zawężenia,
+  `queryConstraint("Confluence::Page")` zwraca zawężenie przestrzeni linku (`virtualServerType`). Wektory
+  `resource-ids/`, `entity-builder/refs-*`, `vsc-invalid-id`, `jwt/vsc-invalid-id`, `result-filter/` (GitLab,
+  Confluence, service desk, brak zakresów).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-057 | C7 | Klasyfikacja `Restricted` dla GitLaba i service desku
+
+- **Zgłasza:** ws-09
+- **Problem:** brief ws-09 wymaga `forbid` dla danych `Restricted` we wszystkich systemach, ale model Cedar 1.2.0 ma
+  atrybut klasyfikacji tylko dla Jiry (`Jira::Project.category`), Confluence (`Confluence::Space.labels`) i
+  OpenSearch (`OpenSearch::Index.tags`). `GitLab::Group`, `GitLab::Project`, `ServiceDesk::Queue` i
+  `ServiceDesk::Ticket` nie mają żadnego atrybutu, na którym polityka mogłaby oprzeć taką regułę, więc paczka
+  `mcp-policies` nie zamyka danych `Restricted` w tych dwóch systemach.
+- **Wariant przyjęty w `mcp-policies` (1.2.0):** reguły `Restricted` dla Jiry, Confluence i OpenSearch
+  (`tags.contains("restricted")`); GitLab i service desk bez reguły, opisane w `STATUS.md`.
+- **Propozycja:** opcjonalny atrybut `classification?: String` na `GitLab::Group`, `GitLab::Project` (wartość z
+  tematu/etykiety grupy lub projektu, np. topic `restricted`) i `ServiceDesk::Queue` (kategoria kolejki); resolver
+  serwera wypełnia go z systemu, a `GitLab::Project.group` i `ServiceDesk::Ticket.queue` pozwalają sprawdzić
+  kontener. Encje `Restricted` w wektorach `srv-gitlab-*` i `srv-servicedesk-*`. Zmiana schematu Cedar (nowe
+  pole opcjonalne, istniejące polityki dalej przechodzą walidację), więc minor; można połączyć z 2.0.0.
+- **Status:** open
+
+## CC-058 | C7 | `context.virtualServer` w `permit` odrzucany przez odbiorcę
+
+- **Zgłasza:** ws-09
+- **Problem:** CC-041 zabrania czytania `context.vsScopes` w `permit`, ale `context.virtualServer` (slug linku)
+  w `permit` też pozwala linkowi nadać uprawnienie (`permit ... when { context.virtualServer == "x" }`).
+  `PolicyLint` i `BundleVerifier` 1.2.0 sprawdzają tylko `vsScopes`.
+- **Wariant przyjęty w `mcp-policies`:** `policy-tool check` odrzuca `permit` czytający `context.virtualServer`
+  (ta sama metoda co `PolicyLint`: postać JSON z parsera Cedar); test w `PolicyChecksTest`.
+- **Propozycja:** jeśli nie weszło do 2.0.0: `PolicyLint` i odbiorca odrzucają `permit` czytający którekolwiek z
+  `vsScopes` i `virtualServer` (powód `vs_scopes_in_permit` albo nowy `link_context_in_permit`), wektor
+  `bundles/main-permit-reads-virtual-server`.
 - **Status:** open

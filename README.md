@@ -2,15 +2,15 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **1.2.1** (w przygotowaniu, bez tagu; ostatnie
-wydanie: `v1.2.0`); zmiany w
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.0.0** (w przygotowaniu, bez tagu; ostatnie
+wydanie: `v1.2.0`; 1.2.1 nie zostanie wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
 
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
-wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-053 w 1.2.1,
-CC-035 odrzucone.
+wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-053 i CC-056 w 2.0.0,
+CC-035 odrzucone, CC-054 i CC-055 otwarte.
 
 ## Co jest gdzie
 
@@ -62,10 +62,9 @@ Wersja dotyczy całego repozytorium naraz: jar, paczka npm i tag git mają ten s
 | nowe pole opcjonalne w odpowiedzi lub żądaniu, nowy endpoint, nowe wektory | **minor** | `1.1.0` |
 | poprawka opisu, literówki, nowy przykład zgodny ze schematem | **patch** | `1.0.1` |
 
-**Wyjątek do czasu pierwszych konsumentów:** dopóki żaden komponent nie korzysta z wydanej wersji
-(stan na 2026-10-27), zmiany niezgodne zatwierdzone przez człowieka wychodzą jako minor (1.1.0, 1.2.0).
-Każda taka zmiana jest wymieniona w `CHANGELOG.md` w sekcji "Niezgodne z poprzednią wersją". Po pierwszym
-użyciu wydania przez inny strumień obowiązuje tabela powyżej.
+Od 2.0.0 obowiązuje ścisły SemVer według tabeli powyżej. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne
+oznaczone jako minor; broker (ws-06), BFF (ws-07) i frontend (ws-08) zależą od 1.1.0, więc pełna lista zmian
+niezgodnych względem 1.1.0 i ich wpływ na konsumentów są w `CHANGELOG.md` przy 2.0.0.
 
 `release/` przechowuje tarballe npm **wszystkich** wydań (konsumenci zależą od nich przez ścieżkę
 `file:../mcp-contracts/release/aiwcorpo-mcp-contracts-<wersja>.tgz`). Starych tarballi się nie usuwa, a
@@ -80,12 +79,12 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.2.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.2.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:1.2.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:1.2.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:1.2.1` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-1.2.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.2.1.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.0.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.0.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.0.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.0.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.0.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.0.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -94,20 +93,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-contracts-parent}/1.2.1/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.2.1.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-contracts-parent}/2.0.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.0.0.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.2.1</version>
+  <version>2.0.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.2.1</version>
+  <version>2.0.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -139,7 +138,7 @@ i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>1.2.1</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 
@@ -189,7 +188,8 @@ try {
 } catch (BundleRejectedException e) {
     // zostaje poprzednia paczka; e.reason().wireCode() do metryki i logu
 }
-PolicyBundle emergency = overrides.verifyOverrides(pointerO, archiveO, signatureO, loadedOverridesRevision, currentMain);
+PolicyBundle emergency = overrides.verifyOverrides(pointerO, archiveO, signatureO,
+        Optional.ofNullable(loadedOverridesRevision), currentMain);
 ```
 
 Kolejność kontroli: `latest.json` (CC-026), identyfikator klucza (`test-*` tylko z `allowTestKeys`, CC-044),
@@ -198,6 +198,11 @@ absolutnych, `.`/`..` i duplikatów, limity 1000 wpisów, 4 MiB na plik, 16 MiB 
 rewizji, zawartość (overrides: tylko `manifest.json` i `policies/**`, CC-028), rewizja ściśle wyższa w ramach
 kanału, polityki (bez szablonów, bez `permit` w overrides, `vsScopes` tylko w `forbid`, CC-041), walidacja
 strict (overrides schematem paczki głównej, CC-040), encje statyczne i mapowanie zakresów (CC-037).
+
+Rozmiar archiwum przed dekompresją nie jest sprawdzany przez moduł: komponent ogranicza pobieranie (np. do
+16 MiB, tyle co limit po rozpakowaniu) zanim przekaże bajty. `TarReader` przyjmuje tylko ścisły ustar; potok
+ws-09 buduje paczkę bez rozszerzeń pax (macOS: `COPYFILE_DISABLE=1 tar --no-xattrs --format=ustar -czf ...`,
+GNU tar: `tar --format=ustar -czf ...`), inaczej paczka zostanie odrzucona (`archive_invalid`).
 
 Lint dla potoku ws-09: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides]
 policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd).
@@ -220,6 +225,14 @@ interface AccessGovernance {
 Każdy adapter IGA wybiera identyfikator wnioskodawcy z konfiguracji (np. `requester-id-claim`, domyślnie
 `preferred_username`); brak tego claimu w `Requester` to błąd adaptera i odmowa (fail-closed). Kształty
 `AccessRequest` i `RequestResult`: CC-024.
+
+## Identyfikatory zasobów
+
+Identyfikatory każdego typu zasobu mają wzorzec zgodny z dokumentacją systemu (CC-056, tabela w
+`cedar/entity-builder.md` sekcja 9, `schemas/common.schema.json` `ResourceIdPatterns`, w Javie `ResourceIds`).
+Niepasujące identyfikatory są odrzucane w `resourceDefaults`, `vsc`, argumentach narzędzi, zasobach z resolvera
+i mapowaniu zakresów. Serwer mimo to cytuje identyfikatory w JQL/CQL i buduje wzorce OpenSearch w postaci
+`p,p-*`.
 
 ## Korelacja żądań
 
@@ -251,7 +264,7 @@ klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (i
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>1.2.1</version>
+            <version>2.0.0</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>
@@ -399,7 +412,9 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 ## Wymagania dla odbiorców i paczek polityk
 
 - Odbiorcy C2 i odbiorcy paczek domyślnie odrzucają klucze z identyfikatorem `test-*`; wyłącza to tylko jawne
-  ustawienie (zalecana nazwa `allowTestKeys`) w dev/test (CC-044). Wektory mają `allowTestKeys: true` i osobne
+  ustawienie (zalecana nazwa `allowTestKeys`) w dev/test (CC-044). `mcp-policy-bundle` rozpoznaje opublikowane
+  klucze testowe także po skrócie SPKI, niezależnie od identyfikatora w konfiguracji; odbiorcy C2 powinni robić to
+  samo z kluczami z `test-vectors/keys/test-gateway-jwks.json`. Wektory mają `allowTestKeys: true` i osobne
   przypadki odrzucenia.
 - Paczka polityk (ws-09) musi zawężać linki dla wszystkich pięciu typów z `resourceDefaults` i ich typów
   podrzędnych (CC-029), czytać `vsScopes` tylko w `forbid` (CC-041) i dostarczać mapowanie zakresów w

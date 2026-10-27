@@ -9,7 +9,7 @@ biblioteka `pl.aiwcorpo.mcp:mcp-cedar-entities` (`java/mcp-cedar-entities`, CC-0
 wszystkie wektory. `scripts/lib/entity-builder.mjs` to druga, niezależna implementacja, z której generowane są
 wektory.
 
-Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038.
+Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038, CC-056.
 
 ## 1. Wejście
 
@@ -65,8 +65,8 @@ Reguły:
   (`mcp-jira-proj-abc` to inna grupa niż `mcp-jira-proj-ABC`).
 - Rodzic inny niż `ResourceScope`, id bez `/`, z pustą częścią po `/`, z typem spoza tabeli albo grupa podana
   dwa razy -> paczka odrzucona (`static_entities_invalid`).
-- Prefiks OpenSearch zakończony `-` (`logs-`) niczego nie obejmuje, bo prefiksy indeksu nigdy nie kończą się
-  na `-`.
+- Lokalna część id zakresu musi pasować do wzorca typu (sekcja 9); prefiks OpenSearch nie może kończyć się na
+  `-` ani `.`, więc `logs-` nie jest poprawnym zakresem (gdyby był, objąłby np. `logs--x`).
 
 ## 3. Principal
 
@@ -160,6 +160,9 @@ Cedar `Long`, brak rodzica przy encji, która go wymaga.
 
 ## 7. Wektory
 
+`test-vectors/resource-ids/*.json`: identyfikatory poprawne i niepoprawne dla wzorców z sekcji 9.
+
+
 `test-vectors/entity-builder/*.json`: `{description, level, staticEntities, input, expected}`; `expected` to
 wyjście buildera albo `{"error": "<kod>"}`. `staticEntities` to ścieżka pliku mapowania względem korzenia
 repozytorium.
@@ -178,11 +181,42 @@ Narzędzie zwracające wiele elementów (wyszukiwanie, lista) nie może polegać
 argumentu-identyfikatora `refs` są puste. Serwer:
 
 1. Ogranicza zapytanie do systemu: `EntityBuilder.queryConstraint(caller, typ)` daje identyfikatory zawężenia
-   linku (gdy link zawęża ten typ) i identyfikatory przyznane przez mapowanie. Zawężenie linku trafia do
-   zapytania zawsze (JQL `project in (...)`, CQL `space in (...)`, wzorzec indeksów, filtr grupy); przyznane
-   zakresy także tam, gdzie system nie egzekwuje uprawnień użytkownika (OpenSearch). Oba warunki łączy AND.
+   linku (`virtualServer`, typu `virtualServerType`) i identyfikatory przyznane przez mapowanie (`granted`).
+   Zawężenie linku trafia do zapytania zawsze; przyznane zakresy także tam, gdzie system nie egzekwuje uprawnień
+   użytkownika (OpenSearch). Oba warunki łączy AND.
+   - `virtualServer` puste: link nie zawęża tego typu (albo brak linku), bez warunku zawężenia. Dla
+     `Confluence::Page` zawężenie pochodzi z przestrzeni linku (`virtualServerType = Confluence::Space`).
+   - `granted` puste: użytkownik nie ma żadnego zakresu tego typu. Tam, gdzie zapytanie jest ograniczane do
+     zakresów (OpenSearch), serwer **nie wykonuje zapytania** i zwraca pustą listę; puste `granted` nigdy nie
+     znaczy "bez filtra".
+   - Identyfikatory pasują do wzorców z sekcji 9, ale serwer i tak je cytuje: JQL `project in ("ABC", "DEF")`
+     i CQL `space in ("ENG")` z każdym identyfikatorem w cudzysłowach, z `\` przed `"` i `\`; nigdy przez
+     sklejanie bez cudzysłowów.
+   - OpenSearch: dla każdego prefiksu `p` kanoniczny wzorzec indeksów to `p,p-*` (indeks o nazwie `p` i indeksy
+     zaczynające się od `p-`); nigdy `p*` (obejmowałoby `p` z innym ciągiem dalej, np. `logs-team-ab` dla
+     `logs-team-a`). Lista dla wielu prefiksów to suma takich par; agregacje, `hits.total` i `_count` liczone są
+     tylko na tym wzorcu, bo filtrowanie wyników nie poprawia agregatów.
 2. Ocenia każdy zwrócony element przez `forResource` (`ResultFilter.allowed`); element niedozwolony, którego
    nie da się rozwiązać albo ocenić, jest pomijany. Pominięcie nie jest błędem wywołania.
 
 Ograniczenie zapytania nie zastępuje filtrowania: filtrowanie jest kontrolą, zapytanie tylko oszczędza
 ruch i nie ujawnia liczby elementów spoza zakresu.
+
+## 9. Wzorce identyfikatorów (CC-056)
+
+Każdy identyfikator zasobu ma wzorzec zgodny z dokumentacją systemu (`schemas/common.schema.json`,
+`ResourceIdPatterns`; w Javie `ResourceIds`). Wzorzec obowiązuje w: argumentach narzędzi (`refs`, błąd
+`invalid_argument`), zasobach z resolvera (`internal_error`), `resourceDefaults` (C5, walidacja schematu),
+claimie `vsc` (C2, 401) i id zakresów w `static.json` (odrzucenie paczki).
+
+| Typ | Wzorzec | Źródło |
+| --- | --- | --- |
+| `Jira::Project` | `^[A-Z][A-Z0-9_]{1,9}$` | Jira DC "Changing the project key format": pierwsza litera, wielkie litery, cyfry, `_`; domyślny maks. rozmiar klucza 10 |
+| `Jira::Issue` | `^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$` | klucz projektu + `-` + numer zgłoszenia |
+| `Confluence::Space` | `^[A-Za-z0-9]{1,255}$` | Confluence DC "Space keys": tylko znaki alfanumeryczne, do 255; przestrzenie osobiste (`~user`) wyłączone |
+| `Confluence::Page` | `^[1-9][0-9]{0,18}$` | id treści Confluence (liczba 64-bitowa) |
+| `GitLab::Group` | segmenty `[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*` rozdzielone `/`, 1..20, bez końcówki `.git`/`.atom`, maks. 1024 | GitLab "Reserved project and group names" (litery, cyfry, `_`, `.`, `-`; początek i koniec litera/cyfra; bez kolejnych znaków specjalnych; bez `.git`/`.atom`), "Subgroups": do 20 poziomów |
+| `GitLab::Project` | jak grupa, 2..21 segmentów | ścieżka grupy + ścieżka projektu |
+| `OpenSearch::Index` | `^(?!\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,254}$` | OpenSearch "Create index": małe litery, bez spacji, przecinków i `: " * + / \ \| ? # > <`, nie zaczyna się od `_` ani `-`; dodatkowo tylko ASCII i maks. 255 (konkretna nazwa: bez aliasów-wzorców, wildcardów, list, date math) |
+| `OpenSearch::Index` (zakres) | jak wyżej, bez końcowego `-` i `.` | prefiks nazwy |
+| `ServiceDesk::Queue`, `ServiceDesk::Ticket` | `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` | adapter generyczny (D10): alfabet zachowawczy; w kolejnych wersjach konfigurowalny per adapter |

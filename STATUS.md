@@ -1,13 +1,24 @@
 # Status ws-00 (mcp-contracts)
 
-Ostatnie wydanie **1.2.0** (tag `v1.2.0`). W przygotowaniu **1.2.1** (bez tagu): CC-046 ... CC-053 wdrożone,
-czeka na wyniki recenzji 1.2.0. Zmiany i zgodność: `CHANGELOG.md`.
+Ostatnie wydanie **1.2.0** (tag `v1.2.0`). W przygotowaniu **2.0.0** (bez tagu, zawiera niewydane 1.2.1):
+CC-046 ... CC-053 i CC-056 wdrożone, poprawki z przeglądu 1.2.0 (M4, L1 ... L7, M3); czeka na decyzje człowieka
+w pozostałych punktach przeglądu (H3, H4, M1, M2, M5, M6, M7). Zmiany i zgodność: `CHANGELOG.md`.
 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`, `./mvnw verify` w trzech modułach),
 `npm run smoke:wiremock` zielony lokalnie. Testy modułów Java przechodzą także z jackson-databind 2.21.4
 (wersja zarządzana przez Spring Boot 4.1.0).
 
-## Zrobione w 1.2.1 (bez tagu)
+## Zrobione w 2.0.0 (bez tagu)
+
+- CC-056: wzorce identyfikatorów per system (schematy, `ResourceDefaults`, `vsc`, buildery JS i Java,
+  `ResourceIds`, mapowanie zakresów), obowiązki serwera przy zapytaniach, `QueryConstraint.virtualServerType`,
+  `ResultFilter.cedarAuthorizer`; wektory `resource-ids/`, nowe `result-filter/` (GitLab, Confluence, service
+  desk, brak zakresów) i negatywne z przeglądu.
+- Przegląd 1.2.0: M3 (README bez wyjątku SemVer), M4 (klucze testowe po SPKI), L1 ... L7; CHANGELOG z listą
+  niezgodności względem 1.1.0 i wpływem na konsumentów.
+- Zgłoszenia ws-07 i ws-09 ponumerowane: CC-054, CC-055, CC-057, CC-058 (`open`).
+
+## Zrobione wcześniej w ramach 1.2.1 (wchodzi w 2.0.0)
 
 - CC-046 (`credential.invalidated` po zastąpieniu poświadczenia), CC-047 (`X-Request-Id` w C4, także w stubach
   WireMock), CC-048 (`returnPath` w `stepUpUrl`), CC-049 (tylko token w `PutSecretRequest`), CC-050 (503 w 14
@@ -50,4 +61,8 @@ Walidacja: `./scripts/verify-all.sh` zielony (`npm test`, `./mvnw verify` w trze
 
 ## Otwarte pytania
 
-- Brak otwartych pozycji w `CONTRACT_CHANGES.md`; 1.2.1 czeka na wyniki recenzji 1.2.0.
+- CC-054, CC-055 (ws-07), CC-057, CC-058 (ws-09).
+- Punkty przeglądu 1.2.0 czekające na decyzję: H3 (przypięcie schematu i encji statycznych paczki), H4 (ocena
+  każdego zasobu z każdego `resourceRef`), M1 (magazyn paczek w module), M2 (`context.virtualServer` w `permit`,
+  pokrywa się z CC-058), M5 (`Restricted` przy braku `category`), M6 (rollback po restarcie), M7 (reguły manifestu
+  i `definitionHash` w Javie).

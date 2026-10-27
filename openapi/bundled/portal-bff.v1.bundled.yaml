@@ -48,7 +48,7 @@ paths:
         (`__Host-session`, protection against session fixation), sets `XSRF-TOKEN` and redirects to `returnPath`
         (default `/`). With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication (`max_age=0` and the
         MFA `acr_values`) and accepts the result only if `sub` equals the `sub` of the existing session; otherwise
-        it ends the session. Open to anonymous callers; never returns JSON. An invalid `returnPath` gives 400.
+        it ends the session. Open to anonymous callers. Answers with a redirect (302); only an invalid `returnPath` gives 400 with an `Error` JSON body.
 
         Result of the IdP callback (CC-051): the IdP returns to an internal endpoint of the BFF (its OIDC
         `redirect_uri`, outside this API). On success the browser goes to the validated `returnPath`. On failure it

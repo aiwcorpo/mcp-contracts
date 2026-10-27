@@ -1,33 +1,122 @@
 # Changelog
 
 Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CONTRACT_CHANGES.md`.
-Do czasu pierwszych konsumentów zmiany niezgodne wychodzą jako minor (README, wyjątek od tabeli SemVer);
-każda jest wymieniona w sekcji "Niezgodne z poprzednią wersją".
+Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
+ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
-## 1.2.1 - w przygotowaniu (bez tagu)
+## 2.0.0 - w przygotowaniu (bez tagu)
 
-Decyzje człowieka z 2026-10-27: CC-046 ... CC-053 `accepted`. Wydanie czeka na wyniki recenzji 1.2.0.
+Decyzje człowieka z 2026-10-27: następne wydanie to 2.0.0 (zawiera niewydane 1.2.1), od 2.0.0 ścisły SemVer.
+CC-046 ... CC-053 i CC-056 `accepted`; CC-054, CC-055, CC-057, CC-058 `open`. Broker (ws-06), BFF (ws-07) i
+frontend (ws-08) zależą od 1.1.0, dlatego lista niżej obejmuje wszystkie zmiany niezgodne z 1.1.0
+(1.2.0 + 2.0.0).
 
-### Zgodność z 1.2.0
+### Niezgodne z 1.1.0
 
-Wszystkie zmiany są addytywne albo opisowe; klient i serwer zgodne z 1.2.0 pozostają zgodne:
-- nowe opcjonalne pole odpowiedzi `Me.mfaFreshUntil` (CC-053);
-- nowa odpowiedź `503 upstream_unavailable` w operacjach C12 opartych na C4/C5 (CC-050); klient wygenerowany z
-  1.2.0 potraktuje ją jak nieopisany błąd;
-- nowy opcjonalny nagłówek żądania `X-Request-Id` w C4 i wymagany nagłówek odpowiedzi `X-Request-Id` (broker
-  musi go wysyłać, CC-047);
-- nowy schemat `LoginErrorCode` i zasada przekierowania po nieudanym logowaniu (CC-051): BFF zgodny z 1.2.0
-  wysyłał `/?loginError=true`, co od 1.2.1 jest poza listą kodów;
-- opisy: `credential.invalidated` po zastąpieniu poświadczenia (CC-046), `returnPath` w `stepUpUrl` (CC-048),
-  tylko token w `PutSecretRequest` (CC-049), port C13 z `Requester` (CC-052, README).
-- Wersja w artefaktach 1.2.1; wektory paczek polityk wygenerowane ponownie (`schemaVersion` 1.2.1), co zmienia
-  ich bajty i podpisy.
+Model Cedar i polityki:
+- `ResourceScope`, `UserGroup in [ResourceScope]`; `principal.scopes`, `context.vsScopes` i pola `refs` typów
+  płaskich to zbiory `ResourceScope`; każdy zasób ma wymagany `scopes`; usunięte `OpenSearch::Index.namePrefixes`;
+  dodane `Confluence::Page.ancestorIds` (CC-037).
+- Zakresy wyłącznie z `entities/static.json` (mapowanie grupa -> zakresy); nazwy grup C9 nie dają zakresu.
+  `new EntityBuilder()` bez mapowania nie przyznaje żadnego zakresu (CC-037).
+- Polityki przykładowe: usunięte `gitlab-call-write-outside-scope` i `vs-narrow-call-gitlab-group`; nowe
+  `gitlab-update-group-in-scope`, `confluence-update-page-in-scope`, `confluence-read`, `servicedesk-read`,
+  `confluence-call-read`, `servicedesk-call-read`; zawężanie na serwerze przez `resource.scopes`. Wektor decyzji
+  `gw-gitlab-write-outside-scope` zastąpiony przez `gw-gitlab-write-outside-scope-passes-gateway` (deny -> allow
+  na gateway'u; deny przenosi się na serwer: `srv-gitlab-create-in-sibling-group`).
+- `context.vsScopes` tylko w `forbid` (CC-041); szablony w paczkach odrzucane.
+
+C2 (wewnętrzny JWT):
+- `vs` wymaga `vsc` (CC-027); `vsc` maks. 50 identyfikatorów na pole, identyfikatory według wzorców (CC-056).
+- `tool` wyłącznie dla `tools/call` (wymagany i równy `params.name`) i `resolve` (wymagany); dla `initialize`,
+  `tools/list`, `ping`, `GET /mcp-manifest` zabroniony (CC-038).
+- `rid` == `X-Request-Id` (CC-033).
+- Klucze `test-*` (i opublikowane klucze testowe po SPKI) odrzucane bez `allowTestKeys` (CC-044).
+- Nowe kody odrzucenia w wektorach: `tool_missing`, `tool_not_allowed`, `test_key_not_allowed`,
+  `request_id_mismatch`; harness czyta `verifier.allowTestKeys`.
+
+C4 (broker):
+- `returnPath` bez `%` i `\` (CC-032).
+- Nagłówek odpowiedzi `X-Request-Id` wymagany w każdej odpowiedzi (CC-047).
+- Zdarzenie `credential.invalidated` także po zastąpieniu poświadczenia (CC-046).
+
+C5 (gateway admin):
+- `CatalogTool.description` i `ConfirmationView.expiresAt` wymagane (CC-014, CC-015); podgląd potwierdzenia
+  wymaga świeżego MFA (CC-034); `ResourceDefaults`: maks. 5 typów, 1..50 identyfikatorów na typ, identyfikatory
+  według wzorców per system (CC-056).
+
+C6 (manifest):
+- Wymagane `definition` (CC-005); `title` w hashu, `icons`/`_meta` niedozwolone (CC-042) - zmiana faktyczna:
+  `title` jest dozwolony i hashowany; `resourceRefs[].argument` musi być zadeklarowanym argumentem typu
+  identyfikatora (CC-043).
+
+C7 (paczki):
+- `overrides` tylko z `manifest.json` i `policies/**`, walidowane schematem paczki głównej (CC-028, CC-040).
+- Tar tylko ścisły ustar, bez dodatkowych plików, unikalne `@id`; nowe powody odrzucenia `archive_invalid`,
+  `archive_unexpected_file`, `vs_scopes_in_permit`, `static_entities_invalid`, `test_key_not_allowed`.
+- `latest.json`: `url`/`sigUrl` tylko nazwy plików (CC-026).
+
+C8 (audyt):
+- `clientRequestId` według wzorca, `resource.id` bez znaków sterujących C0/C1, U+2028/2029 i bidi (CC-031).
+
+C12 (BFF):
+- `step_up_required` niesie `stepUpUrl` zamiast `url` (CC-010).
+- Po nieudanym logowaniu `/?loginError=<kod>` tylko z listy `LoginErrorCode` (CC-051); `/?loginError=true` jest
+  niezgodne.
+
+Biblioteki Java i format wektorów:
+- `mcp-cedar-entities`: `EntityBuilder(ScopeMapping)`, usunięte `ScopeGroups.scopesFromGroups`,
+  `QueryConstraint` z nowym składnikiem `virtualServerType`, walidacja identyfikatorów (CC-056).
+- Wektory: pola `staticEntities` (entity-builder, policy-decisions), `publicKeyId`, `allowTestKeys`,
+  `mainBundle` (bundles), nowe katalogi `result-filter/`, `resource-ids/`, `return-paths/`, `login-redirects/`.
+
+### Zmiany kontraktu (addytywne, od 1.2.0)
+
+- CC-046 ... CC-053 (wcześniej przygotowane jako 1.2.1): `credential.invalidated` po zastąpieniu poświadczenia,
+  `X-Request-Id` w C4, `returnPath` w `stepUpUrl`, tylko token w `PutSecretRequest`, `503 upstream_unavailable`
+  w C12, kody `loginError`, port C13 z `Requester`, `Me.mfaFreshUntil`.
+- CC-056: wzorce identyfikatorów per system, obowiązki serwera przy zapytaniach (cytowanie, `p,p-*`, puste
+  `granted`), `queryConstraint` dla stron Confluence, `ResultFilter.cedarAuthorizer`.
+
+### Poprawki bez zmiany kontraktu (przegląd 1.2.0)
+
+- M4: `mcp-policy-bundle` odrzuca opublikowane klucze testowe po skrócie SPKI, niezależnie od identyfikatora;
+  wektor `bundles/test-key-under-production-id`.
+- L1: `entity-builder.md` poprawione (prefiks `logs-` nie jest poprawnym zakresem); `ResourceScopes.typeOf`
+  sprawdza wzorce.
+- L2: README: paczki tylko w ustar (instrukcja dla ws-09), limit rozmiaru archiwum przed dekompresją po stronie
+  komponentu; wektor limitu łącznego 16 MiB (`tar-total-size-limit`).
+- L3: `ResultFilter.cedarAuthorizer` traktuje błędy oceny jako odmowę; test wektorowy go używa.
+- L4: ta lista niezgodności.
+- L5: README (`Optional` w `verifyOverrides`), opis `GET /api/v1/auth/login` (400 to JSON).
+- L6: wektor `main-static-entities-scope-id-invalid` (ścieżka `ScopeMapping` za walidacją schematu).
+- L7: MSW odpowiada 400 na niepoprawny JSON w `startConnectOAuth`.
+- M3: README bez wyjątku SemVer.
+
+### Wpływ na konsumentów
+
+- ws-06 (broker): reguły `tool` per metoda (wymagany dla `tools/call` i `resolve`, zabroniony dla reszty); kod
+  `test_key_not_allowed` (w brokerze `test_kid_not_allowed` do ujednolicenia); harness czyta
+  `verifier.allowTestKeys`; `vsc` maks. 50 i wzorce identyfikatorów; `resource.id` bez bidi; nagłówek
+  `X-Request-Id` w każdej odpowiedzi; `credential.invalidated` po zastąpieniu poświadczenia; tylko token w
+  `PUT secret`.
+- ws-07 (BFF): `state`/`nonce`/PKCE związane z sesją, nowy identyfikator sesji po logowaniu, `stepUp=true` wymaga
+  tego samego `sub`; `&` w callbacku, gdy `returnPath` ma query; `/?loginError=<kod>` z listy; `stepUpUrl`;
+  `503 upstream_unavailable`; `mfaFreshUntil`; przekazywanie `X-Request-Id`; `Requester` w porcie C13; limity i
+  wzorce `ResourceDefaults`; `title` w rejestrze; regeneracja klientów.
+- ws-08 (frontend): MSW 400 na zły `returnPath` i zły JSON; eksport `RETURN_PATH_PATTERN`, `LOGIN_ERROR_CODES`;
+  handlery asynchroniczne; `stepUpUrl` (może zastąpić `returnPath`); `mfaFreshUntil` przed polem na sekret;
+  obsługa `loginError`; limity i wzorce `ResourceDefaults`; `title` w diffie; regeneracja klienta.
+- ws-02/ws-05 (starter, gateway): `mcp-cedar-entities` z `ScopeMapping`, `ResultFilter`, `queryConstraint`,
+  `ResourceIds`; `mcp-policy-bundle`; reguły manifestu (CC-018, CC-043) i `definitionHash` z `title` trzeba
+  zaimplementować w Javie wg wektorów.
+- ws-09 (polityki): `static.json` z mapowaniem zakresów i identyfikatorami według wzorców; reguły zawężania dla
+  wszystkich typów; `vsScopes` tylko w `forbid`; paczki w ustar.
 
 ### Dystrybucja
 
-- `release/` znów zawiera tarballe 1.0.0 i 1.1.0 (bajtowo z tagów); od teraz trzyma tarballe wszystkich wydań.
-  `npm run pack` (`scripts/pack-release.mjs`) nie usuwa starych tarballi i nie nadpisuje tarballa wersji, która
-  ma tag.
+- `release/` trzyma tarballe wszystkich wydań (1.0.0, 1.1.0, 1.2.0 i kolejne); `npm run pack` nie nadpisuje
+  tarballa wersji z tagiem.
 
 ## 1.2.0 - 2026-10-27
 
