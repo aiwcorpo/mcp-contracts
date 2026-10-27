@@ -126,8 +126,7 @@
             "jiraProjects": {
               "type": "array",
               "items": {
-                "type": "string",
-                "minLength": 1
+                "$ref": "common.schema.json#/$defs/JiraProjectKey"
               },
               "uniqueItems": true,
               "minItems": 1,
@@ -136,8 +135,7 @@
             "confluenceSpaces": {
               "type": "array",
               "items": {
-                "type": "string",
-                "minLength": 1
+                "$ref": "common.schema.json#/$defs/ConfluenceSpaceKey"
               },
               "uniqueItems": true,
               "minItems": 1,
@@ -146,8 +144,7 @@
             "gitlabGroups": {
               "type": "array",
               "items": {
-                "type": "string",
-                "minLength": 1
+                "$ref": "common.schema.json#/$defs/GitLabGroupPath"
               },
               "uniqueItems": true,
               "minItems": 1,
@@ -156,8 +153,7 @@
             "opensearchIndexPrefixes": {
               "type": "array",
               "items": {
-                "type": "string",
-                "minLength": 1
+                "$ref": "common.schema.json#/$defs/OpenSearchIndexPrefix"
               },
               "uniqueItems": true,
               "minItems": 1,
@@ -166,8 +162,7 @@
             "servicedeskQueues": {
               "type": "array",
               "items": {
-                "type": "string",
-                "minLength": 1
+                "$ref": "common.schema.json#/$defs/ServiceDeskQueueId"
               },
               "uniqueItems": true,
               "minItems": 1,

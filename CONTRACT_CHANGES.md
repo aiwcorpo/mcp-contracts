@@ -641,3 +641,28 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   Pole jest informacyjne: BFF nadal egzekwuje step-up przy `PUT .../secret` i potwierdzeniach. Przykład MSW
   `mfa_fresh` (`Prefer: example=mfa_fresh`).
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.1)
+
+## CC-054 | C12 | `400 invalid_request` dla `DELETE /api/v1/connections/{system}`
+
+- **Zgłasza:** ws-07
+- **Problem:** parametr `system` ma enum `SystemId`, a `DELETE /api/v1/connections/{system}` nie ma odpowiedzi `400`
+  (ma ją `PUT .../secret`). Dla nieznanego systemu BFF odpowiada `400 {error: "invalid_request"}`, czego kontrakt
+  nie opisuje; wygenerowany klient nie zna tego statusu.
+- **Wariant przyjęty w `mcp-portal/bff`:** 400 `invalid_request` (kształt `Error`), broker nie jest wołany, zdarzenie
+  audytu `connection_change` z `decision: deny`, `reason: invalid_request`.
+- **Propozycja:** dodać `'400': $ref: '#/components/responses/BadRequest'` do `DELETE /api/v1/connections/{system}`
+  (i analogicznie do innych operacji z parametrem ścieżki o zamkniętym wzorcu). Nowa odpowiedź (minor).
+- **Status:** open
+
+## CC-055 | C12 | Nazwa ciasteczka CSRF z prefiksem `__Host-`
+
+- **Zgłasza:** ws-07
+- **Problem (przegląd M1 BFF):** `XSRF-TOKEN` nie ma prefiksu `__Host-`, więc sąsiednia subdomena może ustawić
+  własne ciasteczko o tej nazwie (cookie tossing) i znać jego wartość; double-submit CSRF chroni wtedy słabiej.
+  Sesja ma `__Host-session`, CSRF nie.
+- **Wariant przyjęty w `mcp-portal/bff`:** bez zmiany kontraktu: `XSRF-TOKEN` (Secure, SameSite=Strict, Path=/),
+  token przyjmowany wyłącznie z nagłówka `X-XSRF-TOKEN` (nie z parametru `_csrf`).
+- **Propozycja:** C12: ciasteczko `__Host-XSRF-TOKEN`; Angular ustawia
+  `withXsrfConfiguration({cookieName: '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`. Zmiana nazwy (major,
+  można połączyć z 2.0.0).
+- **Status:** open

@@ -1,0 +1,13 @@
+{
+  "type": "ServiceDesk::Ticket",
+  "kind": "resource",
+  "valid": [
+    "501",
+    "INC-1"
+  ],
+  "invalid": [
+    "INC 1",
+    "INC/1",
+    ""
+  ]
+}

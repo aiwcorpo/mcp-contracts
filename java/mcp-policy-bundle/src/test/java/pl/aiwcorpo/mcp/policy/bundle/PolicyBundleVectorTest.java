@@ -82,6 +82,15 @@ class PolicyBundleVectorTest {
     }
 
     @Test
+    void embeddedTestKeyHashesMatchThePublishedKeys() throws Exception {
+        for (String name : new String[] {"test-policy-bundle", "test-policy-overrides"}) {
+            PublicKey key = BundleVerifier.ed25519PublicKeyFromPem(
+                    ContractFiles.read(ContractFiles.resolve("test-vectors/keys/" + name + ".public.pem")));
+            assertTrue(BundleVerifier.isPublishedTestKey(key), name);
+        }
+    }
+
+    @Test
     void examplePoliciesPassTheLint() throws Exception {
         Set<Policy> all = new HashSet<>();
         for (Path file : ContractFiles.list("cedar/examples", ".cedar")) {

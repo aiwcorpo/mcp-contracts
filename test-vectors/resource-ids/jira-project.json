@@ -1,0 +1,20 @@
+{
+  "type": "Jira::Project",
+  "kind": "resource",
+  "valid": [
+    "ABC",
+    "HR",
+    "PLAT_2",
+    "A1"
+  ],
+  "invalid": [
+    "abc",
+    "A",
+    "ABCDEFGHIJK",
+    "1AB",
+    "AB-C",
+    "ABC) OR project in (HR",
+    "AB C",
+    "\"ABC\""
+  ]
+}

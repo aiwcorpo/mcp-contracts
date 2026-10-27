@@ -217,6 +217,9 @@ await add('user-variant-tools-list-with-tool', 'tool claim on a tools/list reque
 await add('test-kid-rejected-by-default', 'Otherwise valid token signed with a published test key; a receiver without allowTestKeys rejects it (CC-044).', {
   token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000053' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: { allowTestKeys: false }, valid: false, reason: 'test_key_not_allowed' });
+await add('vsc-invalid-id', 'vsc id outside the Jira project key pattern; it would otherwise reach a JQL query (CC-056).', {
+  token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC) OR project in (HR'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000054' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
 await add('vs-without-vsc', 'vs claim without its narrowing; a server could not apply the link (CC-027).', {
   token: await sign(userClaims({ vs: 'team-a-dev', jti: '0192d1b2-7c3a-7f00-9a11-000000000047' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });

@@ -1,0 +1,22 @@
+{
+  "type": "GitLab::Group",
+  "kind": "resource",
+  "valid": [
+    "team-a",
+    "team-a/sub",
+    "Team_A.v2",
+    "a"
+  ],
+  "invalid": [
+    "team-a/",
+    "/team-a",
+    "team-a//sub",
+    "team-a/../team-b",
+    "-team",
+    "team-",
+    "team--a",
+    "team.git",
+    "team a",
+    ".hidden"
+  ]
+}

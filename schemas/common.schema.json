@@ -165,6 +165,96 @@
       "description": "Opaque, unguessable id of a pending confirmation (C11); used in URL paths.",
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{16,128}$"
+    },
+    "JiraProjectKey": {
+      "description": "Jira Data Center project key: first character an upper-case letter, then upper-case letters, digits or underscore (Jira project key format rules; hyphens not supported). Length 2..10 (Jira default maximum project key size; configurable in Jira, a larger limit needs a contract change).",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{1,9}$"
+    },
+    "JiraIssueKey": {
+      "description": "Jira issue key <project key>-<number>.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$"
+    },
+    "ConfluenceSpaceKey": {
+      "description": "Confluence Data Center space key of a global space: letters and digits only. Personal spaces (~user) cannot be granted or narrowed.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]{1,255}$"
+    },
+    "ConfluencePageId": {
+      "description": "Confluence content id (positive 64-bit integer as decimal string).",
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,18}$"
+    },
+    "GitLabGroupPath": {
+      "description": "Full path of a GitLab group: 1..20 segments separated by / (subgroups nest up to 20 levels). A segment has only letters, digits, _, . and -, starts and ends with a letter or digit and has no consecutive special characters; the path does not end in .git or .atom (GitLab reserved names / path rules).",
+      "type": "string",
+      "pattern": "^(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){0,19}$",
+      "maxLength": 1024
+    },
+    "GitLabProjectPath": {
+      "description": "Full path of a GitLab project: group path plus the project segment (2..21 segments), same segment rules as GitLabGroupPath.",
+      "type": "string",
+      "pattern": "^(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){1,20}$",
+      "maxLength": 1024
+    },
+    "OpenSearchIndexName": {
+      "description": "One concrete OpenSearch index name: lower-case, no spaces, commas or : \" * + / \\ | ? # > <, not starting with _ or - (OpenSearch index naming restrictions); additionally ASCII only, max 255, and not '.' or '..'. Excludes aliases-by-pattern, wildcards, lists, date math and remote cluster prefixes.",
+      "type": "string",
+      "pattern": "^(?!\\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,254}$"
+    },
+    "OpenSearchIndexPrefix": {
+      "description": "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'.",
+      "type": "string",
+      "pattern": "^(?!\\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$"
+    },
+    "ServiceDeskQueueId": {
+      "description": "Queue id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "ServiceDeskTicketId": {
+      "description": "Ticket id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "ResourceIdPatterns": {
+      "description": "Which pattern applies to an id of each resource type: ids in tool arguments (refs) and resolved resources use 'resource', grants (static.json), vsc and resourceDefaults use 'scope'. Builders reject non-matching ids (refs: invalid_argument; other inputs: internal_error).",
+      "const": {
+        "Jira::Project": {
+          "resource": "JiraProjectKey",
+          "scope": "JiraProjectKey"
+        },
+        "Jira::Issue": {
+          "resource": "JiraIssueKey"
+        },
+        "Confluence::Space": {
+          "resource": "ConfluenceSpaceKey",
+          "scope": "ConfluenceSpaceKey"
+        },
+        "Confluence::Page": {
+          "resource": "ConfluencePageId",
+          "scope": "ConfluencePageId"
+        },
+        "GitLab::Group": {
+          "resource": "GitLabGroupPath",
+          "scope": "GitLabGroupPath"
+        },
+        "GitLab::Project": {
+          "resource": "GitLabProjectPath"
+        },
+        "OpenSearch::Index": {
+          "resource": "OpenSearchIndexName",
+          "scope": "OpenSearchIndexPrefix"
+        },
+        "ServiceDesk::Queue": {
+          "resource": "ServiceDeskQueueId",
+          "scope": "ServiceDeskQueueId"
+        },
+        "ServiceDesk::Ticket": {
+          "resource": "ServiceDeskTicketId"
+        }
+      }
     }
   }
 }

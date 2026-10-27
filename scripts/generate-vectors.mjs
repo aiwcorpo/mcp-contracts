@@ -399,6 +399,22 @@ loginRedirect('invalid-unknown-code', 'Code outside the closed list.', '/?loginE
 loginRedirect('invalid-idp-details', 'IdP error details must never reach the URL.', '/?loginError=idp_error&error_description=invalid_client_secret', false);
 loginRedirect('invalid-other-path', 'Failures always land on /.', '/catalog?loginError=cancelled', false);
 
+// ---------- resource id patterns (CC-056) ----------
+
+const ids = (name, type, kind, valid, invalid) => write('resource-ids', `${name}.json`, { type, kind, valid, invalid });
+ids('jira-project', 'Jira::Project', 'resource', ['ABC', 'HR', 'PLAT_2', 'A1'], ['abc', 'A', 'ABCDEFGHIJK', '1AB', 'AB-C', 'ABC) OR project in (HR', 'AB C', '"ABC"']);
+ids('jira-issue', 'Jira::Issue', 'resource', ['ABC-1', 'PLAT_2-4711'], ['ABC-0', 'abc-1', 'ABC-1 OR 1=1', 'ABC', 'ABC-01']);
+ids('confluence-space', 'Confluence::Space', 'resource', ['ENG', 'eng2', 'HB'], ['~jkowalski', 'ENG DOCS', 'ENG-1', 'ENG"', '']);
+ids('confluence-page', 'Confluence::Page', 'resource', ['1', '1000', '9223372036854775807'], ['0', '01', '12a', '-5', '1 OR 1=1']);
+ids('gitlab-group', 'GitLab::Group', 'resource', ['team-a', 'team-a/sub', 'Team_A.v2', 'a'],
+  ['team-a/', '/team-a', 'team-a//sub', 'team-a/../team-b', '-team', 'team-', 'team--a', 'team.git', 'team a', '.hidden']);
+ids('gitlab-project', 'GitLab::Project', 'resource', ['team-a/app', 'team-a/sub/svc'], ['app', 'team-a/app.atom', 'team-a/app/', 'team-a/../x']);
+ids('opensearch-index', 'OpenSearch::Index', 'resource', ['logs-team-a-2026.10', 'logs', '.kibana_1'],
+  ['logs-team-a-x,secret-y', 'logs-team-a-*,*', 'logs-*', '_all', '-logs', 'Logs', 'remote:logs', '<logs-{now/d}>', 'logs team', '.', '..']);
+ids('opensearch-prefix', 'OpenSearch::Index', 'scope', ['logs-team-a', 'logs', 'a'], ['logs-', 'logs.', 'logs-*', 'logs,x', '_x']);
+ids('servicedesk-queue', 'ServiceDesk::Queue', 'resource', ['42', 'IT_support', 'q-1'], ['', '-1', 'q 1', 'q/1', '42;DROP']);
+ids('servicedesk-ticket', 'ServiceDesk::Ticket', 'resource', ['501', 'INC-1'], ['INC 1', 'INC/1', '']);
+
 // ---------- tool errors (C10) ----------
 
 const toolError = (name, description, body, valid) =>
@@ -531,7 +547,7 @@ const MAIN_BUNDLE = `files/policies-${R2}.tar.gz`;
 const bundleCase = (name, description, c) => write('bundles', `${name}.json`, {
   description,
   ...c,
-  publicKeyId: c.publicKey === MAIN_KEY ? 'test-policy-bundle' : 'test-policy-overrides',
+  publicKeyId: c.publicKeyId ?? (c.publicKey === MAIN_KEY ? 'test-policy-bundle' : 'test-policy-overrides'),
   allowTestKeys: c.allowTestKeys ?? true,
   ...(c.channel === 'overrides' && { mainBundle: MAIN_BUNDLE }),
 });
@@ -620,11 +636,23 @@ mainCase(10, 'main-policy-invalid-for-schema', 'Main bundle policy that does not
     '@id("typo")\nforbid (principal, action == Action::"call", resource is Tool) when { resource.riks == "DESTRUCTIVE" };\n']]), 'policy_invalid');
 mainCase(11, 'test-key-rejected-by-default', 'Valid bundle signed with the published test key; a receiver without allowTestKeys rejects it (CC-044).',
   (r) => buildBundle(r, shaOf(r), examplePolicies), null);
+mainCase(12, 'main-static-entities-scope-id-invalid', 'static.json passes the Cedar schema but grants ResourceScope "GitLab::Group/team-a/" (no valid GitLab path); only the scope mapping rules catch it (review 1.2.0 L6).',
+  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{},"parents":[{"type":"ResourceScope","id":"GitLab::Group/team-a/"}]}]\n' }),
+  'static_entities_invalid');
+mainCase(13, 'tar-total-size-limit', 'Five entries of 3.5 MiB each: every entry is under 4 MiB, the archive is above 16 MiB after decompression.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ...Array.from({ length: 5 }, (_, i) => [`policies/big/p${i}.cedar`, ' '.repeat(3.5 * 1024 * 1024)])]),
+  'archive_invalid');
 {
   // Same archive as case 11, but the receiver does not allow test keys.
   const revision = R(11);
   bundleCase('test-key-rejected-by-default', 'Valid bundle signed with the published test key; a receiver without allowTestKeys rejects it (CC-044).', {
     channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
+    publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
+}
+{
+  const revision = R(11);
+  bundleCase('test-key-under-production-id', 'Published test key configured under a production-looking id: refused by its SPKI, not only by its label (review 1.2.0 M4).', {
+    publicKeyId: 'prod-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
     publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
 }
 const overridesCase = (n, name, description, policies, reason) => {

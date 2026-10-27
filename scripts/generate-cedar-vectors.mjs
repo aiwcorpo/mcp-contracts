@@ -145,6 +145,19 @@ builderVector('server-confluence-page-tree', 'Server: page scopes are its space,
 builderVector('resource-null-attribute', 'A null attribute from the resolver means "no attribute" (Jira project without category).', 'server',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC'] },
     resource: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC', category: null } } });
+builderVector('refs-opensearch-index-list', 'Index argument with a comma list: not one concrete index name (CC-056, review H1).', 'gateway',
+  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-x,secret-y' } });
+builderVector('refs-opensearch-index-wildcard', 'Index argument with wildcards (CC-056).', 'gateway',
+  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-*,*' } });
+builderVector('refs-jira-project-injection', 'Project key that would break out of a JQL list (CC-056, review H2).', 'gateway',
+  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC) OR project in (HR' } });
+builderVector('refs-gitlab-path-traversal', 'GitLab path with .. segments.', 'gateway',
+  { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-a/../team-b' } });
+builderVector('resolved-resource-invalid-id', 'Resolver returned an index id with a comma; the builder refuses to build it.', 'server', {
+  caller: users.osReader(), tool: tools.searchIndex, arguments: {},
+  resource: { type: 'OpenSearch::Index', id: 'logs-team-a,secret', attrs: { name: 'logs-team-a,secret', tags: [] } } });
+builderVector('vsc-invalid-id', 'vsc id outside the Jira key pattern.', 'gateway',
+  { caller: { ...users.reader(), vs: 'team-a-dev', vsc: { jiraProjects: ['ABC) OR project in (HR'] } }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('tool-unknown-resource-type', 'resourceRefs with a type outside the model: denied.', 'gateway',
   { caller: users.reader(), tool: tool('jira', 'get_board', 'READ_ONLY', 'read', [{ argument: 'boardId', type: 'Jira::Board' }]), arguments: { boardId: '7' } });
 
@@ -379,7 +392,7 @@ resultFilter('jira-search-through-link',
   [issue('ABC-7', 'ABC', 'Software'), issue('DEF-9', 'DEF', 'Software'), issue('HR-1', 'HR', 'Restricted'),
     { type: 'Jira::Issue', id: 'ABC-8', attrs: { key: 'ABC-8' } }],
   ['ABC-7'],
-  { 'Jira::Project': { virtualServer: ['ABC'], granted: ['ABC', 'DEF'] } });
+  { 'Jira::Project': { virtualServer: ['ABC'], virtualServerType: 'Jira::Project', granted: ['ABC', 'DEF'] } });
 resultFilter('opensearch-search-without-link',
   'OpenSearch search: the index pattern is limited to granted prefixes, and results from other indices are dropped.',
   { caller: users.osReader(), tool: tools.searchIndex, arguments: {} },
@@ -387,4 +400,29 @@ resultFilter('opensearch-search-without-link',
     { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } },
     { type: 'OpenSearch::Index', id: 'logs-team-ab', attrs: { name: 'logs-team-ab', tags: [] } }],
   ['logs-team-a-2026.10'],
-  { 'OpenSearch::Index': { virtualServer: null, granted: ['logs-team-a'] } });
+  { 'OpenSearch::Index': { virtualServer: null, virtualServerType: 'OpenSearch::Index', granted: ['logs-team-a'] } });
+resultFilter('gitlab-projects-through-link',
+  'GitLab project list through a link limited to group team-a: subgroup projects are kept, other groups and team-ab are dropped.',
+  { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: {} },
+  [projectIn('team-a/app'), projectIn('team-a/sub/svc'), projectIn('team-b/app'), projectIn('team-ab/app')],
+  ['team-a/app', 'team-a/sub/svc'],
+  { 'GitLab::Group': { virtualServer: ['team-a'], virtualServerType: 'GitLab::Group', granted: [] } });
+resultFilter('confluence-pages-through-link',
+  'Confluence page search through a link limited to space ENG: the page query is narrowed by space; pages of OPS and of a restricted space are dropped.',
+  { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.getPage, arguments: {} },
+  [page('1001', 'ENG'), page('2002', 'OPS'), page('3003', 'ENG', ['restricted'])],
+  ['1001'],
+  { 'Confluence::Page': { virtualServer: ['ENG'], virtualServerType: 'Confluence::Space', granted: [] },
+    'Confluence::Space': { virtualServer: ['ENG'], virtualServerType: 'Confluence::Space', granted: ['ENG'] } });
+resultFilter('servicedesk-tickets-through-link',
+  'Service desk ticket list through a link limited to queue 42.',
+  { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.getTicket, arguments: {} },
+  [ticket('501', '42'), ticket('777', '7')],
+  ['501'],
+  { 'ServiceDesk::Queue': { virtualServer: ['42'], virtualServerType: 'ServiceDesk::Queue', granted: ['42'] } });
+resultFilter('opensearch-no-grants',
+  'User with mcp-opensearch-read but no mapped index prefix: granted is empty, so the server must not query at all; any returned index is dropped.',
+  { caller: caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-unmapped']), tool: tools.searchIndex, arguments: {} },
+  [{ type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } }],
+  [],
+  { 'OpenSearch::Index': { virtualServer: null, virtualServerType: 'OpenSearch::Index', granted: [] } });

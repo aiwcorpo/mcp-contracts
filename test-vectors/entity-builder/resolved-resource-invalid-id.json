@@ -1,0 +1,41 @@
+{
+  "description": "Resolver returned an index id with a comma; the builder refuses to build it.",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000008",
+      "usr": "osreader",
+      "grp": [
+        "mcp-opensearch-read",
+        "mcp-opensearch-idx-logs-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-opensearch",
+      "system": "opensearch",
+      "name": "search",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "index",
+          "type": "OpenSearch::Index"
+        }
+      ]
+    },
+    "arguments": {},
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a,secret",
+      "attrs": {
+        "name": "logs-team-a,secret",
+        "tags": []
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

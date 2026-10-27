@@ -2,6 +2,18 @@
 // java/mcp-cedar-entities must produce the same output; two implementations agreeing is what makes the vectors
 // trustworthy.
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// Per-system id patterns (common.schema.json, CC-056): one source for the schemas and this builder.
+const COMMON = JSON.parse(readFileSync(fileURLToPath(new URL('../../schemas/common.schema.json', import.meta.url)), 'utf8')).$defs;
+const ID_PATTERNS = Object.fromEntries(Object.entries(COMMON.ResourceIdPatterns.const).map(([type, kinds]) => [type,
+  Object.fromEntries(Object.entries(kinds).map(([kind, def]) => [kind, new RegExp(COMMON[def].pattern, 'u')]))]));
+export function validId(type, kind, id) {
+  const pattern = ID_PATTERNS[type]?.[kind];
+  return pattern !== undefined && typeof id === 'string' && pattern.test(id);
+}
+
 const SCOPE_FIELDS = ['jiraProjects', 'confluenceSpaces', 'gitlabGroups', 'opensearchIndexPrefixes', 'servicedeskQueues'];
 // Scope field of principal.scopes / vsScopes for each grantable flat resource type.
 const SCOPE_FIELD_BY_TYPE = {
@@ -71,7 +83,7 @@ export function scopeMapping(staticEntities) {
       }
       const slash = parent.id.indexOf('/');
       const type = parent.id.slice(0, slash);
-      if (slash <= 0 || slash === parent.id.length - 1 || !SCOPE_TYPES.includes(type)) {
+      if (slash <= 0 || !SCOPE_TYPES.includes(type) || !validId(type, 'scope', parent.id.slice(slash + 1))) {
         throw new BuilderError('internal_error', `UserGroup ${entity.uid.id}: invalid scope id ${parent.id}`);
       }
       scopes.push(parent.id);
@@ -88,6 +100,7 @@ export function vscFromResourceDefaults(resourceDefaults = {}) {
   for (const [type, ids] of Object.entries(resourceDefaults)) {
     const field = SCOPE_FIELD_BY_TYPE[type];
     if (!field) throw new BuilderError('internal_error', `resourceDefaults type ${type} cannot narrow`);
+    for (const id of ids) if (!validId(type, 'scope', id)) throw new BuilderError('internal_error', `invalid ${type} scope id`);
     vsc[field] = sortedSet([...(vsc[field] ?? []), ...ids]);
   }
   return vsc;
@@ -122,6 +135,9 @@ function buildContext({ caller, tool, arguments: args = {} }) {
       if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_VSC_ITEMS) {
         throw new BuilderError('internal_error', `vsc field ${field} must hold 1..${MAX_VSC_ITEMS} ids`);
       }
+      for (const id of ids) {
+        if (!validId(TYPE_BY_SCOPE_FIELD[field], 'scope', id)) throw new BuilderError('internal_error', `vsc field ${field}: invalid id`);
+      }
     }
     const fields = SCOPE_FIELDS.filter((f) => f in caller.vsc);
     if (fields.length > 0) {
@@ -137,6 +153,9 @@ function buildContext({ caller, tool, arguments: args = {} }) {
     if (!RESOURCE_TYPES.has(type)) throw new BuilderError('internal_error', `unknown resource type ${type}`);
     const field = refsField(type);
     const ids = argumentIds(argument, args[argument]);
+    for (const id of ids) {
+      if (!validId(type, 'resource', id)) throw new BuilderError('invalid_argument', `${argument}: not a valid ${type} id`);
+    }
     refIds[field] = { type, ids: [...(refIds[field]?.ids ?? []), ...ids] };
   }
   context.refs = {};
@@ -183,6 +202,12 @@ function resourceScopeIds(resource, parent) {
 }
 
 function systemEntity(resource, parent) {
+  if (!validId(resource.type, 'resource', resource.id)) {
+    throw new BuilderError('internal_error', `resolved ${resource.type} has an invalid id`);
+  }
+  for (const a of resource.attrs?.ancestorIds ?? []) {
+    if (!validId('Confluence::Page', 'resource', a)) throw new BuilderError('internal_error', 'invalid ancestor page id');
+  }
   const out = {};
   for (const [k, v] of Object.entries(resource.attrs ?? {})) {
     if (v !== null && v !== undefined) out[k] = k === 'ancestorIds' ? sortedSet(v) : v;

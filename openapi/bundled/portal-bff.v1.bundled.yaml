@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 1.2.1
+  version: 2.0.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -1497,30 +1497,77 @@ components:
       description: Virtual server slug; used in the URL path /v/<slug>/mcp (C5).
       type: string
       pattern: ^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$
-    ScopeResourceType:
-      description: Resource types that can be narrowed by a virtual server (C5 resourceDefaults) and granted by scope groups (C9).
+    JiraProjectKey:
+      description: "Jira Data Center project key: first character an upper-case letter, then upper-case letters, digits or underscore (Jira project key format rules; hyphens not supported). Length 2..10 (Jira default maximum project key size; configurable in Jira, a larger limit needs a contract change)."
       type: string
-      enum:
-        - Jira::Project
-        - Confluence::Space
-        - GitLab::Group
-        - OpenSearch::Index
-        - ServiceDesk::Queue
+      pattern: ^[A-Z][A-Z0-9_]{1,9}$
+    JiraProjectKeys:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/JiraProjectKey"
+    ConfluenceSpaceKey:
+      description: "Confluence Data Center space key of a global space: letters and digits only. Personal spaces (~user) cannot be granted or narrowed."
+      type: string
+      pattern: ^[A-Za-z0-9]{1,255}$
+    ConfluenceSpaceKeys:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/ConfluenceSpaceKey"
+    GitLabGroupPath:
+      description: "Full path of a GitLab group: 1..20 segments separated by / (subgroups nest up to 20 levels). A segment has only letters, digits, _, . and -, starts and ends with a letter or digit and has no consecutive special characters; the path does not end in .git or .atom (GitLab reserved names / path rules)."
+      type: string
+      pattern: ^(?!.*\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){0,19}$
+      maxLength: 1024
+    GitLabGroupPaths:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/GitLabGroupPath"
+    OpenSearchIndexPrefix:
+      description: "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'."
+      type: string
+      pattern: ^(?!\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$
+    OpenSearchIndexPrefixes:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/OpenSearchIndexPrefix"
+    ServiceDeskQueueId:
+      description: "Queue id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version."
+      type: string
+      pattern: ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$
+    ServiceDeskQueueIds:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: "#/components/schemas/ServiceDeskQueueId"
     ResourceDefaults:
       type: object
-      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). At most 50 ids per type keep the internal JWT small.
-      maxProperties: 5
-      propertyNames:
-        $ref: "#/components/schemas/ScopeResourceType"
-      additionalProperties:
-        type: array
-        minItems: 1
-        maxItems: 50
-        uniqueItems: true
-        items:
-          type: string
-          minLength: 1
-          maxLength: 255
+      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). Ids follow the per-system patterns of common.schema.json (OpenSearch::Index takes index prefixes). At most 50 ids per type keep the internal JWT small.
+      properties:
+        Jira::Project:
+          $ref: "#/components/schemas/JiraProjectKeys"
+        Confluence::Space:
+          $ref: "#/components/schemas/ConfluenceSpaceKeys"
+        GitLab::Group:
+          $ref: "#/components/schemas/GitLabGroupPaths"
+        OpenSearch::Index:
+          $ref: "#/components/schemas/OpenSearchIndexPrefixes"
+        ServiceDesk::Queue:
+          $ref: "#/components/schemas/ServiceDeskQueueIds"
+      additionalProperties: false
     VirtualServerCreate:
       type: object
       required:

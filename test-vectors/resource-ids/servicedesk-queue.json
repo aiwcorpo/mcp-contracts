@@ -1,0 +1,16 @@
+{
+  "type": "ServiceDesk::Queue",
+  "kind": "resource",
+  "valid": [
+    "42",
+    "IT_support",
+    "q-1"
+  ],
+  "invalid": [
+    "",
+    "-1",
+    "q 1",
+    "q/1",
+    "42;DROP"
+  ]
+}

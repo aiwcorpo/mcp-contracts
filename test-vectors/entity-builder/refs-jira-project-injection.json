@@ -1,0 +1,36 @@
+{
+  "description": "Project key that would break out of a JQL list (CC-056, review H2).",
+  "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000002",
+      "usr": "writer",
+      "grp": [
+        "mcp-jira-read",
+        "mcp-jira-write",
+        "mcp-jira-proj-ABC"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "create_issue",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectKey",
+          "type": "Jira::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectKey": "ABC) OR project in (HR"
+    }
+  },
+  "expected": {
+    "error": "invalid_argument"
+  }
+}

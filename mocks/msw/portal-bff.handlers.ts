@@ -26,7 +26,11 @@ async function invalidReturnPath(operationId: string, request: Request): Promise
     value = new URL(request.url).searchParams.get('returnPath') ?? undefined;
   } else if (operationId === 'startConnectOAuth') {
     const text = await request.clone().text();
-    value = text ? (JSON.parse(text) as { returnPath?: unknown }).returnPath : undefined;
+    try {
+      value = text ? (JSON.parse(text) as { returnPath?: unknown } | null)?.returnPath : undefined;
+    } catch {
+      return true;
+    }
   } else {
     return false;
   }

@@ -20,14 +20,15 @@ public final class ResourceScopes {
         return type + "/" + id;
     }
 
-    /** @return the resource type of a scope id, empty when the id is malformed or the type is not grantable */
+    /** @return the resource type of a scope id, empty when the id is malformed, the type is not grantable or the local id does not match its pattern (CC-056) */
     public static Optional<String> typeOf(String scopeId) {
         int slash = scopeId.indexOf('/');
         if (slash <= 0 || slash == scopeId.length() - 1) {
             return Optional.empty();
         }
         String type = scopeId.substring(0, slash);
-        return GRANTABLE_TYPES.contains(type) ? Optional.of(type) : Optional.empty();
+        return GRANTABLE_TYPES.contains(type) && ResourceIds.isValid(type, ResourceIds.Kind.SCOPE, scopeId.substring(slash + 1))
+                ? Optional.of(type) : Optional.empty();
     }
 
     /** @return the part after the type, e.g. {@code team-a/sub} for {@code GitLab::Group/team-a/sub} */

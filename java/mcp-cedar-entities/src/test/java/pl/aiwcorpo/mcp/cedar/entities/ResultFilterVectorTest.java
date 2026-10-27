@@ -30,8 +30,7 @@ class ResultFilterVectorTest {
         BasicAuthorizationEngine engine = new BasicAuthorizationEngine();
         var policies = CedarFixtures.examplePolicies();
         var schema = CedarFixtures.schema();
-        ResultFilter filter = new ResultFilter(builder, request -> engine.isAuthorized(
-                request.toAuthorizationRequest(schema), policies, request.cedarEntities()).success.orElseThrow().isAllowed());
+        ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(engine, policies, schema));
         JsonNode input = vector.get("input");
         Caller caller = VectorInputs.caller(input);
         List<JsonNode> items = new ArrayList<>();
@@ -50,6 +49,7 @@ class ResultFilterVectorTest {
             Optional<List<String>> expectedVs = vs.isNull() ? Optional.empty()
                     : Optional.of(JSON.convertValue(vs, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() { }));
             assertEquals(expectedVs, constraint.virtualServer().map(List::copyOf), file::toString);
+            assertEquals(entry.getValue().get("virtualServerType").asText(), constraint.virtualServerType(), file::toString);
             assertEquals(JSON.convertValue(entry.getValue().get("granted"), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() { }),
                     List.copyOf(constraint.granted()), file::toString);
         }

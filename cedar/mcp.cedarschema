@@ -1,4 +1,4 @@
-// Cedar model of the MCP platform (contract C7), mcp-contracts 1.2.1.
+// Cedar model of the MCP platform (contract C7), mcp-contracts 2.0.0.
 //
 // Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
 // and policies must guard it with `has`.

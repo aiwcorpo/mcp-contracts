@@ -1,0 +1,16 @@
+{
+  "type": "Confluence::Space",
+  "kind": "resource",
+  "valid": [
+    "ENG",
+    "eng2",
+    "HB"
+  ],
+  "invalid": [
+    "~jkowalski",
+    "ENG DOCS",
+    "ENG-1",
+    "ENG\"",
+    ""
+  ]
+}

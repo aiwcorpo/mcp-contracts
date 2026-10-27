@@ -121,8 +121,10 @@ public final class EntityBuilder {
         if (!ResourceScopes.GRANTABLE_TYPES.contains(resourceType)) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "not a grantable resource type: " + resourceType);
         }
+        // A link narrows Confluence spaces, so a page query is narrowed through its space.
+        String narrowingType = "Confluence::Page".equals(resourceType) ? "Confluence::Space" : resourceType;
         Optional<SortedSet<String>> narrowing = caller.virtualServer()
-                .flatMap(link -> ScopeGroups.vsScopeField(resourceType).map(link.vsScopes()::get));
+                .flatMap(link -> ScopeGroups.vsScopeField(narrowingType).map(link.vsScopes()::get));
         TreeSet<String> granted = new TreeSet<>();
         for (String group : mcpGroups(caller)) {
             for (String scope : scopeMapping.scopesOf(group)) {
@@ -131,7 +133,7 @@ public final class EntityBuilder {
                 }
             }
         }
-        return new QueryConstraint(resourceType, narrowing, granted);
+        return new QueryConstraint(resourceType, narrowing, narrowingType, granted);
     }
 
     private static CedarRequest result(Caller caller, EntityUID action, EntityUID resource, Map<String, Value> context,
@@ -172,7 +174,13 @@ public final class EntityBuilder {
             }
             String field = ScopeGroups.refsField(ref.type());
             typeByField.put(field, ref.type());
-            idsByField.computeIfAbsent(field, k -> new ArrayList<>()).addAll(argumentIds(ref.argument(), arguments.get(ref.argument())));
+            List<String> ids = argumentIds(ref.argument(), arguments.get(ref.argument()));
+            for (String id : ids) {
+                if (!ResourceIds.isValid(ref.type(), ResourceIds.Kind.RESOURCE, id)) {
+                    throw invalid(ref.argument() + ": not a valid " + ref.type() + " id");
+                }
+            }
+            idsByField.computeIfAbsent(field, k -> new ArrayList<>()).addAll(ids);
         }
         Map<String, Value> refsValue = new LinkedHashMap<>();
         idsByField.forEach((field, ids) -> {
@@ -271,6 +279,9 @@ public final class EntityBuilder {
         if (!RESOURCE_TYPES.contains(resource.type())) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + resource.type());
         }
+        if (!ResourceIds.isValid(resource.type(), ResourceIds.Kind.RESOURCE, resource.id())) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, "resolved " + resource.type() + " has an invalid id");
+        }
         Map<String, Value> attrs = new TreeMap<>();
         resource.attributes().forEach((name, value) -> attrs.put(name, "ancestorIds".equals(name)
                 ? stringSet(new TreeSet<>(asStrings(resource.type() + ".ancestorIds", value)))
@@ -318,7 +329,11 @@ public final class EntityBuilder {
         }
         List<String> out = new ArrayList<>();
         for (Object element : collection) {
-            out.add(scalarId(element).orElseThrow(() -> new EntityBuilderException(Code.INTERNAL_ERROR, path + ": not an id")));
+            String id = scalarId(element).orElseThrow(() -> new EntityBuilderException(Code.INTERNAL_ERROR, path + ": not an id"));
+            if (path.endsWith(".ancestorIds") && !ResourceIds.isValid("Confluence::Page", ResourceIds.Kind.RESOURCE, id)) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, path + ": invalid page id");
+            }
+            out.add(id);
         }
         return out;
     }

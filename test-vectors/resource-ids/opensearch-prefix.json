@@ -1,0 +1,16 @@
+{
+  "type": "OpenSearch::Index",
+  "kind": "scope",
+  "valid": [
+    "logs-team-a",
+    "logs",
+    "a"
+  ],
+  "invalid": [
+    "logs-",
+    "logs.",
+    "logs-*",
+    "logs,x",
+    "_x"
+  ]
+}

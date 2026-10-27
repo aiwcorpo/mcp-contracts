@@ -1,0 +1,50 @@
+{
+  "description": "User with mcp-opensearch-read but no mapped index prefix: granted is empty, so the server must not query at all; any returned index is dropped.",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "policies": "cedar/examples",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000008",
+      "usr": "osreader",
+      "grp": [
+        "mcp-opensearch-read",
+        "mcp-opensearch-idx-unmapped"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-opensearch",
+      "system": "opensearch",
+      "name": "search",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "index",
+          "type": "OpenSearch::Index"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10",
+      "attrs": {
+        "name": "logs-team-a-2026.10",
+        "tags": []
+      }
+    }
+  ],
+  "expected": {
+    "kept": [],
+    "queryConstraints": {
+      "OpenSearch::Index": {
+        "virtualServer": null,
+        "virtualServerType": "OpenSearch::Index",
+        "granted": []
+      }
+    }
+  }
+}

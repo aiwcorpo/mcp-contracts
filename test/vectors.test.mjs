@@ -65,6 +65,20 @@ test('ReturnPath vectors (CC-032)', async () => {
   for (const { name, data } of vectors) assert.equal(validate(data.value), data.expected.valid, name);
 });
 
+test('resource id vectors match the per-system patterns (CC-056)', () => {
+  const defs = readJson('schemas', 'common.schema.json').$defs;
+  const vectors = listJson('test-vectors', 'resource-ids');
+  assert.ok(vectors.length >= 10);
+  for (const { name, data } of vectors) {
+    const def = defs.ResourceIdPatterns.const[data.type][data.kind];
+    const pattern = new RegExp(defs[def].pattern, 'u');
+    const max = defs[def].maxLength ?? Infinity;
+    const ok = (id) => pattern.test(id) && id.length <= max;
+    for (const id of data.valid) assert.ok(ok(id), `${name}: ${id} should be valid`);
+    for (const id of data.invalid) assert.ok(!ok(id), `${name}: ${id} should be invalid`);
+  }
+});
+
 test('login failure redirect vectors (CC-051)', async () => {
   const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
   const codes = spec.components.schemas.LoginErrorCode.enum;

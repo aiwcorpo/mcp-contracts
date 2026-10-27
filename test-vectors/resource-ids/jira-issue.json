@@ -1,0 +1,15 @@
+{
+  "type": "Jira::Issue",
+  "kind": "resource",
+  "valid": [
+    "ABC-1",
+    "PLAT_2-4711"
+  ],
+  "invalid": [
+    "ABC-0",
+    "abc-1",
+    "ABC-1 OR 1=1",
+    "ABC",
+    "ABC-01"
+  ]
+}

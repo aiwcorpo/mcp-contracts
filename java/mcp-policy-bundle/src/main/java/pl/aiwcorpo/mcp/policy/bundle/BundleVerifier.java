@@ -44,6 +44,13 @@ public final class BundleVerifier {
     private static final Pattern GIT_SHA = Pattern.compile("^[0-9a-f]{40}$");
     private static final Pattern TIMESTAMP = Pattern.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$");
     private static final Pattern SEMVER = Pattern.compile("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$");
+    /**
+     * SHA-256 of the SPKI encoding of the published test keys (test-vectors/keys/test-policy-*.public.pem). A key with
+     * one of these encodings is a test key whatever id it is configured under (CC-044, review 1.2.0 M4).
+     */
+    static final Set<String> TEST_KEY_SPKI_SHA256 = Set.of(
+            "8db9a660309553b8fa6bc1a2024195c530a0ca42fc93ae78430e9d8eb0f7b29e",
+            "6b13d12c070d542518df833f18ac1137c78edf3cf2dfcd23211aab4e470383b9");
     private static final String MANIFEST = "manifest.json";
     private static final String SCHEMA = "schema.cedarschema";
     private static final String STATIC_ENTITIES = "entities/static.json";
@@ -66,8 +73,8 @@ public final class BundleVerifier {
     /**
      * @param channel channel this verifier serves; main and overrides must use different keys
      * @param key Ed25519 public key of the channel
-     * @param keyId identifier of the key in the receiver configuration; ids starting with {@code test-} denote the
-     *        published test keys and are refused unless {@code allowTestKeys} (CC-044)
+     * @param keyId identifier of the key in the receiver configuration; ids starting with {@code test-}, and the
+     *        published test keys under any id, are refused unless {@code allowTestKeys} (CC-044)
      * @param allowTestKeys true only in dev and test environments
      */
     public static BundleVerifier of(Channel channel, PublicKey key, String keyId, boolean allowTestKeys) {
@@ -168,7 +175,7 @@ public final class BundleVerifier {
     private Map<String, byte[]> verifiedFiles(BundlePointer pointer, byte[] archive, byte[] signature)
             throws BundleRejectedException {
         pointer.check();
-        if (keyId.startsWith("test-") && !allowTestKeys) {
+        if ((keyId.startsWith("test-") || isPublishedTestKey(key)) && !allowTestKeys) {
             throw new BundleRejectedException(Reason.TEST_KEY_NOT_ALLOWED, "key " + keyId + " is a published test key");
         }
         try {
@@ -182,6 +189,15 @@ public final class BundleVerifier {
             throw new BundleRejectedException(Reason.BAD_SIGNATURE, "signature check failed", e);
         }
         return TarReader.readGzip(archive, limits);
+    }
+
+    static boolean isPublishedTestKey(PublicKey key) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(key.getEncoded());
+            return TEST_KEY_SPKI_SHA256.contains(java.util.HexFormat.of().formatHex(digest));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 
     private static BundleManifest manifest(Map<String, byte[]> files, BundlePointer pointer) throws BundleRejectedException {

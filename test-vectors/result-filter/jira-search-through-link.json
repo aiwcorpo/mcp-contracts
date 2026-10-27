@@ -100,6 +100,7 @@
         "virtualServer": [
           "ABC"
         ],
+        "virtualServerType": "Jira::Project",
         "granted": [
           "ABC",
           "DEF"

@@ -1,0 +1,22 @@
+{
+  "type": "OpenSearch::Index",
+  "kind": "resource",
+  "valid": [
+    "logs-team-a-2026.10",
+    "logs",
+    ".kibana_1"
+  ],
+  "invalid": [
+    "logs-team-a-x,secret-y",
+    "logs-team-a-*,*",
+    "logs-*",
+    "_all",
+    "-logs",
+    "Logs",
+    "remote:logs",
+    "<logs-{now/d}>",
+    "logs team",
+    ".",
+    ".."
+  ]
+}

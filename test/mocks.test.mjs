@@ -101,3 +101,9 @@ test('WireMock stubs of C4 send X-Request-Id (CC-047)', () => {
   const stub = JSON.parse(readFileSync(path('mocks', 'wiremock', 'credential-broker', 'mappings', 'resolveCredential.json'), 'utf8'));
   for (const mapping of stub.mappings) assert.ok(mapping.response.headers['X-Request-Id'], mapping.name);
 });
+
+test('MSW: malformed JSON body gives 400, not 500 (review 1.2.0 L7)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  const res = await fetch(`${BASE}/api/v1/connections/gitlab/oauth`, { method: 'POST', headers, body: '{not json' });
+  assert.equal(res.status, 400);
+});

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 1.2.1
+  version: 2.0.0
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -836,19 +836,54 @@ components:
       additionalProperties: false
     ResourceDefaults:
       type: object
-      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). At most 50 ids per type keep the internal JWT small.
-      maxProperties: 5
-      propertyNames:
-        $ref: '../schemas/common.schema.json#/$defs/ScopeResourceType'
-      additionalProperties:
-        type: array
-        minItems: 1
-        maxItems: 50
-        uniqueItems: true
-        items:
-          type: string
-          minLength: 1
-          maxLength: 255
+      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). Ids follow the per-system patterns of common.schema.json (OpenSearch::Index takes index prefixes). At most 50 ids per type keep the internal JWT small.
+      properties:
+        Jira::Project:
+          $ref: '#/components/schemas/JiraProjectKeys'
+        Confluence::Space:
+          $ref: '#/components/schemas/ConfluenceSpaceKeys'
+        GitLab::Group:
+          $ref: '#/components/schemas/GitLabGroupPaths'
+        OpenSearch::Index:
+          $ref: '#/components/schemas/OpenSearchIndexPrefixes'
+        ServiceDesk::Queue:
+          $ref: '#/components/schemas/ServiceDeskQueueIds'
+      additionalProperties: false
+    JiraProjectKeys:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: '../schemas/common.schema.json#/$defs/JiraProjectKey'
+    ConfluenceSpaceKeys:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: '../schemas/common.schema.json#/$defs/ConfluenceSpaceKey'
+    GitLabGroupPaths:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: '../schemas/common.schema.json#/$defs/GitLabGroupPath'
+    OpenSearchIndexPrefixes:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: '../schemas/common.schema.json#/$defs/OpenSearchIndexPrefix'
+    ServiceDeskQueueIds:
+      type: array
+      minItems: 1
+      maxItems: 50
+      uniqueItems: true
+      items:
+        $ref: '../schemas/common.schema.json#/$defs/ServiceDeskQueueId'
     VirtualServerCreate:
       type: object
       required: [slug, displayName, tools]

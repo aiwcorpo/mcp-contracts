@@ -40,6 +40,12 @@ public record VirtualServerScope(String slug, Map<String, SortedSet<String>> vsS
                 throw new EntityBuilderException(Code.INTERNAL_ERROR,
                         "vsc field " + e.getKey() + " must hold 1.." + MAX_IDS_PER_FIELD + " ids");
             }
+            String type = ScopeGroups.typeOfScopeField(e.getKey()).orElseThrow();
+            for (String id : e.getValue()) {
+                if (!ResourceIds.isValid(type, ResourceIds.Kind.SCOPE, id)) {
+                    throw new EntityBuilderException(Code.INTERNAL_ERROR, "vsc field " + e.getKey() + ": invalid id");
+                }
+            }
         }
         Map<String, SortedSet<String>> copy = new LinkedHashMap<>();
         for (String field : ScopeGroups.SCOPE_FIELDS) {

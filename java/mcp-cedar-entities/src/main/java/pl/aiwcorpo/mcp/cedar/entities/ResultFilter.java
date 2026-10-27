@@ -1,5 +1,9 @@
 package pl.aiwcorpo.mcp.cedar.entities;
 
+import com.cedarpolicy.AuthorizationEngine;
+import com.cedarpolicy.model.AuthorizationResponse;
+import com.cedarpolicy.model.policy.PolicySet;
+import com.cedarpolicy.model.schema.Schema;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +22,21 @@ public final class ResultFilter {
     public interface Authorizer {
         /** @return true only for an explicit allow; errors must be reported as false or as an exception */
         boolean isAllowed(CedarRequest request) throws Exception;
+    }
+
+    /**
+     * Authorizer on cedar-java that counts only a clean allow: a failed request, a deny, or an allow with evaluation
+     * errors in the diagnostics (a policy that errored, e.g. a forbid on a missing attribute) all mean "drop".
+     */
+    public static Authorizer cedarAuthorizer(AuthorizationEngine engine, PolicySet policies, Schema schema) {
+        Objects.requireNonNull(engine, "engine");
+        Objects.requireNonNull(policies, "policies");
+        Objects.requireNonNull(schema, "schema");
+        return request -> {
+            AuthorizationResponse response = engine.isAuthorized(request.toAuthorizationRequest(schema), policies,
+                    request.cedarEntities());
+            return response.success.map(s -> s.isAllowed() && s.getErrors().isEmpty()).orElse(false);
+        };
     }
 
     private final EntityBuilder builder;
