@@ -4,6 +4,21 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.0.2 - 2026-10-27
+
+Wydanie poprawkowe po automatycznym przeglądzie bezpieczeństwa 2.0.1 (realizacja CC-061, bez zmiany kontraktu;
+`cedar/mcp.cedarschema` i `test-vectors/` bez zmian).
+
+- `ResultFilter.checkAll` było fail-open: narzędzie z zadeklarowanymi `resourceRefs`, wywołane bez wartości
+  zasobu (brak argumentu, pusta tablica) i bez kontenera, przechodziło bez decyzji polityki. Teraz odmowa z
+  powodem `no_resource`. Narzędzie bez `resourceRefs` bez zmian (decyzję `call` podejmuje gateway; javadoc).
+- `checkAll` odrzuca zasób z resolvera innego typu niż `resourceRef` (`resource_type_mismatch`), z id niezgodnym
+  ze wzorcem (`resource_id_invalid`, także kontener) i brak zasobu (`not_resolved`).
+- `allAllowed`: pusta lista nadal daje `false`; javadoc mówi, że kompletność listy to obowiązek wywołującego.
+- Testy modułu `CheckAllFailClosedTest`; opis w `cedar/entity-builder.md` sekcja 10.
+- Wpływ: ws-02 (starter) i ws-05 (gateway) używające `checkAll` dla narzędzi listujących bez identyfikatorów
+  muszą przejść na `queryConstraint` i `ResultFilter.allowed` (sekcja 8 specyfikacji).
+
 ## 2.0.1 - 2026-10-27
 
 Wydanie poprawkowe po przeglądzie 2.0.0 (punkty kategorii (a)). Bez zmian kontraktu: `cedar/mcp.cedarschema` i

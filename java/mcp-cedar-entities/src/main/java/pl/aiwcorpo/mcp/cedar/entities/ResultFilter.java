@@ -51,7 +51,8 @@ public final class ResultFilter {
     /**
      * CC-061: a call is allowed only if every value of every resourceRef argument (array elements, source and
      * target, the container a resource is created in) is allowed on its own. The caller resolves one resource per
-     * value; an empty list, a resource that cannot be built or evaluated, or any deny gives false.
+     * value; an empty list, a resource that cannot be built or evaluated, or any deny gives false. The caller is
+     * responsible for the completeness of the list; prefer {@link #checkAll}, which enumerates the values itself.
      *
      * @param resources one resolved resource per value of every resourceRef argument
      */
@@ -88,7 +89,8 @@ public final class ResultFilter {
      * @param allowed true only when every evaluated resource was allowed
      * @param deniedType type of the first resource that was not allowed
      * @param deniedId id (argument value or container id) of that resource
-     * @param reason why: "denied", "not_resolved", "invalid_argument" or "evaluation_error"
+     * @param reason why: "denied", "not_resolved", "invalid_argument", "evaluation_error", "no_resource",
+     *        "resource_type_mismatch" or "resource_id_invalid"
      */
     public record CheckResult(boolean allowed, Optional<String> deniedType, Optional<String> deniedId, Optional<String> reason) {
 
@@ -104,9 +106,15 @@ public final class ResultFilter {
     /**
      * CC-061 without relying on the caller to list the resources: enumerates every value of every resourceRef from
      * {@code tool} and {@code arguments}, resolves each with {@code resolver} and evaluates it, then evaluates the
-     * creation container if one is given. Stops at the first value that is not allowed (review 2.0.0 M5). A tool
-     * whose resourceRef arguments are all absent has nothing to check here and is allowed; its results still go
-     * through {@link #allowed}.
+     * creation container if one is given. Stops at the first value that is not allowed (review 2.0.0 M5).
+     *
+     * <p>Fail-closed (2.0.2): a tool that declares resourceRefs but gets no resource value and no container is denied
+     * ({@code no_resource}); a listing tool without ids uses {@link EntityBuilder#queryConstraint} and
+     * {@link #allowed} instead of this method. A resolved resource whose type differs from the resourceRef type
+     * ({@code resource_type_mismatch}) or whose id does not match the type's pattern ({@code resource_id_invalid})
+     * is denied, as is a resolver returning null ({@code not_resolved}). A tool without resourceRefs has no resource
+     * to evaluate here and is allowed: the gateway already decided {@code Action::"call"} for it, the server
+     * evaluates resources only.
      *
      * @param creationContainer the group, project, space or queue a new resource is created in, if the tool creates one
      */
@@ -125,6 +133,15 @@ public final class ResultFilter {
             } catch (Exception e) {
                 return CheckResult.denied(value.getKey(), value.getValue(), "not_resolved");
             }
+            if (resource == null) {
+                return CheckResult.denied(value.getKey(), value.getValue(), "not_resolved");
+            }
+            if (!value.getKey().equals(resource.type())) {
+                return CheckResult.denied(value.getKey(), value.getValue(), "resource_type_mismatch");
+            }
+            if (!ResourceIds.isValid(resource.type(), ResourceIds.Kind.RESOURCE, resource.id())) {
+                return CheckResult.denied(value.getKey(), value.getValue(), "resource_id_invalid");
+            }
             CheckResult result = evaluate(caller, tool, arguments, resource, value.getKey(), value.getValue());
             if (!result.allowed()) {
                 return result;
@@ -132,7 +149,13 @@ public final class ResultFilter {
         }
         if (creationContainer.isPresent()) {
             ResolvedResource container = creationContainer.get();
+            if (!ResourceIds.isValid(container.type(), ResourceIds.Kind.RESOURCE, container.id())) {
+                return CheckResult.denied(container.type(), container.id(), "resource_id_invalid");
+            }
             return evaluate(caller, tool, arguments, container, container.type(), container.id());
+        }
+        if (values.isEmpty() && !tool.resourceRefs().isEmpty()) {
+            return CheckResult.denied(null, null, "no_resource");
         }
         return CheckResult.ok();
     }

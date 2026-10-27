@@ -264,5 +264,11 @@ Serwer przed wykonaniem narzędzia:
    kończy wywołanie odmową (`not_found_or_denied` dla zasobów, C10). `ResultFilter.checkAll` sam wylicza wartości
    z `resourceRefs` i argumentów, rozwiązuje je przez resolver `(typ, id)` i zwraca powód odmowy;
    `ResultFilter.allAllowed` przyjmuje gotową listę zasobów (wywołujący odpowiada za jej kompletność).
+4. Fail-closed (2.0.2): narzędzie z zadeklarowanymi `resourceRefs`, dla którego nie ma żadnej wartości zasobu
+   (brak argumentu, pusta tablica) ani kontenera, jest odrzucane (`no_resource`); narzędzie listujące bez
+   identyfikatorów korzysta z sekcji 8 (`queryConstraint` i filtrowanie wyników), nie z tej kontroli. Zasób z
+   resolvera innego typu niż `resourceRef` (`resource_type_mismatch`), z id niezgodnym ze wzorcem
+   (`resource_id_invalid`) albo brak zasobu (`not_resolved`) też dają odmowę. `allAllowed` z pustą listą zwraca
+   `false`. Narzędzie bez `resourceRefs` nie ma tu czego oceniać: decyzję `call` podjął gateway.
 
 Wektory: `test-vectors/resource-checks/`, decyzje `srv-transfer-target-outside-scope`, `srv-transfer-source-in-scope`.

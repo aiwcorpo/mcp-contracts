@@ -1,17 +1,23 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **2.0.1**, tag `v2.0.1` (poprawki do 2.0.0 bez zmiany kontraktu; wcześniej `v2.0.0`, `v1.2.0`, `v1.1.0`,
-`v1.0.0`). Od 2.0.0 ścisły SemVer; `cedar/mcp.cedarschema` i `test-vectors/` są w 2.0.1 bajtowo takie jak w 2.0.0. Zmiany względem 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta:
+Wersja **2.0.2**, tag `v2.0.2` (poprawki do 2.0.0 bez zmiany kontraktu; wcześniej `v2.0.1`, `v2.0.0`, `v1.2.0`,
+`v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły SemVer; `cedar/mcp.cedarschema` i `test-vectors/` są w 2.0.2 bajtowo takie jak
+w 2.0.0. Zmiany względem 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta:
 `CHANGELOG.md`.
 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`, `./mvnw verify` w czterech modułach Java),
 `npm run smoke:wiremock` zielony lokalnie.
 
-## Artefakty 2.0.1
+## Artefakty 2.0.2
 
-- `pl.aiwcorpo.mcp:mcp-contracts:2.0.1` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.0.1`,
-  `mcp-policy-bundle:2.0.1`, `mcp-manifest:2.0.1`, `mcp-contracts-parent:2.0.1` (w `~/.m2` po `./mvnw install`).
-- `release/aiwcorpo-mcp-contracts-2.0.1.tgz` obok tarballi 1.0.0, 1.1.0, 1.2.0, 2.0.0.
+- `pl.aiwcorpo.mcp:mcp-contracts:2.0.2` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.0.2`,
+  `mcp-policy-bundle:2.0.2`, `mcp-manifest:2.0.2`, `mcp-contracts-parent:2.0.2` (w `~/.m2` po `./mvnw install`).
+- `release/aiwcorpo-mcp-contracts-2.0.2.tgz` obok tarballi 1.0.0, 1.1.0, 1.2.0, 2.0.0, 2.0.1.
+
+## Zrobione w 2.0.2
+
+- `ResultFilter.checkAll` fail-closed: `no_resource`, `resource_type_mismatch`, `resource_id_invalid`,
+  `not_resolved` (przegląd bezpieczeństwa 2.0.1).
 
 ## Zrobione w 2.0.1
 

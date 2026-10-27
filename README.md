@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.0.1**, tag `v2.0.1` (poprawki do 2.0.0; 1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.0.2**, tag `v2.0.2` (poprawki do 2.0.0; 1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -80,13 +80,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.0.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.0.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.0.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.0.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.0.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.0.1` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.0.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.0.1.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.0.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.0.2:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.0.2` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.0.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.0.2` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.0.2` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.0.2.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.0.2.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -95,20 +95,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.0.1/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.0.1.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.0.2/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.0.2.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>2.0.1</version>
+  <version>2.0.2</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>2.0.1</version>
+  <version>2.0.2</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -140,7 +140,7 @@ i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>2.0.1</version>
+  <version>2.0.2</version>
 </dependency>
 ```
 
@@ -304,7 +304,7 @@ klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (i
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>2.0.1</version>
+            <version>2.0.2</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>
