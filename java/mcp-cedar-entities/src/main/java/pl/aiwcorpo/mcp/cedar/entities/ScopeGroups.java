@@ -1,31 +1,23 @@
 package pl.aiwcorpo.mcp.cedar.entities;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-/** Mapping rules of C9 groups and resource types to the Cedar model (cedar/entity-builder.md, CC-007). */
+/**
+ * Naming rules of the Cedar model (cedar/entity-builder.md). Scopes granted by groups are data
+ * ({@link ScopeMapping}), not derived from group names (CC-037).
+ */
 public final class ScopeGroups {
 
     /** Fields of {@code principal.scopes} and {@code context.vsScopes}, in schema order. */
     public static final List<String> SCOPE_FIELDS = List.of(
             "jiraProjects", "confluenceSpaces", "gitlabGroups", "opensearchIndexPrefixes", "servicedeskQueues");
 
-    private static final Pattern SCOPE_GROUP = Pattern.compile("^mcp-([a-z]+)-([a-z]+)-(.+)$");
-    private static final Map<String, String> FIELD_BY_GROUP_KIND = Map.of(
-            "jira/proj", "jiraProjects",
-            "confluence/space", "confluenceSpaces",
-            "gitlab/grp", "gitlabGroups",
-            "opensearch/idx", "opensearchIndexPrefixes",
-            "servicedesk/queue", "servicedeskQueues");
     private static final Map<String, String> FIELD_BY_SCOPE_TYPE = Map.of(
             "Jira::Project", "jiraProjects",
             "Confluence::Space", "confluenceSpaces",
@@ -37,33 +29,16 @@ public final class ScopeGroups {
     }
 
     /**
-     * Derives {@code principal.scopes} from group names such as {@code mcp-jira-proj-ABC}.
-     *
-     * @param groups group names; anything that is not a known scope group is ignored
-     * @return all five scope fields in schema order, each a sorted set (empty when no scope)
-     */
-    public static Map<String, SortedSet<String>> scopesFromGroups(Collection<String> groups) {
-        Map<String, SortedSet<String>> scopes = new LinkedHashMap<>();
-        SCOPE_FIELDS.forEach(f -> scopes.put(f, new TreeSet<>()));
-        for (String group : groups) {
-            Matcher m = SCOPE_GROUP.matcher(group);
-            if (m.matches()) {
-                String field = FIELD_BY_GROUP_KIND.get(m.group(1) + "/" + m.group(2));
-                if (field != null) {
-                    scopes.get(field).add(m.group(3));
-                }
-            }
-        }
-        scopes.replaceAll((k, v) -> Collections.unmodifiableSortedSet(v));
-        return Collections.unmodifiableMap(scopes);
-    }
-
-    /**
      * @param resourceType a type from {@code resourceDefaults} (C5)
      * @return the {@code vsScopes} field it narrows, empty if the type cannot narrow
      */
     public static Optional<String> vsScopeField(String resourceType) {
         return Optional.ofNullable(FIELD_BY_SCOPE_TYPE.get(resourceType));
+    }
+
+    /** @return the resource type narrowed by a {@code vsScopes} field, empty for an unknown field */
+    public static Optional<String> typeOfScopeField(String field) {
+        return FIELD_BY_SCOPE_TYPE.entrySet().stream().filter(e -> e.getValue().equals(field)).map(Map.Entry::getKey).findFirst();
     }
 
     /**

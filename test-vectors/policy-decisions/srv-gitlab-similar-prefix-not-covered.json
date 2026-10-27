@@ -1,10 +1,11 @@
 {
-  "description": "GitLab UPDATE into team-b with scope team-a.",
+  "description": "Server: grant on team-a does not cover team-ab (path segments, not string prefix).",
   "covers": [
-    "forbid_overrides_permit"
+    "scope_hierarchy"
   ],
   "builder": {
-    "level": "gateway",
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000007",
@@ -19,18 +20,32 @@
       "tool": {
         "serverId": "mcp-gitlab",
         "system": "gitlab",
-        "name": "create_project",
+        "name": "update_project",
         "risk": "UPDATE",
         "action": "update",
         "resourceRefs": [
           {
-            "argument": "groupPath",
-            "type": "GitLab::Group"
+            "argument": "projectPath",
+            "type": "GitLab::Project"
           }
         ]
       },
       "arguments": {
-        "groupPath": "team-b"
+        "projectPath": "team-ab/app"
+      },
+      "resource": {
+        "type": "GitLab::Project",
+        "id": "team-ab/app",
+        "attrs": {
+          "path": "team-ab/app"
+        },
+        "parent": {
+          "type": "GitLab::Group",
+          "id": "team-ab",
+          "attrs": {
+            "path": "team-ab"
+          }
+        }
       }
     }
   },
@@ -42,17 +57,17 @@
     },
     "action": {
       "type": "Action",
-      "id": "call"
+      "id": "update"
     },
     "resource": {
-      "type": "Tool",
-      "id": "gitlab__create_project"
+      "type": "GitLab::Project",
+      "id": "team-ab/app"
     },
     "context": {
       "client": "claude-code",
       "refs": {
-        "gitlabGroup": [
-          "team-b"
+        "gitlabProject": [
+          "team-ab/app"
         ]
       }
     }
@@ -60,15 +75,50 @@
   "entities": [
     {
       "uid": {
-        "type": "Tool",
-        "id": "gitlab__create_project"
+        "type": "GitLab::Group",
+        "id": "team-ab"
       },
       "attrs": {
-        "server": "mcp-gitlab",
-        "name": "create_project",
-        "risk": "UPDATE"
+        "path": "team-ab",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-ab"
+            }
+          }
+        ]
       },
       "parents": []
+    },
+    {
+      "uid": {
+        "type": "GitLab::Project",
+        "id": "team-ab/app"
+      },
+      "attrs": {
+        "path": "team-ab/app",
+        "group": {
+          "__entity": {
+            "type": "GitLab::Group",
+            "id": "team-ab"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-ab"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "GitLab::Group",
+          "id": "team-ab"
+        }
+      ]
     },
     {
       "uid": {
@@ -82,7 +132,12 @@
           "jiraProjects": [],
           "confluenceSpaces": [],
           "gitlabGroups": [
-            "team-a"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            }
           ],
           "opensearchIndexPrefixes": [],
           "servicedeskQueues": []
@@ -109,7 +164,12 @@
         "id": "mcp-gitlab-grp-team-a"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "GitLab::Group/team-a"
+        }
+      ]
     },
     {
       "uid": {
@@ -130,8 +190,6 @@
   ],
   "expected": {
     "decision": "deny",
-    "determiningPolicies": [
-      "gitlab-call-write-outside-scope"
-    ]
+    "determiningPolicies": []
   }
 }

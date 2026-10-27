@@ -17,12 +17,36 @@ final class VectorInputs {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final ObjectMapper CEDAR = CedarJson.objectMapper();
-    private static final EntityBuilder BUILDER = new EntityBuilder();
+    private static final Map<String, EntityBuilder> BUILDERS = new java.util.concurrent.ConcurrentHashMap<>();
 
     private VectorInputs() {
     }
 
-    static CedarRequest build(String level, JsonNode input) {
+    /** Builder with the scope mapping of the given static entities file (path relative to the repository root). */
+    static EntityBuilder builder(String staticEntitiesPath) {
+        return BUILDERS.computeIfAbsent(staticEntitiesPath, p -> {
+            try {
+                return new EntityBuilder(ScopeMapping.fromStaticEntities(
+                        com.cedarpolicy.model.entity.Entities.parse(ContractFiles.resolve(p)).getEntities()));
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
+    }
+
+    static CedarRequest build(String level, JsonNode input, String staticEntitiesPath) {
+        Caller caller = caller(input);
+        ToolDescriptor tool = tool(input);
+        Map<String, Object> arguments = arguments(input);
+        EntityBuilder builder = builder(staticEntitiesPath);
+        return switch (level) {
+            case "gateway" -> builder.forToolCall(caller, tool, arguments);
+            case "server" -> builder.forResource(caller, tool, arguments, resource(input.get("resource")));
+            default -> throw new IllegalArgumentException(level);
+        };
+    }
+
+    static Caller caller(JsonNode input) {
         JsonNode c = input.get("caller");
         List<String> groups = new ArrayList<>();
         c.get("grp").forEach(g -> groups.add(g.asText()));
@@ -33,29 +57,29 @@ final class VectorInputs {
         }
         if (c.has("vs")) {
             Map<String, List<String>> vsc = JSON.convertValue(c.get("vsc"), new TypeReference<Map<String, List<String>>>() { });
-            Map<String, java.util.SortedSet<String>> scopes = new java.util.LinkedHashMap<>();
-            vsc.forEach((field, ids) -> scopes.put(field, new java.util.TreeSet<>(ids)));
-            caller = caller.withVirtualServer(new VirtualServerScope(c.get("vs").asText(), scopes));
+            caller = caller.withVirtualServer(VirtualServerScope.fromClaims(c.get("vs").asText(), vsc));
         }
         if (c.has("mfa")) {
             caller = caller.withMfaAge(c.get("mfa").asLong());
         }
+        return caller;
+    }
+
+    static ToolDescriptor tool(JsonNode input) {
         JsonNode t = input.get("tool");
         List<ResourceRef> refs = new ArrayList<>();
         t.get("resourceRefs").forEach(r -> refs.add(new ResourceRef(r.get("argument").asText(), r.get("type").asText())));
-        ToolDescriptor tool = new ToolDescriptor(t.get("serverId").asText(), t.get("system").asText(),
+        return new ToolDescriptor(t.get("serverId").asText(), t.get("system").asText(),
                 t.get("name").asText(), t.get("risk").asText(), t.get("action").asText(), refs);
-        Map<String, Object> arguments = input.has("arguments")
-                ? JSON.convertValue(input.get("arguments"), new TypeReference<Map<String, Object>>() { })
-                : Map.of();
-        return switch (level) {
-            case "gateway" -> BUILDER.forToolCall(caller, tool, arguments);
-            case "server" -> BUILDER.forResource(caller, tool, arguments, resource(input.get("resource")));
-            default -> throw new IllegalArgumentException(level);
-        };
     }
 
-    private static ResolvedResource resource(JsonNode node) {
+    static Map<String, Object> arguments(JsonNode input) {
+        return input.has("arguments")
+                ? JSON.convertValue(input.get("arguments"), new TypeReference<Map<String, Object>>() { })
+                : Map.of();
+    }
+
+    static ResolvedResource resource(JsonNode node) {
         Map<String, Object> attrs = node.has("attrs")
                 ? JSON.convertValue(node.get("attrs"), new TypeReference<Map<String, Object>>() { })
                 : Map.of();

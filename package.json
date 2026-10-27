@@ -1,6 +1,6 @@
 {
   "name": "@aiwcorpo/mcp-contracts",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Kontrakty platformy MCP: OpenAPI, JSON Schema, schemat Cedar, wektory testowe, typy TS i handlery MSW.",
   "license": "UNLICENSED",
   "private": true,

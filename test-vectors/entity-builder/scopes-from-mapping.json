@@ -1,6 +1,7 @@
 {
-  "description": "All scope group forms of C9; unknown systems, unknown resource kinds and non-mcp groups add no scope.",
+  "description": "principal.scopes come only from the bundle mapping: unmapped groups (even with a conventional name), names differing in case and non-mcp groups grant nothing; mcp-team-platform shows a name that does not encode its scopes.",
   "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -15,8 +16,9 @@
         "mcp-servicedesk-queue-42",
         "mcp-client-claude-code",
         "mcp-platform-admin",
-        "mcp-jira-board-7",
-        "mcp-wiki-proj-X",
+        "mcp-gitlab-grp-team-c",
+        "mcp-jira-proj-abc",
+        "mcp-team-platform",
         "employees"
       ],
       "azp": "claude-code"
@@ -71,20 +73,68 @@
           "client": "claude-code",
           "scopes": {
             "jiraProjects": [
-              "ABC",
-              "DEF"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Jira::Project/ABC"
+                }
+              },
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Jira::Project/DEF"
+                }
+              },
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Jira::Project/PLAT"
+                }
+              }
             ],
             "confluenceSpaces": [
-              "ENG"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Confluence::Space/ENG"
+                }
+              }
             ],
             "gitlabGroups": [
-              "team-a"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "GitLab::Group/platform"
+                }
+              },
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "GitLab::Group/team-a"
+                }
+              }
             ],
             "opensearchIndexPrefixes": [
-              "logs-team-a"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "OpenSearch::Index/logs-platform"
+                }
+              },
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "OpenSearch::Index/logs-team-a"
+                }
+              }
             ],
             "servicedeskQueues": [
-              "42"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "ServiceDesk::Queue/42"
+                }
+              }
             ]
           }
         },
@@ -103,7 +153,7 @@
           },
           {
             "type": "UserGroup",
-            "id": "mcp-jira-board-7"
+            "id": "mcp-gitlab-grp-team-c"
           },
           {
             "type": "UserGroup",
@@ -112,6 +162,10 @@
           {
             "type": "UserGroup",
             "id": "mcp-jira-proj-DEF"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-abc"
           },
           {
             "type": "UserGroup",
@@ -131,7 +185,7 @@
           },
           {
             "type": "UserGroup",
-            "id": "mcp-wiki-proj-X"
+            "id": "mcp-team-platform"
           }
         ]
       },
@@ -149,7 +203,12 @@
           "id": "mcp-confluence-space-ENG"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Confluence::Space/ENG"
+          }
+        ]
       },
       {
         "uid": {
@@ -157,12 +216,17 @@
           "id": "mcp-gitlab-grp-team-a"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "GitLab::Group/team-a"
+          }
+        ]
       },
       {
         "uid": {
           "type": "UserGroup",
-          "id": "mcp-jira-board-7"
+          "id": "mcp-gitlab-grp-team-c"
         },
         "attrs": {},
         "parents": []
@@ -173,12 +237,30 @@
           "id": "mcp-jira-proj-ABC"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
+          }
+        ]
       },
       {
         "uid": {
           "type": "UserGroup",
           "id": "mcp-jira-proj-DEF"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/DEF"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-abc"
         },
         "attrs": {},
         "parents": []
@@ -197,7 +279,12 @@
           "id": "mcp-opensearch-idx-logs-team-a"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "OpenSearch::Index/logs-team-a"
+          }
+        ]
       },
       {
         "uid": {
@@ -213,15 +300,33 @@
           "id": "mcp-servicedesk-queue-42"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "ServiceDesk::Queue/42"
+          }
+        ]
       },
       {
         "uid": {
           "type": "UserGroup",
-          "id": "mcp-wiki-proj-X"
+          "id": "mcp-team-platform"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "GitLab::Group/platform"
+          },
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/PLAT"
+          },
+          {
+            "type": "ResourceScope",
+            "id": "OpenSearch::Index/logs-platform"
+          }
+        ]
       }
     ]
   }

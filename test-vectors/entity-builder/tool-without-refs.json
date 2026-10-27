@@ -1,6 +1,7 @@
 {
   "description": "Tool with no resourceRefs: refs is an empty record.",
   "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",

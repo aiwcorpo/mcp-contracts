@@ -1,0 +1,240 @@
+{
+  "description": "Server, result filtering: issue DEF-9 returned by the search is outside the link and is dropped.",
+  "covers": [
+    "virtual_server_narrowing",
+    "search_results",
+    "forbid_overrides_permit"
+  ],
+  "builder": {
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000003",
+        "usr": "writer2",
+        "grp": [
+          "mcp-jira-read",
+          "mcp-jira-write",
+          "mcp-jira-proj-ABC",
+          "mcp-jira-proj-DEF"
+        ],
+        "azp": "claude-code",
+        "vs": "team-a-dev",
+        "vsc": {
+          "jiraProjects": [
+            "ABC"
+          ]
+        }
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "search_issues",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectKeys",
+            "type": "Jira::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "text": "outage"
+      },
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "DEF-9",
+        "attrs": {
+          "key": "DEF-9"
+        },
+        "parent": {
+          "type": "Jira::Project",
+          "id": "DEF",
+          "attrs": {
+            "key": "DEF",
+            "category": "Software"
+          }
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000003"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "DEF-9"
+    },
+    "context": {
+      "client": "claude-code",
+      "virtualServer": "team-a-dev",
+      "vsScopes": {
+        "jiraProjects": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
+      },
+      "refs": {
+        "jiraProject": []
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "DEF-9"
+      },
+      "attrs": {
+        "key": "DEF-9",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "DEF"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/DEF"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "DEF"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "DEF"
+      },
+      "attrs": {
+        "key": "DEF",
+        "category": "Software",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/DEF"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000003"
+      },
+      "attrs": {
+        "username": "writer2",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/DEF"
+              }
+            }
+          ],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-DEF"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Jira::Project/ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-DEF"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Jira::Project/DEF"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "vs-narrow-jira-issue"
+    ]
+  }
+}

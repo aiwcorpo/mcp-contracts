@@ -21,21 +21,45 @@ import pl.aiwcorpo.mcp.cedar.entities.EntityBuilderException.Code;
  */
 public record VirtualServerScope(String slug, Map<String, SortedSet<String>> vsScopes) {
 
+    /** Upper bound per field, same as the vsc claim and resourceDefaults (keeps the JWT small). */
+    public static final int MAX_IDS_PER_FIELD = 50;
+
+    /**
+     * @throws EntityBuilderException {@code INTERNAL_ERROR} for an unknown field or a field with 0 or more than
+     *         {@link #MAX_IDS_PER_FIELD} ids (the claim schema requires 1..50)
+     */
     public VirtualServerScope {
         Objects.requireNonNull(slug, "slug");
-        Map<String, SortedSet<String>> copy = new LinkedHashMap<>();
         Objects.requireNonNull(vsScopes, "vsScopes");
+        for (Map.Entry<String, SortedSet<String>> e : vsScopes.entrySet()) {
+            if (!ScopeGroups.SCOPE_FIELDS.contains(e.getKey())) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown vsc field " + e.getKey());
+            }
+            int size = e.getValue() == null ? 0 : e.getValue().size();
+            if (size == 0 || size > MAX_IDS_PER_FIELD) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR,
+                        "vsc field " + e.getKey() + " must hold 1.." + MAX_IDS_PER_FIELD + " ids");
+            }
+        }
+        Map<String, SortedSet<String>> copy = new LinkedHashMap<>();
         for (String field : ScopeGroups.SCOPE_FIELDS) {
             if (vsScopes.containsKey(field)) {
                 copy.put(field, Collections.unmodifiableSortedSet(new TreeSet<>(vsScopes.get(field))));
             }
         }
-        for (String field : vsScopes.keySet()) {
-            if (!ScopeGroups.SCOPE_FIELDS.contains(field)) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown vsc field " + field);
-            }
-        }
         vsScopes = Collections.unmodifiableMap(copy);
+    }
+
+    /**
+     * Server side: from the {@code vs} and {@code vsc} claims of the internal JWT.
+     *
+     * @param vs slug claim
+     * @param vsc narrowing claim as parsed from JSON (field -> list of ids)
+     */
+    public static VirtualServerScope fromClaims(String vs, Map<String, ? extends java.util.Collection<String>> vsc) {
+        Map<String, SortedSet<String>> scopes = new LinkedHashMap<>();
+        Objects.requireNonNull(vsc, "vsc").forEach((field, ids) -> scopes.put(field, ids == null ? null : new TreeSet<>(ids)));
+        return new VirtualServerScope(vs, scopes);
     }
 
     /**

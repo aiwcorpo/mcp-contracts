@@ -1,4 +1,7 @@
-// Server-level evaluation (C7): changes only inside resources granted through scope groups (C9).
+// Server-level evaluation (C7): changes only inside resources granted by the bundle's scope mapping
+// (entities/static.json, CC-037). `principal in resource.scopes` is true when one of the user's groups is
+// mapped to the resource itself or to any of its containers, so a grant on GitLab group team-a covers
+// team-a/sub/app but not team-ab.
 
 @id("jira-update-project-in-scope")
 permit (
@@ -6,7 +9,7 @@ permit (
   action == Action::"update",
   resource is Jira::Project
 )
-when { principal.scopes.jiraProjects.contains(resource.key) };
+when { principal in resource.scopes };
 
 @id("jira-update-issue-in-scope")
 permit (
@@ -14,7 +17,7 @@ permit (
   action == Action::"update",
   resource is Jira::Issue
 )
-when { principal.scopes.jiraProjects.contains(resource.project.key) };
+when { principal in resource.scopes };
 
 @id("jira-delete-issue-in-scope")
 permit (
@@ -22,7 +25,15 @@ permit (
   action == Action::"delete",
   resource is Jira::Issue
 )
-when { principal.scopes.jiraProjects.contains(resource.project.key) };
+when { principal in resource.scopes };
+
+@id("gitlab-update-group-in-scope")
+permit (
+  principal in UserGroup::"mcp-gitlab-write",
+  action == Action::"update",
+  resource is GitLab::Group
+)
+when { principal in resource.scopes };
 
 @id("gitlab-update-project-in-scope")
 permit (
@@ -30,4 +41,13 @@ permit (
   action == Action::"update",
   resource is GitLab::Project
 )
-when { principal.scopes.gitlabGroups.contains(resource.group.path) };
+when { principal in resource.scopes };
+
+// A page tree granted through Confluence::Page/<root> covers every page below the root.
+@id("confluence-update-page-in-scope")
+permit (
+  principal in UserGroup::"mcp-confluence-write",
+  action == Action::"update",
+  resource is Confluence::Page
+)
+when { principal in resource.scopes };

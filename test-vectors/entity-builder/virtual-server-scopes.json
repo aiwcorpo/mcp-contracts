@@ -1,6 +1,7 @@
 {
   "description": "Virtual server resourceDefaults become context.vsScopes.",
   "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000003",
@@ -60,18 +61,38 @@
       "virtualServer": "team-a-dev",
       "vsScopes": {
         "jiraProjects": [
-          "ABC"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
         ],
         "gitlabGroups": [
-          "team-a"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-a"
+            }
+          }
         ],
         "opensearchIndexPrefixes": [
-          "logs-team-a"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team-a"
+            }
+          }
         ]
       },
       "refs": {
         "jiraProject": [
-          "ABC"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
         ]
       }
     },
@@ -98,8 +119,18 @@
           "client": "claude-code",
           "scopes": {
             "jiraProjects": [
-              "ABC",
-              "DEF"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Jira::Project/ABC"
+                }
+              },
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Jira::Project/DEF"
+                }
+              }
             ],
             "confluenceSpaces": [],
             "gitlabGroups": [],
@@ -132,7 +163,12 @@
           "id": "mcp-jira-proj-ABC"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
+          }
+        ]
       },
       {
         "uid": {
@@ -140,7 +176,12 @@
           "id": "mcp-jira-proj-DEF"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/DEF"
+          }
+        ]
       },
       {
         "uid": {

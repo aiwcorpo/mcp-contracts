@@ -6,6 +6,7 @@
   ],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000006",
@@ -72,7 +73,12 @@
       "virtualServer": "team-a-code",
       "vsScopes": {
         "gitlabGroups": [
-          "team-a"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-a"
+            }
+          }
         ]
       },
       "refs": {
@@ -89,7 +95,15 @@
         "id": "team-b"
       },
       "attrs": {
-        "path": "team-b"
+        "path": "team-b",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
       },
       "parents": []
     },
@@ -105,7 +119,15 @@
             "type": "GitLab::Group",
             "id": "team-b"
           }
-        }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
       },
       "parents": [
         {

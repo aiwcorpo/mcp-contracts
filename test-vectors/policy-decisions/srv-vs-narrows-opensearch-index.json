@@ -6,6 +6,7 @@
   ],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000008",
@@ -68,7 +69,12 @@
       "virtualServer": "team-a-logs",
       "vsScopes": {
         "opensearchIndexPrefixes": [
-          "logs-team-a"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team-a"
+            }
+          }
         ]
       },
       "refs": {
@@ -87,11 +93,31 @@
       "attrs": {
         "name": "logs-team-b-2026.10",
         "tags": [],
-        "namePrefixes": [
-          "logs",
-          "logs-team",
-          "logs-team-b",
-          "logs-team-b-2026.10"
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team-b"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team-b-2026.10"
+            }
+          }
         ]
       },
       "parents": []
@@ -109,8 +135,18 @@
           "confluenceSpaces": [],
           "gitlabGroups": [],
           "opensearchIndexPrefixes": [
-            "logs-team-a",
-            "logs-team-b"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-b"
+              }
+            }
           ],
           "servicedeskQueues": []
         }
@@ -136,7 +172,12 @@
         "id": "mcp-opensearch-idx-logs-team-a"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "OpenSearch::Index/logs-team-a"
+        }
+      ]
     },
     {
       "uid": {
@@ -144,7 +185,12 @@
         "id": "mcp-opensearch-idx-logs-team-b"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "OpenSearch::Index/logs-team-b"
+        }
+      ]
     },
     {
       "uid": {

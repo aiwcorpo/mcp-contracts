@@ -3,6 +3,7 @@
   "covers": [],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-00000000000a",
@@ -75,7 +76,15 @@
         "id": "42"
       },
       "attrs": {
-        "id": "42"
+        "id": "42",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "ServiceDesk::Queue/42"
+            }
+          }
+        ]
       },
       "parents": []
     },
@@ -91,7 +100,15 @@
             "type": "ServiceDesk::Queue",
             "id": "42"
           }
-        }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "ServiceDesk::Queue/42"
+            }
+          }
+        ]
       },
       "parents": [
         {
@@ -114,7 +131,12 @@
           "gitlabGroups": [],
           "opensearchIndexPrefixes": [],
           "servicedeskQueues": [
-            "42"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "ServiceDesk::Queue/42"
+              }
+            }
           ]
         }
       },
@@ -135,7 +157,12 @@
         "id": "mcp-servicedesk-queue-42"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "ServiceDesk::Queue/42"
+        }
+      ]
     },
     {
       "uid": {

@@ -1,6 +1,7 @@
 {
   "description": "Server: resolved issue with parent project; project attribute duplicates the parent edge.",
   "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000002",
@@ -78,7 +79,15 @@
               "type": "Jira::Project",
               "id": "ABC"
             }
-          }
+          },
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
+              }
+            }
+          ]
         },
         "parents": [
           {
@@ -94,7 +103,15 @@
         },
         "attrs": {
           "key": "ABC",
-          "category": "Software"
+          "category": "Software",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
+              }
+            }
+          ]
         },
         "parents": []
       },
@@ -108,7 +125,12 @@
           "client": "claude-code",
           "scopes": {
             "jiraProjects": [
-              "ABC"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "Jira::Project/ABC"
+                }
+              }
             ],
             "confluenceSpaces": [],
             "gitlabGroups": [],
@@ -137,7 +159,12 @@
           "id": "mcp-jira-proj-ABC"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
+          }
+        ]
       },
       {
         "uid": {

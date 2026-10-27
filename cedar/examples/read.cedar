@@ -40,4 +40,4 @@ permit (
   action == Action::"read",
   resource is OpenSearch::Index
 )
-when { resource.namePrefixes.containsAny(principal.scopes.opensearchIndexPrefixes) };
+when { principal in resource.scopes };

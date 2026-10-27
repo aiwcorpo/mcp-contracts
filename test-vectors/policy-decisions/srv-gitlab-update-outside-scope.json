@@ -3,6 +3,7 @@
   "covers": [],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000007",
@@ -76,7 +77,15 @@
         "id": "team-b"
       },
       "attrs": {
-        "path": "team-b"
+        "path": "team-b",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
       },
       "parents": []
     },
@@ -92,7 +101,15 @@
             "type": "GitLab::Group",
             "id": "team-b"
           }
-        }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
       },
       "parents": [
         {
@@ -113,7 +130,12 @@
           "jiraProjects": [],
           "confluenceSpaces": [],
           "gitlabGroups": [
-            "team-a"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            }
           ],
           "opensearchIndexPrefixes": [],
           "servicedeskQueues": []
@@ -140,7 +162,12 @@
         "id": "mcp-gitlab-grp-team-a"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "GitLab::Group/team-a"
+        }
+      ]
     },
     {
       "uid": {

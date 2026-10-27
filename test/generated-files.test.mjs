@@ -13,13 +13,13 @@ for (const file of OPENAPI_FILES) {
 }
 
 import { build, BuilderError } from '../scripts/lib/entity-builder.mjs';
-import { listJson } from '../scripts/lib/contracts.mjs';
+import { listJson, readJson } from '../scripts/lib/contracts.mjs';
 
 test('entity-builder vectors agree with scripts/lib/entity-builder.mjs', () => {
   for (const { name, data } of listJson('test-vectors', 'entity-builder')) {
     let actual;
     try {
-      actual = build(data.level, data.input);
+      actual = build(data.level, data.input, readJson(data.staticEntities));
     } catch (e) {
       if (!(e instanceof BuilderError)) throw e;
       actual = { error: e.code };

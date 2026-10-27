@@ -15,7 +15,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Result of the builder: one Cedar authorization request and the entities it needs.
+ * Result of the builder: one Cedar authorization request and the entities it needs. The maps and the set are
+ * unmodifiable, but the cedar-java values and entities inside them are mutable cedar-java types: do not modify them.
  *
  * @param principal {@code User::"<sub>"}
  * @param action {@code Action::"call"} on the gateway, {@code Action::"<tool action>"} on the server

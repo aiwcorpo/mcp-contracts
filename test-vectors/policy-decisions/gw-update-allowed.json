@@ -3,6 +3,7 @@
   "covers": [],
   "builder": {
     "level": "gateway",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000002",
@@ -78,7 +79,12 @@
         "client": "claude-code",
         "scopes": {
           "jiraProjects": [
-            "ABC"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
+              }
+            }
           ],
           "confluenceSpaces": [],
           "gitlabGroups": [],
@@ -107,7 +113,12 @@
         "id": "mcp-jira-proj-ABC"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Jira::Project/ABC"
+        }
+      ]
     },
     {
       "uid": {

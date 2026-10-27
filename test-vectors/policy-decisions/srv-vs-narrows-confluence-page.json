@@ -6,6 +6,7 @@
   ],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000009",
@@ -74,7 +75,12 @@
       "virtualServer": "eng-docs",
       "vsScopes": {
         "confluenceSpaces": [
-          "ENG"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Space/ENG"
+            }
+          }
         ]
       },
       "refs": {
@@ -97,7 +103,21 @@
             "type": "Confluence::Space",
             "id": "OPS"
           }
-        }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Page/2002"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Space/OPS"
+            }
+          }
+        ]
       },
       "parents": [
         {
@@ -113,7 +133,15 @@
       },
       "attrs": {
         "key": "OPS",
-        "labels": []
+        "labels": [],
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Space/OPS"
+            }
+          }
+        ]
       },
       "parents": []
     },
@@ -128,7 +156,12 @@
         "scopes": {
           "jiraProjects": [],
           "confluenceSpaces": [
-            "ENG"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Confluence::Space/ENG"
+              }
+            }
           ],
           "gitlabGroups": [],
           "opensearchIndexPrefixes": [],
@@ -160,7 +193,12 @@
         "id": "mcp-confluence-space-ENG"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Confluence::Space/ENG"
+        }
+      ]
     }
   ],
   "expected": {

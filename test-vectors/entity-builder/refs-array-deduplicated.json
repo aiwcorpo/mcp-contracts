@@ -1,6 +1,7 @@
 {
   "description": "Array argument becomes a sorted set without duplicates.",
   "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -48,8 +49,18 @@
       "client": "claude-code",
       "refs": {
         "jiraProject": [
-          "ABC",
-          "DEF"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/DEF"
+            }
+          }
         ]
       }
     },

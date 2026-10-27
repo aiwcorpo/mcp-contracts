@@ -6,6 +6,7 @@
   ],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -84,7 +85,15 @@
             "type": "Jira::Project",
             "id": "HR"
           }
-        }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/HR"
+            }
+          }
+        ]
       },
       "parents": [
         {
@@ -100,7 +109,15 @@
       },
       "attrs": {
         "key": "HR",
-        "category": "Restricted"
+        "category": "Restricted",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/HR"
+            }
+          }
+        ]
       },
       "parents": []
     },

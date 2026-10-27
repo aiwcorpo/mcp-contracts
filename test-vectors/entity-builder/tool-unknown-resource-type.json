@@ -1,0 +1,34 @@
+{
+  "description": "resourceRefs with a type outside the model: denied.",
+  "level": "gateway",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "get_board",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "boardId",
+          "type": "Jira::Board"
+        }
+      ]
+    },
+    "arguments": {
+      "boardId": "7"
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

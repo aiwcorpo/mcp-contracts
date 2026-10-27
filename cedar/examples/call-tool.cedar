@@ -65,8 +65,10 @@ permit (
 )
 when { resource.server == "mcp-opensearch" && resource.risk == "READ_ONLY" };
 
-// Writes are allowed only inside scope groups (mcp-jira-proj-*). The gateway can check this early when the
-// tool takes a project key; for issue keys only the server knows the real project.
+// Writes are allowed only inside granted scopes (entities/static.json). The gateway checks this early only for
+// flat scope types named directly by an argument (here a Jira project key). Hierarchical types (GitLab groups,
+// OpenSearch prefixes, Confluence page trees) and ids whose container is unknown before resolution (issue keys)
+// are checked by the server with `principal in resource.scopes`.
 @id("jira-call-write-outside-scope")
 forbid (principal, action == Action::"call", resource is Tool)
 when {
@@ -75,14 +77,4 @@ when {
   context has refs &&
   context.refs has jiraProject &&
   !principal.scopes.jiraProjects.containsAll(context.refs.jiraProject)
-};
-
-@id("gitlab-call-write-outside-scope")
-forbid (principal, action == Action::"call", resource is Tool)
-when {
-  resource.server == "mcp-gitlab" &&
-  resource.risk != "READ_ONLY" &&
-  context has refs &&
-  context.refs has gitlabGroup &&
-  !principal.scopes.gitlabGroups.containsAll(context.refs.gitlabGroup)
 };

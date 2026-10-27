@@ -2,10 +2,12 @@
 // add a permission: it can only remove resources outside its narrowing (context.vsScopes, from the vsc claim).
 //
 // Every type a link can narrow (C5 resourceDefaults: Jira::Project, Confluence::Space, GitLab::Group,
-// OpenSearch::Index, ServiceDesk::Queue) is enforced on the server for the type and its children. The gateway
-// can check only arguments that name the narrowed type itself; issue keys, page ids, project paths, ticket ids
-// and index names reveal their container only after the server resolves them. A policy bundle (ws-09) must keep
-// a rule for every narrowable type; a missing rule silently widens the link.
+// OpenSearch::Index, ServiceDesk::Queue) is enforced on the server for the type and its children through
+// resource.scopes, which also covers subgroups and index prefixes. The gateway checks only arguments that name a
+// flat narrowed type itself; issue keys, page ids, group and project paths, ticket ids and index names are
+// checked by the server after resolution. Search and list tools are narrowed by the server in the backend query
+// and by filtering every returned element (CC-036). A policy bundle (ws-09) must keep a rule for every narrowable
+// type; a missing rule silently widens the link. vsScopes may appear only in forbid rules (CC-041).
 
 // ---------- gateway: Action::"call" with ids from resourceRefs ----------
 
@@ -29,16 +31,6 @@ when {
   !context.vsScopes.confluenceSpaces.containsAll(context.refs.confluenceSpace)
 };
 
-@id("vs-narrow-call-gitlab-group")
-forbid (principal, action == Action::"call", resource is Tool)
-when {
-  context has vsScopes &&
-  context.vsScopes has gitlabGroups &&
-  context has refs &&
-  context.refs has gitlabGroup &&
-  !context.vsScopes.gitlabGroups.containsAll(context.refs.gitlabGroup)
-};
-
 @id("vs-narrow-call-servicedesk-queue")
 forbid (principal, action == Action::"call", resource is Tool)
 when {
@@ -56,7 +48,7 @@ forbid (principal, action, resource is Jira::Project)
 when {
   context has vsScopes &&
   context.vsScopes has jiraProjects &&
-  !context.vsScopes.jiraProjects.contains(resource.key)
+  !context.vsScopes.jiraProjects.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-jira-issue")
@@ -64,7 +56,7 @@ forbid (principal, action, resource is Jira::Issue)
 when {
   context has vsScopes &&
   context.vsScopes has jiraProjects &&
-  !context.vsScopes.jiraProjects.contains(resource.project.key)
+  !context.vsScopes.jiraProjects.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-confluence-space")
@@ -72,7 +64,7 @@ forbid (principal, action, resource is Confluence::Space)
 when {
   context has vsScopes &&
   context.vsScopes has confluenceSpaces &&
-  !context.vsScopes.confluenceSpaces.contains(resource.key)
+  !context.vsScopes.confluenceSpaces.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-confluence-page")
@@ -80,7 +72,7 @@ forbid (principal, action, resource is Confluence::Page)
 when {
   context has vsScopes &&
   context.vsScopes has confluenceSpaces &&
-  !context.vsScopes.confluenceSpaces.contains(resource.space.key)
+  !context.vsScopes.confluenceSpaces.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-gitlab-group")
@@ -88,7 +80,7 @@ forbid (principal, action, resource is GitLab::Group)
 when {
   context has vsScopes &&
   context.vsScopes has gitlabGroups &&
-  !context.vsScopes.gitlabGroups.contains(resource.path)
+  !context.vsScopes.gitlabGroups.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-gitlab-project")
@@ -96,7 +88,7 @@ forbid (principal, action, resource is GitLab::Project)
 when {
   context has vsScopes &&
   context.vsScopes has gitlabGroups &&
-  !context.vsScopes.gitlabGroups.contains(resource.group.path)
+  !context.vsScopes.gitlabGroups.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-opensearch-index")
@@ -104,7 +96,7 @@ forbid (principal, action, resource is OpenSearch::Index)
 when {
   context has vsScopes &&
   context.vsScopes has opensearchIndexPrefixes &&
-  !resource.namePrefixes.containsAny(context.vsScopes.opensearchIndexPrefixes)
+  !context.vsScopes.opensearchIndexPrefixes.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-servicedesk-queue")
@@ -112,7 +104,7 @@ forbid (principal, action, resource is ServiceDesk::Queue)
 when {
   context has vsScopes &&
   context.vsScopes has servicedeskQueues &&
-  !context.vsScopes.servicedeskQueues.contains(resource.id)
+  !context.vsScopes.servicedeskQueues.containsAny(resource.scopes)
 };
 
 @id("vs-narrow-servicedesk-ticket")
@@ -120,5 +112,5 @@ forbid (principal, action, resource is ServiceDesk::Ticket)
 when {
   context has vsScopes &&
   context.vsScopes has servicedeskQueues &&
-  !context.vsScopes.servicedeskQueues.contains(resource.queue.id)
+  !context.vsScopes.servicedeskQueues.containsAny(resource.scopes)
 };

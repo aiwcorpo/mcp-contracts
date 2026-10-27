@@ -34,7 +34,7 @@ class PolicyDecisionVectorTest {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Set<String> REQUIRED_COVERAGE = Set.of(
             "no_group", "restricted", "write_without_write_group", "virtual_server_narrowing",
-            "unknown_tool", "forbid_overrides_permit");
+            "unknown_tool", "forbid_overrides_permit", "scope_hierarchy", "search_results");
     private static PolicySet policies;
     private static PolicySet permitsOnly;
     private final BasicAuthorizationEngine engine = new BasicAuthorizationEngine();
@@ -89,7 +89,8 @@ class PolicyDecisionVectorTest {
     void decisionThroughEntityBuilder(Path file) throws Exception {
         JsonNode vector = read(file);
         JsonNode builder = vector.get("builder");
-        CedarRequest built = VectorInputs.build(builder.get("level").asText(), builder.get("input"));
+        CedarRequest built = VectorInputs.build(builder.get("level").asText(), builder.get("input"),
+                builder.get("staticEntities").asText());
         if ("remove-tool-entity".equals(builder.path("adjustment").asText())) {
             Set<Entity> withoutTool = new LinkedHashSet<>(built.entities());
             withoutTool.removeIf(e -> "Tool".equals(e.getEUID().getType().toString()));

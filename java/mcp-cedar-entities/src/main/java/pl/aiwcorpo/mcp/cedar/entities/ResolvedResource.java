@@ -9,8 +9,9 @@ import java.util.Optional;
  *
  * <p>Attribute values may be {@link String}, {@link Boolean}, integral {@link Number}, a {@link java.util.Collection}
  * of those (a Cedar set), a {@link Map} with String keys (a Cedar record) or a cedar-java
- * {@link com.cedarpolicy.value.Value}. The builder adds the parent reference and derived attributes itself
- * (see {@code cedar/entity-builder.md}), so they must not be given here.
+ * {@link com.cedarpolicy.value.Value}. A {@code null} value means "no attribute" (e.g. a Jira project without a
+ * category). The builder adds the parent reference and {@code scopes} itself (see {@code cedar/entity-builder.md}),
+ * so they must not be given here. A Confluence page passes the ids of its ancestor pages as {@code ancestorIds}.
  *
  * @param type Cedar type, e.g. {@code Jira::Issue}
  * @param id entity id, e.g. {@code ABC-123}
@@ -22,7 +23,13 @@ public record ResolvedResource(String type, String id, Map<String, Object> attri
     public ResolvedResource {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(id, "id");
-        attributes = Map.copyOf(Objects.requireNonNull(attributes, "attributes"));
+        java.util.Map<String, Object> present = new java.util.LinkedHashMap<>();
+        Objects.requireNonNull(attributes, "attributes").forEach((k, v) -> {
+            if (v != null) {
+                present.put(k, v);
+            }
+        });
+        attributes = java.util.Collections.unmodifiableMap(present);
         Objects.requireNonNull(parent, "parent");
     }
 

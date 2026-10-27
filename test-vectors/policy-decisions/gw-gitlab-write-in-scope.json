@@ -3,6 +3,7 @@
   "covers": [],
   "builder": {
     "level": "gateway",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000007",
@@ -50,7 +51,12 @@
       "client": "claude-code",
       "refs": {
         "gitlabGroup": [
-          "team-a"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-a"
+            }
+          }
         ]
       }
     }
@@ -80,7 +86,12 @@
           "jiraProjects": [],
           "confluenceSpaces": [],
           "gitlabGroups": [
-            "team-a"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            }
           ],
           "opensearchIndexPrefixes": [],
           "servicedeskQueues": []
@@ -107,7 +118,12 @@
         "id": "mcp-gitlab-grp-team-a"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "GitLab::Group/team-a"
+        }
+      ]
     },
     {
       "uid": {

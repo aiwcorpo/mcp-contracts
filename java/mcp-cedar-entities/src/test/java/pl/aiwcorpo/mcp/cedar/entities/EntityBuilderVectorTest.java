@@ -34,11 +34,11 @@ class EntityBuilderVectorTest {
         JsonNode expected = vector.get("expected");
         String level = vector.get("level").asText();
         if (expected.has("error")) {
-            var e = assertThrows(EntityBuilderException.class, () -> VectorInputs.build(level, vector.get("input")));
+            var e = assertThrows(EntityBuilderException.class, () -> VectorInputs.build(level, vector.get("input"), vector.get("staticEntities").asText()));
             assertEquals(expected.get("error").asText(), e.code().wireCode());
             return;
         }
-        CedarRequest built = VectorInputs.build(level, vector.get("input"));
+        CedarRequest built = VectorInputs.build(level, vector.get("input"), vector.get("staticEntities").asText());
         assertEquals(expected, VectorInputs.toJson(built));
 
         engine.validateEntities(new EntityValidationRequest(CedarFixtures.schema(), new ArrayList<>(built.entities())));
@@ -48,12 +48,45 @@ class EntityBuilderVectorTest {
     }
 
     @Test
-    void scopeParsingKeepsDashesAndCase() {
-        var scopes = ScopeGroups.scopesFromGroups(List.of("mcp-gitlab-grp-team-a", "mcp-jira-proj-ABC", "mcp-jira-read"));
-        assertEquals(List.of("team-a"), List.copyOf(scopes.get("gitlabGroups")));
-        assertEquals(List.of("ABC"), List.copyOf(scopes.get("jiraProjects")));
-        assertTrue(scopes.get("confluenceSpaces").isEmpty());
-        assertEquals(ScopeGroups.SCOPE_FIELDS, List.copyOf(scopes.keySet()));
+    void mappingRejectsParentsThatAreNotScopes() throws Exception {
+        var entities = com.cedarpolicy.model.entity.Entities.parse(
+                "[{\"uid\":{\"type\":\"UserGroup\",\"id\":\"mcp-x\"},\"attrs\":{},\"parents\":[{\"type\":\"UserGroup\",\"id\":\"mcp-y\"}]}]");
+        var e = assertThrows(EntityBuilderException.class, () -> ScopeMapping.fromStaticEntities(entities.getEntities()));
+        assertEquals(EntityBuilderException.Code.INTERNAL_ERROR, e.code());
+        var badId = com.cedarpolicy.model.entity.Entities.parse(
+                "[{\"uid\":{\"type\":\"UserGroup\",\"id\":\"mcp-x\"},\"attrs\":{},\"parents\":[{\"type\":\"ResourceScope\",\"id\":\"Jira::Issue/ABC-1\"}]}]");
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.fromStaticEntities(badId.getEntities()));
+    }
+
+    @Test
+    void vscFieldsMustHoldOneToFiftyIds() {
+        assertThrows(EntityBuilderException.class, () -> VirtualServerScope.fromClaims("x", Map.of("jiraProjects", List.of())));
+        List<String> many = java.util.stream.IntStream.range(0, 51).mapToObj(i -> "P" + i).toList();
+        assertThrows(EntityBuilderException.class, () -> VirtualServerScope.fromClaims("x", Map.of("jiraProjects", many)));
+    }
+
+    @Test
+    void longOverflowIsABuilderError() {
+        Caller caller = Caller.of("u", "u", List.of(), "claude-code");
+        ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read", List.of());
+        var resource = ResolvedResource.of("Jira::Project", "ABC",
+                Map.of("key", "ABC", "size", new java.math.BigInteger("99999999999999999999")));
+        assertThrows(EntityBuilderException.class, () -> new EntityBuilder().forResource(caller, tool, Map.of(), resource));
+    }
+
+    @Test
+    void queryConstraintCombinesLinkAndMapping() {
+        Caller caller = Caller.of("u", "u", List.of("mcp-jira-proj-ABC", "mcp-jira-proj-DEF"), "claude-code")
+                .withVirtualServer(VirtualServerScope.fromResourceDefaults("l", Map.of("Jira::Project", List.of("ABC"))));
+        QueryConstraint c = VectorInputs.builder("cedar/examples/static-entities.json").queryConstraint(caller, "Jira::Project");
+        assertEquals(List.of("ABC"), List.copyOf(c.virtualServer().orElseThrow()));
+        assertEquals(List.of("ABC", "DEF"), List.copyOf(c.granted()));
+        assertTrue(new EntityBuilder().queryConstraint(caller, "Jira::Project").granted().isEmpty());
+    }
+
+    @Test
+    void pathPrefixesStopAtSlashes() {
+        assertEquals(List.of("team-a", "team-a/sub", "team-a/sub/app"), List.copyOf(ResourceScopes.pathPrefixes("team-a/sub/app")));
     }
 
     @Test

@@ -1,0 +1,151 @@
+{
+  "description": "GitLab UPDATE into team-b with scope team-a passes the gateway: group scopes are hierarchical and checked by the server (srv-gitlab-create-in-sibling-group).",
+  "covers": [],
+  "builder": {
+    "level": "gateway",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000007",
+        "usr": "gitlabwriter",
+        "grp": [
+          "mcp-gitlab-read",
+          "mcp-gitlab-write",
+          "mcp-gitlab-grp-team-a"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "create_project",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "groupPath",
+            "type": "GitLab::Group"
+          }
+        ]
+      },
+      "arguments": {
+        "groupPath": "team-b"
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000007"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "gitlab__create_project"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabGroup": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "gitlab__create_project"
+      },
+      "attrs": {
+        "server": "mcp-gitlab",
+        "name": "create_project",
+        "risk": "UPDATE"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000007"
+      },
+      "attrs": {
+        "username": "gitlabwriter",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            }
+          ],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-grp-team-a"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "GitLab::Group/team-a"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "gitlab-call-update"
+    ]
+  }
+}

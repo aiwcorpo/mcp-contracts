@@ -1,6 +1,7 @@
 {
-  "description": "Server: GitLab project with parent group.",
+  "description": "Server: GitLab project in a subgroup; scopes are every ancestor group path.",
   "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000007",
@@ -26,19 +27,19 @@
       ]
     },
     "arguments": {
-      "projectPath": "team-a/app"
+      "projectPath": "team-a/sub/app"
     },
     "resource": {
       "type": "GitLab::Project",
-      "id": "team-a/app",
+      "id": "team-a/sub/app",
       "attrs": {
-        "path": "team-a/app"
+        "path": "team-a/sub/app"
       },
       "parent": {
         "type": "GitLab::Group",
-        "id": "team-a",
+        "id": "team-a/sub",
         "attrs": {
-          "path": "team-a"
+          "path": "team-a/sub"
         }
       }
     }
@@ -54,13 +55,13 @@
     },
     "resource": {
       "type": "GitLab::Project",
-      "id": "team-a/app"
+      "id": "team-a/sub/app"
     },
     "context": {
       "client": "claude-code",
       "refs": {
         "gitlabProject": [
-          "team-a/app"
+          "team-a/sub/app"
         ]
       }
     },
@@ -68,31 +69,59 @@
       {
         "uid": {
           "type": "GitLab::Group",
-          "id": "team-a"
+          "id": "team-a/sub"
         },
         "attrs": {
-          "path": "team-a"
+          "path": "team-a/sub",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a/sub"
+              }
+            }
+          ]
         },
         "parents": []
       },
       {
         "uid": {
           "type": "GitLab::Project",
-          "id": "team-a/app"
+          "id": "team-a/sub/app"
         },
         "attrs": {
-          "path": "team-a/app",
+          "path": "team-a/sub/app",
           "group": {
             "__entity": {
               "type": "GitLab::Group",
-              "id": "team-a"
+              "id": "team-a/sub"
             }
-          }
+          },
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a/sub"
+              }
+            }
+          ]
         },
         "parents": [
           {
             "type": "GitLab::Group",
-            "id": "team-a"
+            "id": "team-a/sub"
           }
         ]
       },
@@ -108,7 +137,12 @@
             "jiraProjects": [],
             "confluenceSpaces": [],
             "gitlabGroups": [
-              "team-a"
+              {
+                "__entity": {
+                  "type": "ResourceScope",
+                  "id": "GitLab::Group/team-a"
+                }
+              }
             ],
             "opensearchIndexPrefixes": [],
             "servicedeskQueues": []
@@ -135,7 +169,12 @@
           "id": "mcp-gitlab-grp-team-a"
         },
         "attrs": {},
-        "parents": []
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "GitLab::Group/team-a"
+          }
+        ]
       },
       {
         "uid": {

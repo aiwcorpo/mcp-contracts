@@ -3,6 +3,7 @@
   "covers": [],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000008",
@@ -75,11 +76,31 @@
         "tags": [
           "logs"
         ],
-        "namePrefixes": [
-          "logs",
-          "logs-team",
-          "logs-team-a",
-          "logs-team-a-2026.10"
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team-a"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "OpenSearch::Index/logs-team-a-2026.10"
+            }
+          }
         ]
       },
       "parents": []
@@ -97,7 +118,12 @@
           "confluenceSpaces": [],
           "gitlabGroups": [],
           "opensearchIndexPrefixes": [
-            "logs-team-a"
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-a"
+              }
+            }
           ],
           "servicedeskQueues": []
         }
@@ -119,7 +145,12 @@
         "id": "mcp-opensearch-idx-logs-team-a"
       },
       "attrs": {},
-      "parents": []
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "OpenSearch::Index/logs-team-a"
+        }
+      ]
     },
     {
       "uid": {

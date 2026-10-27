@@ -3,6 +3,7 @@
   "covers": [],
   "builder": {
     "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -57,7 +58,12 @@
       "client": "claude-code",
       "refs": {
         "jiraProject": [
-          "ABC"
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
         ]
       }
     }
@@ -69,7 +75,15 @@
         "id": "ABC"
       },
       "attrs": {
-        "key": "ABC"
+        "key": "ABC",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
       },
       "parents": []
     },

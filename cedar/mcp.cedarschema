@@ -1,4 +1,4 @@
-// Cedar model of the MCP platform (contract C7), mcp-contracts 1.1.0.
+// Cedar model of the MCP platform (contract C7), mcp-contracts 1.2.0.
 //
 // Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
 // and policies must guard it with `has`.
@@ -6,38 +6,50 @@
 // Two evaluations use this schema (C7):
 //   gateway: principal User, Action::"call", resource Tool, context built from the tool's resourceRefs
 //   server:  principal User, Action::"read" | "update" | "delete" | "admin", resource = resolved system entity
-// How principal.scopes, context.vsScopes and context.refs are derived is specified in cedar/entity-builder.md.
+// How principal.scopes, context.vsScopes, context.refs and resource.scopes are derived is specified in
+// cedar/entity-builder.md. Every system resource carries `scopes`: the ResourceScope ids of itself and all
+// its containers (project of an issue, every ancestor group path, every dash prefix of an index name, space
+// and ancestor pages of a page), so `principal in resource.scopes` covers subgroups and page trees.
 
-// Derived from scope groups mcp-<system>-<restype>-<id> (C9). Always present; an empty set means no scope.
+// A grantable resource scope (CC-037). Id "<ResourceType>/<id>", e.g. "Jira::Project/ABC",
+// "GitLab::Group/team-a", "OpenSearch::Index/logs-team-a", "Confluence::Page/1234". Which group grants which
+// scope is DATA: the main policy bundle's entities/static.json lists UserGroup entities whose parents are
+// ResourceScope entities. A group without such an entry grants nothing (fail-closed).
+entity ResourceScope;
+
+// Scopes granted to the user, from the bundle's mapping (see above). Always present; empty = nothing granted.
+// Only exact ids: the gateway uses it for early checks of flat types (Jira projects, Confluence spaces,
+// service desk queues). Hierarchical checks use `principal in resource.scopes` on the server.
 type Scopes = {
-  jiraProjects: Set<String>,
-  confluenceSpaces: Set<String>,
-  gitlabGroups: Set<String>,
-  opensearchIndexPrefixes: Set<String>,
-  servicedeskQueues: Set<String>,
+  jiraProjects: Set<ResourceScope>,
+  confluenceSpaces: Set<ResourceScope>,
+  gitlabGroups: Set<ResourceScope>,
+  opensearchIndexPrefixes: Set<ResourceScope>,
+  servicedeskQueues: Set<ResourceScope>,
 };
 
-// Narrowing from the virtual server's resourceDefaults (C5). An absent field means
-// "this virtual server does not narrow this resource type", which is why it cannot reuse Scopes.
+// Narrowing of the virtual server, from the vsc claim (CC-027). An absent field means "this link does not
+// narrow this resource type". Policies may read vsScopes only in forbid rules (CC-041).
 type VsScopes = {
-  jiraProjects?: Set<String>,
-  confluenceSpaces?: Set<String>,
-  gitlabGroups?: Set<String>,
-  opensearchIndexPrefixes?: Set<String>,
-  servicedeskQueues?: Set<String>,
+  jiraProjects?: Set<ResourceScope>,
+  confluenceSpaces?: Set<ResourceScope>,
+  gitlabGroups?: Set<ResourceScope>,
+  opensearchIndexPrefixes?: Set<ResourceScope>,
+  servicedeskQueues?: Set<ResourceScope>,
 };
 
 // Identifiers taken only from tool arguments declared in resourceRefs (C6). A field is present exactly
-// when the tool declares a resourceRef of that type; argument values are never trusted beyond being ids.
+// when the tool declares a resourceRef of that type. Ids of grantable flat types become ResourceScope
+// entities so they compare with Scopes and VsScopes; the others stay plain strings.
 type Refs = {
-  jiraProject?: Set<String>,
+  jiraProject?: Set<ResourceScope>,
   jiraIssue?: Set<String>,
-  confluenceSpace?: Set<String>,
+  confluenceSpace?: Set<ResourceScope>,
   confluencePage?: Set<String>,
-  gitlabGroup?: Set<String>,
+  gitlabGroup?: Set<ResourceScope>,
   gitlabProject?: Set<String>,
   opensearchIndex?: Set<String>,
-  servicedeskQueue?: Set<String>,
+  servicedeskQueue?: Set<ResourceScope>,
   servicedeskTicket?: Set<String>,
 };
 
@@ -50,7 +62,8 @@ type RequestContext = {
 };
 
 // Called UserGroup, not Group: Cedar 4 rejects a top-level Group next to GitLab::Group (shadowing). See CC-001.
-entity UserGroup;
+// Parents (ResourceScope) come only from entities/static.json of the main bundle.
+entity UserGroup in [ResourceScope];
 
 // Entity id = `sub` from C1/C2. Parents = the user's mcp-* groups.
 entity User in [UserGroup] {
@@ -71,11 +84,13 @@ namespace Jira {
   entity Project {
     key: String,
     category?: String,
+    scopes: Set<ResourceScope>,
   };
   // `project` duplicates the parent edge because Cedar cannot read attributes of an ancestor through `in`.
   entity Issue in [Project] {
     key: String,
     project: Project,
+    scopes: Set<ResourceScope>,
   };
 }
 
@@ -83,40 +98,46 @@ namespace Confluence {
   entity Space {
     key: String,
     labels: Set<String>,
+    scopes: Set<ResourceScope>,
   };
+  // ancestorIds: ids of the ancestor pages as reported by Confluence (page tree scopes, CC-037).
   entity Page in [Space] {
     id: String,
     space: Space,
+    ancestorIds?: Set<String>,
+    scopes: Set<ResourceScope>,
   };
 }
 
 namespace GitLab {
   entity Group {
     path: String,
+    scopes: Set<ResourceScope>,
   };
   entity Project in [Group] {
     path: String,
     group: Group,
+    scopes: Set<ResourceScope>,
   };
 }
 
 namespace OpenSearch {
-  // namePrefixes: every dash-delimited prefix of name, computed by the entity builder,
-  // because Cedar cannot match a string prefix against a value held in a set.
   entity Index {
     name: String,
     tags: Set<String>,
-    namePrefixes: Set<String>,
+    scopes: Set<ResourceScope>,
   };
 }
 
 namespace ServiceDesk {
   entity Queue {
     id: String,
+    scopes: Set<ResourceScope>,
   };
   entity Ticket in [Queue] {
     id: String,
     queue: Queue,
+    scopes: Set<ResourceScope>,
   };
 }
 
