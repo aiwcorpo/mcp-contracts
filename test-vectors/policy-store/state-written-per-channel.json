@@ -1,0 +1,58 @@
+{
+  "description": "A normal sequence writes the state of both channels.",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "persistence": {
+    "stateBefore": {
+      "main": null,
+      "overrides": null
+    },
+    "minimumRevision": {},
+    "expectedWarnings": 2,
+    "stateAfter": {
+      "main": {
+        "revision": "20261026120000-a1b2c3d",
+        "archiveSha256": "sha256:38aed21757ccdfd462b0f75988dfa6c51ca8ad0b35ba215933e0816121a5638a"
+      },
+      "overrides": {
+        "revision": "20261026121500-d4e5f60",
+        "archiveSha256": "sha256:b99aeffa1155805b97c0f0dcfb27454a579ac038410ccbeafd972d73aa1d8cbe"
+      }
+    }
+  },
+  "steps": [
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026120000-a1b2c3d",
+        "url": "policies-20261026120000-a1b2c3d.tar.gz",
+        "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026120000-a1b2c3d.tar.gz",
+      "signature": "files/policies-20261026120000-a1b2c3d.tar.gz.sig"
+    },
+    {
+      "channel": "overrides",
+      "latest": {
+        "revision": "20261026121500-d4e5f60",
+        "url": "policies-20261026121500-d4e5f60.tar.gz",
+        "sigUrl": "policies-20261026121500-d4e5f60.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026121500-d4e5f60.tar.gz",
+      "signature": "files/policies-20261026121500-d4e5f60.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": true
+    },
+    {
+      "accept": true
+    }
+  ],
+  "final": {
+    "main": "20261026120000-a1b2c3d",
+    "overrides": "20261026121500-d4e5f60"
+  }
+}

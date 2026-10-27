@@ -1,0 +1,45 @@
+{
+  "description": "Persisted revision with another archive hash: the same revision with different content is rejected.",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "persistence": {
+    "stateBefore": {
+      "main": {
+        "revision": "20261026130000-b2c3d4e",
+        "archiveSha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "overrides": null
+    },
+    "minimumRevision": {},
+    "expectedWarnings": 1,
+    "stateAfter": {
+      "main": {
+        "revision": "20261026130000-b2c3d4e",
+        "archiveSha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  },
+  "steps": [
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026130000-b2c3d4e",
+        "url": "policies-20261026130000-b2c3d4e.tar.gz",
+        "sigUrl": "policies-20261026130000-b2c3d4e.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026130000-b2c3d4e.tar.gz",
+      "signature": "files/policies-20261026130000-b2c3d4e.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": false,
+      "reason": "not_newer"
+    }
+  ],
+  "final": {
+    "main": null,
+    "overrides": null
+  }
+}

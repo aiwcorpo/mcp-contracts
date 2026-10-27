@@ -48,6 +48,29 @@ public final class ResultFilter {
     }
 
     /**
+     * CC-061: a call is allowed only if every value of every resourceRef argument (array elements, source and
+     * target, the container a resource is created in) is allowed on its own. The caller resolves one resource per
+     * value; an empty list, a resource that cannot be built or evaluated, or any deny gives false.
+     *
+     * @param resources one resolved resource per value of every resourceRef argument
+     */
+    public boolean allAllowed(Caller caller, ToolDescriptor tool, Map<String, ?> arguments, List<ResolvedResource> resources) {
+        if (resources.isEmpty()) {
+            return false;
+        }
+        for (ResolvedResource resource : resources) {
+            try {
+                if (!authorizer.isAllowed(builder.forResource(caller, tool, arguments, resource))) {
+                    return false;
+                }
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * @param items elements returned by the backend, in backend order
      * @param toResource resolves an element to the resource the policy is evaluated on (with its parent)
      * @return allowed elements in the original order

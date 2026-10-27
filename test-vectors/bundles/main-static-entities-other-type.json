@@ -1,0 +1,19 @@
+{
+  "description": "static.json contains a User entity; only UserGroup entities are allowed (CC-059).",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026151500-f1abd67",
+    "url": "policies-20261026151500-f1abd67.tar.gz",
+    "sigUrl": "policies-20261026151500-f1abd67.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026151500-f1abd67.tar.gz",
+  "signature": "files/policies-20261026151500-f1abd67.tar.gz.sig",
+  "publicKey": "keys/test-policy-bundle.public.pem",
+  "loadedRevision": "20261026130000-b2c3d4e",
+  "expected": {
+    "accept": false,
+    "reason": "static_entities_invalid"
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
+}

@@ -1,0 +1,41 @@
+{
+  "description": "Overrides policy reuses an @id of the main bundle; rejected, the store keeps no overrides.",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "steps": [
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026120000-a1b2c3d",
+        "url": "policies-20261026120000-a1b2c3d.tar.gz",
+        "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026120000-a1b2c3d.tar.gz",
+      "signature": "files/policies-20261026120000-a1b2c3d.tar.gz.sig"
+    },
+    {
+      "channel": "overrides",
+      "latest": {
+        "revision": "20261026171000-3a4b5c6",
+        "url": "policies-20261026171000-3a4b5c6.tar.gz",
+        "sigUrl": "policies-20261026171000-3a4b5c6.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026171000-3a4b5c6.tar.gz",
+      "signature": "files/policies-20261026171000-3a4b5c6.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": true
+    },
+    {
+      "accept": false,
+      "reason": "id_conflict"
+    }
+  ],
+  "final": {
+    "main": "20261026120000-a1b2c3d",
+    "overrides": null
+  }
+}

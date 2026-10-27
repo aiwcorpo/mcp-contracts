@@ -1,0 +1,19 @@
+{
+  "description": "A permit rule reads context.virtualServer; the slug is chosen by the user, so a link could grant (CC-058).",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026151400-fa35e19",
+    "url": "policies-20261026151400-fa35e19.tar.gz",
+    "sigUrl": "policies-20261026151400-fa35e19.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026151400-fa35e19.tar.gz",
+  "signature": "files/policies-20261026151400-fa35e19.tar.gz.sig",
+  "publicKey": "keys/test-policy-bundle.public.pem",
+  "loadedRevision": "20261026130000-b2c3d4e",
+  "expected": {
+    "accept": false,
+    "reason": "link_context_in_permit"
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
+}

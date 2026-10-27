@@ -1,5 +1,5 @@
 {
-  "description": "A null attribute from the resolver means \"no attribute\" (Jira project without category).",
+  "description": "A null attribute from the resolver means \"no attribute\"; for the required classification (category) the builder refuses the entity (CC-062).",
   "level": "server",
   "staticEntities": "cedar/examples/static-entities.json",
   "input": {
@@ -39,81 +39,6 @@
     }
   },
   "expected": {
-    "principal": {
-      "type": "User",
-      "id": "b1a7c0de-0000-4000-8000-000000000001"
-    },
-    "action": {
-      "type": "Action",
-      "id": "read"
-    },
-    "resource": {
-      "type": "Jira::Project",
-      "id": "ABC"
-    },
-    "context": {
-      "client": "claude-code",
-      "refs": {
-        "jiraProject": [
-          {
-            "__entity": {
-              "type": "ResourceScope",
-              "id": "Jira::Project/ABC"
-            }
-          }
-        ]
-      }
-    },
-    "entities": [
-      {
-        "uid": {
-          "type": "Jira::Project",
-          "id": "ABC"
-        },
-        "attrs": {
-          "key": "ABC",
-          "scopes": [
-            {
-              "__entity": {
-                "type": "ResourceScope",
-                "id": "Jira::Project/ABC"
-              }
-            }
-          ]
-        },
-        "parents": []
-      },
-      {
-        "uid": {
-          "type": "User",
-          "id": "b1a7c0de-0000-4000-8000-000000000001"
-        },
-        "attrs": {
-          "username": "reader",
-          "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
-        },
-        "parents": [
-          {
-            "type": "UserGroup",
-            "id": "mcp-jira-read"
-          }
-        ]
-      },
-      {
-        "uid": {
-          "type": "UserGroup",
-          "id": "mcp-jira-read"
-        },
-        "attrs": {},
-        "parents": []
-      }
-    ]
+    "error": "internal_error"
   }
 }

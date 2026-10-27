@@ -34,7 +34,7 @@ class PolicyDecisionVectorTest {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Set<String> REQUIRED_COVERAGE = Set.of(
             "no_group", "restricted", "write_without_write_group", "virtual_server_narrowing",
-            "unknown_tool", "forbid_overrides_permit", "scope_hierarchy", "search_results");
+            "unknown_tool", "forbid_overrides_permit", "scope_hierarchy", "search_results", "every_resource_ref");
     private static PolicySet policies;
     private static PolicySet permitsOnly;
     private final BasicAuthorizationEngine engine = new BasicAuthorizationEngine();

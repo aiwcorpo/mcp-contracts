@@ -2,6 +2,7 @@
 // JWT vectors have their own generator (randomized signatures). Tests verify the committed files.
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createHash, createPrivateKey, sign } from 'node:crypto';
+import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash } from './lib/definition-hash.mjs';
 import { path } from './lib/contracts.mjs';
 import { tarGz } from './lib/tar.mjs';
@@ -415,6 +416,27 @@ ids('opensearch-prefix', 'OpenSearch::Index', 'scope', ['logs-team-a', 'logs', '
 ids('servicedesk-queue', 'ServiceDesk::Queue', 'resource', ['42', 'IT_support', 'q-1'], ['', '-1', 'q 1', 'q/1', '42;DROP']);
 ids('servicedesk-ticket', 'ServiceDesk::Ticket', 'resource', ['501', 'INC-1'], ['INC 1', 'INC/1', '']);
 
+// ---------- RFC 8785 numbers (CC-063) ----------
+{
+  // Deterministic pseudo-random doubles plus edge cases; expected strings come from the JavaScript engine itself.
+  let seed = 0x2545f491;
+  const next = () => { seed ^= seed << 13; seed >>>= 0; seed ^= seed >>> 17; seed ^= seed << 5; seed >>>= 0; return seed; };
+  const view = new DataView(new ArrayBuffer(8));
+  const values = [0, 1, -1, 0.1, 1e3, 1e21, 1e20, 1e-7, 1e-6, 123.456, 5e-324, -5e-324, 1.7976931348623157e308,
+    9007199254740992, 9007199254740993, 2 ** -1074, 0.000001234, 1234567890123456789, 1 / 3, 2 / 3, 100, 1e100];
+  for (let i = 0; i < 300; i++) {
+    view.setUint32(0, next()); view.setUint32(4, next());
+    const d = view.getFloat64(0);
+    if (Number.isFinite(d)) values.push(d);
+  }
+  const cases = values.map((d) => {
+    view.setFloat64(0, d);
+    const bits = view.getBigUint64(0).toString(16).padStart(16, '0');
+    return { bits, canonical: canonicalize(d) };
+  });
+  write('canonical-json', 'numbers.json', { description: 'IEEE 754 doubles (bits, big-endian hex) and their RFC 8785 / ECMAScript form.', cases });
+}
+
 // ---------- tool errors (C10) ----------
 
 const toolError = (name, description, body, valid) =>
@@ -624,10 +646,28 @@ mainCase(6, 'tar-oversized-entry', 'One entry larger than 4 MiB after decompress
 mainCase(7, 'tar-ustar-prefix', 'Long entry name split into the ustar prefix and name fields; the reader joins them.',
   (r) => buildBundle(r, shaOf(r), [...examplePolicies.slice(1),
     [`${'very-long-file-name-'.repeat(4)}call-tool.cedar`, examplePolicies[0][1], { prefix: 'policies/split' }]]), null);
+mainCase(14, 'main-permit-reads-virtual-server', 'A permit rule reads context.virtualServer; the slug is chosen by the user, so a link could grant (CC-058).',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/bad-slug.cedar',
+    '@id("slug-grants")\npermit (principal, action == Action::"call", resource is Tool)\nwhen { context has virtualServer && context.virtualServer == "magic" };\n']]),
+  'link_context_in_permit');
+mainCase(15, 'main-static-entities-other-type', 'static.json contains a User entity; only UserGroup entities are allowed (CC-059).',
+  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: staticEntitiesText.trimEnd().replace(/\]$/,
+    ',\n  {"uid": {"type": "User", "id": "b1a7c0de-0000-4000-8000-000000000005"}, "attrs": {"username": "x", "client": "claude-code", "scopes": {"jiraProjects": [], "confluenceSpaces": [], "gitlabGroups": [], "opensearchIndexPrefixes": [], "servicedeskQueues": []}}, "parents": []}\n]\n') }),
+  'static_entities_invalid');
+mainCase(16, 'main-static-entities-group-with-attrs', 'A UserGroup with attributes; mapping entries carry nothing but parents (CC-059).',
+  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{"note":"x"},"parents":[]}]\n' }),
+  'static_entities_invalid');
+mainCase(17, 'main-schema-mismatch', 'schema.cedarschema differs from the schema of this contracts version (ResourceScope may nest); rejected (CC-059).',
+  (r) => tarGz([
+    ['manifest.json', manifestJson(r, shaOf(r))],
+    ['schema.cedarschema', schemaText.replace('entity ResourceScope;', 'entity ResourceScope in [ResourceScope];')],
+    ...examplePolicies,
+    ['entities/static.json', staticEntitiesText],
+  ]), 'schema_mismatch');
 mainCase(8, 'main-permit-reads-vsscopes', 'A permit rule reads context.vsScopes; a link could then grant (CC-041).',
   (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/bad-vs.cedar',
     '@id("vs-grants")\npermit (principal, action, resource is Jira::Issue)\nwhen { context has vsScopes && context.vsScopes has jiraProjects && context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
-  'vs_scopes_in_permit');
+  'link_context_in_permit');
 mainCase(9, 'main-static-entities-invalid-mapping', 'static.json maps a group to a parent that is not a ResourceScope (CC-037).',
   (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{},"parents":[{"type":"UserGroup","id":"mcp-y"}]}]\n' }),
   'static_entities_invalid');
@@ -680,3 +720,49 @@ latestCase('latest-sig-revision-mismatch', 'sigUrl names a different revision th
   { revision: R2, url: `policies-${R2}.tar.gz`, sigUrl: `policies-${R1}.tar.gz.sig` }, false, 'invalid_latest');
 
 console.log('vectors written');
+
+// ---------- policy store sequences (CC-060) ----------
+mkdirSync(path('test-vectors', 'policy-store'), { recursive: true });
+const OC = '20261026171000-3a4b5c6';
+store(OC, buildOverrides(OC, sha('3a4b5c6'), [['policies/overrides/clash.cedar',
+  '@id("jira-call-read")\nforbid (principal, action == Action::"call", resource == Tool::"jira__get_issue");\n']]), 'test-policy-overrides');
+const MC = '20261026172000-4b5c6d7';
+store(MC, buildBundle(MC, sha('4b5c6d7'), [...examplePolicies, ['policies/clash.cedar',
+  '@id("override-disable-jira-delete")\nforbid (principal, action == Action::"call", resource == Tool::"jira__delete_issue");\n']]), 'test-policy-bundle');
+const step = (channel, revision) => ({ channel, latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig` });
+const storeCase = (name, description, steps, expected, final, persistence) =>
+  write('policy-store', `${name}.json`, { description, mainKey: MAIN_KEY, overridesKey: OVERRIDES_KEY, allowTestKeys: true,
+    ...(persistence && { persistence }), steps, expected, final });
+const archiveSha = (revision) => 'sha256:' + createHash('sha256').update(archives[revision] ?? readFileSync(path(...bundleDir, `policies-${revision}.tar.gz`))).digest('hex');
+const state = (revision) => ({ revision, archiveSha256: archiveSha(revision) });
+storeCase('normal-sequence', 'Main, overrides, newer main: every step accepted, overrides stay active across the main update.',
+  [step('main', R1), step('overrides', O1), step('main', R2)], [{ accept: true }, { accept: true }, { accept: true }], { main: R2, overrides: O1 });
+storeCase('overrides-before-main', 'Overrides cannot load before a main bundle (no schema to validate them against).',
+  [step('overrides', O1)], [{ accept: false, reason: 'main_not_loaded' }], { main: null, overrides: null });
+storeCase('overrides-id-conflict', 'Overrides policy reuses an @id of the main bundle; rejected, the store keeps no overrides.',
+  [step('main', R1), step('overrides', OC)], [{ accept: true }, { accept: false, reason: 'id_conflict' }], { main: R1, overrides: null });
+storeCase('main-conflicts-with-loaded-overrides', 'A new main bundle reuses the @id of the loaded overrides; fail-closed: the new main is rejected and main R1 with overrides O1 stay.',
+  [step('main', R1), step('overrides', O1), step('main', MC)], [{ accept: true }, { accept: true }, { accept: false, reason: 'id_conflict' }], { main: R1, overrides: O1 });
+storeCase('rollback-in-store', 'The store tracks the loaded revision itself; an older main after a newer one is rejected.',
+  [step('main', R2), step('main', R1)], [{ accept: true }, { accept: false, reason: 'not_newer' }], { main: R2, overrides: null });
+
+// ---------- rollback protection across restarts (CC-066) ----------
+storeCase('restart-reload-same-bundle', 'After a restart the persisted main R2 may be loaded again (same revision, same archive).',
+  [step('main', R2)], [{ accept: true }], { main: R2, overrides: null },
+  { stateBefore: { main: state(R2), overrides: null }, minimumRevision: {}, expectedWarnings: 1, stateAfter: { main: state(R2) } });
+storeCase('restart-rollback', 'After a restart an older main bundle than the persisted one is rejected.',
+  [step('main', R1)], [{ accept: false, reason: 'not_newer' }], { main: null, overrides: null },
+  { stateBefore: { main: state(R2), overrides: null }, minimumRevision: {}, expectedWarnings: 1, stateAfter: { main: state(R2) } });
+storeCase('restart-same-revision-other-archive', 'Persisted revision with another archive hash: the same revision with different content is rejected.',
+  [step('main', R2)], [{ accept: false, reason: 'not_newer' }], { main: null, overrides: null },
+  { stateBefore: { main: { revision: R2, archiveSha256: 'sha256:' + '0'.repeat(64) }, overrides: null }, minimumRevision: {}, expectedWarnings: 1,
+    stateAfter: { main: { revision: R2, archiveSha256: 'sha256:' + '0'.repeat(64) } } });
+storeCase('corrupt-state-uses-minimum', 'Unreadable state file: the configured minimum R2 applies, R1 is rejected and a warning is reported.',
+  [step('main', R1), step('main', R2)], [{ accept: false, reason: 'below_minimum' }, { accept: true }], { main: R2, overrides: null },
+  { stateBefore: { main: 'corrupt', overrides: null }, minimumRevision: { main: R2 }, expectedWarnings: 2, stateAfter: { main: state(R2) } });
+storeCase('state-written-per-channel', 'A normal sequence writes the state of both channels.',
+  [step('main', R1), step('overrides', O1)], [{ accept: true }, { accept: true }], { main: R1, overrides: O1 },
+  { stateBefore: { main: null, overrides: null }, minimumRevision: {}, expectedWarnings: 2, stateAfter: { main: state(R1), overrides: state(O1) } });
+storeCase('overrides-below-minimum', 'Minimum revision of the overrides channel after an incident.',
+  [step('main', R1), step('overrides', O1)], [{ accept: true }, { accept: false, reason: 'below_minimum' }], { main: R1, overrides: null },
+  { stateBefore: { main: null, overrides: null }, minimumRevision: { overrides: OC }, expectedWarnings: 2, stateAfter: { main: state(R1) } });

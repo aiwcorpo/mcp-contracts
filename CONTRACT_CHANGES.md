@@ -2,7 +2,7 @@
 
 Plik zbiera miejsca, w których `01-contracts.md` jest nieprecyzyjny albo sprzeczny, oraz propozycje zmian
 od agentów. Każda pozycja ma przyjęty wariant, który **już jest** zaimplementowany w `mcp-contracts` 1.0.0,
-i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-053 i CC-056 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno); CC-054, CC-055, CC-057, CC-058 otwarte); odrzucenie wariantu oznacza nowe wydanie
+i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-053, CC-056, CC-058 ... CC-065 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno); CC-054, CC-055, CC-057 otwarte); odrzucenie wariantu oznacza nowe wydanie
 kontraktów (patrz SemVer w `README.md`).
 
 Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alternatywy, status.
@@ -481,7 +481,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 
 - **Problem (M6):** `permit` czytający `vsScopes` pozwoliłby linkowi nadać uprawnienie.
 - **Przyjęty wariant:** reguła kontraktu; lint na sparsowanej polityce (postać JSON z parsera Cedar, nie tekst)
-  w odbiorcy (`mcp-policy-bundle`, powód `vs_scopes_in_permit`) i jako narzędzie potoku ws-09
+  w odbiorcy (`mcp-policy-bundle`, powód `vs_scopes_in_permit`, od 2.0.0 `link_context_in_permit`, CC-058) i jako narzędzie potoku ws-09
   (`PolicyLintCli`). Wektor `bundles/main-permit-reads-vsscopes`.
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
 
@@ -714,4 +714,78 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** jeśli nie weszło do 2.0.0: `PolicyLint` i odbiorca odrzucają `permit` czytający którekolwiek z
   `vsScopes` i `virtualServer` (powód `vs_scopes_in_permit` albo nowy `link_context_in_permit`), wektor
   `bundles/main-permit-reads-virtual-server`.
-- **Status:** open
+- **Weszło w 2.0.0:** `PolicyLint.linkContextOutsideForbid` i odbiorca odrzucają `permit` czytający `context.vsScopes` albo `context.virtualServer`; jeden powód `link_context_in_permit` (zastępuje `vs_scopes_in_permit`); wektor `bundles/main-permit-reads-virtual-server`. Zamyka też punkt M2 przeglądu 1.2.0.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-059 | C7 | Paczka główna: tylko mapowanie zakresów, schemat przypięty
+
+- **Problem (przegląd 1.2.0, H3):** `static.json` mógł zawierać dowolne encje (`User`, `Tool`, `ResourceScope`),
+  które po scaleniu z encjami buildera dawały konflikt (odmowa wszystkiego) albo zmieniały hierarchię; schemat
+  z paczki nie był porównywany z wersją kontraktów, więc paczka mogła np. pozwolić na zagnieżdżanie
+  `ResourceScope` i poszerzyć zakresy.
+- **Przyjęty wariant:** `entities/static.json` zawiera wyłącznie encje `UserGroup` z `attrs: {}` i rodzicami
+  `ResourceScope`; inne -> `static_entities_invalid`. `schema.cedarschema` musi być bajtowo równy
+  `McpCedarSchema.text()` biblioteki (`cedar/mcp.cedarschema` tej wersji kontraktów); inaczej `schema_mismatch`.
+  `PolicyBundle` nie wystawia encji statycznych, tylko `ScopeMapping` (builder sam tworzy encje `UserGroup`).
+  Wektory `bundles/main-static-entities-other-type`, `main-static-entities-group-with-attrs`, `main-schema-mismatch`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-060 | C7 | `PolicyStore`: atomowa podmiana i spójność kanałów
+
+- **Problem (M1):** odbiorca był bezstanowy; konsumenci musieli sami robić atomową podmianę, serializację,
+  rewalidację `overrides` po nowej paczce głównej; ten sam `@id` w obu kanałach psuł każdą ocenę.
+- **Przyjęty wariant:** `PolicyStore` w `mcp-policy-bundle`: jedna migawka (main + overrides + schemat +
+  `EntityBuilder`), aktualizacje serializowane, odczyt bez blokady. `overrides` wymaga załadowanej paczki głównej
+  (`main_not_loaded`); rewizje śledzone przez magazyn per kanał; `@id` unikalne między kanałami (`id_conflict`).
+  Nowa paczka główna sprzeczna z załadowanymi `overrides` jest odrzucana, a dotychczasowe main i `overrides`
+  zostają (fail-closed: zwykła aktualizacja nigdy nie usuwa awaryjnego `forbid`). Wektory `test-vectors/policy-store/`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-061 | C7 | Serwer ocenia każdą wartość każdego `resourceRef`
+
+- **Problem (H4):** po przeniesieniu kontroli zakresów GitLaba na serwer nic nie wymagało oceny wszystkich
+  zasobów wywołania (tablice, źródło i cel, kontener przy tworzeniu); serwer oceniający pierwszy argument
+  poszerzałby zapis.
+- **Przyjęty wariant:** obowiązek serwera (`cedar/entity-builder.md` sekcja 10): `forResource` dla każdej wartości
+  każdego argumentu z `resourceRefs` (elementy tablic, źródło i cel), przy tworzeniu także dla kontenera
+  docelowego; wywołanie dozwolone tylko, gdy wszystkie oceny dają `allow`. API `ResultFilter.allAllowed`.
+  Wektory `test-vectors/resource-checks/` (transfer, tablica), decyzje `srv-transfer-*`. Wczesnej kontroli
+  GitLaba na gateway'u nie dodano: wymaga kwantyfikatora "dla każdego" po prefiksach ścieżek, którego Cedar nie ma.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-062 | C7 | Wymagana klasyfikacja zasobu
+
+- **Problem (M5):** projekt Jira bez `category` (atrybut opcjonalny) przechodził `forbid` dla `Restricted`;
+  `ResultFilter` przepuszczał takie elementy (fail-open).
+- **Przyjęty wariant:** atrybuty klasyfikacji są wymagane: `Jira::Project.category` (`""`, gdy projekt nie ma
+  kategorii; teraz wymagany w schemacie Cedar), `Confluence::Space.labels`, `OpenSearch::Index.tags`. Builder
+  odmawia zbudowania zasobu (także rodzica) bez nich (`internal_error`), więc `ResultFilter` pomija element.
+  GitLab i service desk nie mają klasyfikacji (CC-057 otwarte). Wektory `entity-builder/resource-null-attribute`,
+  `resource-missing-classification-parent`, `resource-missing-labels`, `result-filter/jira-project-without-category`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-063 | C6 | `definitionHash` i reguły manifestu w Javie
+
+- **Problem (M7):** hash (z `title`) i reguły CC-018/CC-043 istniały tylko w JS; ws-02 i ws-05 musiałyby napisać
+  własne wersje.
+- **Przyjęty wariant:** nowy moduł `pl.aiwcorpo.mcp:mcp-manifest` (tylko jackson-databind): `CanonicalJson`
+  (RFC 8785, liczby jak w ECMAScript), `DefinitionHash`, `ManifestRules`. Testy na wszystkich wektorach
+  `definition-hash/` i `manifests/` oraz na 322 liczbach z `test-vectors/canonical-json/numbers.json`, których
+  oczekiwane postacie wygenerował silnik JavaScript.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-064 | C4 | `503 upstream_unavailable` we wszystkich operacjach C4
+
+- **Problem (B1):** 503 był opisany tylko przy `resolve`.
+- **Przyjęty wariant:** `components/responses/UpstreamUnavailable` we wszystkich operacjach C4 (`PUT secret`,
+  `GET systems`, `GET/DELETE connections`, `oauth/*`, `purge`). Stuby WireMock bez zmiany zachowania domyślnego
+  (503 tylko przez `Prefer: example=upstream_unavailable`).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-065 | C7 | Ujemny wiek MFA
+
+- **Problem (LOW-1 przeglądu polityk):** builder przyjmował ujemne `mfaAgeSeconds`, choć schemat JWT ma
+  `minimum: 0`; ujemna wartość spełniłaby `context.mfaAge < 3600`.
+- **Przyjęty wariant:** builder (JS i Java) odrzuca ujemny wiek MFA (`invalid_argument`). Wektor
+  `entity-builder/mfa-negative`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)

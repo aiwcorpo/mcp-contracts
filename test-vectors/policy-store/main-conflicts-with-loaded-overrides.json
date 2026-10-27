@@ -1,0 +1,54 @@
+{
+  "description": "A new main bundle reuses the @id of the loaded overrides; fail-closed: the new main is rejected and main R1 with overrides O1 stay.",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "steps": [
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026120000-a1b2c3d",
+        "url": "policies-20261026120000-a1b2c3d.tar.gz",
+        "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026120000-a1b2c3d.tar.gz",
+      "signature": "files/policies-20261026120000-a1b2c3d.tar.gz.sig"
+    },
+    {
+      "channel": "overrides",
+      "latest": {
+        "revision": "20261026121500-d4e5f60",
+        "url": "policies-20261026121500-d4e5f60.tar.gz",
+        "sigUrl": "policies-20261026121500-d4e5f60.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026121500-d4e5f60.tar.gz",
+      "signature": "files/policies-20261026121500-d4e5f60.tar.gz.sig"
+    },
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026172000-4b5c6d7",
+        "url": "policies-20261026172000-4b5c6d7.tar.gz",
+        "sigUrl": "policies-20261026172000-4b5c6d7.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026172000-4b5c6d7.tar.gz",
+      "signature": "files/policies-20261026172000-4b5c6d7.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": true
+    },
+    {
+      "accept": true
+    },
+    {
+      "accept": false,
+      "reason": "id_conflict"
+    }
+  ],
+  "final": {
+    "main": "20261026120000-a1b2c3d",
+    "overrides": "20261026121500-d4e5f60"
+  }
+}

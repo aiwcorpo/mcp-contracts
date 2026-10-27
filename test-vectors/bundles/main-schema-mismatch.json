@@ -1,0 +1,19 @@
+{
+  "description": "schema.cedarschema differs from the schema of this contracts version (ResourceScope may nest); rejected (CC-059).",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026151700-0716d97",
+    "url": "policies-20261026151700-0716d97.tar.gz",
+    "sigUrl": "policies-20261026151700-0716d97.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026151700-0716d97.tar.gz",
+  "signature": "files/policies-20261026151700-0716d97.tar.gz.sig",
+  "publicKey": "keys/test-policy-bundle.public.pem",
+  "loadedRevision": "20261026130000-b2c3d4e",
+  "expected": {
+    "accept": false,
+    "reason": "schema_mismatch"
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
+}

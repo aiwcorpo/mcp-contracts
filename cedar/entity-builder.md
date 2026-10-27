@@ -9,7 +9,7 @@ biblioteka `pl.aiwcorpo.mcp:mcp-cedar-entities` (`java/mcp-cedar-entities`, CC-0
 wszystkie wektory. `scripts/lib/entity-builder.mjs` to druga, niezależna implementacja, z której generowane są
 wektory.
 
-Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038, CC-056.
+Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038, CC-056, CC-059, CC-061, CC-062, CC-065.
 
 ## 1. Wejście
 
@@ -63,6 +63,8 @@ Reguły:
   potokowi ws-09 do generowania wpisów, ale builder nie wyprowadza niczego z nazwy.
 - Dopasowanie nazwy grupy jest dokładne: wielkość liter, separatory i spacje mają znaczenie
   (`mcp-jira-proj-abc` to inna grupa niż `mcp-jira-proj-ABC`).
+- `static.json` zawiera wyłącznie encje `UserGroup` z pustymi `attrs` (CC-059); paczka z innymi encjami jest
+  odrzucana, a schemat paczki musi być schematem tej wersji kontraktów.
 - Rodzic inny niż `ResourceScope`, id bez `/`, z pustą częścią po `/`, z typem spoza tabeli albo grupa podana
   dwa razy -> paczka odrzucona (`static_entities_invalid`).
 - Lokalna część id zakresu musi pasować do wzorca typu (sekcja 9); prefiks OpenSearch nie może kończyć się na
@@ -100,7 +102,12 @@ dokłada referencję do rodzica (`Jira::Issue.project`, `Confluence::Page.space`
 | `ServiceDesk::Queue` / `ServiceDesk::Ticket` | `ServiceDesk::Queue/<id kolejki>` |
 
 Resolver Confluence podaje `ancestorIds` (identyfikatory stron-przodków). Atrybut o wartości `null` oznacza
-brak atrybutu. Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
+brak atrybutu.
+
+Atrybuty klasyfikacji są wymagane (CC-062): `Jira::Project.category` (`""`, gdy projekt nie ma kategorii),
+`Confluence::Space.labels`, `OpenSearch::Index.tags`. Zasób (także rodzic, np. projekt zgłoszenia) bez nich nie
+jest budowany (`internal_error`), więc wywołanie jest odrzucane, a element wyniku pomijany. GitLab i service desk
+nie mają jeszcze klasyfikacji (CC-057). Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
 `srv-moved-issue-restricted`).
 
 **Kontekst:**
@@ -153,7 +160,7 @@ nie są dołączane (wystarczą krawędzie `parents`).
 ## 6. Błędy
 
 Każdy błąd buildera kończy się odmową wywołania: `invalid_argument` dla złego argumentu-identyfikatora (C10),
-`internal_error` dla niespójnych danych platformy: `vs` bez `vsc` lub odwrotnie, nieznane pole `vsc` albo pole
+`invalid_argument` także dla ujemnego wieku MFA (CC-065), `internal_error` dla niespójnych danych platformy: `vs` bez `vsc` lub odwrotnie, nieznane pole `vsc` albo pole
 z 0 lub ponad 50 identyfikatorami, nieobsługiwany typ w `resourceDefaults` lub `resourceRefs`, `risk` spoza
 `READ_ONLY`/`UPDATE`/`DESTRUCTIVE`, `action` spoza `read`/`update`/`delete`/`admin`, liczba poza zakresem
 Cedar `Long`, brak rodzica przy encji, która go wymaga.
@@ -220,3 +227,17 @@ claimie `vsc` (C2, 401) i id zakresów w `static.json` (odrzucenie paczki).
 | `OpenSearch::Index` | `^(?!\.{1,2}$)[a-z0-9.][a-z0-9._-]{0,254}$` | OpenSearch "Create index": małe litery, bez spacji, przecinków i `: " * + / \ \| ? # > <`, nie zaczyna się od `_` ani `-`; dodatkowo tylko ASCII i maks. 255 (konkretna nazwa: bez aliasów-wzorców, wildcardów, list, date math) |
 | `OpenSearch::Index` (zakres) | jak wyżej, bez końcowego `-` i `.` | prefiks nazwy |
 | `ServiceDesk::Queue`, `ServiceDesk::Ticket` | `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` | adapter generyczny (D10): alfabet zachowawczy; w kolejnych wersjach konfigurowalny per adapter |
+
+## 10. Każda wartość każdego `resourceRef` (CC-061)
+
+Ocena na bramce sprawdza tylko typy płaskie, więc o zasobach hierarchicznych i o kontenerach decyduje serwer.
+Serwer przed wykonaniem narzędzia:
+
+1. Dla każdego argumentu z `resourceRefs` i dla każdej jego wartości (każdy element tablicy; źródło i cel, np.
+   `projectPath` i `targetGroup` przy transferze lub forku) rozwiązuje zasób i ocenia go przez `forResource`.
+2. Przy tworzeniu zasobu ocenia także kontener docelowy (grupę, projekt, przestrzeń, kolejkę), w którym zasób
+   powstaje.
+3. Wykonuje narzędzie tylko, gdy wszystkie oceny dały `allow` (`ResultFilter.allAllowed`); jedna odmowa, błąd
+   rozwiązania albo błąd oceny kończy wywołanie odmową (`not_found_or_denied` dla zasobów, C10).
+
+Wektory: `test-vectors/resource-checks/`, decyzje `srv-transfer-target-outside-scope`, `srv-transfer-source-in-scope`.

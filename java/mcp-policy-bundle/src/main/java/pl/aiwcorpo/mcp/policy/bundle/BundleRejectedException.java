@@ -18,9 +18,13 @@ public final class BundleRejectedException extends Exception {
         ARCHIVE_INCOMPLETE,
         NOT_NEWER,
         PERMIT_IN_OVERRIDES,
-        VS_SCOPES_IN_PERMIT,
+        LINK_CONTEXT_IN_PERMIT,
         POLICY_INVALID,
-        STATIC_ENTITIES_INVALID;
+        SCHEMA_MISMATCH,
+        STATIC_ENTITIES_INVALID,
+        MAIN_NOT_LOADED,
+        ID_CONFLICT,
+        BELOW_MINIMUM;
 
         /** @return lower-case name, e.g. {@code bad_signature} */
         public String wireCode() {

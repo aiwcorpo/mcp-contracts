@@ -1,0 +1,57 @@
+{
+  "description": "Minimum revision of the overrides channel after an incident.",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "persistence": {
+    "stateBefore": {
+      "main": null,
+      "overrides": null
+    },
+    "minimumRevision": {
+      "overrides": "20261026171000-3a4b5c6"
+    },
+    "expectedWarnings": 2,
+    "stateAfter": {
+      "main": {
+        "revision": "20261026120000-a1b2c3d",
+        "archiveSha256": "sha256:38aed21757ccdfd462b0f75988dfa6c51ca8ad0b35ba215933e0816121a5638a"
+      }
+    }
+  },
+  "steps": [
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026120000-a1b2c3d",
+        "url": "policies-20261026120000-a1b2c3d.tar.gz",
+        "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026120000-a1b2c3d.tar.gz",
+      "signature": "files/policies-20261026120000-a1b2c3d.tar.gz.sig"
+    },
+    {
+      "channel": "overrides",
+      "latest": {
+        "revision": "20261026121500-d4e5f60",
+        "url": "policies-20261026121500-d4e5f60.tar.gz",
+        "sigUrl": "policies-20261026121500-d4e5f60.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026121500-d4e5f60.tar.gz",
+      "signature": "files/policies-20261026121500-d4e5f60.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": true
+    },
+    {
+      "accept": false,
+      "reason": "below_minimum"
+    }
+  ],
+  "final": {
+    "main": "20261026120000-a1b2c3d",
+    "overrides": null
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "description": "The store tracks the loaded revision itself; an older main after a newer one is rejected.",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "steps": [
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026130000-b2c3d4e",
+        "url": "policies-20261026130000-b2c3d4e.tar.gz",
+        "sigUrl": "policies-20261026130000-b2c3d4e.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026130000-b2c3d4e.tar.gz",
+      "signature": "files/policies-20261026130000-b2c3d4e.tar.gz.sig"
+    },
+    {
+      "channel": "main",
+      "latest": {
+        "revision": "20261026120000-a1b2c3d",
+        "url": "policies-20261026120000-a1b2c3d.tar.gz",
+        "sigUrl": "policies-20261026120000-a1b2c3d.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026120000-a1b2c3d.tar.gz",
+      "signature": "files/policies-20261026120000-a1b2c3d.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": true
+    },
+    {
+      "accept": false,
+      "reason": "not_newer"
+    }
+  ],
+  "final": {
+    "main": "20261026130000-b2c3d4e",
+    "overrides": null
+  }
+}

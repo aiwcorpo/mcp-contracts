@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pl.aiwcorpo.mcp:mcp-manifest - manifest rules and definitionHash of C6 in Java (CC-063): RFC 8785 canonical JSON,
+  the hashed object of CC-004/CC-005/CC-042 and the semantic rules of CC-018/CC-043. Used by the starter (to
+  generate manifests) and the gateway (to verify registrations). Only jackson-databind 2.x; no Spring, no Cedar.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>pl.aiwcorpo.mcp</groupId>
+        <artifactId>mcp-contracts-parent</artifactId>
+        <version>2.0.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mcp-manifest</artifactId>
+    <packaging>jar</packaging>
+    <name>Aiwcorpo MCP Platform :: Manifest rules and definitionHash</name>
+    <description>RFC 8785 canonical JSON, definitionHash and semantic manifest rules (C6).</description>
+
+    <dependencies>
+
+        <!-- Parses JSON internally; the API takes and returns strings. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doclint>all,-missing</doclint>
+                    <quiet>true</quiet>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>javadoc-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

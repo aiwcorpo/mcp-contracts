@@ -96,18 +96,18 @@ class PolicyBundleVectorTest {
         for (Path file : ContractFiles.list("cedar/examples", ".cedar")) {
             all.addAll(PolicySet.parsePolicies(ContractFiles.read(file)).policies);
         }
-        assertTrue(PolicyLint.vsScopesOutsideForbid(new PolicySet(all)).isEmpty());
+        assertTrue(PolicyLint.linkContextOutsideForbid(new PolicySet(all)).isEmpty());
     }
 
     @Test
     void lintIgnoresTextThatOnlyLooksLikeAccess() throws Exception {
         PolicySet text = PolicySet.parsePolicies("""
-                permit (principal, action, resource) when { context.client == "context.vsScopes" };
+                permit (principal, action, resource) when { context.client == "context.vsScopes context.virtualServer" };
                 """);
-        assertTrue(PolicyLint.vsScopesOutsideForbid(text).isEmpty());
+        assertTrue(PolicyLint.linkContextOutsideForbid(text).isEmpty());
         PolicySet hasCheck = PolicySet.parsePolicies("""
                 permit (principal, action, resource) when { context has vsScopes };
                 """);
-        assertEquals(1, PolicyLint.vsScopesOutsideForbid(hasCheck).size());
+        assertEquals(1, PolicyLint.linkContextOutsideForbid(hasCheck).size());
     }
 }

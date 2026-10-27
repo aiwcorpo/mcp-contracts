@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import pl.aiwcorpo.mcp.cedar.entities.EntityBuilderException;
+import pl.aiwcorpo.mcp.cedar.entities.McpCedarSchema;
 import pl.aiwcorpo.mcp.cedar.entities.ScopeMapping;
 import pl.aiwcorpo.mcp.policy.bundle.BundleRejectedException.Reason;
 
@@ -117,17 +118,22 @@ public final class BundleVerifier {
         }
         lintVsScopes(policies);
         String schemaText = text(files.get(SCHEMA));
+        // The schema is pinned to this contracts version (CC-059): a bundle cannot reshape the model, e.g. let
+        // ResourceScope entities nest and widen grants.
+        if (!schemaText.equals(McpCedarSchema.text())) {
+            throw new BundleRejectedException(Reason.SCHEMA_MISMATCH, "schema.cedarschema differs from the schema of mcp-contracts");
+        }
         Schema schema = new Schema(schemaText);
         validate(schema, policies);
         List<Entity> staticEntities = staticEntities(schema, files.get(STATIC_ENTITIES));
+        requireOnlyScopeMapping(staticEntities);
         ScopeMapping mapping;
         try {
             mapping = ScopeMapping.fromStaticEntities(staticEntities);
         } catch (EntityBuilderException e) {
             throw new BundleRejectedException(Reason.STATIC_ENTITIES_INVALID, e.getMessage(), e);
         }
-        return new PolicyBundle(Channel.MAIN, manifest, policies, Optional.of(schemaText), Optional.of(schema),
-                staticEntities, mapping);
+        return new PolicyBundle(Channel.MAIN, manifest, policies, Optional.of(schema), mapping);
     }
 
     /**
@@ -162,8 +168,7 @@ public final class BundleVerifier {
             throw new BundleRejectedException(Reason.POLICY_INVALID, "templates are not used by the platform");
         }
         validate(main.schema().orElseThrow(() -> new IllegalArgumentException("main bundle without schema")), policies);
-        return new PolicyBundle(Channel.OVERRIDES, manifest, policies, Optional.empty(), Optional.empty(), List.of(),
-                ScopeMapping.empty());
+        return new PolicyBundle(Channel.OVERRIDES, manifest, policies, Optional.empty(), ScopeMapping.empty());
     }
 
     private void requireChannel(Channel expected) {
@@ -265,18 +270,37 @@ public final class BundleVerifier {
         return new Policy(policy.policySrc, id);
     }
 
+    // CC-059: static.json is only the scope mapping; any other entity could collide with or override the
+    // entities the builder produces for a request.
+    private static void requireOnlyScopeMapping(List<Entity> entities) throws BundleRejectedException {
+        for (Entity entity : entities) {
+            String type = entity.getEUID().getType().toString();
+            if (!"UserGroup".equals(type)) {
+                throw new BundleRejectedException(Reason.STATIC_ENTITIES_INVALID, "entity of type " + type + " in static.json");
+            }
+            if (!entity.attrs.isEmpty() || !entity.getTags().isEmpty()) {
+                throw new BundleRejectedException(Reason.STATIC_ENTITIES_INVALID, "UserGroup " + entity.getEUID().getId() + " has attributes");
+            }
+            for (var parent : entity.getParents()) {
+                if (!"ResourceScope".equals(parent.getType().toString())) {
+                    throw new BundleRejectedException(Reason.STATIC_ENTITIES_INVALID, "UserGroup parent " + parent.getType());
+                }
+            }
+        }
+    }
+
     private static void lintVsScopes(PolicySet policies) throws BundleRejectedException {
         try {
-            List<String> violations = PolicyLint.vsScopesOutsideForbid(policies);
+            List<String> violations = PolicyLint.linkContextOutsideForbid(policies);
             if (!violations.isEmpty()) {
-                throw new BundleRejectedException(Reason.VS_SCOPES_IN_PERMIT, String.join("; ", violations));
+                throw new BundleRejectedException(Reason.LINK_CONTEXT_IN_PERMIT, String.join("; ", violations));
             }
         } catch (InternalException e) {
             throw new BundleRejectedException(Reason.POLICY_INVALID, "cannot inspect policies", e);
         }
     }
 
-    private void validate(Schema schema, PolicySet policies) throws BundleRejectedException {
+    void validate(Schema schema, PolicySet policies) throws BundleRejectedException {
         ValidationResponse response;
         try {
             response = engine.validate(new ValidationRequest(schema, policies));

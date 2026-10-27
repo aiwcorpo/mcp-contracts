@@ -1,5 +1,5 @@
 {
-  "description": "Server: project with no category attribute (optional attribute, has-guard).",
+  "description": "Server: project without a category in Jira (category \"\" by the resolver).",
   "covers": [],
   "builder": {
     "level": "server",
@@ -35,7 +35,8 @@
         "type": "Jira::Project",
         "id": "ABC",
         "attrs": {
-          "key": "ABC"
+          "key": "ABC",
+          "category": ""
         }
       }
     }
@@ -76,6 +77,7 @@
       },
       "attrs": {
         "key": "ABC",
+        "category": "",
         "scopes": [
           {
             "__entity": {

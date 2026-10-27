@@ -83,7 +83,9 @@ entity Tool {
 namespace Jira {
   entity Project {
     key: String,
-    category?: String,
+    // Classification (CC-062): required; "" when the project has no category. A resolver that cannot read it
+    // must not build the entity, so a missing value can never let Restricted data through.
+    category: String,
     scopes: Set<ResourceScope>,
   };
   // `project` duplicates the parent edge because Cedar cannot read attributes of an ancestor through `in`.

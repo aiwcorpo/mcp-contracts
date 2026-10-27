@@ -46,7 +46,8 @@ mcp-contracts/
 ├── mocks/msw/               # handlery MSW dla C12 (TS)
 ├── java/mcp-contracts/      # moduł Maven: jar z zasobami + jar test-vectors (pom, bez kodu)
 ├── java/mcp-cedar-entities/ # moduł Maven: entity builder + testy JUnit (Cedar, wektory decyzji, filtr wyników)
-├── java/mcp-policy-bundle/  # moduł Maven: odbiorca paczek polityk + lint + testy na wektorach paczek
+├── java/mcp-policy-bundle/  # moduł Maven: odbiorca paczek polityk, PolicyStore, lint + testy na wektorach paczek
+├── java/mcp-manifest/       # moduł Maven: RFC 8785, definitionHash, reguły manifestu + testy na wektorach
 ├── spectral-functions/      # reguła Spectral dla x-allowed-client-cn
 ├── scripts/                 # generatory i verify-all.sh
 └── test/                    # testy Node (lint, schematy, wektory, mocki)
@@ -82,7 +83,8 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 | `pl.aiwcorpo.mcp:mcp-contracts:2.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
 | `pl.aiwcorpo.mcp:mcp-contracts:2.0.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
 | `pl.aiwcorpo.mcp:mcp-cedar-entities:2.0.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.0.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.0.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.0.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
 | `pl.aiwcorpo.mcp:mcp-contracts-parent:2.0.0` (pom) | rodzic modułów | instalowany razem z nimi |
 | `release/aiwcorpo-mcp-contracts-2.0.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.0.0.tgz` |
 
@@ -93,7 +95,7 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-contracts-parent}/2.0.0/
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.0.0/
 npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.0.0.tgz
 ```
 
@@ -184,7 +186,7 @@ BundleVerifier overrides = BundleVerifier.of(Channel.OVERRIDES, overridesKey, co
 BundlePointer pointer = BundlePointer.parse(latestJsonBytes);
 try {
     PolicyBundle bundle = main.verifyMain(pointer, archiveBytes, signatureBytes, Optional.ofNullable(loadedMainRevision));
-    // atomowa podmiana: bundle.policies(), bundle.schema(), bundle.staticEntities(), new EntityBuilder(bundle.scopeMapping())
+    // nie scalaj encji statycznych: builder tworzy UserGroup z bundle.scopeMapping() (CC-059)
 } catch (BundleRejectedException e) {
     // zostaje poprzednia paczka; e.reason().wireCode() do metryki i logu
 }
@@ -204,8 +206,15 @@ Rozmiar archiwum przed dekompresją nie jest sprawdzany przez moduł: komponent 
 ws-09 buduje paczkę bez rozszerzeń pax (macOS: `COPYFILE_DISABLE=1 tar --no-xattrs --format=ustar -czf ...`,
 GNU tar: `tar --format=ustar -czf ...`), inaczej paczka zostanie odrzucona (`archive_invalid`).
 
+Zamiast samodzielnej podmiany komponent może użyć `PolicyStore` (CC-060): `store.loadMain(...)`,
+`store.loadOverrides(...)` i `store.current()` dają jedną spójną migawkę (`policies()` z obu kanałów, `schema()`,
+`entityBuilder()`); aktualizacje są serializowane, `@id` muszą być unikalne między kanałami, a nowa paczka główna
+sprzeczna z załadowanymi `overrides` jest odrzucana (stan się nie zmienia). Paczka główna musi mieć schemat równy
+`cedar/mcp.cedarschema` tej wersji kontraktów, a `static.json` wyłącznie encje `UserGroup` (CC-059).
+
 Lint dla potoku ws-09: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides]
-policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd).
+policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd). Sprawdza, że `context.vsScopes` i
+`context.virtualServer` występują tylko w `forbid` (CC-041, CC-058).
 
 ## Port IGA (C13)
 
@@ -239,6 +248,13 @@ i mapowaniu zakresów. Serwer mimo to cytuje identyfikatory w JQL/CQL i buduje w
 Każde żądanie ma jeden `requestId` (UUIDv7) od wejścia do audytu: gateway nadaje go w `rid` i `X-Request-Id`
 (C2/C3), BFF tworzy własny i wysyła go w `X-Request-Id` do brokera i gateway'a (CC-047). Broker zwraca użyty
 identyfikator w nagłówku `X-Request-Id` każdej odpowiedzi.
+
+## mcp-manifest (definitionHash i reguły manifestu)
+
+`pl.aiwcorpo.mcp:mcp-manifest` (CC-063, tylko jackson-databind, API na napisach JSON):
+`CanonicalJson.canonicalize(json)` (RFC 8785), `DefinitionHash.compute(definition, entry, system, credential)`,
+`DefinitionHash.ofManifestTool(manifest, tool)`, `ManifestRules.violations(manifest)` (kody reguł jak w sekcji
+"Reguły semantyczne manifestu"). Walidację JSON Schema manifestu robi się osobno, przed regułami.
 
 ## Generowanie klienta
 

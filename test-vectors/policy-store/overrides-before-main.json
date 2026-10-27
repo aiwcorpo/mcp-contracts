@@ -1,0 +1,28 @@
+{
+  "description": "Overrides cannot load before a main bundle (no schema to validate them against).",
+  "mainKey": "keys/test-policy-bundle.public.pem",
+  "overridesKey": "keys/test-policy-overrides.public.pem",
+  "allowTestKeys": true,
+  "steps": [
+    {
+      "channel": "overrides",
+      "latest": {
+        "revision": "20261026121500-d4e5f60",
+        "url": "policies-20261026121500-d4e5f60.tar.gz",
+        "sigUrl": "policies-20261026121500-d4e5f60.tar.gz.sig"
+      },
+      "bundle": "files/policies-20261026121500-d4e5f60.tar.gz",
+      "signature": "files/policies-20261026121500-d4e5f60.tar.gz.sig"
+    }
+  ],
+  "expected": [
+    {
+      "accept": false,
+      "reason": "main_not_loaded"
+    }
+  ],
+  "final": {
+    "main": null,
+    "overrides": null
+  }
+}

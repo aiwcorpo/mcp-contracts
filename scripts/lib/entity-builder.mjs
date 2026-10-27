@@ -38,6 +38,12 @@ const PARENT_ATTRIBUTE = {
   'GitLab::Project': 'group',
   'ServiceDesk::Ticket': 'queue',
 };
+// Classification attributes a resolver must deliver (CC-062): without them a Restricted rule could not match.
+const REQUIRED_CLASSIFICATION = {
+  'Jira::Project': ['category', (v) => typeof v === 'string'],
+  'Confluence::Space': ['labels', Array.isArray],
+  'OpenSearch::Index': ['tags', Array.isArray],
+};
 const RISKS = new Set(['READ_ONLY', 'UPDATE', 'DESTRUCTIVE']);
 const ACTIONS = new Set(['read', 'update', 'delete', 'admin']);
 const MAX_VSC_ITEMS = 50;
@@ -147,7 +153,10 @@ function buildContext({ caller, tool, arguments: args = {} }) {
       }
     }
   }
-  if (caller.mfa !== undefined) context.mfaAge = caller.mfa;
+  if (caller.mfa !== undefined) {
+    if (!Number.isInteger(caller.mfa) || caller.mfa < 0) throw new BuilderError('invalid_argument', 'mfa age must be >= 0');
+    context.mfaAge = caller.mfa;
+  }
   const refIds = {};
   for (const { argument, type } of tool.resourceRefs) {
     if (!RESOURCE_TYPES.has(type)) throw new BuilderError('internal_error', `unknown resource type ${type}`);
@@ -207,6 +216,10 @@ function systemEntity(resource, parent) {
   }
   for (const a of resource.attrs?.ancestorIds ?? []) {
     if (!validId('Confluence::Page', 'resource', a)) throw new BuilderError('internal_error', 'invalid ancestor page id');
+  }
+  const required = REQUIRED_CLASSIFICATION[resource.type];
+  if (required && !required[1](resource.attrs?.[required[0]])) {
+    throw new BuilderError('internal_error', `${resource.type} without ${required[0]}`);
   }
   const out = {};
   for (const [k, v] of Object.entries(resource.attrs ?? {})) {

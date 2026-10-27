@@ -1,0 +1,48 @@
+{
+  "description": "Issue whose resolved project lacks category: refused (CC-062).",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "get_issue",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "arguments": {
+      "issueKey": "ABC-1"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1",
+      "attrs": {
+        "key": "ABC-1"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "ABC",
+        "attrs": {
+          "key": "ABC"
+        }
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

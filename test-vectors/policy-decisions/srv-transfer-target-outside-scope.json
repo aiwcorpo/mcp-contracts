@@ -1,0 +1,173 @@
+{
+  "description": "Server, transfer_project: the target group team-b is evaluated on its own and denied (CC-061).",
+  "covers": [
+    "scope_hierarchy",
+    "every_resource_ref"
+  ],
+  "builder": {
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000007",
+        "usr": "gitlabwriter",
+        "grp": [
+          "mcp-gitlab-read",
+          "mcp-gitlab-write",
+          "mcp-gitlab-grp-team-a"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "transfer_project",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "projectPath",
+            "type": "GitLab::Project"
+          },
+          {
+            "argument": "targetGroup",
+            "type": "GitLab::Group"
+          }
+        ]
+      },
+      "arguments": {
+        "projectPath": "team-a/app",
+        "targetGroup": "team-b"
+      },
+      "resource": {
+        "type": "GitLab::Group",
+        "id": "team-b",
+        "attrs": {
+          "path": "team-b"
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000007"
+    },
+    "action": {
+      "type": "Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "GitLab::Group",
+      "id": "team-b"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabProject": [
+          "team-a/app"
+        ],
+        "gitlabGroup": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "GitLab::Group",
+        "id": "team-b"
+      },
+      "attrs": {
+        "path": "team-b",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/team-b"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000007"
+      },
+      "attrs": {
+        "username": "gitlabwriter",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            }
+          ],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-grp-team-a"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "GitLab::Group/team-a"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

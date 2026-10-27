@@ -21,17 +21,25 @@ public final class PolicyLint {
     private PolicyLint() {
     }
 
+    /** Context attributes that describe the virtual server link; the user chooses the link, so they only narrow. */
+    public static final List<String> LINK_CONTEXT = List.of("vsScopes", "virtualServer");
+
     /**
-     * CC-041: {@code context.vsScopes} may only appear in forbid policies; in a permit a virtual server could add a
-     * permission. Templates cannot be inspected and are reported too (the platform uses no templates).
+     * CC-041, CC-058: {@code context.vsScopes} and {@code context.virtualServer} may only appear in forbid policies;
+     * in a permit a virtual server (whose slug the user chooses) could add a permission. Templates cannot be
+     * inspected and are reported too (the platform uses no templates).
      *
      * @return descriptions of violations, empty when the set is clean
      */
-    public static List<String> vsScopesOutsideForbid(PolicySet policies) throws InternalException {
+    public static List<String> linkContextOutsideForbid(PolicySet policies) throws InternalException {
         List<String> violations = new ArrayList<>();
         for (Policy policy : policies.policies) {
-            if (policy.effect() == Effect.PERMIT && readsContextAttribute(policy, "vsScopes")) {
-                violations.add(describe(policy) + ": permit reads context.vsScopes");
+            if (policy.effect() == Effect.PERMIT) {
+                for (String attribute : LINK_CONTEXT) {
+                    if (readsContextAttribute(policy, attribute)) {
+                        violations.add(describe(policy) + ": permit reads context." + attribute);
+                    }
+                }
             }
         }
         for (Policy template : policies.templates) {

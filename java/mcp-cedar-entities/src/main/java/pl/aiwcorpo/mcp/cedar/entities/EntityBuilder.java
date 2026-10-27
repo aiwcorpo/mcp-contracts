@@ -47,6 +47,11 @@ public final class EntityBuilder {
     // A typo in risk would otherwise skip every rule that compares resource.risk (e.g. the MFA rule for DESTRUCTIVE).
     private static final Set<String> RISKS = Set.of("READ_ONLY", "UPDATE", "DESTRUCTIVE");
     private static final Set<String> ACTIONS = Set.of("read", "update", "delete", "admin");
+    // Classification attributes a resolver must deliver (CC-062); without them a Restricted rule could not match.
+    private static final Map<String, String> REQUIRED_CLASSIFICATION = Map.of(
+            "Jira::Project", "category",
+            "Confluence::Space", "labels",
+            "OpenSearch::Index", "tags");
     private static final Comparator<Entity> BY_TYPE_THEN_ID = Comparator
             .<Entity, String>comparing(e -> e.getEUID().getType().toString())
             .thenComparing(e -> e.getEUID().getId().toString());
@@ -165,6 +170,9 @@ public final class EntityBuilder {
                 context.put("vsScopes", new CedarMap(vsScopes));
             }
         });
+        if (caller.mfaAgeSeconds().isPresent() && caller.mfaAgeSeconds().getAsLong() < 0) {
+            throw invalid("mfa age must be >= 0");
+        }
         caller.mfaAgeSeconds().ifPresent(age -> context.put("mfaAge", new PrimLong(age)));
         Map<String, String> typeByField = new LinkedHashMap<>();
         Map<String, List<String>> idsByField = new LinkedHashMap<>();
@@ -281,6 +289,14 @@ public final class EntityBuilder {
         }
         if (!ResourceIds.isValid(resource.type(), ResourceIds.Kind.RESOURCE, resource.id())) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "resolved " + resource.type() + " has an invalid id");
+        }
+        String classification = REQUIRED_CLASSIFICATION.get(resource.type());
+        if (classification != null) {
+            Object value = resource.attributes().get(classification);
+            boolean ok = "category".equals(classification) ? value instanceof CharSequence : value instanceof Collection<?>;
+            if (!ok) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " without " + classification);
+            }
         }
         Map<String, Value> attrs = new TreeMap<>();
         resource.attributes().forEach((name, value) -> attrs.put(name, "ancestorIds".equals(name)

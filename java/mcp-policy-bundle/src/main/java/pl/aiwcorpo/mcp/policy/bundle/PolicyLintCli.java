@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 /**
  * Command line lint for the policy pipeline (ws-09): {@code java -cp ... pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli
  * [--overrides] <file-or-directory>...}. Checks every {@code *.cedar} file: context.vsScopes only in forbid
- * (CC-041) and, with {@code --overrides}, no permit at all (C7). Exit code 0 when clean, 1 on violations, 2 on
+ * and context.virtualServer only in forbid (CC-041, CC-058) and, with {@code --overrides}, no permit at all (C7). Exit code 0 when clean, 1 on violations, 2 on
  * usage or parse errors.
  */
 public final class PolicyLintCli {
@@ -37,7 +37,7 @@ public final class PolicyLintCli {
         try {
             for (Path file : cedarFiles(inputs)) {
                 PolicySet set = PolicySet.parsePolicies(Files.readString(file));
-                List<String> found = new ArrayList<>(PolicyLint.vsScopesOutsideForbid(set));
+                List<String> found = new ArrayList<>(PolicyLint.linkContextOutsideForbid(set));
                 if (overrides) {
                     found.addAll(PolicyLint.permits(set));
                 }

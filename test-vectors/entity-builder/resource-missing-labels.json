@@ -1,0 +1,42 @@
+{
+  "description": "Confluence space without labels: refused (CC-062).",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000009",
+      "usr": "confluencereader",
+      "grp": [
+        "mcp-confluence-read",
+        "mcp-confluence-space-ENG"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-confluence",
+      "system": "confluence",
+      "name": "search_space",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "spaceKey",
+          "type": "Confluence::Space"
+        }
+      ]
+    },
+    "arguments": {
+      "spaceKey": "ENG"
+    },
+    "resource": {
+      "type": "Confluence::Space",
+      "id": "ENG",
+      "attrs": {
+        "key": "ENG"
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

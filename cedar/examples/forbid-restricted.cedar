@@ -3,11 +3,11 @@
 
 @id("jira-forbid-restricted-project")
 forbid (principal, action, resource is Jira::Project)
-when { resource has category && resource.category == "Restricted" };
+when { resource.category == "Restricted" };
 
 @id("jira-forbid-restricted-issue")
 forbid (principal, action, resource is Jira::Issue)
-when { resource.project has category && resource.project.category == "Restricted" };
+when { resource.project.category == "Restricted" };
 
 @id("confluence-forbid-restricted-space")
 forbid (principal, action, resource is Confluence::Space)

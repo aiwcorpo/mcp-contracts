@@ -1,0 +1,84 @@
+{
+  "description": "Archive three projects; one of them is outside the scope, so the whole call is denied.",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "policies": "cedar/examples",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "gitlabwriter",
+      "grp": [
+        "mcp-gitlab-read",
+        "mcp-gitlab-write",
+        "mcp-gitlab-grp-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "archive_projects",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectPaths",
+          "type": "GitLab::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectPaths": [
+        "team-a/app",
+        "team-a/sub/svc",
+        "team-ab/app"
+      ]
+    }
+  },
+  "resources": [
+    {
+      "type": "GitLab::Project",
+      "id": "team-a/app",
+      "attrs": {
+        "path": "team-a/app"
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a",
+        "attrs": {
+          "path": "team-a"
+        }
+      }
+    },
+    {
+      "type": "GitLab::Project",
+      "id": "team-a/sub/svc",
+      "attrs": {
+        "path": "team-a/sub/svc"
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a/sub",
+        "attrs": {
+          "path": "team-a/sub"
+        }
+      }
+    },
+    {
+      "type": "GitLab::Project",
+      "id": "team-ab/app",
+      "attrs": {
+        "path": "team-ab/app"
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-ab",
+        "attrs": {
+          "path": "team-ab"
+        }
+      }
+    }
+  ],
+  "expected": {
+    "allowed": false
+  }
+}

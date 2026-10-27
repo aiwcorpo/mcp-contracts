@@ -54,11 +54,14 @@ const tools = {
   getPage: tool('confluence', 'get_page', 'READ_ONLY', 'read', [{ argument: 'pageId', type: 'Confluence::Page' }]),
   updatePage: tool('confluence', 'update_page', 'UPDATE', 'update', [{ argument: 'pageId', type: 'Confluence::Page' }]),
   updateGroup: tool('gitlab', 'update_group', 'UPDATE', 'update', [{ argument: 'groupPath', type: 'GitLab::Group' }]),
+  transferProject: tool('gitlab', 'transfer_project', 'UPDATE', 'update', [
+    { argument: 'projectPath', type: 'GitLab::Project' }, { argument: 'targetGroup', type: 'GitLab::Group' }]),
+  archiveProjects: tool('gitlab', 'archive_projects', 'UPDATE', 'update', [{ argument: 'projectPaths', type: 'GitLab::Project' }]),
   searchSpace: tool('confluence', 'search_space', 'READ_ONLY', 'read', [{ argument: 'spaceKey', type: 'Confluence::Space' }]),
   listQueueTickets: tool('servicedesk', 'list_queue_tickets', 'READ_ONLY', 'read', [{ argument: 'queueId', type: 'ServiceDesk::Queue' }]),
 };
 
-const project = (key, category) => ({ type: 'Jira::Project', id: key, attrs: category ? { key, category } : { key } });
+const project = (key, category = '') => ({ type: 'Jira::Project', id: key, attrs: { key, category } });
 const issue = (key, projectKey, category) => ({ type: 'Jira::Issue', id: key, attrs: { key }, parent: project(projectKey, category) });
 const vs = (slug, resourceDefaults) => ({ slug, ...(resourceDefaults && { resourceDefaults }) });
 // The gateway puts the link into the internal JWT as vs + vsc (CC-027); both builders read only the claims.
@@ -142,9 +145,17 @@ builderVector('server-confluence-page-tree', 'Server: page scopes are its space,
   tool: tools.updatePage, arguments: { pageId: '1234' },
   resource: { type: 'Confluence::Page', id: '1234', attrs: { id: '1234', ancestorIds: ['1100', '1000'] },
     parent: { type: 'Confluence::Space', id: 'HB', attrs: { key: 'HB', labels: [] } } } });
-builderVector('resource-null-attribute', 'A null attribute from the resolver means "no attribute" (Jira project without category).', 'server',
+builderVector('resource-null-attribute', 'A null attribute from the resolver means "no attribute"; for the required classification (category) the builder refuses the entity (CC-062).', 'server',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC'] },
     resource: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC', category: null } } });
+builderVector('resource-missing-classification-parent', 'Issue whose resolved project lacks category: refused (CC-062).', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' },
+    resource: { type: 'Jira::Issue', id: 'ABC-1', attrs: { key: 'ABC-1' }, parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' } } } });
+builderVector('resource-missing-labels', 'Confluence space without labels: refused (CC-062).', 'server',
+  { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'ENG' },
+    resource: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG' } } });
+builderVector('mfa-negative', 'Negative mfa age is not possible; refused like the JWT schema (minimum 0, CC-065).', 'gateway',
+  { caller: users.destroyer({ mfa: -5 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('refs-opensearch-index-list', 'Index argument with a comma list: not one concrete index name (CC-056, review H1).', 'gateway',
   { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-x,secret-y' } });
 builderVector('refs-opensearch-index-wildcard', 'Index argument with wildcards (CC-056).', 'gateway',
@@ -248,7 +259,7 @@ decision('srv-moved-issue-restricted', 'Server: ABC-123 was moved to HR (Restric
 decision('srv-read-restricted-project', 'Server: Restricted project itself.', 'server',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['HR'] }, resource: project('HR', 'Restricted') },
   deny('jira-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-read-project-without-category', 'Server: project with no category attribute (optional attribute, has-guard).', 'server',
+decision('srv-read-project-without-category', 'Server: project without a category in Jira (category "" by the resolver).', 'server',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC'] }, resource: project('ABC') }, allow('jira-read'));
 decision('srv-read-without-group', 'Server: no mcp-jira-read.', 'server',
   { caller: users.nobody(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, deny(), { covers: ['no_group'] });
@@ -426,3 +437,32 @@ resultFilter('opensearch-no-grants',
   [{ type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } }],
   [],
   { 'OpenSearch::Index': { virtualServer: null, virtualServerType: 'OpenSearch::Index', granted: [] } });
+
+// ---------- every value of every resourceRef (CC-061) ----------
+outDir('resource-checks');
+const resourceCheck = (name, description, input, resources, allowed) =>
+  write('resource-checks', name, { description, staticEntities: STATIC_PATH, policies: 'cedar/examples', input, resources,
+    expected: { allowed } });
+resourceCheck('transfer-inside-scope', 'Transfer team-a/app to team-a/sub: source project and target group are both evaluated and allowed.',
+  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-a/sub' } },
+  [projectIn('team-a/app'), group('team-a/sub')], true);
+resourceCheck('transfer-to-sibling-group', 'Transfer team-a/app to team-b: the source is allowed, the target is not, so the call is denied.',
+  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' } },
+  [projectIn('team-a/app'), group('team-b')], false);
+resourceCheck('transfer-from-sibling-group', 'Transfer team-b/app into team-a: the target is allowed, the source is not.',
+  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-b/app', targetGroup: 'team-a' } },
+  [projectIn('team-b/app'), group('team-a')], false);
+resourceCheck('array-with-one-outside', 'Archive three projects; one of them is outside the scope, so the whole call is denied.',
+  { caller: users.gitlabWriter(), tool: tools.archiveProjects, arguments: { projectPaths: ['team-a/app', 'team-a/sub/svc', 'team-ab/app'] } },
+  [projectIn('team-a/app'), projectIn('team-a/sub/svc'), projectIn('team-ab/app')], false);
+resultFilter('jira-project-without-category', 'An element whose project the resolver returned without category is dropped (CC-062).',
+  { caller: users.reader(), tool: tools.searchIssues, arguments: {} },
+  [issue('ABC-7', 'ABC', 'Software'), { type: 'Jira::Issue', id: 'ABC-8', attrs: { key: 'ABC-8' }, parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' } } }],
+  ['ABC-7'],
+  { 'Jira::Project': { virtualServer: null, virtualServerType: 'Jira::Project', granted: [] } });
+decision('srv-transfer-target-outside-scope', 'Server, transfer_project: the target group team-b is evaluated on its own and denied (CC-061).', 'server',
+  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' }, resource: group('team-b') },
+  deny(), { covers: ['scope_hierarchy', 'every_resource_ref'] });
+decision('srv-transfer-source-in-scope', 'Server, transfer_project: the source project team-a/app is allowed; the call still needs every other value allowed.', 'server',
+  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' }, resource: projectIn('team-a/app') },
+  allow('gitlab-update-project-in-scope'), { covers: ['scope_hierarchy', 'every_resource_ref'] });
