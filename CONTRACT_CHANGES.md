@@ -891,7 +891,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   tylko wtedy, gdy narzędzie zostało wywołane bez powiązanego wywołującego.
 - **Przyjęty wariant (minor):** nowa wartość `event: "authentication"` z `outcome: "denied"`, `reason` = kod
   odrzucenia z wektorów JWT (`bad_signature`, `replayed_jti`, ...), bez `sub` (niezweryfikowany) i bez treści
-  tokenu. Schemat `audit-event.schema.json` wymusza `outcome: denied`, wymaga `reason` i zabrania `sub` oraz `username` (też pochodzi z niezweryfikowanego tokenu);
+  tokenu. Schemat `audit-event.schema.json` wymusza `outcome: denied`, wymaga `reason` i ogranicza zdarzenie do zamkniętej listy pól (bez `sub`, `username`, `client`, `tool` i innych pól z claimów niezweryfikowanego tokenu);
   `requestId` jest nadal wymagany (generowany przez odbiorcę, gdy żądanie go nie niesie). Wektory
   `audit-events/server-authentication-denied` oraz dwa odrzucane (`invalid-authentication-with-sub`,
   `invalid-authentication-outcome-ok`).
@@ -989,7 +989,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   M3 jako dodatkowe zawężenie, czy znika na rzecz paczki, pozostaje otwarte (do planowania M3).
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
 
-## CC-??? | C6/C10 | `inputSchema` zamknięty i walidowany przez serwer; treść `invalid_argument` przy naruszeniu schematu
+## CC-078 | C6/C10 | `inputSchema` zamknięty i walidowany przez serwer; treść `invalid_argument` przy naruszeniu schematu
 
 - **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
 - **Status:** open
@@ -1009,7 +1009,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   schemacie i naruszoną regułę, nigdy wartość argumentu ani nazwę niezadeklarowaną"; (3) wektor w
   `test-vectors` dla odrzuconego manifestu bez zamkniętego schematu.
 
-## CC-??? | C6 | Nazwy `$defs` w `common.schema.json` jako stabilne API dla serwerów
+## CC-079 | C6 | Nazwy `$defs` w `common.schema.json` jako stabilne API dla serwerów
 
 - **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
 - **Status:** open

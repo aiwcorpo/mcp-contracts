@@ -1,17 +1,17 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **2.1.0**, tag `v2.1.0` (wcześniej `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
-SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (test skrótu przechodzi). Zmiany względem
+Wersja **2.1.1**, tag `v2.1.1` (poprawki po przeglądzie 2.1.0: nagłówki no-store, zamknięta lista pól audytu `authentication`; wcześniej `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 95 testów Node; `./mvnw verify`: 391 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 
-## Artefakty 2.1.0
+## Artefakty 2.1.1
 
-- `pl.aiwcorpo.mcp:mcp-contracts:2.1.0` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.1.0`,
-  `mcp-policy-bundle:2.1.0`, `mcp-manifest:2.1.0`, `mcp-contracts-parent:2.1.0` (w `~/.m2` po `./mvnw install`).
-- `release/aiwcorpo-mcp-contracts-2.1.0.tgz` obok tarballi 1.0.0, 1.1.0, 1.2.0, 2.0.0, 2.0.1, 2.0.2.
+- `pl.aiwcorpo.mcp:mcp-contracts:2.1.1` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.1.1`,
+  `mcp-policy-bundle:2.1.1`, `mcp-manifest:2.1.1`, `mcp-contracts-parent:2.1.1` (w `~/.m2` po `./mvnw install`).
+- `release/aiwcorpo-mcp-contracts-2.1.1.tgz` obok tarballi 1.0.0 ... 2.0.2 i 2.1.0.
 
 ## Zrobione w 2.1.0
 
@@ -43,7 +43,7 @@ w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 
 ## Otwarte pytania
 
-- W `CONTRACT_CHANGES.md` nie ma otwartych pozycji.
+- `CONTRACT_CHANGES.md`: otwarte CC-078 (zamknięty `inputSchema`, treść `invalid_argument`) i CC-079 (nazwy `$defs` jako stabilne API), do decyzji człowieka.
 - Czy lista kolejek z konfiguracji serwera service desku zostaje po M3 jako dodatkowe zawężenie, czy znika na rzecz
   paczki (CC-076, do planowania M3). Strumienie danych OpenSearch jako zasób: decyzja w M2 (CC-074).
 - Przegląd 2.0.0, kategoria (b), czeka na decyzję człowieka przy planowaniu M2: H1(b) lista znanych skrótów

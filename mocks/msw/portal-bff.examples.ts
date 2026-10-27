@@ -438,6 +438,10 @@ export const portalBffExamples: OperationExamples[] = [
             }
           ],
           "expiresAt": "2026-10-26T20:02:00Z"
+        },
+        "headers": {
+          "Cache-Control": "no-store",
+          "Pragma": "no-cache"
         }
       },
       {
@@ -478,6 +482,10 @@ export const portalBffExamples: OperationExamples[] = [
           "code": "493201",
           "codeExpiresAt": "2026-10-26T20:02:00Z",
           "attemptsLeft": 3
+        },
+        "headers": {
+          "Cache-Control": "no-store",
+          "Pragma": "no-cache"
         }
       },
       {

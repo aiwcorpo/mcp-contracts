@@ -145,7 +145,7 @@
   },
   "allOf": [
     {
-      "description": "Rejected authentication (CC-071): emitted by a receiver of the internal JWT (server, broker). Carries the rejection code in reason and never sub (the token is not verified) or any part of the token.",
+      "description": "Rejected authentication (CC-071): emitted by a receiver of the internal JWT (server, broker). Closed list of fields (propertyNames): everything that comes from the claims of the unverified token (sub, username, client, tool, risk, resource, virtualServer, policyRevision, credentialType) is forbidden, and so is any part of the token. Carries the rejection code in reason.",
       "if": {
         "properties": {
           "event": {
@@ -166,18 +166,20 @@
             "const": "denied"
           }
         },
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "sub"
-              ]
-            },
-            {
-              "required": [
-                "username"
-              ]
-            }
+        "propertyNames": {
+          "enum": [
+            "ts",
+            "requestId",
+            "clientRequestId",
+            "component",
+            "componentId",
+            "event",
+            "server",
+            "decision",
+            "reason",
+            "outcome",
+            "errorCode",
+            "latencyMs"
           ]
         }
       }

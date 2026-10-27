@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.1.0
+  version: 2.1.1
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -420,6 +420,11 @@ paths:
       responses:
         '200':
           description: Tool and arguments to confirm.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/PragmaNoCache'
           content:
             application/json:
               schema:
@@ -461,6 +466,11 @@ paths:
       responses:
         '200':
           description: Decision recorded; approval returns the one-time code for the MCP client session, it never executes the action.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/PragmaNoCache'
           content:
             application/json:
               schema:
@@ -874,6 +884,21 @@ paths:
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
 components:
+  headers:
+    NoStore:
+      description: Required on responses carrying a one-time confirmation code or the arguments of a pending call (CC-077); intermediaries and clients must not cache them.
+      required: true
+      schema:
+        type: string
+        const: no-store
+      example: no-store
+    PragmaNoCache:
+      description: For HTTP/1.0 intermediaries.
+      required: false
+      schema:
+        type: string
+        const: no-cache
+      example: no-cache
   securitySchemes:
     session:
       type: apiKey

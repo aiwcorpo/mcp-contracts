@@ -4,6 +4,22 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.1.1 - 2026-10-27
+
+Wydanie poprawkowe po automatycznym przeglądzie bezpieczeństwa 2.1.0 (2 x MEDIUM). `cedar/mcp.cedarschema` bez zmian.
+
+- `decideConfirmation` i `decideMyConfirmation` (200 z jednorazowym kodem) oraz `getConfirmation` i
+  `getMyConfirmation` (argumenty oczekującego wywołania) deklarują nagłówki `Cache-Control: no-store` i
+  `Pragma: no-cache`, jak broker dla sekretów; bundled OpenAPI, mocki MSW i WireMock zwracają je w przykładach.
+- `audit-event.schema.json`: zdarzenie `authentication` ma zamkniętą listę pól (`ts`, `requestId`,
+  `clientRequestId`, `component`, `componentId`, `event`, `server`, `decision`, `reason`, `outcome`, `errorCode`,
+  `latencyMs`); żadne pole z claimów niezweryfikowanego tokenu (`sub`, `username`, `client`, `tool`, `risk`,
+  `resource`, `virtualServer`, `policyRevision`, `credentialType`) nie jest dozwolone. Nowe wektory odrzucane
+  `invalid-authentication-with-client`, `-tool`, `-username`, `-policy-revision`, `-virtual-server`.
+- `CONTRACT_CHANGES.md`: CC-078 i CC-079 (zgłoszenia ws-02, status open).
+- Wpływ: ws-05 (gateway) i ws-07 (BFF) ustawiają oba nagłówki na odpowiedziach potwierdzeń; ws-02 (starter) emituje
+  `authentication` tylko z pól z listy (bez `client` i `tool` z niezweryfikowanego tokenu).
+
 ## 2.1.0 - 2026-10-27
 
 Decyzje człowieka z 2026-10-27: CC-068 ... CC-077 `accepted` (CC-070 w zmienionej formie). Zmiany minor i patch

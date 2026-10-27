@@ -363,6 +363,21 @@ audit('invalid-authentication-with-sub', 'The sub of a rejected token is unverif
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', reason: 'bad_signature', outcome: 'denied',
 }, false);
+audit('invalid-authentication-with-client', 'client comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', client: 'claude-code',
+}, false);
+audit('invalid-authentication-with-tool', 'tool comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', tool: 'get_issue',
+}, false);
+audit('invalid-authentication-with-username', 'username comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', username: 'jkowalski',
+}, false);
+audit('invalid-authentication-with-policy-revision', 'policyRevision comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', policyRevision: '20261026120000-a1b2c3d',
+}, false);
+audit('invalid-authentication-with-virtual-server', 'virtualServer comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', virtualServer: 'team-a-dev',
+}, false);
 audit('invalid-authentication-outcome-ok', 'event authentication exists only for rejections (CC-071).', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'expired', outcome: 'ok',
 }, false);

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 2.1.0
+  version: 2.1.1
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -585,6 +585,11 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '200':
           description: Tool and arguments in a fixed order; long values are truncated and marked.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/PragmaNoCache'
           content:
             application/json:
               schema:
@@ -630,6 +635,11 @@ paths:
             Decision recorded. Approval returns the one-time confirmation code; approving never executes the
             action. The user pastes the code into the MCP client session and the agent retries the call with the
             same arguments plus confirmation_code (C11, CC-077). Decline returns no code.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/PragmaNoCache'
           content:
             application/json:
               schema:
@@ -677,6 +687,21 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 components:
+  headers:
+    NoStore:
+      description: Required on responses carrying a one-time confirmation code or the arguments of a pending call (CC-077); intermediaries and clients must not cache them.
+      required: true
+      schema:
+        type: string
+        const: no-store
+      example: no-store
+    PragmaNoCache:
+      description: For HTTP/1.0 intermediaries.
+      required: false
+      schema:
+        type: string
+        const: no-cache
+      example: no-cache
   securitySchemes:
     mtls:
       type: mutualTLS
