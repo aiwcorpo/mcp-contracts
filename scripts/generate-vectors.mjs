@@ -482,7 +482,8 @@ const files = (dir) => readdirSync(path(...dir)).filter((n) => n.endsWith('.ceda
 const examplePolicies = files(['cedar', 'examples']).map((n) => [`policies/${n}`, readFileSync(path('cedar', 'examples', n), 'utf8')]);
 const schemaText = readFileSync(path('cedar', 'mcp.cedarschema'), 'utf8');
 
-const CONTRACTS_VERSION = JSON.parse(readFileSync(path('package.json'), 'utf8')).version;
+// The Cedar schema is frozen for the whole 2.x line (CC-059), so bundle vectors name the schema version 2.0.0.
+const CONTRACTS_VERSION = '2.0.0';
 const manifestJson = (revision, gitSha) =>
   JSON.stringify({ revision, gitSha, createdAt: revisionTime(revision), schemaVersion: CONTRACTS_VERSION }, null, 2) + '\n';
 

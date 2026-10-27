@@ -763,7 +763,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Przyjęty wariant:** atrybuty klasyfikacji są wymagane: `Jira::Project.category` (`""`, gdy projekt nie ma
   kategorii; teraz wymagany w schemacie Cedar), `Confluence::Space.labels`, `OpenSearch::Index.tags`. Builder
   odmawia zbudowania zasobu (także rodzica) bez nich (`internal_error`), więc `ResultFilter` pomija element.
-  GitLab i service desk nie mają klasyfikacji (CC-057 otwarte). Wektory `entity-builder/resource-null-attribute`,
+  GitLab i service desk dostały opcjonalną klasyfikację w CC-057. Wektory `entity-builder/resource-null-attribute`,
   `resource-missing-classification-parent`, `resource-missing-labels`, `result-filter/jira-project-without-category`.
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
 

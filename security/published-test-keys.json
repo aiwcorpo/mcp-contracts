@@ -1,0 +1,11 @@
+{
+  "description": "SHA-256 (hex) of the SubjectPublicKeyInfo (DER) of every key published in test-vectors/keys. These keys are public: receivers in production refuse them whatever kid or key id they are configured under (CC-044).",
+  "keys": [
+    { "name": "test-gateway-jwt-a", "kid": "test-gw-2026-10-a", "algorithm": "ES256", "spkiSha256": "2c9b2f1e8cc291d8f9ab8a2c312726a1d9162253038d3670363084d5e2a07147" },
+    { "name": "test-gateway-jwt-b", "kid": "test-gw-2026-10-b", "algorithm": "ES256", "spkiSha256": "f776f49706b7fa2a9368b66d075bbb8ae737911125f4f144187b9a586f31eccc" },
+    { "name": "test-attacker-jwt", "kid": "test-attacker", "algorithm": "ES256", "spkiSha256": "c679efaec91adf76e792b3d56d1d59d5da3a3a6c4378da690c9c00f6ceff010a" },
+    { "name": "test-idp-corp", "kid": "test-idp-corp", "algorithm": "ES256", "spkiSha256": "8a264c8d907f48620d4f5963d2e5250766b5845cd5263677554575041e86de2f" },
+    { "name": "test-policy-bundle", "kid": "test-policy-bundle", "algorithm": "EdDSA", "spkiSha256": "8db9a660309553b8fa6bc1a2024195c530a0ca42fc93ae78430e9d8eb0f7b29e" },
+    { "name": "test-policy-overrides", "kid": "test-policy-overrides", "algorithm": "EdDSA", "spkiSha256": "6b13d12c070d542518df833f18ac1137c78edf3cf2dfcd23211aab4e470383b9" }
+  ]
+}

@@ -101,7 +101,10 @@ dokłada referencję do rodzica (`Jira::Issue.project`, `Confluence::Page.space`
 | `OpenSearch::Index` | `OpenSearch::Index/<p>` dla każdego prefiksu nazwy kończącego się przed `-` i pełnej nazwy |
 | `ServiceDesk::Queue` / `ServiceDesk::Ticket` | `ServiceDesk::Queue/<id kolejki>` |
 
-Resolver Confluence podaje `ancestorIds` (identyfikatory stron-przodków). Atrybut o wartości `null` oznacza
+Identyfikator i rodzic zasobu to zawsze kanoniczne wartości zwrócone przez system (klucz projektu i zgłoszenia
+Jiry, `path_with_namespace` GitLaba, klucz przestrzeni, nazwa indeksu, id kolejki), nigdy argument narzędzia:
+argument mógł mieć inną wielkość liter (ścieżki GitLaba są nieczułe na wielkość liter) albo wskazywać zasób
+przeniesiony. Resolver Confluence podaje `ancestorIds` (identyfikatory stron-przodków). Atrybut o wartości `null` oznacza
 brak atrybutu.
 
 Klasyfikacja (CC-057, CC-062, CC-067):
@@ -118,7 +121,9 @@ Zasób (także rodzic, np. projekt zgłoszenia) bez wymaganego atrybutu nie jest
 wywołanie jest odrzucane, a element wyniku pomijany. Builder normalizuje każdą wartość: `trim` (znaki <= U+0020) i
 zamiana wyłącznie liter ASCII na małe; zbiory bez duplikatów. Wartość kanoniczna danych zastrzeżonych to
 `restricted` we wszystkich systemach; polityki porównują tylko z nią. Zgłoszenie dziedziczy klasyfikację kolejki,
-projekt GitLaba także klasyfikację grupy. Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
+projekt GitLaba także klasyfikację grupy. Resolver GitLaba wypełnia `classification` grupy i projektu sumą
+topics wszystkich grup przodków (dla `team-a/sub/app`: topics `team-a`, `team-a/sub` i samego projektu), bo
+oznaczenie grupy nadrzędnej obejmuje całe poddrzewo. Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
 `srv-moved-issue-restricted`).
 
 **Kontekst:**
@@ -239,6 +244,13 @@ claimie `vsc` (C2, 401) i id zakresów w `static.json` (odrzucenie paczki).
 | `OpenSearch::Index` (zakres) | jak wyżej, bez końcowego `-` i `.` | prefiks nazwy |
 | `ServiceDesk::Queue`, `ServiceDesk::Ticket` | `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` | adapter generyczny (D10): alfabet zachowawczy; w kolejnych wersjach konfigurowalny per adapter |
 
+## 9a. Dane zastane a wzorce
+
+Wzorce są zachowawcze, więc część istniejących zasobów jest niedostępna przez MCP (fail-closed, odmowa jak dla
+zasobu bez uprawnień): starsze ścieżki GitLaba ze znakiem `_` lub `.` na początku albo końcu segmentu, klucze
+projektów Jiry dłuższe niż 10 znaków (przy zmienionym limicie w Jirze), przestrzenie osobiste Confluence (`~user`).
+Ukryte indeksy OpenSearch (`.nazwa`) są przyjmowane przez wzorzec; dostęp do nich i tak zależy od zakresów.
+
 ## 10. Każda wartość każdego `resourceRef` (CC-061)
 
 Ocena na bramce sprawdza tylko typy płaskie, więc o zasobach hierarchicznych i o kontenerach decyduje serwer.
@@ -248,7 +260,9 @@ Serwer przed wykonaniem narzędzia:
    `projectPath` i `targetGroup` przy transferze lub forku) rozwiązuje zasób i ocenia go przez `forResource`.
 2. Przy tworzeniu zasobu ocenia także kontener docelowy (grupę, projekt, przestrzeń, kolejkę), w którym zasób
    powstaje.
-3. Wykonuje narzędzie tylko, gdy wszystkie oceny dały `allow` (`ResultFilter.allAllowed`); jedna odmowa, błąd
-   rozwiązania albo błąd oceny kończy wywołanie odmową (`not_found_or_denied` dla zasobów, C10).
+3. Wykonuje narzędzie tylko, gdy wszystkie oceny dały `allow`; jedna odmowa, błąd rozwiązania albo błąd oceny
+   kończy wywołanie odmową (`not_found_or_denied` dla zasobów, C10). `ResultFilter.checkAll` sam wylicza wartości
+   z `resourceRefs` i argumentów, rozwiązuje je przez resolver `(typ, id)` i zwraca powód odmowy;
+   `ResultFilter.allAllowed` przyjmuje gotową listę zasobów (wywołujący odpowiada za jej kompletność).
 
 Wektory: `test-vectors/resource-checks/`, decyzje `srv-transfer-target-outside-scope`, `srv-transfer-source-in-scope`.

@@ -16,7 +16,7 @@
     <parent>
         <groupId>pl.aiwcorpo.mcp</groupId>
         <artifactId>mcp-contracts-parent</artifactId>
-        <version>2.0.0</version>
+        <version>2.0.1</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -43,6 +43,10 @@
             <resource>
                 <directory>${repo.root}/cedar</directory>
                 <targetPath>${contracts.prefix}/cedar</targetPath>
+            </resource>
+            <resource>
+                <directory>${repo.root}/security</directory>
+                <targetPath>${contracts.prefix}/security</targetPath>
             </resource>
             <resource>
                 <directory>${repo.root}/mocks/wiremock</directory>

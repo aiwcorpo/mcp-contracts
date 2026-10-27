@@ -2,6 +2,9 @@ package pl.aiwcorpo.mcp.policy.bundle;
 
 import com.cedarpolicy.model.policy.Policy;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -93,6 +96,7 @@ public final class PolicyStore {
     private final BundleVerifier overridesVerifier;
     private final Optional<Persistence> persistence;
     private final Map<Channel, Optional<Persisted>> persisted = new EnumMap<>(Channel.class);
+    private final boolean overridesExpected;
     private volatile Snapshot current;
 
     /**
@@ -115,8 +119,24 @@ public final class PolicyStore {
         this.overridesVerifier = Objects.requireNonNull(overridesVerifier, "overridesVerifier");
         this.persistence = persistence;
         for (Channel channel : Channel.values()) {
-            persisted.put(channel, persistence.flatMap(p -> readState(p, channel)));
+            persisted.put(channel, persistence.flatMap(p -> readState(p, channel, true)));
         }
+        this.overridesExpected = persisted.get(Channel.OVERRIDES).isPresent();
+    }
+
+    /**
+     * True after a restart when the state shows that an overrides bundle was active but none has been loaded in this
+     * process yet. The emergency forbid rules are then missing, so the component must not serve requests until the
+     * overrides are loaded again, or until a configured limit expires and an alarm is raised (review 2.0.0 M3).
+     */
+    public boolean awaitingOverrides() {
+        Snapshot snapshot = current;
+        return overridesExpected && (snapshot == null || snapshot.overrides().isEmpty());
+    }
+
+    /** @return true when a main bundle is active and no overrides bundle is awaited (see {@link #awaitingOverrides()}) */
+    public boolean isReady() {
+        return current != null && !awaitingOverrides();
     }
 
     /** @return the active snapshot, empty until the first main bundle is loaded (callers must deny then) */
@@ -173,7 +193,18 @@ public final class PolicyStore {
         if (minimum != null && revision.substring(0, 14).compareTo(minimum.substring(0, 14)) < 0) {
             throw new BundleRejectedException(Reason.BELOW_MINIMUM, revision + " is below the configured minimum " + minimum);
         }
+        // Re-read the file: the state on disk is authoritative even if another writer touched it (the directory
+        // must belong to one instance, README); take the newer of memory and disk.
+        Optional<Persisted> onDisk = readState(persistence.get(), channel, false);
+        if (onDisk.isPresent() && (persisted.get(channel).isEmpty()
+                || Revisions.isNewer(onDisk.get().revision(), persisted.get(channel).get().revision()))) {
+            persisted.put(channel, onDisk);
+        }
         if (loadedInThisProcess) {
+            Optional<Persisted> last = persisted.get(channel);
+            if (last.isPresent() && !Revisions.isNewer(revision, last.get().revision())) {
+                throw new BundleRejectedException(Reason.NOT_NEWER, revision + " is not newer than the persisted " + last.get().revision());
+            }
             return;
         }
         Optional<Persisted> state = persisted.get(channel);
@@ -188,12 +219,14 @@ public final class PolicyStore {
         }
     }
 
-    private static Optional<Persisted> readState(Persistence persistence, Channel channel) {
+    private static Optional<Persisted> readState(Persistence persistence, Channel channel, boolean warn) {
         Path file = stateFile(persistence, channel);
         try {
             if (!Files.exists(file)) {
-                persistence.warnings().accept("policy bundle state file " + file + " missing for " + channel
+                if (warn) {
+                    persistence.warnings().accept("policy bundle state file " + file + " missing for " + channel
                         + "; accepting revisions from the configured minimum");
+                }
                 return Optional.empty();
             }
             var matcher = STATE_LINE.matcher(Files.readString(file, StandardCharsets.UTF_8).trim());
@@ -203,8 +236,10 @@ public final class PolicyStore {
         } catch (IOException e) {
             // reported below like a corrupt file
         }
-        persistence.warnings().accept("policy bundle state file " + file + " unreadable for " + channel
-                + "; accepting revisions from the configured minimum");
+        if (warn) {
+            persistence.warnings().accept("policy bundle state file " + file + " unreadable for " + channel
+                    + "; accepting revisions from the configured minimum");
+        }
         return Optional.empty();
     }
 
@@ -213,20 +248,43 @@ public final class PolicyStore {
             return;
         }
         Path file = stateFile(persistence.get(), channel);
+        Path temp = null;
         try {
             Files.createDirectories(file.getParent());
-            Path temp = Files.createTempFile(file.getParent(), file.getFileName().toString(), ".tmp");
-            Files.writeString(temp, state.revision() + " " + state.archiveSha256() + "\n", StandardCharsets.UTF_8);
+            temp = Files.createTempFile(file.getParent(), file.getFileName().toString(), ".tmp");
+            try (FileChannel out = FileChannel.open(temp, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                out.write(ByteBuffer.wrap((state.revision() + " " + state.archiveSha256() + "\n").getBytes(StandardCharsets.UTF_8)));
+                out.force(true);
+            }
             try {
                 Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } catch (AtomicMoveNotSupportedException e) {
                 Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
             }
+            temp = null;
+            syncDirectory(file.getParent());
         } catch (IOException e) {
             // Without a durable state the rollback protection would silently lapse after a restart.
-            throw new BundleRejectedException(Reason.POLICY_INVALID, "cannot persist policy bundle state: " + e.getMessage(), e);
+            throw new BundleRejectedException(Reason.STATE_WRITE_FAILED, "cannot persist policy bundle state: " + e.getMessage(), e);
+        } finally {
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException ignored) {
+                    // the next write uses a new temporary name
+                }
+            }
         }
         persisted.put(channel, Optional.of(state));
+    }
+
+    // Makes the rename durable; some platforms cannot open a directory for fsync, the file itself is already synced.
+    private static void syncDirectory(Path directory) {
+        try (FileChannel dir = FileChannel.open(directory, StandardOpenOption.READ)) {
+            dir.force(true);
+        } catch (IOException e) {
+            // best effort, see above
+        }
     }
 
     private static Path stateFile(Persistence persistence, Channel channel) {

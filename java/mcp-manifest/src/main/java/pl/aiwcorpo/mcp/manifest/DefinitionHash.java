@@ -18,7 +18,7 @@ import java.util.HexFormat;
  */
 public final class DefinitionHash {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = StrictJson.MAPPER;
 
     private DefinitionHash() {
     }

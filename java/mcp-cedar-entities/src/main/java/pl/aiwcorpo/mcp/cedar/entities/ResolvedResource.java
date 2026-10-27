@@ -9,8 +9,10 @@ import java.util.Optional;
  *
  * <p>Attribute values may be {@link String}, {@link Boolean}, integral {@link Number}, a {@link java.util.Collection}
  * of those (a Cedar set), a {@link Map} with String keys (a Cedar record) or a cedar-java
- * {@link com.cedarpolicy.value.Value}. A {@code null} value means "no attribute" (e.g. a Jira project without a
- * category). The builder adds the parent reference and {@code scopes} itself (see {@code cedar/entity-builder.md}),
+ * {@link com.cedarpolicy.value.Value}. A {@code null} value means "no attribute"; required classification attributes
+ * ({@code category}, {@code labels}, {@code tags}) must be present, a Jira project without a category passes
+ * {@code ""} (CC-062). Id and parent are the canonical values reported by the system, never the tool argument
+ * (cedar/entity-builder.md section 4). The builder adds the parent reference and {@code scopes} itself (see {@code cedar/entity-builder.md}),
  * so they must not be given here. A Confluence page passes the ids of its ancestor pages as {@code ancestorIds}.
  *
  * @param type Cedar type, e.g. {@code Jira::Issue}

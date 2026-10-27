@@ -4,12 +4,54 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.0.1 - 2026-10-27
+
+Wydanie poprawkowe po przeglądzie 2.0.0 (punkty kategorii (a)). Bez zmian kontraktu: `cedar/mcp.cedarschema` i
+`test-vectors/` są bajtowo takie jak w 2.0.0; API bibliotek tylko rozszerzone.
+
+### Zmiany
+
+- H1: `cedar/mcp.cedarschema` bajtowo zamrożony w linii 2.x (z nagłówkiem `2.0.0`, LF); testy skrótu w Node i
+  Javie; opis w README i w "Wpływie na konsumentów" 2.0.0.
+- M1: `entity-builder.md`: klasyfikacja grupy i projektu GitLab to suma topics wszystkich grup przodków.
+- M2: `mcp-manifest` `CanonicalJson`: liczby na granicy potęg dwójki jak w ECMAScript (np. 2^122 ->
+  `5.316911983139664e+36`); test na wszystkich potęgach dwójki i 5000 losowych liczbach wygenerowanych przez Node
+  (`java/mcp-manifest/src/test/resources/ecmascript-numbers.json`, `scripts/generate-number-cases.mjs`).
+- M3: `PolicyStore.awaitingOverrides()` i `isReady()`: po restarcie gotowość dopiero po ponownym załadowaniu
+  `overrides`, jeśli były aktywne.
+- M4: `PolicyStore` czyta plik stanu przed każdą decyzją (nowsza z wartości pamięci i dysku), zapisuje z `fsync`
+  pliku i katalogu, sprząta pliki tymczasowe; nowy powód `STATE_WRITE_FAILED` (`state_write_failed`) zamiast
+  `policy_invalid` przy błędzie zapisu; README: katalog stanu na instancję.
+- M5: `ResultFilter.checkAll(caller, tool, arguments, resolver, creationContainer)`: sam wylicza wartości z
+  `resourceRefs`, rozwiązuje je i zwraca `CheckResult` z powodem odmowy (`allAllowed` bez zmian).
+- M6: CHANGELOG 2.0.0: lista niezgodności względem 1.1.0 bez zmian, które były już w 1.1.0; uzupełniony
+  "Wpływ na konsumentów".
+- M7: `entity-builder.md`: id i rodzic zasobu to kanoniczne wartości z systemu, nigdy argument.
+- L1: README: `ResourceIds.isValid` przy zapisie `ResourceDefaults` i `vsc` (walidatory z `find()` przepuszczają
+  końcowe `\n`).
+- L2: nieaktualne opisy w README, `CONTRACT_CHANGES.md`, `ResolvedResource`, `BundleVerifier`.
+- L4: wpływ `__Host-XSRF-TOKEN` na ws-07 (Secure za proxy) i ws-08 (Safari na localhost).
+- L5: `entity-builder.md` sekcja 9a: zachowanie wzorców na danych zastanych.
+- L6: `mcp-manifest` odrzuca duplikaty kluczy i nadmiarowe tokeny JSON.
+- Nowe: `PublishedTestKeys` (mcp-cedar-entities) i `mcp-contracts/security/published-test-keys.json` (jar
+  `mcp-contracts`, paczka npm `./security/*`): skróty SPKI wszystkich opublikowanych kluczy testowych (EC i
+  Ed25519), z testem zgodności z `test-vectors/keys`; `BundleVerifier` z nich korzysta.
+- Generator wektorów paczek używa stałej `schemaVersion` `2.0.0` (schemat zamrożony), więc ponowne generowanie
+  nie zmienia wektorów.
+
+### Odłożone do decyzji (kategoria (b) przeglądu 2.0.0)
+
+- H1(b) lista znanych skrótów schematu / postać znormalizowana; H2 agregaty OpenSearch obejmujące indeksy
+  zakazane; wymagalność `classification` dla GitLaba i service desku (M1); L3 znacznik narzędzia listującego.
+
 ## 2.0.0 - 2026-10-27
 
 Pierwsze wydanie ze ścisłym SemVer. Zawiera niewydane osobno 1.2.1. Decyzje człowieka z 2026-10-27:
 CC-046 ... CC-067 `accepted`; w `CONTRACT_CHANGES.md` nie ma otwartych pozycji. Broker (ws-06), BFF (ws-07) i
 frontend (ws-08) zależą od 1.1.0, dlatego lista niżej obejmuje wszystkie zmiany niezgodne z 1.1.0
-(1.2.0 + 2.0.0).
+(1.2.0 + 2.0.0). Zmiany, które były już w 1.1.0 (CC-005, CC-010, CC-014, CC-015, CC-026, CC-027, CC-028,
+podstawowe CC-031, CC-032, CC-033, CC-034), nie wymagają migracji z 1.1.0 i nie ma ich na liście (poprawione w
+2.0.1).
 
 ### Niezgodne z 1.1.0
 
@@ -31,42 +73,37 @@ Model Cedar i polityki:
 - `context.vsScopes` i `context.virtualServer` tylko w `forbid` (CC-041, CC-058); szablony w paczkach odrzucane.
 
 C2 (wewnętrzny JWT):
-- `vs` wymaga `vsc` (CC-027); `vsc` maks. 50 identyfikatorów na pole, według wzorców per system (CC-056).
+- `vsc` maks. 50 identyfikatorów na pole, według wzorców per system (CC-056).
 - `tool` wyłącznie dla `tools/call` (wymagany, równy `params.name`) i `resolve` (wymagany); zabroniony dla
   `initialize`, `tools/list`, `ping`, `GET /mcp-manifest` (CC-038).
-- `rid` == `X-Request-Id` (CC-033); klucze `test-*` i opublikowane klucze testowe odrzucane bez `allowTestKeys` (CC-044).
+- Klucze `test-*` i opublikowane klucze testowe odrzucane bez `allowTestKeys` (CC-044).
 - Nowe kody w wektorach: `tool_missing`, `tool_not_allowed`, `test_key_not_allowed`, `request_id_mismatch`;
   harness czyta `verifier.allowTestKeys`.
 
 C4 (broker):
-- `returnPath` bez `%` i `\` (CC-032).
 - Nagłówek odpowiedzi `X-Request-Id` wymagany w każdej odpowiedzi (CC-047); `credential.invalidated` także po
   zastąpieniu poświadczenia (CC-046); `user-secret` to zawsze jeden token (CC-049).
 
 C5 (gateway admin):
-- `CatalogTool.description` i `ConfirmationView.expiresAt` wymagane (CC-014, CC-015); podgląd potwierdzenia
-  wymaga świeżego MFA (CC-034); `ResourceDefaults`: maks. 5 typów, 1..50 identyfikatorów na typ, wzorce per
-  system (CC-056).
+- `ResourceDefaults`: maks. 5 typów, 1..50 identyfikatorów na typ, wzorce per system (CC-056).
 
 C6 (manifest):
-- Wymagane `definition` (CC-005); `title` dozwolony i hashowany, `icons`/`_meta` niedozwolone (CC-042);
+- `title` dozwolony i hashowany, `icons`/`_meta` niedozwolone (CC-042);
   `resourceRefs[].argument` musi być zadeklarowanym argumentem typu identyfikatora (CC-043).
 
 C7 (paczki):
-- `overrides` tylko z `manifest.json` i `policies/**`, walidowane schematem paczki głównej (CC-028, CC-040).
+- `overrides` walidowane schematem paczki głównej (CC-040).
 - Paczka główna: schemat bajtowo równy `cedar/mcp.cedarschema` tej wersji, `static.json` tylko encje
   `UserGroup` (CC-059); `PolicyBundle` nie wystawia encji statycznych.
 - Tar tylko ścisły ustar, bez dodatkowych plików, unikalne `@id`; powody odrzucenia: `archive_invalid`,
   `archive_unexpected_file`, `link_context_in_permit` (zastępuje `vs_scopes_in_permit` z 1.2.0),
   `schema_mismatch`, `static_entities_invalid`, `test_key_not_allowed`, `main_not_loaded`, `id_conflict`,
   `below_minimum`.
-- `latest.json`: `url`/`sigUrl` tylko nazwy plików (CC-026).
 
 C8 (audyt):
-- `clientRequestId` według wzorca, `resource.id` bez znaków sterujących C0/C1, U+2028/2029 i bidi (CC-031).
+- `resource.id` bez znaków bidi (uzupełnienie CC-031 w 1.2.0).
 
 C12 (BFF):
-- `step_up_required` niesie `stepUpUrl` zamiast `url` (CC-010).
 - Ciasteczko CSRF `__Host-XSRF-TOKEN` zamiast `XSRF-TOKEN` (CC-055).
 - Po nieudanym logowaniu `/?loginError=<kod>` tylko z listy `LoginErrorCode` (CC-051).
 
@@ -111,17 +148,24 @@ Biblioteki Java i format wektorów:
 
 ### Wpływ na konsumentów
 
+- Wszyscy: `cedar/mcp.cedarschema` jest bajtowo zamrożony w linii 2.x (z nagłówkiem, LF); paczka polityk i
+  komponenty muszą używać tego samego pliku (2.0.1).
 - ws-02 (starter): `mcp-cedar-entities` z `ScopeMapping` z `PolicyStore` (zamiast nazw grup), `ResourceIds`,
   wymagana i normalizowana klasyfikacja w resolverach (`category`, `labels`, `tags`, `classification`),
   `ResultFilter.allowed` dla wyników i `allAllowed` dla każdej wartości `resourceRefs` (także kontener przy
   tworzeniu), `queryConstraint` z cytowaniem w JQL/CQL i wzorcem `p,p-*`; `mcp-policy-bundle` z `PolicyStore` i
   `Persistence`; `mcp-manifest` do generowania manifestu (`definition`, `title`, hash); `vsc` w JWT; `tool`
-  obecny tylko przy `tools/call`; odrzucanie kluczy testowych.
+  obecny tylko przy `tools/call`; odrzucanie kluczy testowych (`PublishedTestKeys`, 2.0.1);
+  `ResultFilter.cedarAuthorizer` (błędy diagnostyki Cedar = odmowa); mock i resolver Jiry zwracają `category`
+  (choćby `""`), inaczej `internal_error`; katalog stanu `PolicyStore` na instancję i gotowość dopiero po
+  `overrides` (`isReady`, 2.0.1); `invalid_argument` dla ujemnego wieku MFA; `checkAll` z resolverem (2.0.1).
 - ws-05 (gateway): wystawia `vsc` z `resourceDefaults` (`VirtualServerScope.fromResourceDefaults`), wariant
   serwisowy JWT na `GET /v1/systems`, `tool` tylko przy `tools/call`/`resolve`; `PolicyStore` (schemat przypięty,
   `static.json` tylko mapowanie, ochrona po restarcie); reguły manifestu i hash przez `mcp-manifest` przy
   rejestracji (422 `manifest_rejected`); wzorce `ResourceDefaults`; `description`/`title` w katalogu i diffie;
-  `expiresAt` i step-up w potwierdzeniach.
+  `expiresAt` i step-up w potwierdzeniach; `ResultFilter.cedarAuthorizer`; katalog stanu na instancję i
+  `isReady()` przed obsługą ruchu (2.0.1); `ResourceIds.isValid` przy zapisie `ResourceDefaults` (walidatory JSON
+  Schema z `find()` przepuszczają końcowe `\n`, 2.0.1); ujemny wiek MFA odrzucany.
 - ws-06 (broker): reguły `tool` per metoda; kod `test_key_not_allowed` (w brokerze `test_kid_not_allowed` do
   ujednolicenia); harness czyta `verifier.allowTestKeys`; `vsc` maks. 50 i wzorce; `resource.id` bez bidi;
   `X-Request-Id` w każdej odpowiedzi i przyjmowanie go od BFF; `credential.invalidated` po zastąpieniu
@@ -130,15 +174,21 @@ Biblioteki Java i format wektorów:
   samym `sub`; `&` w callbacku przy query w `returnPath`; `/?loginError=<kod>` z listy; `stepUpUrl`;
   `503 upstream_unavailable`; `mfaFreshUntil`; przekazywanie `X-Request-Id`; `Requester` w porcie C13; 400 dla
   nieznanego systemu przy `DELETE`; ciasteczko `__Host-XSRF-TOKEN` (`CookieCsrfTokenRepository` z tą nazwą,
-  Path=/, Secure, bez Domain); limity i wzorce `ResourceDefaults`; regeneracja klientów.
-- ws-08 (frontend): `withXsrfConfiguration({cookieName: '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`;
+  Path=/, Secure, bez Domain; `CookieCsrfTokenRepository` ustawia `Secure` według `request.isSecure()`, więc za
+  proxy bez nagłówków forwarded trzeba `setCookieCustomizer(c -> c.secure(true).path("/"))`, inaczej przeglądarka
+  odrzuci ciasteczko `__Host-`); limity i wzorce `ResourceDefaults`; regeneracja klientów.
+- ws-08 (frontend): `withXsrfConfiguration({cookieName: '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`
+  (Safari nie przyjmuje ciasteczka `Secure` na `http://localhost`: w dev serwować po HTTPS albo używać innej
+  przeglądarki);
   MSW: 400 na zły `returnPath`, zły JSON i nieznany system, eksport `RETURN_PATH_PATTERN`, `LOGIN_ERROR_CODES`,
   `XSRF_COOKIE`, handlery asynchroniczne; `stepUpUrl` (można zastąpić `returnPath`); `mfaFreshUntil` przed polem
   na sekret; obsługa `loginError`; limity i wzorce `ResourceDefaults`; `title` w diffie; regeneracja klienta.
 - ws-09 (polityki): `static.json` tylko z encji `UserGroup` (mapowanie zakresów, identyfikatory według wzorców);
   schemat paczki = `cedar/mcp.cedarschema` 2.0.0; klasyfikacja porównywana tylko z `restricted`, reguły
   `restricted` także dla GitLaba i service desku; zawężanie dla wszystkich typów; `vsScopes` i `virtualServer`
-  tylko w `forbid` (`PolicyLintCli`); unikalne `@id` między kanałami; paczki w ustar.
+  tylko w `forbid` (`PolicyLintCli`); unikalne `@id` między kanałami; paczki w ustar; nigdy ta sama rewizja z
+  innymi bajtami archiwum (odbiorca po restarcie odrzuca ją jako `not_newer`); nowa nazwa powodu
+  `link_context_in_permit` w narzędziach.
 
 ### Dystrybucja
 

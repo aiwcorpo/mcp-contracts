@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import pl.aiwcorpo.mcp.cedar.entities.EntityBuilderException;
 import pl.aiwcorpo.mcp.cedar.entities.McpCedarSchema;
+import pl.aiwcorpo.mcp.cedar.entities.PublishedTestKeys;
 import pl.aiwcorpo.mcp.cedar.entities.ScopeMapping;
 import pl.aiwcorpo.mcp.policy.bundle.BundleRejectedException.Reason;
 
@@ -45,13 +46,8 @@ public final class BundleVerifier {
     private static final Pattern GIT_SHA = Pattern.compile("^[0-9a-f]{40}$");
     private static final Pattern TIMESTAMP = Pattern.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$");
     private static final Pattern SEMVER = Pattern.compile("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$");
-    /**
-     * SHA-256 of the SPKI encoding of the published test keys (test-vectors/keys/test-policy-*.public.pem). A key with
-     * one of these encodings is a test key whatever id it is configured under (CC-044, review 1.2.0 M4).
-     */
-    static final Set<String> TEST_KEY_SPKI_SHA256 = Set.of(
-            "8db9a660309553b8fa6bc1a2024195c530a0ca42fc93ae78430e9d8eb0f7b29e",
-            "6b13d12c070d542518df833f18ac1137c78edf3cf2dfcd23211aab4e470383b9");
+    /** Kept for compatibility with 2.0.0; the list now lives in {@link PublishedTestKeys}. */
+    static final Set<String> TEST_KEY_SPKI_SHA256 = PublishedTestKeys.SPKI_SHA256;
     private static final String MANIFEST = "manifest.json";
     private static final String SCHEMA = "schema.cedarschema";
     private static final String STATIC_ENTITIES = "entities/static.json";
@@ -116,7 +112,7 @@ public final class BundleVerifier {
         if (!policies.templates.isEmpty()) {
             throw new BundleRejectedException(Reason.POLICY_INVALID, "templates are not used by the platform");
         }
-        lintVsScopes(policies);
+        lintLinkContext(policies);
         String schemaText = text(files.get(SCHEMA));
         // The schema is pinned to this contracts version (CC-059): a bundle cannot reshape the model, e.g. let
         // ResourceScope entities nest and widen grants.
@@ -197,12 +193,7 @@ public final class BundleVerifier {
     }
 
     static boolean isPublishedTestKey(PublicKey key) {
-        try {
-            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(key.getEncoded());
-            return TEST_KEY_SPKI_SHA256.contains(java.util.HexFormat.of().formatHex(digest));
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
+        return PublishedTestKeys.isPublishedTestKey(key);
     }
 
     private static BundleManifest manifest(Map<String, byte[]> files, BundlePointer pointer) throws BundleRejectedException {
@@ -289,7 +280,7 @@ public final class BundleVerifier {
         }
     }
 
-    private static void lintVsScopes(PolicySet policies) throws BundleRejectedException {
+    private static void lintLinkContext(PolicySet policies) throws BundleRejectedException {
         try {
             List<String> violations = PolicyLint.linkContextOutsideForbid(policies);
             if (!violations.isEmpty()) {

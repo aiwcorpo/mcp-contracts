@@ -74,4 +74,11 @@ class ManifestVectorTest {
         assertEquals("{\"\\u0007\":\"\\n\",\"a\":1,\"b\":[true,null]}",
                 CanonicalJson.canonicalize("{\"b\":[true,null],\"a\":1.0,\"\\u0007\":\"\\n\"}"));
     }
+
+    @Test
+    void duplicateKeysAndTrailingContentAreRejected() {
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> CanonicalJson.canonicalize("{\"a\":1,\"a\":2}"));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> CanonicalJson.canonicalize("{\"a\":1} {\"b\":2}"));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> ManifestRules.violations("{\"tools\":[],\"tools\":[]}"));
+    }
 }

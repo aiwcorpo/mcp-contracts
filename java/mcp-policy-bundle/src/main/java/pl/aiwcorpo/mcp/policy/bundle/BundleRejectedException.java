@@ -24,7 +24,9 @@ public final class BundleRejectedException extends Exception {
         STATIC_ENTITIES_INVALID,
         MAIN_NOT_LOADED,
         ID_CONFLICT,
-        BELOW_MINIMUM;
+        BELOW_MINIMUM,
+        /** The rollback state could not be written durably; the bundle is not activated (review 2.0.0 M4). */
+        STATE_WRITE_FAILED;
 
         /** @return lower-case name, e.g. {@code bad_signature} */
         public String wireCode() {

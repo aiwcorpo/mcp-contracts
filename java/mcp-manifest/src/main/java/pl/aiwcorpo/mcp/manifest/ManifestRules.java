@@ -31,7 +31,7 @@ public final class ManifestRules {
     /** Recomputed definitionHash equals the declared one. */
     public static final String DEFINITION_HASH_MATCHES = "definition-hash-matches";
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = StrictJson.MAPPER;
     private static final Set<String> ID_TYPES = Set.of("string", "integer");
 
     private ManifestRules() {

@@ -17,7 +17,7 @@ import java.util.List;
  */
 public final class CanonicalJson {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = StrictJson.MAPPER;
 
     private CanonicalJson() {
     }
@@ -118,14 +118,22 @@ public final class CanonicalJson {
             return "-" + number(-value);
         }
         // ECMAScript: the fewest significant digits that round-trip, and among those the value closest to the exact
-        // one. Double.toString always prints at least two digits (4.9E-324 instead of 5e-324), so search directly.
+        // one. Rounding the exact value to p digits is not enough: at a power of two the rounding interval is
+        // asymmetric, so the neighbour one unit away may round-trip while the rounded value does not.
         BigDecimal exact = new BigDecimal(value);
         BigDecimal decimal = null;
-        for (int precision = 1; precision <= 17; precision++) {
-            BigDecimal candidate = exact.round(new MathContext(precision, RoundingMode.HALF_EVEN));
-            if (candidate.doubleValue() == value) {
-                decimal = candidate.stripTrailingZeros();
-                break;
+        for (int precision = 1; precision <= 17 && decimal == null; precision++) {
+            BigDecimal rounded = exact.round(new MathContext(precision, RoundingMode.HALF_EVEN));
+            BigDecimal unit = rounded.ulp();
+            BigDecimal best = null;
+            for (BigDecimal candidate : new BigDecimal[] {rounded, rounded.subtract(unit), rounded.add(unit)}) {
+                if (candidate.signum() > 0 && candidate.precision() <= precision && candidate.doubleValue() == value
+                        && (best == null || candidate.subtract(exact).abs().compareTo(best.subtract(exact).abs()) < 0)) {
+                    best = candidate;
+                }
+            }
+            if (best != null) {
+                decimal = best.stripTrailingZeros();
             }
         }
         String digits = decimal.unscaledValue().toString();

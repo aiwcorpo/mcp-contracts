@@ -209,6 +209,27 @@ public final class EntityBuilder {
         return context;
     }
 
+    /**
+     * Every value of every resourceRef argument as (type, id), in argument order, validated like {@code refs}.
+     *
+     * @throws EntityBuilderException {@code INVALID_ARGUMENT} for a value that is not a valid id
+     */
+    static List<Map.Entry<String, String>> resourceValues(ToolDescriptor tool, Map<String, ?> arguments) {
+        List<Map.Entry<String, String>> values = new ArrayList<>();
+        for (ResourceRef ref : tool.resourceRefs()) {
+            if (!RESOURCE_TYPES.contains(ref.type())) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + ref.type());
+            }
+            for (String id : argumentIds(ref.argument(), arguments.get(ref.argument()))) {
+                if (!ResourceIds.isValid(ref.type(), ResourceIds.Kind.RESOURCE, id)) {
+                    throw invalid(ref.argument() + ": not a valid " + ref.type() + " id");
+                }
+                values.add(Map.entry(ref.type(), id));
+            }
+        }
+        return values;
+    }
+
     private static List<String> argumentIds(String argument, Object value) {
         if (value == null) {
             return List.of();

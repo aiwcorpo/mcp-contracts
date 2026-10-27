@@ -1,6 +1,6 @@
 {
   "name": "@aiwcorpo/mcp-contracts",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Kontrakty platformy MCP: OpenAPI, JSON Schema, schemat Cedar, wektory testowe, typy TS i handlery MSW.",
   "license": "UNLICENSED",
   "private": true,
@@ -30,13 +30,15 @@
     "./cedar/*": "./cedar/*",
     "./test-vectors/*": "./test-vectors/*",
     "./mocks/wiremock/*": "./mocks/wiremock/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./security/*": "./security/*"
   },
   "files": [
     "openapi/",
     "schemas/",
     "cedar/",
     "test-vectors/",
+    "security/",
     "mocks/",
     "dist/",
     "CONTRACT_CHANGES.md",

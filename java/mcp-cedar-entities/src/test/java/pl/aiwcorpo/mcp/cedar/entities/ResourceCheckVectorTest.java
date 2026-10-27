@@ -35,4 +35,21 @@ class ResourceCheckVectorTest {
                 filter.allAllowed(VectorInputs.caller(input), VectorInputs.tool(input), VectorInputs.arguments(input), resources),
                 file::toString);
     }
+
+    /** The same vectors through checkAll, which enumerates the values itself and resolves them by id. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("vectors")
+    void checkAllEnumeratesEveryValue(Path file) throws Exception {
+        JsonNode vector = JSON.readTree(file.toFile());
+        EntityBuilder builder = VectorInputs.builder(vector.get("staticEntities").asText());
+        ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(
+                new BasicAuthorizationEngine(), CedarFixtures.examplePolicies(), CedarFixtures.schema()));
+        JsonNode input = vector.get("input");
+        java.util.Map<String, ResolvedResource> byId = new java.util.HashMap<>();
+        vector.get("resources").forEach(r -> byId.put(r.get("type").asText() + "/" + r.get("id").asText(), VectorInputs.resource(r)));
+        ResultFilter.CheckResult result = filter.checkAll(VectorInputs.caller(input), VectorInputs.tool(input),
+                VectorInputs.arguments(input), (type, id) -> java.util.Objects.requireNonNull(byId.get(type + "/" + id)),
+                java.util.Optional.empty());
+        assertEquals(vector.get("expected").get("allowed").asBoolean(), result.allowed(), () -> file + ": " + result);
+    }
 }

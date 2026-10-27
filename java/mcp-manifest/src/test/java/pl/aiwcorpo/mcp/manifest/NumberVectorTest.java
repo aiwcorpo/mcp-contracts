@@ -18,4 +18,19 @@ class NumberVectorTest {
             assertEquals(c.get("canonical").asText(), CanonicalJson.number(value), c.get("bits").asText());
         }
     }
+
+    @Test
+    void powersOfTwoAndRandomDoublesMatchJavaScript() throws Exception {
+        JsonNode cases;
+        try (var in = NumberVectorTest.class.getResourceAsStream("/ecmascript-numbers.json")) {
+            cases = new ObjectMapper().readTree(in).get("cases");
+        }
+        int checked = 0;
+        for (JsonNode c : cases) {
+            double value = Double.longBitsToDouble(HexFormat.fromHexDigitsToLong(c.get("bits").asText()));
+            assertEquals(c.get("canonical").asText(), CanonicalJson.number(value), c.get("bits").asText());
+            checked++;
+        }
+        assertEquals(cases.size(), checked);
+    }
 }

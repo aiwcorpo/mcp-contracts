@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -68,6 +69,82 @@ public final class ResultFilter {
             }
         }
         return true;
+    }
+
+    /** Resolves one resource id from a tool argument to the resource as the system reports it. */
+    @FunctionalInterface
+    public interface ResourceResolver {
+        /**
+         * @param type Cedar type from the manifest resourceRef, e.g. {@code GitLab::Group}
+         * @param id the argument value (already checked against the id pattern)
+         * @return the resource with canonical id, parent and classification from the system
+         */
+        ResolvedResource resolve(String type, String id) throws Exception;
+    }
+
+    /**
+     * Outcome of {@link #checkAll}.
+     *
+     * @param allowed true only when every evaluated resource was allowed
+     * @param deniedType type of the first resource that was not allowed
+     * @param deniedId id (argument value or container id) of that resource
+     * @param reason why: "denied", "not_resolved", "invalid_argument" or "evaluation_error"
+     */
+    public record CheckResult(boolean allowed, Optional<String> deniedType, Optional<String> deniedId, Optional<String> reason) {
+
+        static CheckResult ok() {
+            return new CheckResult(true, Optional.empty(), Optional.empty(), Optional.empty());
+        }
+
+        static CheckResult denied(String type, String id, String reason) {
+            return new CheckResult(false, Optional.ofNullable(type), Optional.ofNullable(id), Optional.of(reason));
+        }
+    }
+
+    /**
+     * CC-061 without relying on the caller to list the resources: enumerates every value of every resourceRef from
+     * {@code tool} and {@code arguments}, resolves each with {@code resolver} and evaluates it, then evaluates the
+     * creation container if one is given. Stops at the first value that is not allowed (review 2.0.0 M5). A tool
+     * whose resourceRef arguments are all absent has nothing to check here and is allowed; its results still go
+     * through {@link #allowed}.
+     *
+     * @param creationContainer the group, project, space or queue a new resource is created in, if the tool creates one
+     */
+    public CheckResult checkAll(Caller caller, ToolDescriptor tool, Map<String, ?> arguments, ResourceResolver resolver,
+            Optional<ResolvedResource> creationContainer) {
+        List<Map.Entry<String, String>> values;
+        try {
+            values = EntityBuilder.resourceValues(tool, arguments);
+        } catch (EntityBuilderException e) {
+            return CheckResult.denied(null, null, e.code() == EntityBuilderException.Code.INVALID_ARGUMENT ? "invalid_argument" : "evaluation_error");
+        }
+        for (Map.Entry<String, String> value : values) {
+            ResolvedResource resource;
+            try {
+                resource = resolver.resolve(value.getKey(), value.getValue());
+            } catch (Exception e) {
+                return CheckResult.denied(value.getKey(), value.getValue(), "not_resolved");
+            }
+            CheckResult result = evaluate(caller, tool, arguments, resource, value.getKey(), value.getValue());
+            if (!result.allowed()) {
+                return result;
+            }
+        }
+        if (creationContainer.isPresent()) {
+            ResolvedResource container = creationContainer.get();
+            return evaluate(caller, tool, arguments, container, container.type(), container.id());
+        }
+        return CheckResult.ok();
+    }
+
+    private CheckResult evaluate(Caller caller, ToolDescriptor tool, Map<String, ?> arguments, ResolvedResource resource,
+            String type, String id) {
+        try {
+            return authorizer.isAllowed(builder.forResource(caller, tool, arguments, resource))
+                    ? CheckResult.ok() : CheckResult.denied(type, id, "denied");
+        } catch (Exception e) {
+            return CheckResult.denied(type, id, "evaluation_error");
+        }
     }
 
     /**
