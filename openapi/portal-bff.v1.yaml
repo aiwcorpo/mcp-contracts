@@ -7,8 +7,10 @@ info:
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
     (HttpOnly, Secure, SameSite=Lax) created by the OIDC login run by the BFF; the frontend never sees tokens.
     The frontend (Angular) is served by the BFF from the same origin. CSRF follows the Angular convention:
-    the BFF sets the cookie `XSRF-TOKEN` (not HttpOnly, Secure, SameSite=Strict) and the frontend sends its
-    value in the header `X-XSRF-TOKEN` for POST, PUT and DELETE (Angular HttpClient does this by default).
+    the BFF sets the cookie `__Host-XSRF-TOKEN` (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain; the
+    `__Host-` prefix stops sibling subdomains from planting it, CC-055) and the frontend sends its value in the
+    header `X-XSRF-TOKEN` for POST, PUT and DELETE (Angular: `withXsrfConfiguration({cookieName:
+    '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`).
 
     Secrets go only from the browser to the BFF (`PUT /connections/{system}/secret`); no response contains one.
     Error bodies for statuses whose body C12 does not define use the generic `Error` shape (CC-012).
@@ -43,7 +45,7 @@ paths:
         Redirects to the IdP (authorization code + PKCE). `state`, `nonce` and the PKCE verifier are bound to the
         browser session that started the login and checked on the IdP callback (the BFF's OIDC redirect URI,
         configuration of the BFF, not part of this API). After the callback the BFF issues a new session id
-        (`__Host-session`, protection against session fixation), sets `XSRF-TOKEN` and redirects to `returnPath`
+        (`__Host-session`, protection against session fixation), sets `__Host-XSRF-TOKEN` and redirects to `returnPath`
         (default `/`). With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication (`max_age=0` and the
         MFA `acr_values`) and accepts the result only if `sub` equals the `sub` of the existing session; otherwise
         it ends the session. Open to anonymous callers. Answers with a redirect (302); only an invalid `returnPath` gives 400 with an `Error` JSON body.
@@ -386,10 +388,13 @@ paths:
       tags: [connections]
       operationId: disconnect
       summary: Disconnect the account.
+      description: An unknown system gives 400 invalid_request without calling the broker (CC-054).
       security:
         - session: []
           csrf: []
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '204':
           description: Disconnected.
         '401':
@@ -867,7 +872,7 @@ components:
       type: apiKey
       in: header
       name: X-XSRF-TOKEN
-      description: Value of the XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict) set by the BFF. Required for POST, PUT and DELETE.
+      description: Value of the __Host-XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain) set by the BFF (CC-055). Required for POST, PUT and DELETE.
   parameters:
     System:
       name: system

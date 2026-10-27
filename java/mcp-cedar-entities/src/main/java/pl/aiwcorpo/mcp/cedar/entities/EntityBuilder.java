@@ -48,6 +48,14 @@ public final class EntityBuilder {
     private static final Set<String> RISKS = Set.of("READ_ONLY", "UPDATE", "DESTRUCTIVE");
     private static final Set<String> ACTIONS = Set.of("read", "update", "delete", "admin");
     // Classification attributes a resolver must deliver (CC-062); without them a Restricted rule could not match.
+    // Classification attributes normalized to one canonical form (CC-067): attribute -> true for a set of strings.
+    private static final Map<String, Map.Entry<String, Boolean>> CLASSIFICATION = Map.of(
+            "Jira::Project", Map.entry("category", false),
+            "Confluence::Space", Map.entry("labels", true),
+            "OpenSearch::Index", Map.entry("tags", true),
+            "GitLab::Group", Map.entry("classification", true),
+            "GitLab::Project", Map.entry("classification", true),
+            "ServiceDesk::Queue", Map.entry("classification", true));
     private static final Map<String, String> REQUIRED_CLASSIFICATION = Map.of(
             "Jira::Project", "category",
             "Confluence::Space", "labels",
@@ -298,8 +306,9 @@ public final class EntityBuilder {
                 throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " without " + classification);
             }
         }
+        Map<String, Object> input = normalizedClassification(resource);
         Map<String, Value> attrs = new TreeMap<>();
-        resource.attributes().forEach((name, value) -> attrs.put(name, "ancestorIds".equals(name)
+        input.forEach((name, value) -> attrs.put(name, "ancestorIds".equals(name)
                 ? stringSet(new TreeSet<>(asStrings(resource.type() + ".ancestorIds", value)))
                 : toValue(resource.type() + "." + name, value)));
         String parentAttribute = PARENT_ATTRIBUTE.get(resource.type());
@@ -311,6 +320,46 @@ public final class EntityBuilder {
         attrs.put("scopes", scopeSet(scopeIds(resource, parent)));
         Set<EntityUID> parents = parent.map(p -> Set.of(uid(p.type(), p.id()))).orElse(Set.of());
         return new Entity(uid(resource.type(), resource.id()), attrs, parents);
+    }
+
+    /** Trim (as {@link String#trim()}) and lower-case ASCII letters only, so Java and JavaScript agree exactly. */
+    static String normalizeClassification(String value) {
+        String trimmed = value.trim();
+        StringBuilder out = new StringBuilder(trimmed.length());
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            out.append(c >= 'A' && c <= 'Z' ? (char) (c + ('a' - 'A')) : c);
+        }
+        return out.toString();
+    }
+
+    private static Map<String, Object> normalizedClassification(ResolvedResource resource) {
+        Map<String, Object> attributes = new LinkedHashMap<>(resource.attributes());
+        Map.Entry<String, Boolean> classification = CLASSIFICATION.get(resource.type());
+        if (classification == null || !attributes.containsKey(classification.getKey())) {
+            return attributes;
+        }
+        String name = classification.getKey();
+        Object value = attributes.get(name);
+        if (!classification.getValue()) {
+            if (!(value instanceof CharSequence text)) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + "." + name + " must be a string");
+            }
+            attributes.put(name, normalizeClassification(text.toString()));
+            return attributes;
+        }
+        if (!(value instanceof Collection<?> values)) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + "." + name + " must be a list of strings");
+        }
+        TreeSet<String> normalized = new TreeSet<>();
+        for (Object element : values) {
+            if (!(element instanceof CharSequence text)) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + "." + name + " must be a list of strings");
+            }
+            normalized.add(normalizeClassification(text.toString()));
+        }
+        attributes.put(name, new ArrayList<>(normalized));
+        return attributes;
     }
 
     /** Scope ids of the resource and all its containers (cedar/entity-builder.md, CC-037). */

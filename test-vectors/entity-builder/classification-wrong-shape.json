@@ -1,0 +1,49 @@
+{
+  "description": "GitLab classification must be a list of strings.",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "gitlabreader",
+      "grp": [
+        "mcp-gitlab-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "get_project",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "projectPath",
+          "type": "GitLab::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectPath": "team-a/app"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "team-a/app",
+      "attrs": {
+        "path": "team-a/app",
+        "classification": "restricted"
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a",
+        "attrs": {
+          "path": "team-a"
+        }
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

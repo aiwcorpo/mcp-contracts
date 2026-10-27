@@ -83,8 +83,8 @@ entity Tool {
 namespace Jira {
   entity Project {
     key: String,
-    // Classification (CC-062): required; "" when the project has no category. A resolver that cannot read it
-    // must not build the entity, so a missing value can never let Restricted data through.
+    // Classification (CC-062, CC-067): required; "" when the project has no category. The builder normalizes it
+    // (trim, ASCII lower case); the canonical value for restricted data is "restricted".
     category: String,
     scopes: Set<ResourceScope>,
   };
@@ -112,13 +112,16 @@ namespace Confluence {
 }
 
 namespace GitLab {
+  // classification: topics of the group or project in GitLab, normalized; optional (CC-057).
   entity Group {
     path: String,
+    classification?: Set<String>,
     scopes: Set<ResourceScope>,
   };
   entity Project in [Group] {
     path: String,
     group: Group,
+    classification?: Set<String>,
     scopes: Set<ResourceScope>,
   };
 }
@@ -132,8 +135,11 @@ namespace OpenSearch {
 }
 
 namespace ServiceDesk {
+  // classification: category of the queue as reported by the service desk adapter, normalized; optional (CC-057).
+  // A ticket is classified through its queue.
   entity Queue {
     id: String,
+    classification?: Set<String>,
     scopes: Set<ResourceScope>,
   };
   entity Ticket in [Queue] {

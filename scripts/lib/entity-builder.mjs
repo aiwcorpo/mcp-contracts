@@ -44,6 +44,17 @@ const REQUIRED_CLASSIFICATION = {
   'Confluence::Space': ['labels', Array.isArray],
   'OpenSearch::Index': ['tags', Array.isArray],
 };
+// Classification attributes and their shape; values are normalized to one canonical form (CC-067).
+const CLASSIFICATION = {
+  'Jira::Project': ['category', 'string'],
+  'Confluence::Space': ['labels', 'set'],
+  'OpenSearch::Index': ['tags', 'set'],
+  'GitLab::Group': ['classification', 'set'],
+  'GitLab::Project': ['classification', 'set'],
+  'ServiceDesk::Queue': ['classification', 'set'],
+};
+// Same as Java String.trim() plus ASCII-only lower case, so both builders agree byte for byte.
+export const normalizeClassification = (value) => value.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '').replace(/[A-Z]/g, (c) => c.toLowerCase());
 const RISKS = new Set(['READ_ONLY', 'UPDATE', 'DESTRUCTIVE']);
 const ACTIONS = new Set(['read', 'update', 'delete', 'admin']);
 const MAX_VSC_ITEMS = 50;
@@ -224,6 +235,19 @@ function systemEntity(resource, parent) {
   const out = {};
   for (const [k, v] of Object.entries(resource.attrs ?? {})) {
     if (v !== null && v !== undefined) out[k] = k === 'ancestorIds' ? sortedSet(v) : v;
+  }
+  const classification = CLASSIFICATION[resource.type];
+  if (classification && out[classification[0]] !== undefined) {
+    const [name, shape] = classification;
+    if (shape === 'string') {
+      if (typeof out[name] !== 'string') throw new BuilderError('internal_error', `${resource.type}.${name} must be a string`);
+      out[name] = normalizeClassification(out[name]);
+    } else {
+      if (!Array.isArray(out[name]) || out[name].some((v) => typeof v !== 'string')) {
+        throw new BuilderError('internal_error', `${resource.type}.${name} must be a list of strings`);
+      }
+      out[name] = sortedSet(out[name].map(normalizeClassification));
+    }
   }
   if (PARENT_ATTRIBUTE[resource.type]) {
     if (!parent) throw new BuilderError('internal_error', `${resource.type} needs its parent`);

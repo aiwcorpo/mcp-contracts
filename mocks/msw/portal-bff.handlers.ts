@@ -1,21 +1,23 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import { portalBffExamples, RETURN_PATH_PATTERN } from './portal-bff.examples.js';
+import { portalBffExamples, RETURN_PATH_PATTERN, SYSTEMS } from './portal-bff.examples.js';
 import type { ExampleResponse, OperationExamples } from './types.js';
 
 export interface PortalBffHandlerOptions {
   /** Prefix for every route, e.g. 'http://localhost:4200' in Node tests. Empty in the browser. */
   baseUrl?: string;
   /**
-   * Enforce the C12 CSRF rule on POST, PUT and DELETE: header X-XSRF-TOKEN must equal cookie XSRF-TOKEN.
+   * Enforce the C12 CSRF rule on POST, PUT and DELETE: header X-XSRF-TOKEN must equal cookie __Host-XSRF-TOKEN.
    * Default true, so that a frontend which forgets the header fails against the mock as it would against the BFF.
    */
   enforceCsrf?: boolean;
 }
 
-/** Value the mock sets in the XSRF-TOKEN cookie on GET /api/v1/me. Test value, not a secret. */
+/** Value the mock sets in the __Host-XSRF-TOKEN cookie on GET /api/v1/me. Test value, not a secret. */
 export const MOCK_XSRF_TOKEN = 'msw-xsrf-token-test';
 
 const MUTATING = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+/** Name of the CSRF cookie (CC-055); the header stays X-XSRF-TOKEN. */
+export const XSRF_COOKIE = '__Host-XSRF-TOKEN';
 const RETURN_PATH = new RegExp(RETURN_PATH_PATTERN, 'u');
 
 // The BFF answers 400 for a returnPath outside the C4/C12 pattern (CC-032); the mock does the same so that the
@@ -77,18 +79,21 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
   const enforceCsrf = options.enforceCsrf ?? true;
   return portalBffExamples.map((operation) => {
     const method = operation.method.toLowerCase() as 'get' | 'post' | 'put' | 'delete' | 'patch';
-    return http[method](baseUrl + mswPath(operation.route), async ({ request, cookies }) => {
+    return http[method](baseUrl + mswPath(operation.route), async ({ request, cookies, params }) => {
       if (enforceCsrf && MUTATING.has(operation.method)) {
         const header = request.headers.get('X-XSRF-TOKEN');
-        if (!header || header !== cookies['XSRF-TOKEN']) {
+        if (!header || header !== cookies[XSRF_COOKIE]) {
           return HttpResponse.json({ error: 'csrf_invalid' }, { status: 403 });
         }
+      }
+      if (operation.route.includes('{system}') && !SYSTEMS.includes(String(params.system))) {
+        return HttpResponse.json({ error: 'invalid_request' }, { status: 400 });
       }
       if (await invalidReturnPath(operation.operationId, request)) {
         return HttpResponse.json({ error: 'invalid_request' }, { status: 400 });
       }
       const extra: Record<string, string> = operation.operationId === 'getMe'
-        ? { 'Set-Cookie': `XSRF-TOKEN=${MOCK_XSRF_TOKEN}; Path=/; Secure; SameSite=Strict` }
+        ? { 'Set-Cookie': `${XSRF_COOKIE}=${MOCK_XSRF_TOKEN}; Path=/; Secure; SameSite=Strict` }
         : {};
       return toResponse(pickExample(operation, request.headers.get('Prefer')), extra);
     });

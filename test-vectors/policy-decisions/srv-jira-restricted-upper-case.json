@@ -1,0 +1,162 @@
+{
+  "description": "Server: project category \"RESTRICTED\" is normalized to \"restricted\" and forbidden (CC-067).",
+  "covers": [
+    "restricted",
+    "forbid_overrides_permit"
+  ],
+  "builder": {
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000001",
+        "usr": "reader",
+        "grp": [
+          "mcp-jira-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ]
+      },
+      "arguments": {
+        "issueKey": "HR-2"
+      },
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "HR-2",
+        "attrs": {
+          "key": "HR-2"
+        },
+        "parent": {
+          "type": "Jira::Project",
+          "id": "HR",
+          "attrs": {
+            "key": "HR",
+            "category": "RESTRICTED"
+          }
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "HR-2"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "jiraIssue": [
+          "HR-2"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "HR-2"
+      },
+      "attrs": {
+        "key": "HR-2",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "HR"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/HR"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "HR"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "HR"
+      },
+      "attrs": {
+        "key": "HR",
+        "category": "restricted",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/HR"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000001"
+      },
+      "attrs": {
+        "username": "reader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "jira-forbid-restricted-issue"
+    ]
+  }
+}

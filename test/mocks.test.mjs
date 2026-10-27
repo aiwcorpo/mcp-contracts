@@ -31,7 +31,7 @@ test('MSW: default example and XSRF cookie on /me', async () => {
   const res = await fetch(`${BASE}/api/v1/me`);
   assert.equal(res.status, 200);
   assert.equal((await res.json()).username, 'jkowalski');
-  assert.match(res.headers.get('set-cookie') ?? '', /XSRF-TOKEN=/);
+  assert.match(res.headers.get('set-cookie') ?? '', /^__Host-XSRF-TOKEN=[^;]+; Path=\/; Secure; SameSite=Strict$/);
 });
 
 test('MSW: Prefer header selects a named example', async () => {
@@ -46,7 +46,7 @@ test('MSW: mutating call without X-XSRF-TOKEN is rejected', async () => {
 });
 
 test('MSW: mutating call with matching cookie and header succeeds', async () => {
-  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
   const del = await fetch(`${BASE}/api/v1/connections/jira`, { method: 'DELETE', headers });
   assert.equal(del.status, 204);
   const put = await fetch(`${BASE}/api/v1/connections/jira/secret`, {
@@ -74,7 +74,7 @@ test('MSW: login redirects to the IdP without session or CSRF (CC-023)', async (
 
 test('MSW: logout requires the XSRF header (CC-023)', async () => {
   assert.equal((await fetch(`${BASE}/api/v1/auth/logout`, { method: 'POST' })).status, 403);
-  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
   assert.equal((await fetch(`${BASE}/api/v1/auth/logout`, { method: 'POST', headers })).status, 204);
 });
 
@@ -86,7 +86,7 @@ test('MSW: confirmation preview carries expiresAt (CC-015)', async () => {
 test('MSW: invalid returnPath gives 400 (CC-032)', async () => {
   const res = await fetch(`${BASE}/api/v1/auth/login?returnPath=%2F%2Fevil.test`, { redirect: 'manual' });
   assert.equal(res.status, 400);
-  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
   const start = await fetch(`${BASE}/api/v1/connections/gitlab/oauth`, { method: 'POST', headers, body: JSON.stringify({ returnPath: '/%252Fevil' }) });
   assert.equal(start.status, 400);
 });
@@ -103,7 +103,14 @@ test('WireMock stubs of C4 send X-Request-Id (CC-047)', () => {
 });
 
 test('MSW: malformed JSON body gives 400, not 500 (review 1.2.0 L7)', async () => {
-  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
   const res = await fetch(`${BASE}/api/v1/connections/gitlab/oauth`, { method: 'POST', headers, body: '{not json' });
   assert.equal(res.status, 400);
+});
+
+test('MSW: unknown system gives 400 (CC-054)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
+  const res = await fetch(`${BASE}/api/v1/connections/sharepoint`, { method: 'DELETE', headers });
+  assert.equal(res.status, 400);
+  assert.deepEqual(await res.json(), { error: 'invalid_request' });
 });

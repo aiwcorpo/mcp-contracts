@@ -110,7 +110,7 @@
       },
       "attrs": {
         "key": "ABC",
-        "category": "Software",
+        "category": "software",
         "scopes": [
           {
             "__entity": {

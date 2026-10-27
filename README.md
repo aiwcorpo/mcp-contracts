@@ -2,15 +2,15 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.0.0** (w przygotowaniu, bez tagu; ostatnie
-wydanie: `v1.2.0`; 1.2.1 nie zostanie wydane osobno); zmiany w
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.0.0**, tag `v2.0.0` (1.2.1 nie zostało wydane
+osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
 
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
-wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-053 i CC-056 w 2.0.0,
-CC-035 odrzucone, CC-054 i CC-055 otwarte.
+wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-067 w 2.0.0,
+CC-035 odrzucone.
 
 ## Co jest gdzie
 
@@ -212,6 +212,12 @@ Zamiast samodzielnej podmiany komponent może użyć `PolicyStore` (CC-060): `st
 sprzeczna z załadowanymi `overrides` jest odrzucana (stan się nie zmienia). Paczka główna musi mieć schemat równy
 `cedar/mcp.cedarschema` tej wersji kontraktów, a `static.json` wyłącznie encje `UserGroup` (CC-059).
 
+Ochrona przed cofnięciem po restarcie (CC-066): `new PolicyStore(main, overrides, new PolicyStore.Persistence(
+stateDir, Map.of(Channel.MAIN, minimumRevision), auditLog::warn))` zapisuje w `stateDir` ostatnią rewizję i
+skrót archiwum per kanał (atomowo). Po restarcie przyjmowana jest tylko rewizja nowsza albo ta sama z tym samym
+archiwum; rewizja minimalna z konfiguracji obowiązuje zawsze; brak lub uszkodzony plik stanu daje ostrzeżenie do
+audytu i działa według minimum.
+
 Lint dla potoku ws-09: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides]
 policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd). Sprawdza, że `context.vsScopes` i
 `context.virtualServer` występują tylko w `forbid` (CC-041, CC-058).
@@ -332,8 +338,9 @@ docker run --rm -v "$PWD:/local" openapitools/openapi-generator-cli:v7.26.0 gene
 ```
 
 albo `npx @openapitools/openapi-generator-cli generate ...` z tymi samymi argumentami (wymaga Javy).
-CSRF (C12): BFF ustawia ciasteczko `XSRF-TOKEN`, Angular `HttpClient` sam odsyła je w nagłówku
-`X-XSRF-TOKEN` dla POST/PUT/DELETE pod warunkiem, że żądania idą na ten sam origin, czyli `basePath`
+CSRF (C12, CC-055): BFF ustawia ciasteczko `__Host-XSRF-TOKEN` (Secure, Path=/, bez Domain), a Angular
+odsyła je w nagłówku `X-XSRF-TOKEN` dla POST/PUT/DELETE po skonfigurowaniu
+`provideHttpClient(withXsrfConfiguration({cookieName: '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'}))`, pod warunkiem, że żądania idą na ten sam origin, czyli `basePath`
 klienta ma być pusty lub względny. Pola `csrf` w `Configuration.credentials` wygenerowanego klienta nie
 trzeba ustawiać.
 
@@ -378,8 +385,8 @@ await setupWorker(...createPortalBffHandlers()).start();
 ```
 
 W testach Node: `setupServer(...createPortalBffHandlers({ baseUrl: 'http://localhost' }))` z `msw/node`.
-Handlery wymagają na POST/PUT/DELETE nagłówka `X-XSRF-TOKEN` równego ciasteczku `XSRF-TOKEN`
-(403 `csrf_invalid` inaczej); `GET /api/v1/me` ustawia to ciasteczko. `GET /api/v1/auth/login` odpowiada 302
+Handlery wymagają na POST/PUT/DELETE nagłówka `X-XSRF-TOKEN` równego ciasteczku `__Host-XSRF-TOKEN`
+(403 `csrf_invalid` inaczej), a nieznany `{system}` daje 400 (CC-054); `GET /api/v1/me` ustawia to ciasteczko. `GET /api/v1/auth/login` odpowiada 302
 do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 `createPortalBffHandlers({ enforceCsrf: false })`. Pojedynczą odpowiedź do `server.use(...)` daje
 `portalBffExample('getPortalCatalog', 'mixed')`. Wymagane `msw` ^3 (peer dependency).

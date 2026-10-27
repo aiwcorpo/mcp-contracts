@@ -2,7 +2,7 @@
 
 Plik zbiera miejsca, w których `01-contracts.md` jest nieprecyzyjny albo sprzeczny, oraz propozycje zmian
 od agentów. Każda pozycja ma przyjęty wariant, który **już jest** zaimplementowany w `mcp-contracts` 1.0.0,
-i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-053, CC-056, CC-058 ... CC-065 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno); CC-054, CC-055, CC-057 otwarte); odrzucenie wariantu oznacza nowe wydanie
+i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0; CC-046 ... CC-067 rozstrzygnięte 2026-10-27, wydanie 2.0.0 (1.2.1 nie zostało wydane osobno)); odrzucenie wariantu oznacza nowe wydanie
 kontraktów (patrz SemVer w `README.md`).
 
 Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alternatywy, status.
@@ -652,7 +652,8 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   audytu `connection_change` z `decision: deny`, `reason: invalid_request`.
 - **Propozycja:** dodać `'400': $ref: '#/components/responses/BadRequest'` do `DELETE /api/v1/connections/{system}`
   (i analogicznie do innych operacji z parametrem ścieżki o zamkniętym wzorcu). Nowa odpowiedź (minor).
-- **Status:** open
+- **Weszło w 2.0.0:** `400 BadRequest` przy `DELETE /api/v1/connections/{system}` (nieznany system, broker nie jest wołany); MSW odpowiada 400 `invalid_request` dla nieznanego `{system}` we wszystkich operacjach z tym parametrem.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
 
 ## CC-055 | C12 | Nazwa ciasteczka CSRF z prefiksem `__Host-`
 
@@ -665,7 +666,8 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** C12: ciasteczko `__Host-XSRF-TOKEN`; Angular ustawia
   `withXsrfConfiguration({cookieName: '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`. Zmiana nazwy (major,
   można połączyć z 2.0.0).
-- **Status:** open
+- **Weszło w 2.0.0:** ciasteczko CSRF `__Host-XSRF-TOKEN` (Secure, Path=/, bez Domain, SameSite=Strict, nie HttpOnly), nagłówek bez zmian `X-XSRF-TOKEN`; opis C12, MSW (`XSRF_COOKIE`), README (konfiguracja Angulara).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
 
 ## CC-056 | C2/C5/C7 | Wzorce identyfikatorów per system
 
@@ -701,7 +703,8 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   serwera wypełnia go z systemu, a `GitLab::Project.group` i `ServiceDesk::Ticket.queue` pozwalają sprawdzić
   kontener. Encje `Restricted` w wektorach `srv-gitlab-*` i `srv-servicedesk-*`. Zmiana schematu Cedar (nowe
   pole opcjonalne, istniejące polityki dalej przechodzą walidację), więc minor; można połączyć z 2.0.0.
-- **Status:** open
+- **Weszło w 2.0.0:** opcjonalny atrybut `classification: Set<String>` na `GitLab::Group`, `GitLab::Project` (źródło: topics grupy i projektu w GitLabie) i `ServiceDesk::Queue` (źródło: kategoria kolejki w adapterze service desku); `ServiceDesk::Ticket` dziedziczy klasyfikację przez `queue`, `GitLab::Project` także przez `group`. Reguły `gitlab-forbid-restricted-*`, `servicedesk-forbid-restricted-*` w `cedar/examples/forbid-restricted.cedar`, wektory `srv-gitlab-restricted-project-topic`, `srv-gitlab-project-in-restricted-group`, `srv-servicedesk-ticket-in-restricted-queue`. Wartości normalizowane jak w CC-067.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
 
 ## CC-058 | C7 | `context.virtualServer` w `permit` odrzucany przez odbiorcę
 
@@ -788,4 +791,30 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `minimum: 0`; ujemna wartość spełniłaby `context.mfaAge < 3600`.
 - **Przyjęty wariant:** builder (JS i Java) odrzuca ujemny wiek MFA (`invalid_argument`). Wektor
   `entity-builder/mfa-negative`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-066 | C7 | Ochrona przed cofnięciem rewizji po restarcie
+
+- **Problem (przegląd 1.2.0, M6):** po restarcie odbiorca nie znał załadowanej rewizji, więc przyjmował dowolną
+  starszą, poprawnie podpisaną paczkę.
+- **Przyjęty wariant (A):** `PolicyStore` z `Persistence` zapisuje per kanał ostatnią załadowaną rewizję i SHA-256
+  archiwum w pliku `policy-bundle-<kanał>.state` w konfigurowalnym katalogu (zapis do pliku tymczasowego i
+  atomowe przeniesienie). Po restarcie przyjmuje tylko rewizję nowszą albo tę samą rewizję z tym samym archiwum
+  (ponowne załadowanie po starcie); ta sama rewizja z inną treścią to `not_newer`. Konfigurowalna rewizja
+  minimalna per kanał (np. po incydencie) nigdy nie jest przekraczana w dół (`below_minimum`). Brak lub
+  uszkodzony plik stanu: obowiązuje minimum z konfiguracji, a odbiorca zgłasza ostrzeżenie do audytu
+  (`Persistence.warnings`). Błąd zapisu stanu odrzuca aktualizację. Wektory `test-vectors/policy-store/restart-*`,
+  `corrupt-state-uses-minimum`, `overrides-below-minimum`, `state-written-per-channel`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)
+
+## CC-067 | C7 | Normalizacja klasyfikacji
+
+- **Problem (recenzja `mcp-policies`, R1):** systemy zwracają klasyfikację w różnej postaci (`Restricted`,
+  `restricted `, `RESTRICTED`); porównanie w Cedar jest dokładne, więc każda odmiana omijała `forbid`.
+- **Przyjęty wariant:** entity builder normalizuje wartości klasyfikacji (`Jira::Project.category`,
+  `Confluence::Space.labels`, `OpenSearch::Index.tags`, `classification` z CC-057): `trim` (znaki <= U+0020) i
+  zamiana tylko liter ASCII na małe, zbiory bez duplikatów. Kontrakt ustala jedną wartość `restricted` dla
+  wszystkich systemów; polityki porównują tylko z nią. W połączeniu z CC-062 brak wymaganej klasyfikacji to
+  odmowa. Wektory `srv-jira-restricted-*` (`restricted`, `Restricted `, `RESTRICTED`),
+  `srv-opensearch-restricted-index`, `entity-builder/classification-normalized`, `classification-wrong-shape`.
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.0.0)

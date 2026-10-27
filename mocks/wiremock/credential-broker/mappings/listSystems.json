@@ -142,6 +142,32 @@
           "error": "forbidden"
         }
       }
+    },
+    {
+      "name": "listSystems 503 upstream_unavailable",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=upstream_unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
     }
   ]
 }

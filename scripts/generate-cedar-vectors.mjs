@@ -466,3 +466,34 @@ decision('srv-transfer-target-outside-scope', 'Server, transfer_project: the tar
 decision('srv-transfer-source-in-scope', 'Server, transfer_project: the source project team-a/app is allowed; the call still needs every other value allowed.', 'server',
   { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' }, resource: projectIn('team-a/app') },
   allow('gitlab-update-project-in-scope'), { covers: ['scope_hierarchy', 'every_resource_ref'] });
+
+// ---------- classification: normalization and new systems (CC-057, CC-067) ----------
+for (const [suffix, value] of [['canonical', 'restricted'], ['trailing-space', 'Restricted '], ['upper-case', 'RESTRICTED']]) {
+  decision(`srv-jira-restricted-${suffix}`, `Server: project category "${value}" is normalized to "restricted" and forbidden (CC-067).`, 'server',
+    { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-2' }, resource: issue('HR-2', 'HR', value) },
+    deny('jira-forbid-restricted-issue'), { covers: ['restricted', 'forbid_overrides_permit'] });
+}
+decision('srv-gitlab-restricted-project-topic', 'Server: GitLab project with topic "Restricted" (CC-057).', 'server',
+  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'team-a/secret' },
+    resource: { ...projectIn('team-a/secret'), attrs: { path: 'team-a/secret', classification: ['Restricted', 'backend'] } } },
+  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-gitlab-project-in-restricted-group', 'Server: project of a GitLab group with topic restricted is forbidden through its group (CC-057).', 'server',
+  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'legal/app' },
+    resource: { type: 'GitLab::Project', id: 'legal/app', attrs: { path: 'legal/app' },
+      parent: { type: 'GitLab::Group', id: 'legal', attrs: { path: 'legal', classification: [' restricted'] } } } },
+  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-servicedesk-ticket-in-restricted-queue', 'Server: ticket of a queue with category Restricted (CC-057).', 'server',
+  { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 900 },
+    resource: { type: 'ServiceDesk::Ticket', id: '900', attrs: { id: '900' },
+      parent: { type: 'ServiceDesk::Queue', id: '42', attrs: { id: '42', classification: ['Restricted'] } } } },
+  deny('servicedesk-forbid-restricted-ticket'), { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-opensearch-restricted-index', 'Server: index tagged RESTRICTED (CC-067).', 'server',
+  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-hr' },
+    resource: { type: 'OpenSearch::Index', id: 'logs-team-a-hr', attrs: { name: 'logs-team-a-hr', tags: ['RESTRICTED'] } } },
+  deny('opensearch-forbid-restricted-index'), { covers: ['restricted', 'forbid_overrides_permit'] });
+builderVector('classification-normalized', 'Labels are trimmed, lower-cased (ASCII only) and deduplicated (CC-067).', 'server',
+  { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'ENG' },
+    resource: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG', labels: [' Restricted', 'restricted ', 'Public', 'ÄRGER'] } } });
+builderVector('classification-wrong-shape', 'GitLab classification must be a list of strings.', 'server',
+  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'team-a/app' },
+    resource: { ...projectIn('team-a/app'), attrs: { path: 'team-a/app', classification: 'restricted' } } });

@@ -5,6 +5,8 @@ export const RETURN_PATH_PATTERN = "^/(?!/)[A-Za-z0-9._~!$&'()*+,;=:@/?-]*$";
 
 export const LOGIN_ERROR_CODES = ["cancelled","idp_error","session_expired","step_up_failed"] as const;
 
+export const SYSTEMS: readonly string[] = ["jira","confluence","gitlab","servicedesk","opensearch"];
+
 export const portalBffExamples: OperationExamples[] = [
   {
     "operationId": "login",
@@ -384,6 +386,13 @@ export const portalBffExamples: OperationExamples[] = [
       {
         "status": 204,
         "name": "status-204"
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        }
       },
       {
         "status": 401,

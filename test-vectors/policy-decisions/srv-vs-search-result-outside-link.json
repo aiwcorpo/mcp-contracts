@@ -128,7 +128,7 @@
       },
       "attrs": {
         "key": "DEF",
-        "category": "Software",
+        "category": "software",
         "scopes": [
           {
             "__entity": {

@@ -104,10 +104,21 @@ dokłada referencję do rodzica (`Jira::Issue.project`, `Confluence::Page.space`
 Resolver Confluence podaje `ancestorIds` (identyfikatory stron-przodków). Atrybut o wartości `null` oznacza
 brak atrybutu.
 
-Atrybuty klasyfikacji są wymagane (CC-062): `Jira::Project.category` (`""`, gdy projekt nie ma kategorii),
-`Confluence::Space.labels`, `OpenSearch::Index.tags`. Zasób (także rodzic, np. projekt zgłoszenia) bez nich nie
-jest budowany (`internal_error`), więc wywołanie jest odrzucane, a element wyniku pomijany. GitLab i service desk
-nie mają jeszcze klasyfikacji (CC-057). Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
+Klasyfikacja (CC-057, CC-062, CC-067):
+
+| Typ | Atrybut | Wymagany | Źródło w systemie |
+| --- | --- | --- | --- |
+| `Jira::Project` | `category` (napis, `""` gdy brak) | tak | kategoria projektu Jira |
+| `Confluence::Space` | `labels` (zbiór) | tak | etykiety przestrzeni |
+| `OpenSearch::Index` | `tags` (zbiór) | tak | tagi indeksu (konfiguracja serwera OpenSearch MCP) |
+| `GitLab::Group`, `GitLab::Project` | `classification` (zbiór) | nie | topics grupy / projektu |
+| `ServiceDesk::Queue` | `classification` (zbiór) | nie | kategoria kolejki w adapterze service desku |
+
+Zasób (także rodzic, np. projekt zgłoszenia) bez wymaganego atrybutu nie jest budowany (`internal_error`), więc
+wywołanie jest odrzucane, a element wyniku pomijany. Builder normalizuje każdą wartość: `trim` (znaki <= U+0020) i
+zamiana wyłącznie liter ASCII na małe; zbiory bez duplikatów. Wartość kanoniczna danych zastrzeżonych to
+`restricted` we wszystkich systemach; polityki porównują tylko z nią. Zgłoszenie dziedziczy klasyfikację kolejki,
+projekt GitLaba także klasyfikację grupy. Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
 `srv-moved-issue-restricted`).
 
 **Kontekst:**

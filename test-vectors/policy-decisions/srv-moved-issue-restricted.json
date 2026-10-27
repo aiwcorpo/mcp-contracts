@@ -109,7 +109,7 @@
       },
       "attrs": {
         "key": "HR",
-        "category": "Restricted",
+        "category": "restricted",
         "scopes": [
           {
             "__entity": {
