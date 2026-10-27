@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Internal JWT claims (C2)",
-  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tools/call only with the user variant and tool == params.name, service variant only for initialize, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems. Production receivers reject any kid starting with 'test-' (configurable), so a token signed with the published test keys never passes. Any failure -> HTTP 401.",
+  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (dev/test only, CC-044), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tool present and == params.name for tools/call, tool present for the broker resolve, tool absent for every other request (CC-038), service variant only for initialize, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems. Any failure -> HTTP 401.",
   "oneOf": [
     {
       "$ref": "#/$defs/UserClaims"
@@ -12,7 +12,7 @@
   ],
   "$defs": {
     "Header": {
-      "description": "JOSE header. Receivers accept only ES256 and only a kid present in the gateway JWKS; production receivers also reject kid values starting with 'test-'.",
+      "description": "JOSE header. Receivers accept only ES256 and only a kid present in the gateway JWKS; a kid starting with 'test-' is rejected unless allowTestKeys=true (CC-044).",
       "type": "object",
       "required": [
         "alg",
@@ -80,7 +80,6 @@
         "usr",
         "grp",
         "azp",
-        "tool",
         "rid",
         "prv",
         "iat",
@@ -173,6 +172,7 @@
           "additionalProperties": false
         },
         "tool": {
+          "description": "Server-side name of the tool being called. Present exactly for tools/call (and for the broker resolve that serves it); absent for initialize, tools/list, ping and GET /mcp-manifest (CC-038).",
           "$ref": "common.schema.json#/$defs/ToolName"
         },
         "mfa": {

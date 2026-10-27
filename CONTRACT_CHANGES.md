@@ -414,3 +414,33 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `/admin/v1`) ma SAN `mcp-gateway.internal` (konfigurowalne); odbiorcy JWKS i BFF to sprawdzają".
   Zmiana opisowa, bez wpływu na OpenAPI i schematy (patch).
 - **Status:** open
+
+## CC-??? | C4 | `credential.invalidated` także po zastąpieniu sekretu
+
+- **Zgłasza:** ws-06
+- **Problem:** C4.3 wymienia publikację `credential.invalidated` po `DELETE`, `purge` i `revoked`. Ponowny
+  `PUT /v1/connections/{system}/secret` (użytkownik podmienia PAT, np. po wycieku starego) albo ponowne
+  `oauth/complete` zastępuje poświadczenie, ale kontrakt nie mówi, czy gateway ma o tym wiedzieć. Bez
+  zdarzenia gateway używa starego PAT do `cacheTtlSeconds` (do 60 s).
+- **Wariant przyjęty w `mcp-credential-broker` M1** (bez zmiany schematu): broker publikuje
+  `credential.invalidated {sub, system}` także wtedy, gdy zapis zastępuje istniejące połączenie (pierwsze
+  połączenie nie publikuje niczego). Treść zdarzenia bez zmian.
+- **Propozycja:** dopisać w C4.3 i w opisie `credential-invalidated-event.schema.json`: "także po zastąpieniu
+  poświadczenia (`PUT secret`, `oauth/complete`) dla istniejącego połączenia". Zmiana opisowa (patch).
+- **Status:** open
+
+## CC-??? | C4/C8 | `X-Request-Id` w wywołaniach BFF -> broker
+
+- **Zgłasza:** ws-06
+- **Problem:** C8 wymaga `requestId` (UUIDv7) w każdym zdarzeniu, a C4 definiuje `X-Request-Id` tylko pośrednio
+  przez `rid` wewnętrznego JWT gateway'a. Wywołania BFF (`PUT secret`, później `oauth/*`, `DELETE`) nie niosą
+  identyfikatora, więc zdarzenia `connection_change` brokera i portalu nie dają się połączyć jednym
+  `requestId`.
+- **Wariant przyjęty w `mcp-credential-broker` M1:** broker przyjmuje od BFF opcjonalny nagłówek
+  `X-Request-Id`; wartość pasująca do `RequestId` (UUIDv7) staje się `requestId` zdarzeń audytu, inna albo
+  brak -> broker generuje UUIDv7. Broker zawsze odsyła użyty identyfikator w nagłówku odpowiedzi
+  `X-Request-Id`. Dla gateway'a bez zmian (`X-Request-Id` == `rid`, inaczej 401).
+- **Propozycja:** w `credential-broker.v1.yaml` dodać opcjonalny parametr nagłówka `X-Request-Id`
+  (`common.schema.json#/$defs/RequestId`) dla operacji BFF i nagłówek odpowiedzi `X-Request-Id` dla wszystkich
+  operacji; w C12 zapisać, że BFF przekazuje swój `requestId` do brokera. Nowe pole opcjonalne (minor).
+- **Status:** open

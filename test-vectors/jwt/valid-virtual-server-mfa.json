@@ -1,6 +1,6 @@
 {
   "description": "Call through a virtual server: vs with its narrowing vsc (CC-027) and mfa.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZGVsZXRlX2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDUiLCJ2cyI6InRlYW0tYS1kZXYiLCJ2c2MiOnsiamlyYVByb2plY3RzIjpbIkFCQyJdfSwibWZhIjoxMjB9.szk4vtMaSQwO9aiTTCQHrXVPIGbRiaqEn2KAKo5GganxVC2Ip2peJpuEkXrZKzTDwBV4JQwxc66f-CFkBCDHjQ",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZGVsZXRlX2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDUiLCJ2cyI6InRlYW0tYS1kZXYiLCJ2c2MiOnsiamlyYVByb2plY3RzIjpbIkFCQyJdfSwibWZhIjoxMjB9.Hw4IgQjWFb-h9QuKrOAg3VzcDnVfpG8397LtwyOkcp-KO0srOxDUWqpSlwW4xkAgKXDY9teKBrblMGjrPtPi1A",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -38,7 +38,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "jsonrpc",

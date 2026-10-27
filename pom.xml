@@ -5,6 +5,7 @@
   Modules (all versioned together with the contracts, see README "Wersjonowanie"):
     - java/mcp-contracts        pl.aiwcorpo.mcp:mcp-contracts                 resources jar (+ test-vectors classifier)
     - java/mcp-cedar-entities   pl.aiwcorpo.mcp:mcp-cedar-entities            shared Cedar entity builder (C7, C9)
+    - java/mcp-policy-bundle    pl.aiwcorpo.mcp:mcp-policy-bundle             reference policy bundle receiver (C7)
   The contract sources stay at the repository root (openapi/, schemas/, cedar/, test-vectors/, mocks/);
   the modules only package or test them.
 -->
@@ -15,13 +16,14 @@
 
     <groupId>pl.aiwcorpo.mcp</groupId>
     <artifactId>mcp-contracts-parent</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <packaging>pom</packaging>
     <name>Aiwcorpo MCP Platform :: Contracts (parent)</name>
 
     <modules>
         <module>java/mcp-contracts</module>
         <module>java/mcp-cedar-entities</module>
+        <module>java/mcp-policy-bundle</module>
     </modules>
 
     <properties>
@@ -47,6 +49,11 @@
             <dependency>
                 <groupId>pl.aiwcorpo.mcp</groupId>
                 <artifactId>mcp-contracts</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>pl.aiwcorpo.mcp</groupId>
+                <artifactId>mcp-cedar-entities</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- The uber classifier bundles the native cedar_java_ffi libraries (macOS and Linux, x86_64 and

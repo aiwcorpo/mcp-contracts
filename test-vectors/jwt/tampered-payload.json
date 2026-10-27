@@ -1,6 +1,6 @@
 {
   "description": "Payload changed after signing (group added); signature no longer matches.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLWRlc3RydWN0aXZlIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6IjIwMjYxMDI2MTIwMDAwLWExYjJjM2QiLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDI2In0.64kYXq1FtMZnDnhGTzg17zNyvq5JAoyDFmrB4fGf5sfoc5QWgvmHgDaHt_Ol0sU3M8Fos0cxSDyeWXeX4Efj7g",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLWRlc3RydWN0aXZlIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6IjIwMjYxMDI2MTIwMDAwLWExYjJjM2QiLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDI2In0.m4ZqCK0qExIlxvDoCUp57QcZSh8p4ChfyAve_JsqHzKOJFNn4iAlJcR7UV_YAYIbJSnaJYK06KuiX45FrV2FWQ",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -30,7 +30,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "jsonrpc",

@@ -1,6 +1,6 @@
 {
   "description": "Service variant sent to the broker resolve endpoint, which needs a user.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMzMifQ.TLjIf5QAR61kaUpqMX2351DtMXC3ly_m4F5qIp4w199sPm52B93QWCpGHSZkRmQ6aFjrRrOzlkmMYx6p1sRaAg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMzMifQ.sA7wu_jGf4ZcGz317N_mopHtK9CgAzAnPCEi67cdJv6wFVkdltpPsxnodisuUN-krT6GxQ6WeYS29EH1IP0xIg",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -24,7 +24,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "http",

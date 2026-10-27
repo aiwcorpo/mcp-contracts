@@ -1,6 +1,6 @@
 {
   "description": "Signed with active key B; both kids of the JWKS must be accepted during rotation.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1iIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDMifQ.X5rSL_zyACUpQQUScFkJCSWNuOenlCrBNYkcntkTNumCxdAJ4G8xU-XvTgLPBwhYE3W7MjJhQ4mfRwLKOc8LdA",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1iIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDMifQ.aA2Lee8szqyiBYfpulNNpdE0kytJdE8tVHtbHsqhZIthAobydQ7R-JID4glhV9W1WOp5-STFFnbI6tIpPG1JBA",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-b",
@@ -31,7 +31,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "jsonrpc",

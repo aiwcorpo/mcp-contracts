@@ -29,6 +29,7 @@ const jiraTools = {
   search_issues: {
     tool: {
       name: 'search_issues',
+      title: 'Search issues',
       description: 'Searches issues in the given projects.',
       inputSchema: {
         type: 'object',
@@ -118,6 +119,8 @@ for (const [toolName, def] of Object.entries(jiraTools)) {
     { ...def, server: { system: 'jira', credential: { required: true, acceptedTypes: ['user-oauth'] } } },
     { differsFrom: 'get-issue.json' });
 }
+hashVector('search-issues-with-title', 'Definition with title: title is part of the hashed object (CC-042).',
+  { ...jiraTools.search_issues, server: JIRA_SERVER });
 hashVector('canonicalization-unicode-and-numbers',
   'Exercises RFC 8785: non-ASCII text, key ordering, number forms 1.0, 1e3, 0.1 and an escaped control character.',
   {
@@ -225,6 +228,33 @@ manifest('valid-no-credential', 'Server whose tools need no backend credential; 
   m.tools[4].definition.inputSchema.properties.confirmation_code = { type: 'string' };
   withHash(m);
   manifest('invalid-confirmation-code-in-definition', 'confirmation_code is reserved for the gateway (C11).', m, false, 'no-confirmation-code');
+}
+{
+  const m = jiraManifest(); m.tools[1].definition.title = 'Search all issues everywhere';
+  manifest('invalid-title-changed', 'title changed without recomputing definitionHash (title is hashed, CC-042).', m, false, 'definition-hash-matches');
+}
+{
+  const m = jiraManifest(); m.tools[0].definition.icons = [{ src: 'https://cdn.test/jira.png' }]; withHash(m);
+  manifest('invalid-definition-icons', 'icons are not allowed in v1 (CC-042).', m, false, 'schema');
+}
+{
+  const m = jiraManifest(); m.tools[0].definition._meta = { hint: 'call me first' }; withHash(m);
+  manifest('invalid-definition-meta', '_meta is not allowed in v1 (CC-042).', m, false, 'schema');
+}
+{
+  const m = jiraManifest(); m.tools[0].resourceRefs = [{ argument: 'issuekey', type: 'Jira::Issue' }]; withHash(m);
+  manifest('invalid-resource-ref-argument-case', 'resourceRefs names issuekey, inputSchema declares issueKey (CC-043).', m, false, 'resource-ref-argument-declared');
+}
+{
+  const m = jiraManifest();
+  m.tools[0].definition.inputSchema.properties.filter = { type: 'object', properties: { issueKey: { type: 'string' } } };
+  m.tools[0].resourceRefs = [{ argument: 'filter', type: 'Jira::Issue' }]; withHash(m);
+  manifest('invalid-resource-ref-argument-object', 'resourceRefs argument of type object (CC-043).', m, false, 'resource-ref-argument-declared');
+}
+{
+  const m = jiraManifest();
+  m.tools[1].definition.inputSchema.properties.projectKeys = { type: 'array', items: { type: 'object' } }; withHash(m);
+  manifest('invalid-resource-ref-argument-array-of-object', 'resourceRefs argument is an array of objects (CC-043).', m, false, 'resource-ref-argument-declared');
 }
 {
   const m = jiraManifest(); delete m.tools[0].resourceRefs;
@@ -405,12 +435,15 @@ const CONTRACTS_VERSION = JSON.parse(readFileSync(path('package.json'), 'utf8'))
 const manifestJson = (revision, gitSha) =>
   JSON.stringify({ revision, gitSha, createdAt: revisionTime(revision), schemaVersion: CONTRACTS_VERSION }, null, 2) + '\n';
 
-function buildBundle(revision, gitSha, policies) {
+// Main bundles carry the example scope mapping (CC-037) as their static entities.
+const staticEntitiesText = readFileSync(path('cedar', 'examples', 'static-entities.json'), 'utf8');
+function buildBundle(revision, gitSha, policies, { staticEntities = staticEntitiesText, extra = [] } = {}) {
   return tarGz([
     ['manifest.json', manifestJson(revision, gitSha)],
     ['schema.cedarschema', schemaText],
     ...policies,
-    ['entities/static.json', '[]\n'],
+    ['entities/static.json', staticEntities],
+    ...extra,
   ]);
 }
 
@@ -479,7 +512,16 @@ writeFileSync(path(...bundleDir, `policies-${O1}.tar.gz.sig-by-main-key`), sign(
 const latest = (revision) => ({ revision, url: `policies-${revision}.tar.gz`, sigUrl: `policies-${revision}.tar.gz.sig` });
 const MAIN_KEY = 'keys/test-policy-bundle.public.pem';
 const OVERRIDES_KEY = 'keys/test-policy-overrides.public.pem';
-const bundleCase = (name, description, c) => write('bundles', `${name}.json`, { description, ...c });
+const MAIN_BUNDLE = `files/policies-${R2}.tar.gz`;
+// Every case names the key id (CC-044: test- keys need allowTestKeys) and, for overrides, the loaded main bundle
+// whose schema validates the overrides (CC-040).
+const bundleCase = (name, description, c) => write('bundles', `${name}.json`, {
+  description,
+  ...c,
+  publicKeyId: c.publicKey === MAIN_KEY ? 'test-policy-bundle' : 'test-policy-overrides',
+  allowTestKeys: c.allowTestKeys ?? true,
+  ...(c.channel === 'overrides' && { mainBundle: MAIN_BUNDLE }),
+});
 
 bundleCase('initial-load', 'First bundle on a receiver that has none loaded.', {
   channel: 'main', latest: latest(R1), bundle: `files/policies-${R1}.tar.gz`, signature: `files/policies-${R1}.tar.gz.sig`,
@@ -527,6 +569,62 @@ bundleCase('overrides-revision-independent-of-main', 'Overrides revision older t
 bundleCase('overrides-signed-with-main-key', 'Overrides bundle signed with the main bundle key (separate keys, C7).', {
   channel: 'overrides', latest: latest(O1), bundle: `files/policies-${O1}.tar.gz`, signature: `files/policies-${O1}.tar.gz.sig-by-main-key`,
   publicKey: OVERRIDES_KEY, loadedRevision: null, expected: { accept: false, reason: 'bad_signature' } });
+
+// ---------- archive safety and content rules (CC-040, CC-041, CC-045) ----------
+const R = (n) => `2026102615${String(n).padStart(2, '0')}00-${createHash('sha1').update(String(n)).digest('hex').slice(0, 7)}`;
+const mainCase = (n, name, description, archive, reason) => {
+  const revision = R(n);
+  store(revision, archive(revision), 'test-policy-bundle');
+  bundleCase(name, description, {
+    channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
+    publicKey: MAIN_KEY, loadedRevision: R2, expected: reason ? { accept: false, reason } : { accept: true } });
+};
+const shaOf = (revision) => sha(revision.slice(15));
+mainCase(1, 'tar-duplicate-entry', 'Two entries with the same name; a lax reader would let the second one win.',
+  (r) => buildBundle(r, shaOf(r), examplePolicies, { extra: [['policies/call-tool.cedar', 'permit (principal, action, resource);\n']] }), 'archive_invalid');
+mainCase(2, 'tar-path-traversal', 'Entry name with .. segments.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/../../etc/evil.cedar', 'forbid (principal, action, resource);\n']]), 'archive_invalid');
+mainCase(3, 'tar-absolute-path', 'Absolute entry name.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['/policies/abs.cedar', 'forbid (principal, action, resource);\n']]), 'archive_invalid');
+mainCase(4, 'tar-symlink', 'Symbolic link entry.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/link.cedar', '', { type: '2', linkname: '/etc/passwd' }]]), 'archive_invalid');
+mainCase(5, 'tar-too-many-entries', 'More than 1000 entries.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ...Array.from({ length: 1000 }, (_, i) => [`policies/many/p${i}.cedar`, '// empty\n'])]), 'archive_invalid');
+mainCase(6, 'tar-oversized-entry', 'One entry larger than 4 MiB after decompression (compresses to a few KiB).',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/huge.cedar', ' '.repeat(5 * 1024 * 1024)]]), 'archive_invalid');
+mainCase(7, 'tar-ustar-prefix', 'Long entry name split into the ustar prefix and name fields; the reader joins them.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies.slice(1),
+    [`${'very-long-file-name-'.repeat(4)}call-tool.cedar`, examplePolicies[0][1], { prefix: 'policies/split' }]]), null);
+mainCase(8, 'main-permit-reads-vsscopes', 'A permit rule reads context.vsScopes; a link could then grant (CC-041).',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/bad-vs.cedar',
+    '@id("vs-grants")\npermit (principal, action, resource is Jira::Issue)\nwhen { context has vsScopes && context.vsScopes has jiraProjects && context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
+  'vs_scopes_in_permit');
+mainCase(9, 'main-static-entities-invalid-mapping', 'static.json maps a group to a parent that is not a ResourceScope (CC-037).',
+  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{},"parents":[{"type":"UserGroup","id":"mcp-y"}]}]\n' }),
+  'static_entities_invalid');
+mainCase(10, 'main-policy-invalid-for-schema', 'Main bundle policy that does not validate against the bundle schema in strict mode.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/typo.cedar',
+    '@id("typo")\nforbid (principal, action == Action::"call", resource is Tool) when { resource.riks == "DESTRUCTIVE" };\n']]), 'policy_invalid');
+mainCase(11, 'test-key-rejected-by-default', 'Valid bundle signed with the published test key; a receiver without allowTestKeys rejects it (CC-044).',
+  (r) => buildBundle(r, shaOf(r), examplePolicies), null);
+{
+  // Same archive as case 11, but the receiver does not allow test keys.
+  const revision = R(11);
+  bundleCase('test-key-rejected-by-default', 'Valid bundle signed with the published test key; a receiver without allowTestKeys rejects it (CC-044).', {
+    channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
+    publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
+}
+const overridesCase = (n, name, description, policies, reason) => {
+  const revision = `2026102616${String(n).padStart(2, '0')}00-${createHash('sha1').update('o' + n).digest('hex').slice(0, 7)}`;
+  store(revision, buildOverrides(revision, sha(revision.slice(15)), policies), 'test-policy-overrides');
+  bundleCase(name, description, {
+    channel: 'overrides', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
+    publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: reason ? { accept: false, reason } : { accept: true } });
+};
+overridesCase(1, 'overrides-invalid-for-main-schema', 'Overrides forbid with an attribute typo: it would never match at runtime, so the bundle is rejected and the previous overrides stay (CC-040).',
+  [['policies/overrides/typo.cedar', '@id("override-typo")\nforbid (principal, action == Action::"call", resource is Tool) when { resource.nmae == "delete_issue" };\n']], 'policy_invalid');
+overridesCase(2, 'overrides-permit-template', 'A permit template in overrides is rejected like a static permit.',
+  [['policies/overrides/template.cedar', '@id("override-template")\npermit (principal == ?principal, action, resource);\n']], 'permit_in_overrides');
 
 const latestCase = (name, description, value, accept, reason) =>
   write('bundles', `${name}.json`, { description, latest: value, expected: accept ? { accept: true } : { accept: false, reason } });

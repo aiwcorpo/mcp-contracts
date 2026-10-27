@@ -67,6 +67,8 @@ function verifier(overrides = {}) {
     clockSkewSeconds: 30,
     maxLifetimeSeconds: 60,
     seenJtis: [],
+    // The vectors are signed with published test keys (kid test-*); production receivers reject them (CC-044).
+    allowTestKeys: true,
     ...overrides,
   };
 }
@@ -106,8 +108,10 @@ for (const [suffix, request, jti] of [
   ['ping', rpc('ping', USER_RID), '42'],
   ['manifest', http('GET', '/mcp-manifest'), '43'],
 ]) {
-  await add(`valid-user-variant-${suffix}`, `User variant is also accepted for ${request.method} ${request.path ?? ''}`.trim() + ' (CC-033).', {
-    token: await sign(userClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` }), 'test-gateway-jwt-a'), request, valid: true });
+  const claims = userClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` });
+  delete claims.tool;
+  await add(`valid-user-variant-${suffix}`, `User variant without tool is accepted for ${request.method} ${request.path ?? ''}`.trim() + ' (CC-033, CC-038).', {
+    token: await sign(claims, 'test-gateway-jwt-a'), request, valid: true });
 }
 await add('valid-service-broker-systems', 'Service variant accepted by the broker only for GET /v1/systems (CC-030).', {
   token: await sign(serviceClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000044' }), 'test-gateway-jwt-a'),
@@ -194,6 +198,25 @@ await add('server-token-at-broker', 'Token issued for mcp-jira presented to the 
 await add('request-id-mismatch', 'X-Request-Id header differs from rid; the correlation id must not be replaced on the way.', {
   token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000046' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue', '0192d1b2-7c3a-7d4e-8f10-ffffffffffff'), valid: false, reason: 'request_id_mismatch' });
+await add('user-variant-tools-list-with-tool', 'tool claim on a tools/list request; tool is present only for tools/call (CC-038).', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000050' }), 'test-gateway-jwt-a'),
+  request: rpc('tools/list', USER_RID), valid: false, reason: 'tool_not_allowed' });
+{
+  const claims = userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000051' });
+  delete claims.tool;
+  await add('tools-call-without-tool', 'tools/call with a user token that has no tool claim (CC-038).', {
+    token: await sign(claims, 'test-gateway-jwt-a'), request: toolsCall('get_issue'), valid: false, reason: 'tool_missing' });
+}
+{
+  const claims = userClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000052' });
+  delete claims.tool;
+  await add('broker-resolve-without-tool', 'resolve needs the tool the credential is for (CC-038).', {
+    token: await sign(claims, 'test-gateway-jwt-a'), request: http('POST', '/v1/credentials/resolve'),
+    verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'tool_missing' });
+}
+await add('test-kid-rejected-by-default', 'Otherwise valid token signed with a published test key; a receiver without allowTestKeys rejects it (CC-044).', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000053' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: { allowTestKeys: false }, valid: false, reason: 'test_key_not_allowed' });
 await add('vs-without-vsc', 'vs claim without its narrowing; a server could not apply the link (CC-027).', {
   token: await sign(userClaims({ vs: 'team-a-dev', jti: '0192d1b2-7c3a-7f00-9a11-000000000047' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });

@@ -22,7 +22,7 @@ test('definition-hash vectors: canonical form and sha256', () => {
       inputSchema.required = (inputSchema.required ?? []).filter((r) => r !== 'confirmation_code');
     }
     const flat = {
-      name: tool.name, description: tool.description, inputSchema,
+      name: tool.name, ...(tool.title !== undefined && { title: tool.title }), description: tool.description, inputSchema,
       ...(tool.outputSchema !== undefined && { outputSchema: tool.outputSchema }),
       ...(tool.annotations !== undefined && { annotations: tool.annotations }),
       risk: manifestEntry.risk, action: manifestEntry.action, resourceRefs: manifestEntry.resourceRefs ?? [],

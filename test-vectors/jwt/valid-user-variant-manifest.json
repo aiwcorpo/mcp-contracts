@@ -1,6 +1,6 @@
 {
-  "description": "User variant is also accepted for GET /mcp-manifest (CC-033).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwNDMifQ.XLnqb1raCh-L_YSWP7t2Hs0QrAxkycWn79cFqUbcVuN1eYc-QRim6fNwOugOGm91Xh8UsyuTUx84IwiJEQag-Q",
+  "description": "User variant without tool is accepted for GET /mcp-manifest (CC-033, CC-038).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA0MyJ9.JrKH5DV8O4T0g3MaKRVFlECDVPF4xyBIpFTVP9IVTBOc5qiDXhTL44elsVWPLxYraSgqw4Xlg8-6BqJ9MGxNfA",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -17,7 +17,6 @@
       "mcp-jira-proj-ABC"
     ],
     "azp": "claude-code",
-    "tool": "get_issue",
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
     "prv": "20261026120000-a1b2c3d",
     "iat": 1793016000,
@@ -31,7 +30,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "http",

@@ -1,6 +1,6 @@
 {
   "description": "User token from the IdP (C1) sent straight to a server; servers accept only gateway tokens.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtaWRwLWNvcnAiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2tleWNsb2FrLmludGVybmFsL3JlYWxtcy9jb3JwIiwiYXVkIjpbIm1jcC1nYXRld2F5Il0sInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsImF6cCI6ImNsYXVkZS1jb2RlIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiamtvd2Fsc2tpIiwiZ3JvdXBzIjpbIm1jcC1qaXJhLXJlYWQiXSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTc4MDB9.kzDfDGOc-GgTZPTel241TWWl_7rdU-9VLajHb-VdqDFhkiFp0IKfnOua_lVP-OZklhhBm-_TDaSWc95mXLBSzg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtaWRwLWNvcnAiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2tleWNsb2FrLmludGVybmFsL3JlYWxtcy9jb3JwIiwiYXVkIjpbIm1jcC1nYXRld2F5Il0sInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsImF6cCI6ImNsYXVkZS1jb2RlIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiamtvd2Fsc2tpIiwiZ3JvdXBzIjpbIm1jcC1qaXJhLXJlYWQiXSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTc4MDB9.p4Vep5_7G7rTiQez35BDzFyUUbUX0TLuOuv0Uk0H2oVbo9tBoCsg9ieWqD8oSRHOvQ3vyyJGRdXGslqnYFsX9A",
   "header": {
     "alg": "ES256",
     "kid": "test-idp-corp",
@@ -27,7 +27,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "jsonrpc",

@@ -1,6 +1,6 @@
 {
   "description": "Service variant accepted for ping.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAxMiJ9.eM6JOmaZXWA4FlH76mY7WE0JgjStfYTIIFb0rWFNxsQ_c2MwROVjstvnSBdi1RGWPhlZmnXMFmnBm3D81dwHTw",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAxMiJ9.KAYDBeKgP7wzxEoFjVYOEd9es25_Q4vgV9Z5-wfxD07EHNA2PxDYpNBy1YFssW_ZRNj3nFQ7pJZ4wp7u8txlrg",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -24,7 +24,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "jsonrpc",

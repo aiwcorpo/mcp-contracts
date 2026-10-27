@@ -13,5 +13,7 @@
   "expected": {
     "accept": false,
     "reason": "bad_signature"
-  }
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
 }

@@ -3,6 +3,7 @@
   "input": {
     "tool": {
       "name": "search_issues",
+      "title": "Search issues",
       "description": "Searches issues in the given projects.",
       "inputSchema": {
         "type": "object",
@@ -64,6 +65,6 @@
       }
     }
   },
-  "canonical": "{\"action\":\"read\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Searches issues in the given projects.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"maxResults\":{\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"projectKeys\":{\"items\":{\"type\":\"string\"},\"minItems\":1,\"type\":\"array\"},\"text\":{\"type\":\"string\"}},\"required\":[\"projectKeys\"],\"type\":\"object\"},\"name\":\"search_issues\",\"outputSchema\":{\"properties\":{\"issues\":{\"items\":{\"type\":\"object\"},\"type\":\"array\"}},\"type\":\"object\"},\"resourceRefs\":[{\"argument\":\"projectKeys\",\"type\":\"Jira::Project\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\"}",
-  "expected": "sha256:8b338f8f2d55d537b82fe6346995a6b21f5654048e59f6d1bbc7566bdc0646aa"
+  "canonical": "{\"action\":\"read\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Searches issues in the given projects.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"maxResults\":{\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"projectKeys\":{\"items\":{\"type\":\"string\"},\"minItems\":1,\"type\":\"array\"},\"text\":{\"type\":\"string\"}},\"required\":[\"projectKeys\"],\"type\":\"object\"},\"name\":\"search_issues\",\"outputSchema\":{\"properties\":{\"issues\":{\"items\":{\"type\":\"object\"},\"type\":\"array\"}},\"type\":\"object\"},\"resourceRefs\":[{\"argument\":\"projectKeys\",\"type\":\"Jira::Project\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\",\"title\":\"Search issues\"}",
+  "expected": "sha256:474d6c74726ca829218d2bf5788f808b48ff2ac166b94245725a724b8d19afc8"
 }

@@ -11,7 +11,10 @@ export function hashInput({ tool, manifestEntry, server }) {
       inputSchema.required = inputSchema.required.filter((r) => r !== 'confirmation_code');
     }
   }
-  const flat = { name: tool.name, description: tool.description, inputSchema };
+  const flat = { name: tool.name };
+  if (tool.title !== undefined) flat.title = tool.title;
+  flat.description = tool.description;
+  flat.inputSchema = inputSchema;
   if (tool.outputSchema !== undefined) flat.outputSchema = tool.outputSchema;
   if (tool.annotations !== undefined) flat.annotations = tool.annotations;
   flat.risk = manifestEntry.risk;

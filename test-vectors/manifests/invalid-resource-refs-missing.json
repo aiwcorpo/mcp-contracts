@@ -73,6 +73,7 @@
         ],
         "definition": {
           "name": "search_issues",
+          "title": "Search issues",
           "description": "Searches issues in the given projects.",
           "inputSchema": {
             "type": "object",
@@ -113,7 +114,7 @@
             "readOnlyHint": true
           }
         },
-        "definitionHash": "sha256:8b338f8f2d55d537b82fe6346995a6b21f5654048e59f6d1bbc7566bdc0646aa"
+        "definitionHash": "sha256:474d6c74726ca829218d2bf5788f808b48ff2ac166b94245725a724b8d19afc8"
       },
       {
         "name": "create_issue",

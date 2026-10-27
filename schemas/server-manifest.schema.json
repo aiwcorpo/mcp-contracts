@@ -173,7 +173,7 @@
       }
     },
     "McpToolDefinition": {
-      "description": "Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential.",
+      "description": "Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.",
       "type": "object",
       "required": [
         "name",
@@ -183,6 +183,11 @@
       "properties": {
         "name": {
           "$ref": "common.schema.json#/$defs/ToolName"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display name shown by MCP clients; part of definitionHash (CC-042)."
         },
         "description": {
           "type": "string",

@@ -13,5 +13,8 @@
   "loadedMainRevision": "20261026130000-b2c3d4e",
   "expected": {
     "accept": true
-  }
+  },
+  "publicKeyId": "test-policy-overrides",
+  "allowTestKeys": true,
+  "mainBundle": "files/policies-20261026130000-b2c3d4e.tar.gz"
 }

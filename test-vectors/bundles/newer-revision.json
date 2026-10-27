@@ -12,5 +12,7 @@
   "loadedRevision": "20261026120000-a1b2c3d",
   "expected": {
     "accept": true
-  }
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
 }

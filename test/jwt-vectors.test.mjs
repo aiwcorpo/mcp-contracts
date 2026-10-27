@@ -27,6 +27,7 @@ async function verify(vector) {
   const jwks = readJson('test-vectors', verifier.jwks);
   const jwk = jwks.keys.find((k) => k.kid === header.kid);
   if (!jwk) return 'unknown_kid';
+  if (header.kid.startsWith('test-') && !verifier.allowTestKeys) return 'test_key_not_allowed';
   let claims;
   try {
     const { payload } = await compactVerify(token, await importJWK(jwk, 'ES256'), { algorithms: ['ES256'] });
@@ -45,9 +46,13 @@ async function verify(vector) {
   const service = claims.sub === 'system:mcp-gateway';
   if (service && !serviceRequestAllowed(request, verifier.audience)) return 'service_token_not_allowed';
   if (request.xRequestId !== claims.rid) return 'request_id_mismatch';
-  if (request.kind === 'jsonrpc' && request.method === 'tools/call' && claims.tool !== request.toolName) {
-    return 'tool_mismatch';
+  const toolCall = request.kind === 'jsonrpc' && request.method === 'tools/call';
+  const resolve = request.kind === 'http' && request.method === 'POST' && request.path === '/v1/credentials/resolve';
+  if (!service) {
+    if ((toolCall || resolve) && claims.tool === undefined) return 'tool_missing';
+    if (!toolCall && !resolve && claims.tool !== undefined) return 'tool_not_allowed';
   }
+  if (toolCall && claims.tool !== request.toolName) return 'tool_mismatch';
   return null;
 }
 
@@ -63,7 +68,8 @@ test('every C2 rejection case is covered', () => {
   const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
   for (const reason of ['missing_token', 'bad_signature', 'unknown_kid', 'alg_not_allowed', 'wrong_issuer',
     'wrong_audience', 'expired', 'replayed_jti', 'service_token_not_allowed', 'tool_mismatch',
-    'invalid_claims', 'lifetime_too_long', 'not_yet_valid', 'request_id_mismatch']) {
+    'invalid_claims', 'lifetime_too_long', 'not_yet_valid', 'request_id_mismatch', 'tool_missing',
+    'tool_not_allowed', 'test_key_not_allowed']) {
     assert.ok(reasons.has(reason), `no vector for ${reason}`);
   }
 });

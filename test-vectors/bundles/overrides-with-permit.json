@@ -13,5 +13,8 @@
   "expected": {
     "accept": false,
     "reason": "permit_in_overrides"
-  }
+  },
+  "publicKeyId": "test-policy-overrides",
+  "allowTestKeys": true,
+  "mainBundle": "files/policies-20261026130000-b2c3d4e.tar.gz"
 }

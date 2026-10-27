@@ -12,5 +12,7 @@
   "loadedRevision": null,
   "expected": {
     "accept": true
-  }
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
 }

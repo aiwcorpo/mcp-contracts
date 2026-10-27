@@ -13,5 +13,7 @@
   "expected": {
     "accept": false,
     "reason": "manifest_mismatch"
-  }
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
 }

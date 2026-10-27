@@ -1,6 +1,6 @@
 {
   "description": "Service variant used for tools/call; only allowed for initialize, tools/list, ping and the manifest.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAzMiJ9.P7XPYBHKlBcXQPscLCDZy7Oau4Gy8EFPlkNtbEPIxa4b7w1iUHdV8KFP-bCYTCesstaf2nLfCFCAvKspSqr4kA",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAzMiJ9.Hqtx9JUmtBOpGXLfXdkfEJ_Y9q7L_NdnmjA7uNqxBNnqUbRnDgaQA4Rf-CFkbbZEbjWsiKTB3rUa-WKwcKUyKw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -24,7 +24,8 @@
     "now": "2026-10-26T12:00:10Z",
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
-    "seenJtis": []
+    "seenJtis": [],
+    "allowTestKeys": true
   },
   "request": {
     "kind": "jsonrpc",
