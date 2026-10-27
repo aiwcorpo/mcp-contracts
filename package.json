@@ -53,7 +53,7 @@
     "test:node": "node --test \"test/*.test.mjs\"",
     "test": "npm run lint:openapi && npm run build && npm run test:node",
     "smoke:wiremock": "scripts/smoke-wiremock.sh",
-    "pack": "npm run build && mkdir -p release && npm pack --pack-destination release"
+    "pack": "npm run build && node scripts/pack-release.mjs"
   },
   "peerDependencies": {
     "msw": "^3.0.0"

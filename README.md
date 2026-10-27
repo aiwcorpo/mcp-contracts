@@ -65,6 +65,11 @@ Wersja dotyczy całego repozytorium naraz: jar, paczka npm i tag git mają ten s
 Każda taka zmiana jest wymieniona w `CHANGELOG.md` w sekcji "Niezgodne z poprzednią wersją". Po pierwszym
 użyciu wydania przez inny strumień obowiązuje tabela powyżej.
 
+`release/` przechowuje tarballe npm **wszystkich** wydań (konsumenci zależą od nich przez ścieżkę
+`file:../mcp-contracts/release/aiwcorpo-mcp-contracts-<wersja>.tgz`). Starych tarballi się nie usuwa, a
+tarballa wersji, która ma już tag, się nie nadpisuje (`npm run pack` tego odmawia), więc suma integralności w
+`package-lock.json` konsumenta pozostaje ważna.
+
 Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie wersji w `pom.xml`,
 `package.json` i polach `info.version`, tag `vX.Y.Z`. Paczka polityk wskazuje wersję kontraktów w
 `manifest.json.schemaVersion`.

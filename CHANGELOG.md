@@ -4,6 +4,12 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Do czasu pierwszych konsumentów zmiany niezgodne wychodzą jako minor (README, wyjątek od tabeli SemVer);
 każda jest wymieniona w sekcji "Niezgodne z poprzednią wersją".
 
+## Unreleased
+
+- Dystrybucja: `release/` znów zawiera tarballe 1.0.0 i 1.1.0 (bajtowo z tagów); od teraz trzyma tarballe
+  wszystkich wydań. `npm run pack` (`scripts/pack-release.mjs`) nie usuwa starych tarballi i nie nadpisuje
+  tarballa wersji, która ma tag.
+
 ## 1.2.0 - 2026-10-27
 
 Decyzje człowieka z 2026-10-27: CC-036 ... CC-045 `accepted`; CC-035 `rejected`. Zgłoszenia ws-06 dostały numery
