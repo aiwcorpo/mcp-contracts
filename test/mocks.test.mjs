@@ -82,3 +82,11 @@ test('MSW: confirmation preview carries expiresAt (CC-015)', async () => {
   const res = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`);
   assert.ok((await res.json()).expiresAt);
 });
+
+test('MSW: invalid returnPath gives 400 (CC-032)', async () => {
+  const res = await fetch(`${BASE}/api/v1/auth/login?returnPath=%2F%2Fevil.test`, { redirect: 'manual' });
+  assert.equal(res.status, 400);
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  const start = await fetch(`${BASE}/api/v1/connections/gitlab/oauth`, { method: 'POST', headers, body: JSON.stringify({ returnPath: '/%252Fevil' }) });
+  assert.equal(start.status, 400);
+});

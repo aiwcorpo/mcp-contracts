@@ -130,7 +130,8 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "minItems": 1
+              "minItems": 1,
+              "maxItems": 50
             },
             "confluenceSpaces": {
               "type": "array",
@@ -139,7 +140,8 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "minItems": 1
+              "minItems": 1,
+              "maxItems": 50
             },
             "gitlabGroups": {
               "type": "array",
@@ -148,7 +150,8 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "minItems": 1
+              "minItems": 1,
+              "maxItems": 50
             },
             "opensearchIndexPrefixes": {
               "type": "array",
@@ -157,7 +160,8 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "minItems": 1
+              "minItems": 1,
+              "maxItems": 50
             },
             "servicedeskQueues": {
               "type": "array",
@@ -166,7 +170,8 @@
                 "minLength": 1
               },
               "uniqueItems": true,
-              "minItems": 1
+              "minItems": 1,
+              "maxItems": 50
             }
           },
           "additionalProperties": false

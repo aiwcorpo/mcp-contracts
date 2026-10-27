@@ -2,7 +2,7 @@
 
 Plik zbiera miejsca, w których `01-contracts.md` jest nieprecyzyjny albo sprzeczny, oraz propozycje zmian
 od agentów. Każda pozycja ma przyjęty wariant, który **już jest** zaimplementowany w `mcp-contracts` 1.0.0,
-i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (wszystkie pozycje CC-001 ... CC-034 zostały rozstrzygnięte 2026-10-26, wydanie 1.1.0); odrzucenie wariantu oznacza nowe wydanie
+i status. Zmianę statusu na `accepted`/`rejected` robi człowiek (CC-001 ... CC-034 rozstrzygnięte 2026-10-26, wydanie 1.1.0; CC-035 odrzucone; CC-036 ... CC-045 rozstrzygnięte 2026-10-27, wydanie 1.2.0); odrzucenie wariantu oznacza nowe wydanie
 kontraktów (patrz SemVer w `README.md`).
 
 Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alternatywy, status.
@@ -413,9 +413,118 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `mcp-credential-broker.internal` (konfigurowalne)", a do C2/C5: "wewnętrzny endpoint gateway'a (JWKS,
   `/admin/v1`) ma SAN `mcp-gateway.internal` (konfigurowalne); odbiorcy JWKS i BFF to sprawdzają".
   Zmiana opisowa, bez wpływu na OpenAPI i schematy (patch).
-- **Status:** open
+- **Status:** rejected (decyzja: człowiek, 2026-10-26 - SAN brokera i wewnętrznego gateway'a to konfiguracja komponentu, nie konwencja kontraktu)
 
-## CC-??? | C4 | `credential.invalidated` także po zastąpieniu sekretu
+## CC-036 | C7 | Wirtualny serwer a narzędzia wyszukiwania i list
+
+- **Problem (przegląd 1.1.0, H1):** narzędzie wyszukujące bez argumentu-identyfikatora (np. `search_issues`
+  bez `projectKeys`) ma puste `refs`, więc gateway nie ma czego zawęzić, a serwer oceniał Cedar tylko dla
+  jednego rozwiązanego zasobu. Link ograniczony do ABC zwracał wyniki z DEF (łamie niezmiennik 5).
+- **Przyjęty wariant:** obowiązek serwera (C7, `cedar/entity-builder.md` sekcja 8): (1) zapytanie do systemu
+  jest ograniczone do `vsScopes` linku (JQL/CQL/wzorzec indeksu/filtr grupy), a tam, gdzie system nie
+  egzekwuje uprawnień użytkownika (OpenSearch), także do zakresów przyznanych; (2) każdy zwrócony element
+  jest oceniany przez `forResource`; element niedozwolony lub nieoceniany jest pomijany bez błędu wywołania.
+  API: `EntityBuilder.queryConstraint`, `QueryConstraint`, `ResultFilter`. Wektory:
+  `policy-decisions/gw-vs-search-without-project-passes-gateway`, `srv-vs-search-result-*`, `result-filter/`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-037 | C7/C9 | Zakresy zasobów jako dane paczki polityk
+
+- **Problem (M8):** zakres wyprowadzany z nazwy grupy (`mcp-gitlab-grp-team-a` -> `team-a`) nie obejmował
+  podgrup GitLaba, drzew stron Confluence ani nie pozwalał nazwać grupy niezależnie od ścieżki.
+- **Przyjęty wariant:** mapowanie grupa -> zakresy jest danymi w `entities/static.json` paczki głównej: encja
+  `UserGroup` ma rodziców `ResourceScope` o id `<Typ>/<id>` (`Jira::Project/ABC`, `Confluence::Space/ENG`,
+  `Confluence::Page/1000` = drzewo stron, `GitLab::Group/team-a` = grupa z podgrupami,
+  `OpenSearch::Index/logs-team-a` = prefiks, `ServiceDesk::Queue/42`). Każdy zasób niesie `scopes`: zbiór
+  `ResourceScope` siebie i wszystkich kontenerów (wszystkie prefiksy ścieżki grupy po `/`, prefiksy nazwy
+  indeksu po `-`, przestrzeń i strony-przodkowie z `ancestorIds`), więc polityka sprawdza
+  `principal in resource.scopes`. Grupa bez wpisu nie daje zakresu (fail-closed); dopasowanie nazw grup jest
+  dokładne (wielkość liter). Wyprowadzanie zakresu z nazwy C9 **znika** z buildera (wariant prostszy: jedno
+  źródło prawdy); konwencja nazw C9 zostaje jako zalecenie dla czytelności, a potok ws-09 może z niej
+  generować `static.json`. `principal.scopes`, `context.vsScopes` i pola `refs` typów płaskich są zbiorami
+  `ResourceScope`; gateway sprawdza wcześnie tylko typy płaskie (projekt Jira, przestrzeń, kolejka), typy
+  hierarchiczne sprawdza serwer. `OpenSearch::Index.namePrefixes` usunięte (zastąpione `scopes`). Przykład:
+  `cedar/examples/static-entities.json`. Wektory: `srv-gitlab-subgroup-covered`, `srv-gitlab-sibling-not-covered`,
+  `srv-gitlab-group-without-mapping`, `srv-gitlab-similar-prefix-not-covered`, `srv-confluence-page-*`,
+  `entity-builder/scopes-from-mapping`, `bundles/main-static-entities-invalid-mapping`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-038 | C2 | Claim `tool` tylko dla `tools/call` i `resolve`
+
+- **Problem (M2):** w 1.1.0 `tool` był wymagany w wariancie użytkownika także dla `tools/list` itd., bez
+  określonej wartości.
+- **Przyjęty wariant:** `tool` opcjonalny w schemacie; odbiorca wymaga go i porównuje z `params.name` dla
+  `tools/call`, wymaga go dla `resolve` w brokerze, a odrzuca token z `tool` dla `initialize`, `tools/list`,
+  `ping` i `GET /mcp-manifest`. Wektory `jwt/user-variant-tools-list-with-tool`, `tools-call-without-tool`,
+  `broker-resolve-without-tool`, `valid-user-variant-*`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-039 | C7 | Stabilność API `mcp-cedar-entities`
+
+- **Problem (M7):** publiczne rekordy i typy cedar-java w sygnaturach.
+- **Przyjęty wariant:** API zostaje w obecnym kształcie; README i javadoc mówią, że dodanie składnika rekordu
+  albo zmiana major cedar-java to wydanie major biblioteki. Poprawki L4: `null` w atrybutach = brak atrybutu,
+  `EntityBuilderException` zamiast `NumberFormatException`, odrzucanie nieznanego typu w `ResourceRef`,
+  1..50 identyfikatorów na pole w `VirtualServerScope`, fabryka `VirtualServerScope.fromClaims`, rzetelny opis
+  niezmienności (`CedarRequest` zawiera mutowalne obiekty cedar-java).
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-040 | C7 | Paczka `overrides` walidowana schematem paczki głównej
+
+- **Problem (M3):** Cedar pomija politykę z błędem oceny, więc literówka w awaryjnym `forbid` cicho go wyłącza.
+- **Przyjęty wariant:** odbiorca waliduje politykę `overrides` w trybie strict schematem załadowanej paczki
+  głównej; błąd = odrzucenie całej paczki `overrides` (zostaje poprzednia). Szablony w paczkach są odrzucane.
+  Wektor `bundles/overrides-invalid-for-main-schema`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-041 | C7 | `context.vsScopes` tylko w regułach `forbid`
+
+- **Problem (M6):** `permit` czytający `vsScopes` pozwoliłby linkowi nadać uprawnienie.
+- **Przyjęty wariant:** reguła kontraktu; lint na sparsowanej polityce (postać JSON z parsera Cedar, nie tekst)
+  w odbiorcy (`mcp-policy-bundle`, powód `vs_scopes_in_permit`) i jako narzędzie potoku ws-09
+  (`PolicyLintCli`). Wektor `bundles/main-permit-reads-vsscopes`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-042 | C6 | `title` w definicji i w hashu; bez `icons` i `_meta`
+
+- **Problem (M4):** pole `title` (MCP 2025-06-18) trafiało do klienta nieprzypięte.
+- **Przyjęty wariant:** `definition.title` opcjonalne i wchodzi do obiektu hashowanego (CC-004) zaraz po
+  `name`; `icons` i `_meta` w v1 odrzucane przez schemat. Wektory `definition-hash/search-issues-with-title`,
+  `manifests/invalid-title-changed`, `invalid-definition-icons`, `invalid-definition-meta`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-043 | C5/C6 | `resourceRefs[].argument` musi istnieć w `inputSchema`
+
+- **Problem (M5):** literówka w nazwie argumentu daje puste `refs`, a reguły gateway'a cicho przepuszczają.
+- **Przyjęty wariant:** reguła manifestu (CC-018): argument istnieje w `definition.inputSchema.properties` i ma
+  typ `string`, `integer` albo `array` z `items` typu `string`/`integer`; inaczej `PUT` rejestru -> 422
+  `manifest_rejected`. Reguła w `scripts/lib/manifest-rules.mjs` (w Javie nie ma reguł manifestu).
+  Wektory `manifests/invalid-resource-ref-argument-case`, `-object`, `-array-of-object`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-044 | C2/C7 | Odrzucanie testowych kluczy (`kid` z prefiksem `test-`)
+
+- **Problem (M9):** w 1.1.0 reguła była tylko w opisie, bez pozycji CC i wektorów.
+- **Przyjęty wariant:** odbiorcy wewnętrznego JWT (serwery, broker) domyślnie odrzucają `kid` zaczynający się
+  od `test-`; wyłączenie tylko jawnym ustawieniem (zalecana nazwa `allowTestKeys`, wyłącznie dev/test).
+  Paczki polityk: klucze Ed25519 nie mają `kid` w podpisie, więc odbiorca dostaje identyfikator klucza z
+  konfiguracji (`BundleVerifier.of(channel, key, keyId, allowTestKeys)`); opublikowane klucze testowe mają
+  identyfikatory `test-policy-bundle` i `test-policy-overrides` (pole `kid` w ich JWK) i są odrzucane bez
+  `allowTestKeys`. Wektory `jwt/test-kid-rejected-by-default`, `bundles/test-key-rejected-by-default`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-045 | C7 | Referencyjny odbiorca paczek `mcp-policy-bundle`
+
+- **Problem (M10):** odbiorca był tylko w testach, parser tar ignorował prefiks ustar, nadpisywał duplikaty,
+  nie odrzucał `..`, nie miał limitów, efekt badał tylko w politykach statycznych.
+- **Przyjęty wariant:** moduł `pl.aiwcorpo.mcp:mcp-policy-bundle:1.2.0` (bez Springa): podpis Ed25519 z kluczem
+  per kanał, monotoniczna rewizja per kanał, zgodność rewizji nazwa/`latest.json`/manifest, zawartość
+  `overrides`, brak `permit` (także w szablonach), lint `vsScopes`, walidacja strict, encje statyczne i
+  mapowanie zakresów; tar: prefiks ustar, sumy kontrolne, tylko pliki zwykłe i katalogi, bez nazw absolutnych,
+  `.`/`..` i duplikatów, limity 1000 wpisów, 4 MiB na plik, 16 MiB po rozpakowaniu. Wektory `bundles/tar-*`.
+- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 1.2.0)
+
+## CC-046 | C4 | `credential.invalidated` także po zastąpieniu sekretu
 
 - **Zgłasza:** ws-06
 - **Problem:** C4.3 wymienia publikację `credential.invalidated` po `DELETE`, `purge` i `revoked`. Ponowny
@@ -429,7 +538,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   poświadczenia (`PUT secret`, `oauth/complete`) dla istniejącego połączenia". Zmiana opisowa (patch).
 - **Status:** open
 
-## CC-??? | C4/C8 | `X-Request-Id` w wywołaniach BFF -> broker
+## CC-047 | C4/C8 | `X-Request-Id` w wywołaniach BFF -> broker
 
 - **Zgłasza:** ws-06
 - **Problem:** C8 wymaga `requestId` (UUIDv7) w każdym zdarzeniu, a C4 definiuje `X-Request-Id` tylko pośrednio
@@ -443,4 +552,75 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 - **Propozycja:** w `credential-broker.v1.yaml` dodać opcjonalny parametr nagłówka `X-Request-Id`
   (`common.schema.json#/$defs/RequestId`) dla operacji BFF i nagłówek odpowiedzi `X-Request-Id` dla wszystkich
   operacji; w C12 zapisać, że BFF przekazuje swój `requestId` do brokera. Nowe pole opcjonalne (minor).
+- **Status:** open
+
+## CC-??? | C12 | `returnPath` w `stepUpUrl` dla operacji wywoływanych z formularza
+
+- **Zgłasza:** ws-08
+- **Problem:** `PUT /api/v1/connections/{system}/secret` (i `GET/POST /api/v1/confirmations/{id}`) wywołuje
+  `HttpClient`, więc BFF nie wie, z którego ekranu przyszło żądanie; przykład `stepUpUrl` ma
+  `returnPath=/catalog`. Po ponownym MFA użytkownik ląduje w katalogu zamiast w formularzu, a sekret i tak
+  trzeba wpisać ponownie (frontend go nie przechowuje).
+- **Wariant przyjęty w `mcp-portal/web` M1** (bez zmiany kontraktu): frontend przyjmuje `stepUpUrl` tylko
+  wtedy, gdy wskazuje ten sam origin i ścieżkę `/api/v1/auth/login`; ustawia w nim `stepUp=true` i własny
+  `returnPath` (np. `/connect/gitlab?stepUp=done&expiresAt=2027-01-31`, bez sekretu). Każda inna wartość jest
+  pomijana i frontend buduje `GET /api/v1/auth/login?returnPath=...&stepUp=true` sam. BFF waliduje
+  `returnPath` jak dotąd (CC-032), więc nie powstaje open redirect.
+- **Propozycja:** dopisać w opisie `StepUpRequired.stepUpUrl` w `portal-bff.v1.yaml`: "`returnPath` w
+  `stepUpUrl` jest wartością domyślną; frontend może go zastąpić ścieżką portalu zgodną z `ReturnPath`".
+  Zmiana opisowa (patch).
+- **Status:** open
+
+## CC-??? | C4/C12 | Poświadczenie typu Basic w `PutSecretRequest`
+
+- **Zgłasza:** ws-08
+- **Problem:** brief ws-08 mówi o formularzu "Token (PAT/Basic)", a `PutSecretRequest` ma jedno pole `secret`.
+  Nie wiadomo, czy dla systemu z uwierzytelnieniem Basic (np. service desk bez PAT) frontend ma wysłać
+  `login:hasło`, samo hasło (login z `backendUser`?), czy taki system w ogóle nie jest obsługiwany. C12 nie
+  mówi też, którego wariantu oczekuje dany system.
+- **Wariant przyjęty w `mcp-portal/web` M1:** jedno pole na token, wysyłane jako `secret`; brak formularza
+  login + hasło.
+- **Propozycja:** albo zapisać w C4, że `user-secret` to zawsze pojedynczy token (PAT, klucz API) i Basic nie
+  jest obsługiwany, albo dodać do `PortalCatalogServer` opcjonalne pole `secretFormat` (`token` | `basic`) i do
+  `PutSecretRequest` opcjonalne `username` dla `basic` (minor).
+- **Status:** open
+
+## CC-??? | C12 | `503 upstream_unavailable` w operacjach BFF opartych na C4/C5
+
+- **Zgłasza:** ws-07
+- **Problem:** `GET /api/v1/catalog`, `GET /api/v1/connections`, `PUT .../secret` i `DELETE /api/v1/connections/{system}`
+  zależą od brokera, gateway'a i wymiany tokenu w IdP. C12 nie opisuje odpowiedzi, gdy któryś z nich nie
+  odpowiada albo zwraca błąd inny niż opisany (np. 401/5xx brokera). Klient wygenerowany z C12 nie zna tego
+  statusu, a test kontraktowy BFF musi go pomijać.
+- **Wariant przyjęty w `mcp-portal/bff` M1:** `503 {error: "upstream_unavailable"}` (kształt `Error`, kod jak w
+  CC-012 dla `resolve`); katalog jest wtedy w całości 503, bez częściowej odpowiedzi. Treść odpowiedzi
+  upstream nie jest przekazywana.
+- **Propozycja:** dodać w `portal-bff.v1.yaml` odpowiedź `503` (`#/components/responses/UpstreamUnavailable`,
+  przykład `upstream_unavailable`) do operacji proxy do C4/C5 (także przyszłych: wirtualne serwery,
+  aktywność, potwierdzenia, admin). Nowa odpowiedź opcjonalna (minor).
+- **Status:** open
+
+## CC-??? | C12 | Callback logowania OIDC i błąd logowania
+
+- **Zgłasza:** ws-07
+- **Problem:** CC-023 dodało `GET /api/v1/auth/login`, ale C12 nie mówi, gdzie IdP wraca po logowaniu ani dokąd
+  trafia przeglądarka, gdy logowanie się nie uda (anulowanie, błąd IdP, zła odpowiedź tokenu). Frontend
+  (ws-08) nie ma czego obsłużyć.
+- **Wariant przyjęty w `mcp-portal/bff` M1:** `redirect_uri` u IdP to `/login/oauth2/code/keycloak` (wewnętrzny
+  endpoint BFF, nie część API dla frontendu; w realmie `corp` już zarejestrowany). Sukces: 302 na zwalidowany
+  `returnPath`. Porażka: 302 na `/?loginError=true`, bez kodu błędu IdP.
+- **Propozycja:** dopisać to w opisie `GET /api/v1/auth/login` (zmiana opisowa, patch); ewentualnie
+  `loginError=<kod>` z zamkniętą listą kodów, jeśli frontend ma rozróżniać przyczyny.
+- **Status:** open
+
+## CC-??? | C13 | Tożsamość w `requestsOf` i `request`
+
+- **Zgłasza:** ws-07
+- **Problem:** C13 ma `requestsOf(String sub)` i `request(String sub, ...)`. Produkty IGA (i adapter `mock`)
+  identyfikują wnioskodawcę zwykle loginem lub e-mailem, a w środowisku dev `sub` zmienia się przy każdym
+  imporcie realmu, więc dane `mock` nie mogą być kluczowane po `sub`.
+- **Wariant przyjęty w `mcp-portal/bff` M1:** port przyjmuje `Requester(sub, username)`; adapter `mock` dopasowuje
+  wpis po `sub` albo po `preferred_username`. Obie wartości pochodzą z logowania OIDC, nigdy z przeglądarki.
+- **Propozycja:** zapisać w C13 sygnatury z `Requester {sub, username}` (zmiana opisowa portu wewnętrznego BFF,
+  bez wpływu na OpenAPI).
 - **Status:** open

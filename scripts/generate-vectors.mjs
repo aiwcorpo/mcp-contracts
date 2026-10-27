@@ -366,6 +366,9 @@ audit('invalid-resource-id-line-separator', 'resource.id with U+2028; JavaScript
 audit('invalid-resource-id-paragraph-separator', 'resource.id with U+2029.', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u2029X' },
 }, false);
+audit('invalid-resource-id-bidi-override', 'resource.id with U+202E (right-to-left override) that would disguise the id in log viewers.', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u202Ecod.exe' },
+}, false);
 audit('valid-resource-id-with-slash-and-space', 'resource.id keeps the system alphabet: GitLab path, space allowed.', {
   ...auditBase, component: 'server', componentId: 'mcp-gitlab', event: 'policy_decision', resource: { type: 'GitLab::Project', id: 'team-a/my app' },
 }, true);

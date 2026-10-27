@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 1.1.0
+  version: 1.2.0
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -886,12 +886,14 @@ components:
       additionalProperties: false
     ResourceDefaults:
       type: object
-      description: Narrowing per resource type (C5). Becomes context.vsScopes in Cedar (cedar/entity-builder.md).
+      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). At most 50 ids per type keep the internal JWT small.
+      maxProperties: 5
       propertyNames:
         $ref: "#/components/schemas/ScopeResourceType"
       additionalProperties:
         type: array
         minItems: 1
+        maxItems: 50
         uniqueItems: true
         items:
           type: string
@@ -1172,7 +1174,7 @@ components:
           $ref: "#/components/schemas/ResourceType"
       additionalProperties: false
     McpToolDefinition:
-      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential.
+      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
       type: object
       required:
         - name
@@ -1181,6 +1183,10 @@ components:
       properties:
         name:
           $ref: "#/components/schemas/ToolName"
+        title:
+          type: string
+          minLength: 1
+          description: Display name shown by MCP clients; part of definitionHash (CC-042).
         description:
           type: string
           minLength: 1
@@ -1417,7 +1423,7 @@ components:
               description: sha256 over the canonical JSON of definition + risk, action, resourceRefs + system, credential (CC-004, CC-005). Receivers recompute it.
               $ref: "#/components/schemas/DefinitionHash"
         McpToolDefinition:
-          description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential.
+          description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
           type: object
           required:
             - name
@@ -1426,6 +1432,10 @@ components:
           properties:
             name:
               $ref: "#/components/schemas/ToolName"
+            title:
+              type: string
+              minLength: 1
+              description: Display name shown by MCP clients; part of definitionHash (CC-042).
             description:
               type: string
               minLength: 1
@@ -1501,9 +1511,9 @@ components:
             type:
               $ref: "#/components/schemas/ResourceType"
             id:
-              description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but C0 and C1 control characters, DEL, U+2028 and U+2029 are excluded so the line-oriented SIEM format cannot be broken (CC-031). Independently of this, the audit JSON serializer must escape every control character and U+2028/U+2029.
+              description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but C0 and C1 control characters, DEL, U+2028, U+2029 and the bidirectional controls U+202A..U+202E and U+2066..U+2069 are excluded so the line-oriented SIEM format and log viewers cannot be misled (CC-031). The length limit counts UTF-16 code units (JSON Schema validators in Java and JavaScript); producers should keep ids below 512 characters. Independently of this, the audit JSON serializer must escape every control character and U+2028/U+2029.
               type: string
-              pattern: ^[^\u0000-\u001f\u007f-\u009f\u2028\u2029]{1,512}$
+              pattern: ^[^\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]{1,512}$
             parent:
               description: Parent as <Namespace>::<Type>::<id>, e.g. Jira::Project::ABC (C8 example format).
               type: string

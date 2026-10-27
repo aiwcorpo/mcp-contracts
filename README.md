@@ -2,12 +2,13 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **1.1.0**, tag `v1.1.0`; zmiany w
-[`CHANGELOG.md`](CHANGELOG.md). Moduł `mcp-cedar-entities` to wspólny entity builder Cedar dla gateway'a i startera.
+generują z tego klientów, mocki i testy kontraktowe. Wersja **1.2.0**, tag `v1.2.0`; zmiany w
+[`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
+startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
 
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
-wariantem; pozycje CC-001 ... CC-034 są zaakceptowane i wdrożone w 1.1.0.
+wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-035 odrzucone.
 
 ## Co jest gdzie
 
@@ -42,7 +43,8 @@ mcp-contracts/
 ├── mocks/wiremock/          # stuby C4 i C5 (generowane)
 ├── mocks/msw/               # handlery MSW dla C12 (TS)
 ├── java/mcp-contracts/      # moduł Maven: jar z zasobami + jar test-vectors (pom, bez kodu)
-├── java/mcp-cedar-entities/ # moduł Maven: entity builder + testy JUnit (Cedar, wektory, paczki)
+├── java/mcp-cedar-entities/ # moduł Maven: entity builder + testy JUnit (Cedar, wektory decyzji, filtr wyników)
+├── java/mcp-policy-bundle/  # moduł Maven: odbiorca paczek polityk + lint + testy na wektorach paczek
 ├── spectral-functions/      # reguła Spectral dla x-allowed-client-cn
 ├── scripts/                 # generatory i verify-all.sh
 └── test/                    # testy Node (lint, schematy, wektory, mocki)
@@ -58,6 +60,11 @@ Wersja dotyczy całego repozytorium naraz: jar, paczka npm i tag git mają ten s
 | nowe pole opcjonalne w odpowiedzi lub żądaniu, nowy endpoint, nowe wektory | **minor** | `1.1.0` |
 | poprawka opisu, literówki, nowy przykład zgodny ze schematem | **patch** | `1.0.1` |
 
+**Wyjątek do czasu pierwszych konsumentów:** dopóki żaden komponent nie korzysta z wydanej wersji
+(stan na 2026-10-27), zmiany niezgodne zatwierdzone przez człowieka wychodzą jako minor (1.1.0, 1.2.0).
+Każda taka zmiana jest wymieniona w `CHANGELOG.md` w sekcji "Niezgodne z poprzednią wersją". Po pierwszym
+użyciu wydania przez inny strumień obowiązuje tabela powyżej.
+
 Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie wersji w `pom.xml`,
 `package.json` i polach `info.version`, tag `vX.Y.Z`. Paczka polityk wskazuje wersję kontraktów w
 `manifest.json.schemaVersion`.
@@ -66,11 +73,12 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:1.1.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:1.1.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:1.1.0` (pom) | rodzic obu modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-1.1.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.1.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:1.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:1.2.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:1.2.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:1.2.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:1.2.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-1.2.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-1.2.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -79,20 +87,20 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-contracts-parent}/1.1.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.1.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-contracts-parent}/1.2.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-1.2.0.tgz
 ```
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -104,23 +112,35 @@ Odczyt z classpath: `getResource("/mcp-contracts/cedar/mcp.cedarschema")`,
 ## mcp-cedar-entities (entity builder)
 
 Wspólna implementacja `cedar/entity-builder.md` dla gateway'a i startera (CC-019). Zależności: cedar-java
-4.10.0 (klasyfikator `uber` z natywnymi bibliotekami), jackson-databind 2.20 (wymagany i tak przez cedar-java,
-nie występuje w API), `mcp-contracts`. Bez Springa. Typy niezmienne, `EntityBuilder` bezstanowy i
-bezpieczny wątkowo.
+4.10.0 (klasyfikator `uber` z natywnymi bibliotekami), jackson-databind 2.x (wymagany i tak przez cedar-java,
+nie występuje w API), `mcp-contracts`. Bez Springa. Rekordy wejściowe są niezmienne; `CedarRequest` zawiera
+obiekty cedar-java, które cedar-java trzyma jako mutowalne (nie modyfikuj ich). `EntityBuilder` trzyma tylko
+mapowanie zakresów i jest bezpieczny wątkowo; po załadowaniu nowej paczki tworzy się nowy builder.
+
+**Zgodność API (CC-039):** publiczne rekordy (`Caller`, `ToolDescriptor`, `ResourceRef`,
+`VirtualServerScope`, `ResolvedResource`, `CedarRequest`, `QueryConstraint`) i typy cedar-java w sygnaturach
+są częścią API. Dodanie składnika rekordu albo przejście na nową wersję major cedar-java to nowa wersja major
+biblioteki.
+
+**Środowisko:** Spring Boot 4.1.0 zarządza jackson-databind 2.x w wersji 2.21.4 (obok Jacksona 3) i nadpisze
+2.20.0 z tego modułu; testy modułów przechodzą z 2.21.4 (`./mvnw verify -Djackson.version=2.21.4`).
+cedar-java 4.10.0 `uber` ma biblioteki natywne dla macOS (x86_64, aarch64), Linuksa z glibc (x86_64, aarch64)
+i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (użyj obrazu z glibc, np.
+`eclipse-temurin:25-jre`).
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
 ```java
-EntityBuilder builder = new EntityBuilder();
+EntityBuilder builder = new EntityBuilder(loadedBundle.scopeMapping());   // mapowanie z entities/static.json
 Caller caller = Caller.of(claims.sub(), claims.usr(), claims.grp(), claims.azp())
         .withMfaAge(120)
-        .withVirtualServer(new VirtualServerScope("team-a-dev", vscFromJwt)); // tylko gdy są vs i vsc
+        .withVirtualServer(VirtualServerScope.fromClaims(claims.vs(), claims.vsc())); // tylko gdy są vs i vsc
 ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read",
         List.of(new ResourceRef("issueKey", "Jira::Issue")));
 
@@ -135,10 +155,45 @@ AuthorizationResponse r = engine.isAuthorized(
         onResource.toAuthorizationRequest(bundleSchema), bundlePolicies, onResource.cedarEntities());
 ```
 
+Wyszukiwanie i listy (CC-036): `builder.queryConstraint(caller, "Jira::Project")` mówi, do czego ograniczyć
+zapytanie do systemu, a `new ResultFilter(builder, authorizer).allowed(caller, tool, arguments, items,
+item -> resolvedResourceOf(item))` zostawia tylko elementy dozwolone przez politykę (reszta jest pomijana,
+także przy błędzie oceny).
+
 `EntityBuilderException` (kod `INVALID_ARGUMENT` albo `INTERNAL_ERROR`, `wireCode()` = kod C10) oznacza
 odmowę wywołania. Gateway tworzy claim `vsc` przez
 `VirtualServerScope.fromResourceDefaults(slug, resourceDefaults).vsScopes()`. `McpCedarSchema.schema()` daje
 schemat tej wersji kontraktów; do oceny polityk używaj schematu z załadowanej paczki.
+
+## mcp-policy-bundle (odbiorca paczek polityk)
+
+Referencyjny odbiorca C7 (CC-045): weryfikuje i ładuje paczkę z bajtów; pobieranie `latest.json` i plików
+(ETag, interwał) robi komponent. Zależności: `mcp-cedar-entities`, cedar-java, jackson-databind. Bez Springa.
+
+```java
+PublicKey mainKey = BundleVerifier.ed25519PublicKeyFromPem(config.mainKeyPem());
+BundleVerifier main = BundleVerifier.of(Channel.MAIN, mainKey, config.mainKeyId(), config.allowTestKeys());
+BundleVerifier overrides = BundleVerifier.of(Channel.OVERRIDES, overridesKey, config.overridesKeyId(), config.allowTestKeys());
+
+BundlePointer pointer = BundlePointer.parse(latestJsonBytes);
+try {
+    PolicyBundle bundle = main.verifyMain(pointer, archiveBytes, signatureBytes, Optional.ofNullable(loadedMainRevision));
+    // atomowa podmiana: bundle.policies(), bundle.schema(), bundle.staticEntities(), new EntityBuilder(bundle.scopeMapping())
+} catch (BundleRejectedException e) {
+    // zostaje poprzednia paczka; e.reason().wireCode() do metryki i logu
+}
+PolicyBundle emergency = overrides.verifyOverrides(pointerO, archiveO, signatureO, loadedOverridesRevision, currentMain);
+```
+
+Kolejność kontroli: `latest.json` (CC-026), identyfikator klucza (`test-*` tylko z `allowTestKeys`, CC-044),
+podpis Ed25519, archiwum (`TarReader`: prefiks ustar, sumy kontrolne, tylko pliki zwykłe i katalogi, bez nazw
+absolutnych, `.`/`..` i duplikatów, limity 1000 wpisów, 4 MiB na plik, 16 MiB razem), `manifest.json` i zgodność
+rewizji, zawartość (overrides: tylko `manifest.json` i `policies/**`, CC-028), rewizja ściśle wyższa w ramach
+kanału, polityki (bez szablonów, bez `permit` w overrides, `vsScopes` tylko w `forbid`, CC-041), walidacja
+strict (overrides schematem paczki głównej, CC-040), encje statyczne i mapowanie zakresów (CC-037).
+
+Lint dla potoku ws-09: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides]
+policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd).
 
 ## Generowanie klienta
 
@@ -164,7 +219,7 @@ klienta dla każdej operacji C4 i C5 są w rozszerzeniu `x-allowed-client-cn` (i
           <artifactItem>
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
-            <version>1.1.0</version>
+            <version>1.2.0</version>
             <includes>mcp-contracts/openapi/bundled/**</includes>
           </artifactItem>
         </artifactItems>
@@ -272,15 +327,16 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 
 | Katalog | Liczba | Co sprawdza |
 | --- | --- | --- |
-| `jwt/` | 38 | odbiorca C2: 15 poprawnych, 23 odrzucenia (podpis, `kid`, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, `tool` != `params.name`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP) |
-| `manifests/` | 20 | manifest C6: schemat, reguły semantyczne, przeliczony `definitionHash` |
-| `definition-hash/` | 10 | `definitionHash` (RFC 8785 + SHA-256), CC-004 |
-| `audit-events/` | 21 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów i znaków sterujących |
+| `jwt/` | 42 | odbiorca C2: 15 poprawnych, 27 odrzuceń (podpis, `kid`, klucz testowy, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP) |
+| `manifests/` | 26 | manifest C6: schemat, reguły semantyczne, przeliczony `definitionHash` |
+| `definition-hash/` | 11 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
+| `audit-events/` | 22 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, znaków sterujących i bidi |
 | `tool-errors/` | 18 | każdy kod C10 + przypadki odrzucane |
-| `bundles/` | 20 | paczki C7: podpis Ed25519, rollback, `overrides` (zawartość, `permit`, rewizje per kanał), `latest.json` |
+| `bundles/` | 33 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 12 | `returnPath` C4/C12 (CC-032) |
-| `entity-builder/` | 19 | wejście buildera -> encje i kontekst Cedar |
-| `policy-decisions/` | 48 | decyzje Cedar na politykach z `cedar/examples` |
+| `entity-builder/` | 22 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
+| `policy-decisions/` | 60 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
+| `result-filter/` | 2 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 
 Formaty:
 
@@ -303,16 +359,22 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 3. Każdy `resourceRefs[].type` i `resourceTypes[].parent` jest zadeklarowany w `resourceTypes`, a typy w
    `resourceTypes` się nie powtarzają.
 4. `definition.name == name` i `definition.inputSchema` nie deklaruje `confirmation_code` (CC-005).
-5. `definitionHash` przeliczony z `definition`, `risk`, `action`, `resourceRefs`, `system`, `credential`
-   (`scripts/lib/definition-hash.mjs`, CC-004) równa się zadeklarowanemu.
+5. `definitionHash` przeliczony z `definition` (z `title`, CC-042), `risk`, `action`, `resourceRefs`, `system`,
+   `credential` (`scripts/lib/definition-hash.mjs`, CC-004) równa się zadeklarowanemu.
+6. Każdy `resourceRefs[].argument` istnieje w `definition.inputSchema.properties` i ma typ `string`, `integer`
+   albo `array` z `items` typu `string`/`integer` (CC-043).
 
 ## Wymagania dla odbiorców i paczek polityk
 
-- Odbiorcy C2 w konfiguracji produkcyjnej odrzucają `kid` z prefiksem `test-` (konfigurowalne), więc token
-  podpisany opublikowanym kluczem testowym nigdy nie przejdzie.
+- Odbiorcy C2 i odbiorcy paczek domyślnie odrzucają klucze z identyfikatorem `test-*`; wyłącza to tylko jawne
+  ustawienie (zalecana nazwa `allowTestKeys`) w dev/test (CC-044). Wektory mają `allowTestKeys: true` i osobne
+  przypadki odrzucenia.
 - Paczka polityk (ws-09) musi zawężać linki dla wszystkich pięciu typów z `resourceDefaults` i ich typów
-  podrzędnych (CC-029, `cedar/examples/virtual-server.cedar`).
-- Odbiorca paczek: reguły C7 + CC-008, CC-026, CC-028; referencja w `PolicyBundleVectorTest` (Java).
+  podrzędnych (CC-029), czytać `vsScopes` tylko w `forbid` (CC-041) i dostarczać mapowanie zakresów w
+  `entities/static.json` (CC-037).
+- Serwery z narzędziami wyszukiwania i list ograniczają zapytanie i filtrują wyniki (CC-036,
+  `cedar/entity-builder.md` sekcja 8).
+- Odbiorca paczek: `mcp-policy-bundle` (CC-045).
 
 ## Walidacja lokalna i CI
 
@@ -325,8 +387,8 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
   błędów/paczek, zgodność plików generowanych (bundled OpenAPI, WireMock, MSW, wektory buildera), MSW.
 - `./mvnw verify` (Java 25): schemat Cedar w trybie strict i polityki przykładowe (cedar-java 4.10.0,
   klasyfikator `uber` z natywną biblioteką dla macOS/Linux x86_64 i aarch64), wektory entity buildera i
-  decyzji wykonywane przez `mcp-cedar-entities` (z walidacją encji schematem i drugim przebiegiem bez
-  `forbid`), referencyjny odbiorca paczek polityk, budowa jarów.
+  decyzji i filtra wyników wykonywane przez `mcp-cedar-entities` (z walidacją encji schematem i drugim
+  przebiegiem bez `forbid`), wektory paczek przez `mcp-policy-bundle`, budowa jarów.
 
 CI: **GitLab CI** (`.gitlab-ci.yml`), bo firmowe repozytoria i serwer MCP dla GitLaba są w GitLabie;
 joby `node`, `java`, `wiremock-smoke` (Docker-in-Docker) i na tagu `package-jar`, `package-npm`.

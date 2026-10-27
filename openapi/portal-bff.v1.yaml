@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 1.1.0
+  version: 1.2.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -35,9 +35,13 @@ paths:
       operationId: login
       summary: Start the OIDC login (or a step-up re-authentication) run by the BFF (CC-023).
       description: |
-        Redirects to the IdP. After the IdP callback the BFF creates `__Host-session`, sets `XSRF-TOKEN` and
-        redirects to `returnPath`. With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication
-        (`max_age=0` and the MFA `acr_values`). Open to anonymous callers; it never returns JSON.
+        Redirects to the IdP (authorization code + PKCE). `state`, `nonce` and the PKCE verifier are bound to the
+        browser session that started the login and checked on the IdP callback (the BFF's OIDC redirect URI,
+        configuration of the BFF, not part of this API). After the callback the BFF issues a new session id
+        (`__Host-session`, protection against session fixation), sets `XSRF-TOKEN` and redirects to `returnPath`
+        (default `/`). With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication (`max_age=0` and the
+        MFA `acr_values`) and accepts the result only if `sub` equals the `sub` of the existing session; otherwise
+        it ends the session. Open to anonymous callers; never returns JSON. An invalid `returnPath` gives 400.
       security: []
       parameters:
         - name: returnPath
@@ -258,8 +262,9 @@ paths:
       summary: redirect_uri registered at OAuth providers.
       description: |
         The BFF checks that the flow belongs to the current session, calls C4 oauth/complete and redirects to
-        `returnPath?connected=<system>`. On failure it redirects to `returnPath?connectError=<code>` with
-        code `identity_mismatch`, `flow_invalid` or `provider_error` (CC-022). Never returns JSON.
+        `returnPath` with `connected=<system>` appended (`?` when returnPath has no query, `&` otherwise). On
+        failure it appends `connectError=<code>` the same way, code `identity_mismatch`, `flow_invalid` or
+        `provider_error` (CC-022). Never returns JSON.
       security:
         - session: []
       parameters:

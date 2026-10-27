@@ -1,5 +1,5 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import { portalBffExamples } from './portal-bff.examples.js';
+import { portalBffExamples, RETURN_PATH_PATTERN } from './portal-bff.examples.js';
 import type { ExampleResponse, OperationExamples } from './types.js';
 
 export interface PortalBffHandlerOptions {
@@ -16,6 +16,22 @@ export interface PortalBffHandlerOptions {
 export const MOCK_XSRF_TOKEN = 'msw-xsrf-token-test';
 
 const MUTATING = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+const RETURN_PATH = new RegExp(RETURN_PATH_PATTERN, 'u');
+
+// The BFF answers 400 for a returnPath outside the C4/C12 pattern (CC-032); the mock does the same so that the
+// frontend sees the error case.
+async function invalidReturnPath(operationId: string, request: Request): Promise<boolean> {
+  let value: unknown;
+  if (operationId === 'login') {
+    value = new URL(request.url).searchParams.get('returnPath') ?? undefined;
+  } else if (operationId === 'startConnectOAuth') {
+    const text = await request.clone().text();
+    value = text ? (JSON.parse(text) as { returnPath?: unknown }).returnPath : undefined;
+  } else {
+    return false;
+  }
+  return value !== undefined && (typeof value !== 'string' || !RETURN_PATH.test(value));
+}
 
 function pickExample(operation: OperationExamples, prefer: string | null): ExampleResponse {
   const requested = prefer?.match(/(?:^|[\s,;])example=([A-Za-z0-9_-]+)/)?.[1];
@@ -57,12 +73,15 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
   const enforceCsrf = options.enforceCsrf ?? true;
   return portalBffExamples.map((operation) => {
     const method = operation.method.toLowerCase() as 'get' | 'post' | 'put' | 'delete' | 'patch';
-    return http[method](baseUrl + mswPath(operation.route), ({ request, cookies }) => {
+    return http[method](baseUrl + mswPath(operation.route), async ({ request, cookies }) => {
       if (enforceCsrf && MUTATING.has(operation.method)) {
         const header = request.headers.get('X-XSRF-TOKEN');
         if (!header || header !== cookies['XSRF-TOKEN']) {
           return HttpResponse.json({ error: 'csrf_invalid' }, { status: 403 });
         }
+      }
+      if (await invalidReturnPath(operation.operationId, request)) {
+        return HttpResponse.json({ error: 'invalid_request' }, { status: 400 });
       }
       const extra: Record<string, string> = operation.operationId === 'getMe'
         ? { 'Set-Cookie': `XSRF-TOKEN=${MOCK_XSRF_TOKEN}; Path=/; Secure; SameSite=Strict` }

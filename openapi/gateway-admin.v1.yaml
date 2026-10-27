@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 1.1.0
+  version: 1.2.0
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -836,12 +836,14 @@ components:
       additionalProperties: false
     ResourceDefaults:
       type: object
-      description: Narrowing per resource type (C5). Becomes context.vsScopes in Cedar (cedar/entity-builder.md).
+      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). At most 50 ids per type keep the internal JWT small.
+      maxProperties: 5
       propertyNames:
         $ref: '../schemas/common.schema.json#/$defs/ScopeResourceType'
       additionalProperties:
         type: array
         minItems: 1
+        maxItems: 50
         uniqueItems: true
         items:
           type: string

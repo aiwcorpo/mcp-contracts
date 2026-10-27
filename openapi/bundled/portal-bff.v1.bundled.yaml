@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 1.1.0
+  version: 1.2.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -37,9 +37,13 @@ paths:
       operationId: login
       summary: Start the OIDC login (or a step-up re-authentication) run by the BFF (CC-023).
       description: |
-        Redirects to the IdP. After the IdP callback the BFF creates `__Host-session`, sets `XSRF-TOKEN` and
-        redirects to `returnPath`. With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication
-        (`max_age=0` and the MFA `acr_values`). Open to anonymous callers; it never returns JSON.
+        Redirects to the IdP (authorization code + PKCE). `state`, `nonce` and the PKCE verifier are bound to the
+        browser session that started the login and checked on the IdP callback (the BFF's OIDC redirect URI,
+        configuration of the BFF, not part of this API). After the callback the BFF issues a new session id
+        (`__Host-session`, protection against session fixation), sets `XSRF-TOKEN` and redirects to `returnPath`
+        (default `/`). With `stepUp=true` the BFF asks the IdP for a fresh MFA authentication (`max_age=0` and the
+        MFA `acr_values`) and accepts the result only if `sub` equals the `sub` of the existing session; otherwise
+        it ends the session. Open to anonymous callers; never returns JSON. An invalid `returnPath` gives 400.
       security: []
       parameters:
         - name: returnPath
@@ -281,8 +285,9 @@ paths:
       summary: redirect_uri registered at OAuth providers.
       description: |
         The BFF checks that the flow belongs to the current session, calls C4 oauth/complete and redirects to
-        `returnPath?connected=<system>`. On failure it redirects to `returnPath?connectError=<code>` with
-        code `identity_mismatch`, `flow_invalid` or `provider_error` (CC-022). Never returns JSON.
+        `returnPath` with `connected=<system>` appended (`?` when returnPath has no query, `&` otherwise). On
+        failure it appends `connectError=<code>` the same way, code `identity_mismatch`, `flow_invalid` or
+        `provider_error` (CC-022). Never returns JSON.
       security:
         - session: []
       parameters:
@@ -1429,12 +1434,14 @@ components:
         - ServiceDesk::Queue
     ResourceDefaults:
       type: object
-      description: Narrowing per resource type (C5). Becomes context.vsScopes in Cedar (cedar/entity-builder.md).
+      description: Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). At most 50 ids per type keep the internal JWT small.
+      maxProperties: 5
       propertyNames:
         $ref: "#/components/schemas/ScopeResourceType"
       additionalProperties:
         type: array
         minItems: 1
+        maxItems: 50
         uniqueItems: true
         items:
           type: string
@@ -1525,7 +1532,7 @@ components:
           $ref: "#/components/schemas/ResourceType"
       additionalProperties: false
     McpToolDefinition:
-      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential.
+      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
       type: object
       required:
         - name
@@ -1534,6 +1541,10 @@ components:
       properties:
         name:
           $ref: "#/components/schemas/ToolName"
+        title:
+          type: string
+          minLength: 1
+          description: Display name shown by MCP clients; part of definitionHash (CC-042).
         description:
           type: string
           minLength: 1
@@ -1706,9 +1717,9 @@ components:
             type:
               $ref: "#/components/schemas/ResourceType"
             id:
-              description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but C0 and C1 control characters, DEL, U+2028 and U+2029 are excluded so the line-oriented SIEM format cannot be broken (CC-031). Independently of this, the audit JSON serializer must escape every control character and U+2028/U+2029.
+              description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but C0 and C1 control characters, DEL, U+2028, U+2029 and the bidirectional controls U+202A..U+202E and U+2066..U+2069 are excluded so the line-oriented SIEM format and log viewers cannot be misled (CC-031). The length limit counts UTF-16 code units (JSON Schema validators in Java and JavaScript); producers should keep ids below 512 characters. Independently of this, the audit JSON serializer must escape every control character and U+2028/U+2029.
               type: string
-              pattern: ^[^\u0000-\u001f\u007f-\u009f\u2028\u2029]{1,512}$
+              pattern: ^[^\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]{1,512}$
             parent:
               description: Parent as <Namespace>::<Type>::<id>, e.g. Jira::Project::ABC (C8 example format).
               type: string
