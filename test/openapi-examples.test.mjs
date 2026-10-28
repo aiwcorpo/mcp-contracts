@@ -53,3 +53,43 @@ test('portal-bff.v1.yaml: every response declares X-Request-Id (CC-087)', async 
     }
   }
 });
+
+test('portal-bff.v1.yaml: catalog examples follow the action table of CC-083', async () => {
+  const { catalogActions } = await import('../scripts/lib/catalog-actions.mjs');
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  const operation = operations(spec).find((o) => o.operation.operationId === 'getPortalCatalog').operation;
+  const examples = Object.entries(operation.responses['200'].content['application/json'].examples);
+  const seen = new Set();
+  for (const [exampleName, example] of examples) {
+    for (const server of example.value.servers) {
+      seen.add(server.status);
+      const where = `${exampleName} ${server.serverId}`;
+      assert.deepEqual([...server.actions].sort(), catalogActions({
+        status: server.status,
+        supportedTypes: server.credential.supportedTypes,
+        connectionType: server.connection?.type,
+        hasConnection: server.connection != null,
+        someToolDenied: server.tools.some((t) => t.access === 'denied'),
+      }), where);
+      if (['service-account', 'token-exchange'].includes(server.credential.defaultType)) {
+        assert.equal(server.connection, null, `${where}: nothing to connect`);
+      }
+      if (['not_connected', 'request_pending', 'no_access'].includes(server.status)) {
+        assert.equal(server.connection, null, `${where}: no connection`);
+      }
+      for (const tool of server.tools) {
+        if (tool.risk === 'DESTRUCTIVE') assert.equal(tool.requiresConfirmation, true, `${where} ${tool.name}`);
+      }
+    }
+  }
+  for (const status of spec.components.schemas.CatalogStatus.enum) assert.ok(seen.has(status), `no example for ${status}`);
+});
+
+test('credential-broker.v1.yaml: every response declares X-Request-Id (CC-047)', async () => {
+  const spec = await dereferenceOpenApi('credential-broker.v1.yaml');
+  for (const { route, method, operation } of operations(spec)) {
+    for (const [status, response] of Object.entries(operation.responses)) {
+      assert.ok(response.headers?.['X-Request-Id'], `${method.toUpperCase()} ${route} ${status}`);
+    }
+  }
+});

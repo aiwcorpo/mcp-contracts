@@ -1,0 +1,15 @@
+{
+  "description": "Both sides are compared after Unicode NFC normalization.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "za\u017c\u00f3\u0142\u0107",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "zaz\u0307o\u0301\u0142c\u0301"
+  },
+  "expected": {
+    "match": true
+  }
+}

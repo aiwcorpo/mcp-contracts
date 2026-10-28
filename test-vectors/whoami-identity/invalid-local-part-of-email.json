@@ -1,0 +1,15 @@
+{
+  "description": "No domain stripping: the e-mail local part is not the username.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "anna.nowak@aiwcorpo.pl",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "anna.nowak"
+  },
+  "expected": {
+    "match": false
+  }
+}

@@ -6,7 +6,8 @@
       "user-oauth"
     ],
     "connectionType": "user-oauth",
-    "someToolDenied": false
+    "someToolDenied": false,
+    "hasConnection": true
   },
   "expected": {
     "actions": [

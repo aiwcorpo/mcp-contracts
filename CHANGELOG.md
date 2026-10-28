@@ -4,6 +4,50 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.2.1 - 2026-10-28
+
+Poprawki po przeglądzie 2.2.0 (0 CRITICAL/HIGH, 6 MEDIUM, 11 LOW) i decyzje człowieka z 2026-10-28.
+`cedar/mcp.cedarschema` bez zmian. Pivot (CC-091 ... CC-094, CC-098) i CC-099 (`ReturnPath` bez zarezerwowanych
+prefiksów) są `accepted-for-3.0.0` i nie wchodzą do tego wydania.
+
+### Zmiany
+
+- CC-084 (zmienione decyzją człowieka): z `putMySecret` (BFF i broker) znika odpowiedź `400 expires_at_invalid` i
+  walidacja daty (przyszłość, limit 366 dni) dodane w 2.2.0; `expiresAt` to opcjonalna informacja, broker przyjmuje
+  każdą poprawną datę albo brak pola, `expiring` działa tylko przy podanej dacie. Wektory `secret-expiry/` usunięte.
+  400 w C4 wróciło do wspólnej odpowiedzi `BadRequest` z `X-Request-Id` (przegląd M-2).
+- C4.1 (przegląd M-6): reguła porównania tożsamości jest w kontrakcie: dokładna równość po NFC i zamianie na małe
+  litery, bez przycinania, podciągu i odcinania domeny; e-mail tylko przy `email_verified=true`; GitLab
+  (`/api/v4/user`, `username`) w tabeli whoami. Opis w C4 `putSecret`. Nowe wektory `whoami-identity/`.
+- Przykłady C12 (M-1, L-2, L-3, L-4): przykład `states` katalogu z `expiring`, `reconnect_required`, `no_access`,
+  serwerem `service-account` i `token-exchange` (`connection: null`), narzędzie `disabled`; test sprawdza wszystkie
+  przykłady katalogu względem tabeli akcji (wspólna funkcja z wektorami), spójność `connection` ze statusem i
+  `requiresConfirmation` dla `DESTRUCTIVE`. Opis tabeli: typ z `connection.type`, `disconnect` tylko przy `connection`.
+  Wektory `catalog-actions/` dostały `hasConnection` i wektor mieszany. Przykład `supportedTypes` Confluence wyrównany z C4.
+- CC-088 (M-4): przykład rejestru z serwerem `enabled: false` (C5 i C12); typy TS nie czynią już pól z `default`
+  (`enabled`, `disabled`, `requiresConfirmation`) wymaganymi (`defaultNonNullable: false`): brak `enabled` znaczy `true`.
+- CC-089 (M-5, L-8): reguły nagłówków ochronnych na każdej trasie gateway'a (także `/.well-known/...`), na każdej
+  odpowiedzi, błędy gateway'a zawsze w JSON niezależnie od `Accept`, brak `Set-Cookie` z tras gateway'a, brak CORS w BFF,
+  normalizacja ścieżek i osobny listener dla C5/JWKS.
+- CC-085/CC-087 (L-5, L-6): kolejność kontroli `resourceDefaults` (najpierw niepusty obiekt, potem zawartość; nie-obiekt to
+  `invalid_request`), mock MSW zwraca `X-Request-Id` także w błędach generowanych samodzielnie; opis, że odpowiedzi
+  proxy (502/504) go nie mają; README (Korelacja, Wersjonowanie) uzupełnione.
+- `CONTRACT_CHANGES.md`: poprawione zdanie o `X-Request-Id` klienta w CC-089 (L-7); CC-099.
+
+### Wyjątek SemVer
+
+Usunięcie odpowiedzi `400 expires_at_invalid` i walidacji z CC-084 jest według tabeli zmianą niezgodną dla klienta,
+który ją obsługuje, wydaną jako patch na decyzję człowieka (brak konsumentów: broker i BFF nie wdrożyły jej, ws-08 nie
+zbudował ekranu), jak CC-085 w 2.2.0.
+
+### Wpływ na konsumentów względem 2.2.0
+
+- ws-06 (broker): bez walidacji `expiresAt` (każda poprawna data lub brak); reguła porównania tożsamości z wektorami
+  `whoami-identity/`; GitLab `username`.
+- ws-07 (BFF): bez `expires_at_invalid`; `X-Request-Id` także na 400 `putSecret`; kolejność kontroli `resourceDefaults`.
+- ws-08 (web): bez błędu daty w formularzu tokenu; typy TS: pola z `default` opcjonalne; mock `Prefer: example=states`.
+- ws-01/ws-05: reguły tras gateway'a z README ("Jedna domena").
+
 ## 2.2.0 - 2026-10-27
 
 Wydanie dla M2: CC-080 ... CC-090 (decyzje człowieka z 2026-10-27). `cedar/mcp.cedarschema` bez zmian (bajtowo jak w

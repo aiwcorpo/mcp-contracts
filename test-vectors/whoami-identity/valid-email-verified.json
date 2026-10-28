@@ -1,0 +1,15 @@
+{
+  "description": "E-mail mapping with email_verified=true.",
+  "input": {
+    "mapping": "email",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "Anna.Nowak@aiwcorpo.pl"
+  },
+  "expected": {
+    "match": true
+  }
+}

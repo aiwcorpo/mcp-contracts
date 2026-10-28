@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 2.2.0
+  version: 2.2.1
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -18,7 +18,9 @@ info:
     gateway share one public origin behind a reverse proxy (CC-089): `/` web, `/api` BFF, `/s/`, `/v/` and
     `/.well-known/oauth-protected-resource*` gateway. `publicBaseUrl` is configuration, never derived from the
     `Host` or `X-Forwarded-Host` of a request. The gateway answers MCP clients only with `application/json` and
-    `text/event-stream` and does not forward the `Cookie` header.
+    `text/event-stream` on every route, errors included and whatever `Accept` says (never `text/html`), and does
+    not forward the `Cookie` header; the proxy adds `X-Content-Type-Options: nosniff` and `Content-Security-Policy:
+    default-src 'none'; sandbox` to every response of these routes (README, "Jedna domena").
 
     A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
     Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
@@ -291,6 +293,13 @@ paths:
                               destructiveHint: false
                           definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
                           status: pending_approval
+                opensearch_disabled:
+                  value:
+                    - serverId: mcp-opensearch
+                      system: opensearch
+                      version: 1.0.0
+                      enabled: false
+                      tools: []
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':

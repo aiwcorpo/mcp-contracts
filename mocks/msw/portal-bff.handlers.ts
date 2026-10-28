@@ -15,6 +15,13 @@ export interface PortalBffHandlerOptions {
 /** Value the mock sets in the __Host-XSRF-TOKEN cookie on GET /api/v1/me. Test value, not a secret. */
 export const MOCK_XSRF_TOKEN = 'msw-xsrf-token-test';
 
+/** requestId the mock puts in X-Request-Id of the errors it generates itself (CC-087). Test value. */
+const MOCK_REQUEST_ID = '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f';
+
+function errorResponse(error: string, status: number): Response {
+  return HttpResponse.json({ error }, { status, headers: { 'X-Request-Id': MOCK_REQUEST_ID } });
+}
+
 const MUTATING = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 /** Name of the CSRF cookie (CC-055); the header stays X-XSRF-TOKEN. */
 export const XSRF_COOKIE = '__Host-XSRF-TOKEN';
@@ -83,19 +90,25 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
       if (enforceCsrf && MUTATING.has(operation.method)) {
         const header = request.headers.get('X-XSRF-TOKEN');
         if (!header || header !== cookies[XSRF_COOKIE]) {
-          return HttpResponse.json({ error: 'csrf_invalid' }, { status: 403 });
+          return errorResponse('csrf_invalid', 403);
         }
       }
       if (operation.route.includes('{system}') && !SYSTEMS.includes(String(params.system))) {
-        return HttpResponse.json({ error: 'invalid_request' }, { status: 400 });
+        return errorResponse('invalid_request', 400);
       }
       if (await invalidReturnPath(operation.operationId, request)) {
-        return HttpResponse.json({ error: 'invalid_request' }, { status: 400 });
+        return errorResponse('invalid_request', 400);
       }
       if (operation.operationId === 'createMyVirtualServer') {
-        const body = (await request.clone().json().catch(() => null)) as { resourceDefaults?: Record<string, unknown> } | null;
-        if (body?.resourceDefaults && Object.keys(body.resourceDefaults).length > 0) {
-          return HttpResponse.json({ error: 'resource_defaults_unsupported' }, { status: 400 });
+        // The BFF first looks at whether a non-empty object was sent, then at its content (CC-085); a value that is
+        // not an object is a malformed request.
+        const body = (await request.clone().json().catch(() => null)) as { resourceDefaults?: unknown } | null;
+        const defaults = body?.resourceDefaults;
+        if (defaults !== undefined) {
+          if (defaults === null || typeof defaults !== 'object' || Array.isArray(defaults)) {
+            return errorResponse('invalid_request', 400);
+          }
+          if (Object.keys(defaults).length > 0) return errorResponse('resource_defaults_unsupported', 400);
         }
       }
       const extra: Record<string, string> = operation.operationId === 'getMe'

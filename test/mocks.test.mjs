@@ -54,12 +54,6 @@ test('MSW: mutating call with matching cookie and header succeeds', async () => 
     body: JSON.stringify({ secret: 'test-only' }),
   });
   assert.equal(put.status, 200, 'no step-up for PUT secret (CC-090)');
-  const bad = await fetch(`${BASE}/api/v1/connections/jira/secret`, {
-    method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'example=expires_at_invalid' },
-    body: JSON.stringify({ secret: 'test-only', expiresAt: '2020-01-01T00:00:00Z' }),
-  });
-  assert.equal(bad.status, 400);
-  assert.equal((await bad.json()).error, 'expires_at_invalid');
   const stepUp = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`, { headers: { Prefer: 'example=step_up_required' } });
   assert.equal(stepUp.status, 401);
   const body = await stepUp.json();

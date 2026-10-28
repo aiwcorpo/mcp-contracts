@@ -1,0 +1,15 @@
+{
+  "description": "Case is ignored (both sides lower-cased).",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "ANowak"
+  },
+  "expected": {
+    "match": true
+  }
+}

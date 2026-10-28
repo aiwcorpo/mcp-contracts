@@ -7,6 +7,7 @@ import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, 
 import { manifestEntryHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
+import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 
 const ajv = createAjv();
 
@@ -204,41 +205,6 @@ test('connectError redirect vectors (CC-086)', async () => {
   for (const { name, data } of vectors) assert.equal(allowed.has(data.location), data.expected.valid, name);
 });
 
-test('secret expiry vectors (CC-084)', () => {
-  const vectors = listJson('test-vectors', 'secret-expiry');
-  assert.ok(vectors.length >= 5);
-  for (const { name, data } of vectors) {
-    const now = Date.parse(data.now);
-    const at = Date.parse(data.expiresAt);
-    assert.equal(at > now && at <= now + data.maxDays * 86400000, data.expected.valid, name);
-    if (!data.expected.valid) assert.equal(data.expected.error, 'expires_at_invalid', name);
-  }
-});
-
-// Reference table of CC-083: the actions the BFF returns per catalog status.
-function catalogActions({ status, supportedTypes, connectionType, someToolDenied }) {
-  const connectable = supportedTypes.some((t) => t === 'user-oauth' || t === 'user-secret');
-  const renew = connectionType === 'user-oauth' ? 'reconnect' : 'add_secret';
-  const out = [];
-  switch (status) {
-    case 'connected':
-      out.push('copy_link');
-      if (connectable) out.push('disconnect');
-      if (someToolDenied) out.push('request_access');
-      break;
-    case 'expiring': out.push('copy_link', renew, 'disconnect'); break;
-    case 'reconnect_required': out.push(renew, 'disconnect'); break;
-    case 'not_connected':
-      if (supportedTypes.includes('user-oauth')) out.push('connect_oauth');
-      if (supportedTypes.includes('user-secret')) out.push('add_secret');
-      break;
-    case 'request_pending': out.push('view_request'); break;
-    case 'no_access': out.push('request_access'); break;
-    default: throw new Error(status);
-  }
-  return out.sort();
-}
-
 test('catalog action vectors (CC-083)', async () => {
   const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
   const statuses = spec.components.schemas.CatalogStatus.enum;
@@ -249,4 +215,21 @@ test('catalog action vectors (CC-083)', async () => {
     assert.deepEqual(catalogActions(data.input), data.expected.actions, name);
     for (const a of data.expected.actions) assert.ok(actions.has(a), `${name}: ${a}`);
   }
+});
+
+// Reference rule of C4.1 (README, "Whoami"): exact comparison after Unicode NFC and lower-casing, no trimming,
+// no substring, no stripping of the domain; the e-mail mapping needs email_verified=true.
+function whoamiMatches({ mapping, sso, systemIdentity }) {
+  const source = sso[mapping];
+  if (typeof source !== 'string' || typeof systemIdentity !== 'string') return false;
+  if (mapping === 'email' && sso.email_verified !== true) return false;
+  if (source === '' || systemIdentity === '') return false;
+  const norm = (value) => value.normalize('NFC').toLowerCase();
+  return norm(source) === norm(systemIdentity);
+}
+
+test('whoami identity vectors (C4.1, CC-090)', () => {
+  const vectors = listJson('test-vectors', 'whoami-identity');
+  assert.ok(vectors.some((v) => v.data.expected.match) && vectors.some((v) => !v.data.expected.match));
+  for (const { name, data } of vectors) assert.equal(whoamiMatches(data.input), data.expected.match, name);
 });

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.2.0
+  version: 2.2.1
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -170,10 +170,10 @@ paths:
         4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error` -> `reconnect_required`
         5. no connection: `not_connected`
 
-        Actions per status (the BFF returns exactly these; `credential.supportedTypes` decides the type, CC-083):
+        Actions per status (the BFF returns exactly these, CC-083). "Type" below is the type of the existing connection (`connection.type`) for `expiring` and `reconnect_required`, and `credential.supportedTypes` for `not_connected`:
 
-        - `connected`: `copy_link`, `disconnect` (+ `request_access` when some tool of the server is denied); no
-          `disconnect` when the system has nothing to disconnect (`service-account`, `token-exchange`)
+        - `connected`: `copy_link`, `disconnect` only when `connection` is not null (+ `request_access` when some tool of
+          the server is denied); a `service-account` or `token-exchange` system has no connection and no `disconnect`
         - `expiring`: `copy_link`, `add_secret` (user-secret) or `reconnect` (user-oauth), `disconnect`
         - `reconnect_required`: `reconnect` (user-oauth) or `add_secret` (user-secret), `disconnect`
         - `not_connected`: `connect_oauth` and/or `add_secret`, one per type in `credential.supportedTypes`
@@ -254,7 +254,7 @@ paths:
                         status: request_pending
                         actions: [view_request]
                         credential:
-                          supportedTypes: [user-secret]
+                          supportedTypes: [user-oauth, user-secret]
                           defaultType: user-secret
                         connection: null
                         tools:
@@ -264,6 +264,110 @@ paths:
                             action: read
                             access: denied
                             requiredEntitlements: [mcp-confluence-read]
+                states:
+                  value:
+                    servers:
+                      - serverId: mcp-jira
+                        system: jira
+                        version: 1.4.0
+                        url: https://mcp.aiwcorpo.pl/s/mcp-jira/mcp
+                        status: expiring
+                        actions: [copy_link, add_secret, disconnect]
+                        credential:
+                          supportedTypes: [user-oauth, user-secret]
+                          defaultType: user-secret
+                        connection:
+                          system: jira
+                          type: user-secret
+                          status: expiring
+                          backendUser: jkowalski
+                          expiresAt: '2026-10-30T00:00:00Z'
+                          connectedAt: '2026-10-01T08:00:00Z'
+                          lastUsedAt: '2026-10-26T19:58:00Z'
+                        tools:
+                          - name: jira__get_issue
+                            title: Pobranie zgłoszenia
+                            description: Returns one Jira issue by key.
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-jira-read]
+                      - serverId: mcp-gitlab
+                        system: gitlab
+                        version: 1.0.0
+                        url: https://mcp.aiwcorpo.pl/s/mcp-gitlab/mcp
+                        status: reconnect_required
+                        actions: [reconnect, disconnect]
+                        credential:
+                          supportedTypes: [user-oauth, user-secret]
+                          defaultType: user-oauth
+                        connection:
+                          system: gitlab
+                          type: user-oauth
+                          status: revoked
+                          backendUser: jkowalski
+                          expiresAt: null
+                          connectedAt: '2026-09-15T08:00:00Z'
+                          lastUsedAt: '2026-10-20T12:00:00Z'
+                        tools:
+                          - name: gitlab__get_project
+                            description: Returns one GitLab project by path.
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-gitlab-read]
+                            disabled: true
+                      - serverId: mcp-confluence
+                        system: confluence
+                        version: 1.0.0
+                        url: https://mcp.aiwcorpo.pl/s/mcp-confluence/mcp
+                        status: no_access
+                        actions: [request_access]
+                        credential:
+                          supportedTypes: [user-oauth, user-secret]
+                          defaultType: user-secret
+                        connection: null
+                        tools:
+                          - name: confluence__get_page
+                            description: Returns one Confluence page.
+                            risk: READ_ONLY
+                            action: read
+                            access: denied
+                            requiredEntitlements: [mcp-confluence-read]
+                      - serverId: mcp-servicedesk
+                        system: servicedesk
+                        version: 1.0.0
+                        url: https://mcp.aiwcorpo.pl/s/mcp-servicedesk/mcp
+                        status: connected
+                        actions: [copy_link]
+                        credential:
+                          supportedTypes: [service-account]
+                          defaultType: service-account
+                        connection: null
+                        tools:
+                          - name: servicedesk__get_ticket
+                            description: Returns one service desk ticket.
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-servicedesk-read]
+                      - serverId: mcp-opensearch
+                        system: opensearch
+                        version: 1.0.0
+                        url: https://mcp.aiwcorpo.pl/s/mcp-opensearch/mcp
+                        status: connected
+                        actions: [copy_link]
+                        credential:
+                          supportedTypes: [token-exchange]
+                          defaultType: token-exchange
+                        connection: null
+                        tools:
+                          - name: opensearch__search_logs
+                            description: Searches log indices.
+                            risk: READ_ONLY
+                            action: read
+                            access: granted
+                            requiredEntitlements: [mcp-opensearch-read]
         '401':
           $ref: '#/components/responses/Unauthenticated'
         "503":
@@ -436,21 +540,7 @@ paths:
                     backendUser: jkowalski
                     expiresAt: '2027-01-31T00:00:00Z'
         '400':
-          headers:
-            X-Request-Id:
-              $ref: '#/components/headers/RequestId'
-          description: Malformed request or an invalid expiry (expiresAt in the past, or later than the broker limit, default 366 days) (CC-084).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                invalid_request:
-                  value:
-                    error: invalid_request
-                expires_at_invalid:
-                  value:
-                    error: expires_at_invalid
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -734,7 +824,7 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Malformed request, or a non-empty resourceDefaults (resource narrowing is dormant, CC-085; the BFF checks the field itself and does not call the gateway).
+          description: Malformed request (a resourceDefaults that is not an object is invalid_request), or a non-empty resourceDefaults (resource narrowing is dormant, CC-085; checked first, before the content is validated; the BFF checks the field itself and does not call the gateway).
           content:
             application/json:
               schema:
@@ -913,6 +1003,13 @@ paths:
                               destructiveHint: false
                           definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
                           status: pending_approval
+                opensearch_disabled:
+                  value:
+                    - serverId: mcp-opensearch
+                      system: opensearch
+                      version: 1.0.0
+                      enabled: false
+                      tools: []
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':

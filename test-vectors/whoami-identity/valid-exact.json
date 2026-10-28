@@ -1,0 +1,15 @@
+{
+  "description": "Same username.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "anowak"
+  },
+  "expected": {
+    "match": true
+  }
+}

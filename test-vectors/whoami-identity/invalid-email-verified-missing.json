@@ -1,0 +1,14 @@
+{
+  "description": "A missing email_verified counts as false.",
+  "input": {
+    "mapping": "email",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "anna.nowak@aiwcorpo.pl"
+    },
+    "systemIdentity": "anna.nowak@aiwcorpo.pl"
+  },
+  "expected": {
+    "match": false
+  }
+}

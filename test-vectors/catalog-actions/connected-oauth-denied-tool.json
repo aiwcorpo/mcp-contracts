@@ -7,7 +7,8 @@
       "user-secret"
     ],
     "connectionType": "user-oauth",
-    "someToolDenied": true
+    "someToolDenied": true,
+    "hasConnection": true
   },
   "expected": {
     "actions": [

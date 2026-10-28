@@ -1,0 +1,15 @@
+{
+  "description": "The system name only contains the SSO name.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "anowak2"
+  },
+  "expected": {
+    "match": false
+  }
+}

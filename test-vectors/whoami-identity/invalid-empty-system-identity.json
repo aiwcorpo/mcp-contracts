@@ -1,0 +1,15 @@
+{
+  "description": "Empty identity from the system never matches.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "anna.nowak@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": ""
+  },
+  "expected": {
+    "match": false
+  }
+}

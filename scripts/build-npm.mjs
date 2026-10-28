@@ -14,7 +14,10 @@ rmSync(path('dist'), { recursive: true, force: true });
 mkdirSync(path('dist', 'types', 'schemas'), { recursive: true });
 
 for (const file of OPENAPI_FILES) {
-  const ast = await openapiTS(pathToFileURL(path('openapi', 'bundled', bundledName(file))));
+  const ast = await openapiTS(pathToFileURL(path('openapi', 'bundled', bundledName(file))), {
+    // Fields with a default stay optional in the types: a missing `enabled` means true (CC-088), not false.
+    defaultNonNullable: false,
+  });
   writeFileSync(path('dist', 'types', file.replace(/\.yaml$/, '.d.ts')), `${BANNER}\n${astToString(ast)}`);
 }
 

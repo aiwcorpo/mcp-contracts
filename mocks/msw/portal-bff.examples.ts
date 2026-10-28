@@ -243,6 +243,7 @@ export const portalBffExamples: OperationExamples[] = [
               ],
               "credential": {
                 "supportedTypes": [
+                  "user-oauth",
                   "user-secret"
                 ],
                 "defaultType": "user-secret"
@@ -257,6 +258,186 @@ export const portalBffExamples: OperationExamples[] = [
                   "access": "denied",
                   "requiredEntitlements": [
                     "mcp-confluence-read"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 200,
+        "name": "states",
+        "body": {
+          "servers": [
+            {
+              "serverId": "mcp-jira",
+              "system": "jira",
+              "version": "1.4.0",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-jira/mcp",
+              "status": "expiring",
+              "actions": [
+                "copy_link",
+                "add_secret",
+                "disconnect"
+              ],
+              "credential": {
+                "supportedTypes": [
+                  "user-oauth",
+                  "user-secret"
+                ],
+                "defaultType": "user-secret"
+              },
+              "connection": {
+                "system": "jira",
+                "type": "user-secret",
+                "status": "expiring",
+                "backendUser": "jkowalski",
+                "expiresAt": "2026-10-30T00:00:00Z",
+                "connectedAt": "2026-10-01T08:00:00Z",
+                "lastUsedAt": "2026-10-26T19:58:00Z"
+              },
+              "tools": [
+                {
+                  "name": "jira__get_issue",
+                  "title": "Pobranie zgłoszenia",
+                  "description": "Returns one Jira issue by key.",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "granted",
+                  "requiredEntitlements": [
+                    "mcp-jira-read"
+                  ]
+                }
+              ]
+            },
+            {
+              "serverId": "mcp-gitlab",
+              "system": "gitlab",
+              "version": "1.0.0",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-gitlab/mcp",
+              "status": "reconnect_required",
+              "actions": [
+                "reconnect",
+                "disconnect"
+              ],
+              "credential": {
+                "supportedTypes": [
+                  "user-oauth",
+                  "user-secret"
+                ],
+                "defaultType": "user-oauth"
+              },
+              "connection": {
+                "system": "gitlab",
+                "type": "user-oauth",
+                "status": "revoked",
+                "backendUser": "jkowalski",
+                "expiresAt": null,
+                "connectedAt": "2026-09-15T08:00:00Z",
+                "lastUsedAt": "2026-10-20T12:00:00Z"
+              },
+              "tools": [
+                {
+                  "name": "gitlab__get_project",
+                  "description": "Returns one GitLab project by path.",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "granted",
+                  "requiredEntitlements": [
+                    "mcp-gitlab-read"
+                  ],
+                  "disabled": true
+                }
+              ]
+            },
+            {
+              "serverId": "mcp-confluence",
+              "system": "confluence",
+              "version": "1.0.0",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-confluence/mcp",
+              "status": "no_access",
+              "actions": [
+                "request_access"
+              ],
+              "credential": {
+                "supportedTypes": [
+                  "user-oauth",
+                  "user-secret"
+                ],
+                "defaultType": "user-secret"
+              },
+              "connection": null,
+              "tools": [
+                {
+                  "name": "confluence__get_page",
+                  "description": "Returns one Confluence page.",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "denied",
+                  "requiredEntitlements": [
+                    "mcp-confluence-read"
+                  ]
+                }
+              ]
+            },
+            {
+              "serverId": "mcp-servicedesk",
+              "system": "servicedesk",
+              "version": "1.0.0",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-servicedesk/mcp",
+              "status": "connected",
+              "actions": [
+                "copy_link"
+              ],
+              "credential": {
+                "supportedTypes": [
+                  "service-account"
+                ],
+                "defaultType": "service-account"
+              },
+              "connection": null,
+              "tools": [
+                {
+                  "name": "servicedesk__get_ticket",
+                  "description": "Returns one service desk ticket.",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "granted",
+                  "requiredEntitlements": [
+                    "mcp-servicedesk-read"
+                  ]
+                }
+              ]
+            },
+            {
+              "serverId": "mcp-opensearch",
+              "system": "opensearch",
+              "version": "1.0.0",
+              "url": "https://mcp.aiwcorpo.pl/s/mcp-opensearch/mcp",
+              "status": "connected",
+              "actions": [
+                "copy_link"
+              ],
+              "credential": {
+                "supportedTypes": [
+                  "token-exchange"
+                ],
+                "defaultType": "token-exchange"
+              },
+              "connection": null,
+              "tools": [
+                {
+                  "name": "opensearch__search_logs",
+                  "description": "Searches log indices.",
+                  "risk": "READ_ONLY",
+                  "action": "read",
+                  "access": "granted",
+                  "requiredEntitlements": [
+                    "mcp-opensearch-read"
                   ]
                 }
               ]
@@ -432,16 +613,6 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "invalid_request",
         "body": {
           "error": "invalid_request"
-        },
-        "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
-        }
-      },
-      {
-        "status": 400,
-        "name": "expires_at_invalid",
-        "body": {
-          "error": "expires_at_invalid"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -1082,6 +1253,22 @@ export const portalBffExamples: OperationExamples[] = [
                 "status": "pending_approval"
               }
             ]
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 200,
+        "name": "opensearch_disabled",
+        "body": [
+          {
+            "serverId": "mcp-opensearch",
+            "system": "opensearch",
+            "version": "1.0.0",
+            "enabled": false,
+            "tools": []
           }
         ],
         "headers": {

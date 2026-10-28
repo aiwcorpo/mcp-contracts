@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.0**, tag `v2.2.0` (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.1**, tag `v2.2.1` (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -71,6 +71,10 @@ Od 2.0.0 obowiązuje ścisły SemVer według tabeli powyżej. Wydania 1.1.0 i 1.
 oznaczone jako minor; broker (ws-06), BFF (ws-07) i frontend (ws-08) zależą od 1.1.0, więc pełna lista zmian
 niezgodnych względem 1.1.0 i ich wpływ na konsumentów są w `CHANGELOG.md` przy 2.0.0.
 
+Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defaults_unsupported`) jest zaostrzeniem
+walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1 usunięto odpowiedź `400
+expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
+
 Wyjątek: w 2.1.0 CC-071 (nowa wartość enum `event: "authentication"`) i CC-074 (zawężenie wzorców indeksów
 OpenSearch) są według tej tabeli zmianami major, a wydane jako minor na wyraźną decyzję człowieka z 2026-10-27;
 skutki dla konsumentów opisuje `CHANGELOG.md`.
@@ -88,13 +92,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.2.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.0` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.2.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.2.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.1` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.2.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.1.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -103,8 +107,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.1/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.1.tgz
 ```
 
 ```xml
@@ -325,29 +329,49 @@ Zasady: adres publiczny (`url`, `clientConfigs`, `resource_metadata`) pochodzi z
 `__Host-XSRF-TOKEN` mają `Path=/` (prefiks `__Host-` i odczyt przez SPA nie pozwalają na `/api`), więc proxy usuwa
 nagłówek `Cookie` na trasach gateway'a, a gateway nie przekazuje `Cookie` dalej (do nagłówków usuwanych w C3:
 `X-MCP-*`, `X-PAT-*`, `Authorization`, `X-Request-Id` dochodzi `Cookie`). Odpowiedzi gateway'a dla klientów MCP to
-wyłącznie `application/json` i `text/event-stream`; proxy dokłada na `/s/` i `/v/` `X-Content-Type-Options: nosniff` i
-`Content-Security-Policy: default-src 'none'; sandbox`, także na własnych stronach błędów. Proxy nie nadpisuje
-`X-Request-Id` z BFF. Angular Router nie definiuje tras zaczynających się od `/api`, `/s/`, `/v/`, `/.well-known/`.
+wyłącznie `application/json` i `text/event-stream`, także dla błędów (404, 405, 406, 5xx) i niezależnie od
+`Accept`: gateway nigdy nie odpowiada `text/html` na trasach publicznych. Proxy dokłada na **każdej** trasie gateway'a
+(`/s/`, `/v/`, `/.well-known/oauth-protected-resource*`) `X-Content-Type-Options: nosniff` i `Content-Security-Policy:
+default-src 'none'; sandbox`, na każdej odpowiedzi, także 4xx/5xx z upstreamu i własnych stronach błędów (nginx:
+`add_header ... always`). Odpowiedzi tych tras nie niosą `Set-Cookie` (proxy go usuwa), BFF nie wysyła nagłówków CORS
+(ten sam origin), a proxy przekazuje znormalizowaną ścieżkę i nie wystawia przez trasy publiczne ani `/admin/v1/*`,
+ani JWKS gateway'a (osobny listener; `/s/../admin/v1/...` i `%2e%2e` dają 404). Proxy nie nadpisuje `X-Request-Id`
+z BFF. Angular Router nie definiuje tras zaczynających się od `/api`, `/s/`, `/v/`, `/.well-known/`.
 
 ## Zawężenie zasobów jest uśpione (CC-085)
 
 Kreator linków nie zawęża zasobów. `resourceDefaults` zostaje w schematach, ale gateway (C5) i BFF (C12) odpowiadają
 `400 resource_defaults_unsupported` dla niepustej wartości; brak pola lub `{}` jest przyjęte, a odpowiedzi nigdy go
-nie zawierają. Mechanika `vsc` (C2), `context.vsScopes` (Cedar) i wektory na niej oparte są bez zmian.
+nie zawierają. Kolejność kontroli: najpierw obecność niepustego obiektu (`resource_defaults_unsupported`), dopiero
+potem jego zawartość; wartość, która nie jest obiektem, to `400 invalid_request`. Mechanika `vsc` (C2), `context.vsScopes` (Cedar) i wektory na niej oparte są bez zmian.
 
 ## Zapis tokenu (CC-090)
 
 `PUT /api/v1/connections/{system}/secret` wymaga ważnej sesji i `X-XSRF-TOKEN`, bez step-up MFA. Ochroną zapisu jest
-`identity_mismatch` (C4.1). `expiresAt` musi być w przyszłości i najdalej za 366 dni (`400 expires_at_invalid`).
+`identity_mismatch` (C4.1). `expiresAt` jest opcjonalną informacją użytkownika (prawdziwy termin PAT ustawia się w systemie
+docelowym): broker przyjmuje każdą poprawną datę albo brak pola, a status `expiring` (< 7 dni) istnieje tylko przy podanej
+dacie (CC-084).
 
 ## Whoami (C4.1)
 
-Broker weryfikuje tożsamość po zapisie sekretu lub wymianie kodu OAuth wywołaniem systemu docelowego:
+Broker weryfikuje tożsamość po zapisie sekretu lub wymianie kodu OAuth wywołaniem systemu docelowego i porównuje
+ją z tożsamością SSO. To jest główna ochrona zapisu tokenu (CC-090), więc reguła jest częścią kontraktu:
+
+- Pole SSO: domyślnie claim `preferred_username`; konfiguracja może wskazać `email`. E-mail liczy się **tylko** gdy
+  `email_verified` jest `true` (brak claimu = `false`).
+- Porównanie: dokładna równość po normalizacji Unicode NFC i zamianie na małe litery (bez ustawień regionalnych), obu
+  stron. Bez przycinania spacji, bez dopasowania podciągu lub prefiksu, bez odcinania domeny z adresu e-mail. Pusta
+  wartość po którejkolwiek stronie nigdy nie pasuje.
+- Niezgodność: `422 identity_mismatch`, nic nie jest zapisane. Wektory: `test-vectors/whoami-identity/`.
 
 | System | Żądanie | Pole porównywane z tożsamością SSO |
 | --- | --- | --- |
 | Jira Data Center | `GET /rest/api/2/myself` | `name` |
 | Confluence Data Center | `GET /rest/api/user/current` (CC-073) | `username` |
+| GitLab | `GET /api/v4/user` | `username` |
+
+OpenSearch (`token-exchange`) i service desk (`service-account`) nie mają tokenu użytkownika do sprawdzenia; whoami
+tych adapterów, jeśli powstanie, stosuje tę samą regułę porównania.
 
 Odpowiedź 401 z systemu to `secret_invalid`.
 
@@ -371,7 +395,9 @@ Cedar, bo model Cedar nie niesie typu poświadczenia (`mcp.cedarschema` jest zam
 
 Każde żądanie ma jeden `requestId` (UUIDv7) od wejścia do audytu: gateway nadaje go w `rid` i `X-Request-Id`
 (C2/C3), BFF tworzy własny i wysyła go w `X-Request-Id` do brokera i gateway'a (CC-047). Broker zwraca użyty
-identyfikator w nagłówku `X-Request-Id` każdej odpowiedzi.
+identyfikator w nagłówku `X-Request-Id` każdej odpowiedzi. BFF zwraca go przeglądarce w `X-Request-Id` każdej własnej
+odpowiedzi `/api/v1/*` (CC-087) i ignoruje wartość przysłaną przez klienta; odpowiedzi 502/504 generowane przez sam
+proxy go nie mają, więc UI musi to obsłużyć.
 
 ## mcp-manifest (definitionHash i reguły manifestu)
 

@@ -1248,7 +1248,16 @@ G-15, G-16, G-18, G-22.
 - **Wpływ na strumienie:** ws-07 (wyliczanie), ws-08 (renderowanie akcji bez własnej logiki).
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
 
-## CC-084 | C4/C12 | `400 expires_at_invalid` przy zapisie tokenu
+## CC-084 | C4/C12 | Data ważności tokenu jest opcjonalną informacją (bez walidacji)
+
+- **Zmiana decyzją człowieka (2026-10-28, wydanie 2.2.1):** datę ważności PAT ustawia się w systemie docelowym, więc
+  pole `expiresAt` w portalu jest tylko opcjonalną informacją. Walidacja (przyszłość, limit 366 dni) i odpowiedź
+  `400 expires_at_invalid`, dodane w 2.2.0, są **usunięte**. Broker przyjmuje każdą poprawną datę (`Timestamp`)
+  albo brak pola; status `expiring` (< 7 dni) działa tylko przy podanej dacie; tekst "Oznaczymy token jako
+  wygasający 7 dni przed terminem" zostaje warunkowo (tylko gdy użytkownik podał datę). Wektory `secret-expiry/`
+  usunięte. Usunięcie odpowiedzi dodanej w 2.2.0 wydane jako patch na decyzję człowieka (brak konsumentów, adnotacja w
+  `CHANGELOG.md` jak przy CC-085). To zamyka uwagę M-3 z przeglądu 2.2.0 (zaostrzenie walidacji bez adnotacji).
+- Poniższy opis jest zachowany jako historia wersji 2.2.0.
 
 - **Zgłasza:** analiza luk G-05; kierunek zatwierdzony przez człowieka 2026-10-27
 - **Kamień:** M2, wydanie 2.2.0
@@ -1289,7 +1298,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor (nowy udokumentowany kod w istniejącym `400`).
 - **Wpływ na strumienie:** ws-06 (walidacja, konfiguracja limitu), ws-07 (przekazanie kodu; BFF nie przekazuje
   ciał upstreamu, mapuje `400` brokera na własne `400` z tym samym kodem), ws-08 (komunikat pod polem).
-- **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.2.0)
+- **Status:** accepted w wydaniu 2.2.0; zmienione decyzją człowieka 2026-10-28 (wydanie 2.2.1), patrz początek wpisu
 
 ## CC-085 | C5/C12 | `resourceDefaults` uśpione: `400 resource_defaults_unsupported`
 
@@ -1483,7 +1492,7 @@ G-15, G-16, G-18, G-22.
      (nazwa do uzgodnienia z ws-07; nie jest to operacja kontraktu). To samo dotyczy URL-i wylogowania w IdP.
   6. **Trasy zarezerwowane.** Angular Router nie definiuje tras zaczynających się od `/api`, `/s/`, `/v/`,
      `/.well-known/`; `VirtualServerSlug` nie koliduje, bo slug leży pod `/v/`. `X-Request-Id` z BFF przechodzi
-     przez proxy bez zmian (CC-087); proxy nie wstawia własnego, bo BFF wymaga UUIDv7 albo generuje swój.
+     przez proxy bez zmian (CC-087); proxy nie wstawia własnego, bo BFF zawsze generuje własny i ignoruje wartość klienta.
   7. **Opis C12:** "serwowany przez BFF z tego samego originu" zmienia się na "serwowany spod tego samego origin
      przez reverse proxy (aplikacja web może być osobnym serwerem statycznym)". Brief ws-07 pkt 1a (BFF
      serwuje SPA) pozostaje dopuszczalną opcją dev.
@@ -2467,3 +2476,21 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** minor. Jeśli pivot wychodzi w 3.0.0, wchodzi razem z nim.
 - **Wpływ na strumienie:** ws-05 (wyliczenie), ws-07 (przezroczyste), ws-08 (wiersz zasobu na podglądzie).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+
+## CC-099 | C4/C12 | `ReturnPath` bez zarezerwowanych prefiksów
+
+- **Zgłasza:** przegląd 2.2.0 (L-9); decyzja człowieka 2026-10-28: do 3.0.0 razem z pivotem
+- **Kamień:** wydanie 3.0.0 (przed M3)
+- **Problem:** po CC-089 ścieżki `/api`, `/s/`, `/v/`, `/.well-known/` w tym samym originie trafiają do BFF lub
+  gateway'a, a wzorzec `ReturnPath` (`credential-broker.v1.yaml`, `components.schemas.ReturnPath`, używany w
+  `login`, `startConnectOAuth`, C4 `oauth/start`) je dopuszcza. Przekierowanie po logowaniu lub OAuth może wylądować
+  na endpoincie API (np. `/api/v1/auth/login?...`, łańcuch przekierowań) zamiast w SPA. Poza domenę przekierować się
+  nie da (CC-032).
+- **Wariant:** wzorzec `ReturnPath` z negatywnym lookahead na `^/(api|s|v|\.well-known)(/|$)`; wektory
+  `return-paths/` (`invalid-api`, `invalid-gateway-s`, `invalid-gateway-v`, `invalid-well-known`, `valid-apiary`
+  dla `/apiary`, który nie jest prefiksem); `login-redirects` bez zmian. W 2.2.x BFF może odrzucać takie wartości
+  z konfiguracji (`400 invalid_request`), bez zmiany kontraktu.
+- **SemVer:** zaostrzenie walidacji, **major**; wchodzi do 3.0.0 razem z CC-091 ... CC-094 i CC-098.
+- **Wpływ na strumienie:** ws-06 (C4 `oauth/start`), ws-07 (login, `startConnectOAuth`), ws-08 (generowane ścieżki
+  powrotu nie zaczynają się od zarezerwowanych prefiksów).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
