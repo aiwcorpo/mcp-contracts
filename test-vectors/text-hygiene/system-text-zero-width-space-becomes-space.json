@@ -1,0 +1,8 @@
+{
+  "description": "A removed character is replaced, not dropped: \"ignore\" and \"previous\" never merge into one token.",
+  "mode": "system-text",
+  "input": "ignore\u200bprevious",
+  "expected": {
+    "output": "ignore previous"
+  }
+}

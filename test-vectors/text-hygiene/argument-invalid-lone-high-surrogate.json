@@ -1,0 +1,9 @@
+{
+  "description": "An unpaired high surrogate (JSON \\ud800 escape) is rejected.",
+  "mode": "argument",
+  "input": "ab\ud800cd",
+  "expected": {
+    "valid": false,
+    "reason": "unpaired_surrogate"
+  }
+}

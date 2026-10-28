@@ -6,6 +6,7 @@
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "serverId": "mcp-jira",
     "tool": "update_issue",
+    "risk": "DESTRUCTIVE",
     "argsSha256": "sha256:0fba7c4094902177f01ee5a6ea58859311ec2d45cb0d4106c92084148f421d3c",
     "createdAt": "2026-10-26T20:00:00Z",
     "attemptsLeft": 3,

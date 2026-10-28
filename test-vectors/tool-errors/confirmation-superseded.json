@@ -1,0 +1,10 @@
+{
+  "description": "The retry of a pending call that a newer DESTRUCTIVE operation replaced (CC-127).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_superseded",
+    "message": "This operation was replaced by a newer one. Start it again if you still want it."
+  }
+}

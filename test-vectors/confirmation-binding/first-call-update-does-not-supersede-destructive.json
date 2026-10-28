@@ -1,0 +1,33 @@
+{
+  "description": "A pending confirmation of another risk (required by policy) does not touch the DESTRUCTIVE one.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z"
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "update_issue",
+    "risk": "UPDATE",
+    "arguments": {
+      "issueKey": "ABC-125",
+      "summary": "x"
+    }
+  },
+  "at": "2026-10-26T20:00:30Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": false,
+    "expiresAt": "2026-10-26T20:02:30Z",
+    "pendingCreated": true,
+    "supersededIds": []
+  }
+}

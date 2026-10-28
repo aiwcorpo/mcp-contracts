@@ -1,0 +1,9 @@
+{
+  "description": "U+3164 inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u3164cd",
+  "expected": {
+    "valid": false,
+    "reason": "invisible_character"
+  }
+}

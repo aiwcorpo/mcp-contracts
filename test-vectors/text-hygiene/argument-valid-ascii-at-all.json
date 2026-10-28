@@ -1,0 +1,8 @@
+{
+  "description": "ASCII @all is not a hygiene matter: the mention filter of the starter handles it.",
+  "mode": "argument",
+  "input": "@all please look",
+  "expected": {
+    "valid": true
+  }
+}

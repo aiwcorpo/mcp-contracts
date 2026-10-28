@@ -1,0 +1,84 @@
+{
+  "description": "Registering again is the only way out of a disabled authenticator (CC-126): the confirmed enrollment clears the disabled state and the daily counter, the code of the activation is replayed afterwards and the next step works. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": 59733234,
+    "failures": [],
+    "lockedUntil": null,
+    "disabled": true,
+    "dailyFailures": [
+      "2026-10-14T15:47:10Z",
+      "2026-10-14T15:46:10Z",
+      "2026-10-14T15:45:10Z",
+      "2026-10-14T15:44:10Z",
+      "2026-10-14T15:43:10Z",
+      "2026-10-14T15:42:10Z",
+      "2026-10-14T15:41:10Z",
+      "2026-10-14T15:40:10Z",
+      "2026-10-14T15:39:10Z",
+      "2026-10-14T15:38:10Z",
+      "2026-10-14T15:37:10Z",
+      "2026-10-14T15:36:10Z",
+      "2026-10-14T15:35:10Z",
+      "2026-10-14T15:34:10Z",
+      "2026-10-14T15:33:10Z",
+      "2026-10-14T15:32:10Z",
+      "2026-10-14T15:31:10Z",
+      "2026-10-14T15:30:10Z",
+      "2026-10-14T15:29:10Z",
+      "2026-10-14T15:28:10Z"
+    ]
+  },
+  "enrollment": {
+    "createdAt": "2026-10-14T17:46:10Z",
+    "wrongCodes": 0
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:46:40Z",
+      "code": "405874",
+      "expected": {
+        "result": "disabled",
+        "after": {
+          "lastAcceptedStep": 59733234,
+          "lockedUntil": null,
+          "disabled": true
+        }
+      }
+    },
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "705202",
+      "expected": {
+        "result": "active",
+        "lastAcceptedStep": 59733334
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:15Z",
+      "code": "705202",
+      "expected": {
+        "result": "replayed",
+        "after": {
+          "lastAcceptedStep": 59733334,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:45Z",
+      "code": "165886",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 59733335,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

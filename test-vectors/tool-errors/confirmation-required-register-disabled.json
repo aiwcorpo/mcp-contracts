@@ -1,0 +1,11 @@
+{
+  "description": "Authenticator disabled by the daily limit: only registerUrl, like without a registration (CC-126).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "The authenticator was switched off after too many wrong codes. Register it again in the portal.",
+    "registerUrl": "https://mcp.aiwcorpo.pl/authenticator"
+  }
+}

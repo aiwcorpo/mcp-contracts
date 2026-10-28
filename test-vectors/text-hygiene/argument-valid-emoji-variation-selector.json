@@ -1,0 +1,8 @@
+{
+  "description": "U+FE0F directly after an emoji (red heart with emoji presentation).",
+  "mode": "argument",
+  "input": "\u2764\ufe0f done",
+  "expected": {
+    "valid": true
+  }
+}

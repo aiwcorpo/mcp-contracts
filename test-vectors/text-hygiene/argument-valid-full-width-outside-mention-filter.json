@@ -1,0 +1,8 @@
+{
+  "description": "Full-width ASCII is only refused where mentions are filtered (CC-122); other arguments keep it.",
+  "mode": "argument",
+  "input": "\uff21\uff22\uff23\uff01",
+  "expected": {
+    "valid": true
+  }
+}

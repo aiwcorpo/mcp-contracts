@@ -663,7 +663,15 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Unknown, expired, superseded by a newer DESTRUCTIVE operation of the user (CC-127) or not owned by the caller; one answer for all of them (invariant 8).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found_or_denied:
+                  value:
+                    error: not_found_or_denied
   /admin/v1/policy/status:
     get:
       tags: [policy]

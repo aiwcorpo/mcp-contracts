@@ -1,0 +1,9 @@
+{
+  "description": "ZWSP (Cf, outside U+200C..U+200F) inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u200bcd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

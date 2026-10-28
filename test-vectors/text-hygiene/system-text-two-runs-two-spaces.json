@@ -1,0 +1,8 @@
+{
+  "description": "Two separate runs give two spaces.",
+  "mode": "system-text",
+  "input": "a\u200bb\u2060c",
+  "expected": {
+    "output": "a b c"
+  }
+}

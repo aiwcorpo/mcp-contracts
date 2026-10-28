@@ -1,0 +1,8 @@
+{
+  "description": "No trimming.",
+  "mode": "system-text",
+  "input": "\u200bhello\ufeff",
+  "expected": {
+    "output": " hello "
+  }
+}

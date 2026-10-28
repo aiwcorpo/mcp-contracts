@@ -1,0 +1,9 @@
+{
+  "description": "The general rules still apply to identifiers.",
+  "mode": "argument-identifier",
+  "input": "ABC\u200b-123",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

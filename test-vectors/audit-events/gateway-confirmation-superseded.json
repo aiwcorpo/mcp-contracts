@@ -1,0 +1,26 @@
+{
+  "description": "The pending DESTRUCTIVE call was replaced by a newer one of the same user (CC-127).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "confirmation",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "server": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "decision": "deny",
+    "reason": "superseded",
+    "outcome": "denied",
+    "errorCode": "confirmation_superseded"
+  }
+}

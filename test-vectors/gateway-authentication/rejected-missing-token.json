@@ -1,0 +1,23 @@
+{
+  "description": "Token rejected with reason missing_token: 401 with the resource_metadata challenge only; the reason is not revealed (it goes to the audit event).",
+  "input": {
+    "reason": "missing_token",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/s/mcp-jira"
+  },
+  "expected": {
+    "status": 401,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": "Bearer resource_metadata=\"https://mcp.aiwcorpo.pl/.well-known/oauth-protected-resource/s/mcp-jira\""
+    },
+    "absentHeaders": [
+      "Retry-After",
+      "Set-Cookie"
+    ],
+    "body": {
+      "error": "unauthenticated",
+      "message": "Authentication required."
+    }
+  }
+}

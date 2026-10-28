@@ -19,6 +19,9 @@
       "$ref": "#/$defs/ConfirmationFailed"
     },
     {
+      "$ref": "#/$defs/ConfirmationSuperseded"
+    },
+    {
       "$ref": "#/$defs/CredentialRequired"
     },
     {
@@ -132,7 +135,7 @@
           "format": "uri"
         },
         "registerUrl": {
-          "description": "Portal page where the user registers the authenticator. Present exactly when the user has no active authenticator; no pending call exists then.",
+          "description": "Portal page where the user registers the authenticator. Present exactly when the user has no usable authenticator: none registered, or disabled by the daily limit of wrong codes (CC-126); no pending call exists then.",
           "type": "string",
           "format": "uri"
         },
@@ -331,6 +334,23 @@
       "properties": {
         "error": {
           "const": "internal_error"
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmationSuperseded": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "confirmation_superseded",
+          "description": "The pending call was replaced by a newer DESTRUCTIVE operation of the same user (at most one is pending, CC-127). Answer to the retry of the older call; the code is not checked and no attempt is spent. The user starts the operation again."
         },
         "message": {
           "$ref": "#/$defs/Message"

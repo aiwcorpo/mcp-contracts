@@ -1,0 +1,8 @@
+{
+  "description": "No collapsing with neighbouring spaces: the replacement is one space per run.",
+  "mode": "system-text",
+  "input": "a \u200b b",
+  "expected": {
+    "output": "a   b"
+  }
+}

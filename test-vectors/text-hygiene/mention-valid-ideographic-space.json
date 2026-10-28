@@ -1,0 +1,8 @@
+{
+  "description": "U+3000 and U+FF00, U+FF5F are outside U+FF01..U+FF5E.",
+  "mode": "argument-mention-filtered",
+  "input": "a\u3000b\uff5f",
+  "expected": {
+    "valid": true
+  }
+}

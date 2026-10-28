@@ -1,0 +1,9 @@
+{
+  "description": "ARABIC LETTER MARK inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u061ccd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

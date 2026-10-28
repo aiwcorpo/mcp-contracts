@@ -1,0 +1,9 @@
+{
+  "description": "LF in an identifier value (would also pass a loose pattern ending in $ on some engines).",
+  "mode": "argument-identifier",
+  "input": "ABC-123\n",
+  "expected": {
+    "valid": false,
+    "reason": "line_break_in_identifier"
+  }
+}

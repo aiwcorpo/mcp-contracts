@@ -1,0 +1,8 @@
+{
+  "description": "No normalisation (CC-122): full-width text, ligature and a combining sequence come out as they went in.",
+  "mode": "system-text",
+  "input": "\uff20\uff41\uff4c\uff4c \ufb01 e\u0301",
+  "expected": {
+    "output": "\uff20\uff41\uff4c\uff4c \ufb01 e\u0301"
+  }
+}

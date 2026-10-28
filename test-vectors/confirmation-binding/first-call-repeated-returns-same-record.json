@@ -1,5 +1,5 @@
 {
-  "description": "The same first call again returns the same confirmationId and does not extend the TTL.",
+  "description": "The same first call again returns the same confirmationId and does not extend the TTL; nothing is superseded.",
   "kind": "first-call",
   "authenticator": "active",
   "pendingCalls": [
@@ -7,6 +7,7 @@
       "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
       "serverId": "mcp-jira",
       "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
       "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
       "createdAt": "2026-10-26T20:00:00Z"
     }
@@ -15,6 +16,7 @@
   "call": {
     "serverId": "mcp-jira",
     "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
     "arguments": {
       "issueKey": "ABC-123"
     }
@@ -25,6 +27,7 @@
     "register": false,
     "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
     "expiresAt": "2026-10-26T20:02:00Z",
-    "pendingCreated": false
+    "pendingCreated": false,
+    "supersededIds": []
   }
 }

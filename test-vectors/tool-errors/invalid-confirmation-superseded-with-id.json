@@ -1,0 +1,11 @@
+{
+  "description": "confirmation_superseded carries no confirmationId: the old call is gone.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_superseded",
+    "message": "Replaced.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp"
+  }
+}

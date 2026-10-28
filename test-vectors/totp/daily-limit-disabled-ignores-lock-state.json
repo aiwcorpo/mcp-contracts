@@ -1,0 +1,38 @@
+{
+  "description": "A disabled authenticator answers disabled, not locked, and malformed codes are still 400. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": 59733334,
+    "failures": [],
+    "lockedUntil": null,
+    "disabled": true
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "165886",
+      "expected": {
+        "result": "disabled",
+        "after": {
+          "lastAcceptedStep": 59733334,
+          "lockedUntil": null,
+          "disabled": true
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:11Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": 59733334,
+          "lockedUntil": null,
+          "disabled": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "description": "Free text may contain TAB, LF and CR.",
+  "mode": "argument",
+  "input": "line1\n\tline2\r\nline3",
+  "expected": {
+    "valid": true
+  }
+}

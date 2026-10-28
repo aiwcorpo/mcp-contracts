@@ -9,6 +9,8 @@ export const DEFAULTS = Object.freeze({
   maxFailures: 5,
   failureWindowSeconds: 900,
   lockSeconds: 900,
+  dailyFailureLimit: 20,
+  dailyWindowSeconds: 86400,
   enrollmentTtlSeconds: 600,
   enrollmentMaxWrongCodes: 3,
 });
@@ -79,13 +81,22 @@ export function otpauthUri(username, secretBase32) {
 }
 
 /**
- * Check of a code against an active registration. `state` is {lastAcceptedStep, failures: [epoch seconds], lockedUntil}
- * and is returned changed in `state`. Results: ok, invalid, replayed, locked, malformed (HTTP 400, nothing changes).
- * Only the passing of time lifts a lock: no operation of the API does (CC-091).
+ * Check of a code against a registration. `state` is {lastAcceptedStep, failures, dailyFailures, lockedUntil,
+ * disabled}; failures and dailyFailures are epoch seconds. Results: ok, invalid, replayed, locked, disabled,
+ * malformed (HTTP 400, nothing changes). Only the passing of time lifts a lock (CC-091). 20 failures in 24 hours
+ * (CC-126) disable the authenticator until the user registers again; a success does not reset that counter and
+ * a disabled authenticator never looks at the code.
  */
 export function verify(secret, state, code, at, config = DEFAULTS) {
-  const next = { lastAcceptedStep: state.lastAcceptedStep, failures: [...state.failures], lockedUntil: state.lockedUntil };
+  const next = {
+    lastAcceptedStep: state.lastAcceptedStep,
+    failures: [...state.failures],
+    dailyFailures: [...(state.dailyFailures ?? [])],
+    lockedUntil: state.lockedUntil,
+    disabled: state.disabled ?? false,
+  };
   if (!isCodeFormat(code)) return { result: 'malformed', state: next };
+  if (next.disabled) return { result: 'disabled', state: next };
   if (next.lockedUntil !== null && at < next.lockedUntil) {
     return { result: 'locked', retryAfterSeconds: Math.ceil(next.lockedUntil - at), state: next };
   }
@@ -100,7 +111,9 @@ export function verify(secret, state, code, at, config = DEFAULTS) {
     return { result: 'ok', state: next };
   }
   next.failures = [...next.failures.filter((t) => t > at - config.failureWindowSeconds), at];
+  next.dailyFailures = [...next.dailyFailures.filter((t) => t > at - config.dailyWindowSeconds), at];
   if (next.failures.length >= config.maxFailures) next.lockedUntil = at + config.lockSeconds;
+  if (next.dailyFailures.length >= config.dailyFailureLimit) next.disabled = true;
   return { result: step === null ? 'invalid' : 'replayed', state: next };
 }
 

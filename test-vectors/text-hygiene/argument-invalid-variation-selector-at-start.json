@@ -1,0 +1,9 @@
+{
+  "description": "U+FE0F with nothing before it.",
+  "mode": "argument",
+  "input": "\ufe0fa",
+  "expected": {
+    "valid": false,
+    "reason": "variation_selector"
+  }
+}

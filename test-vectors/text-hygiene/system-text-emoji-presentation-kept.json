@@ -1,0 +1,8 @@
+{
+  "description": "A single U+FE0F after an emoji stays.",
+  "mode": "system-text",
+  "input": "\u2764\ufe0f ok",
+  "expected": {
+    "output": "\u2764\ufe0f ok"
+  }
+}

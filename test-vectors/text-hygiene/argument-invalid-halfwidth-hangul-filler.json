@@ -1,0 +1,9 @@
+{
+  "description": "U+FFA0 inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\uffa0cd",
+  "expected": {
+    "valid": false,
+    "reason": "invisible_character"
+  }
+}

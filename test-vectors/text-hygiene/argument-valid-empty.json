@@ -1,0 +1,8 @@
+{
+  "description": "Empty string.",
+  "mode": "argument",
+  "input": "",
+  "expected": {
+    "valid": true
+  }
+}

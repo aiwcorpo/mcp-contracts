@@ -1,26 +1,29 @@
 {
-  "description": "Three live pending calls of the user (default limit): the fourth operation is rate_limited.",
+  "description": "The limit of pending calls (default 3) applies to confirmations that are not DESTRUCTIVE: the fourth is rate_limited.",
   "kind": "first-call",
   "authenticator": "active",
   "pendingCalls": [
     {
       "confirmationId": "cnf_limit0000000000",
       "serverId": "mcp-jira",
-      "tool": "delete_issue",
+      "tool": "update_issue",
+      "risk": "UPDATE",
       "argsSha256": "sha256:377bf2fe47c54ed6a9648182f0e8bb9d53dd8b11a73d957a3134e746a51c2e82",
       "createdAt": "2026-10-26T20:00:00Z"
     },
     {
       "confirmationId": "cnf_limit0000000001",
       "serverId": "mcp-jira",
-      "tool": "delete_issue",
+      "tool": "update_issue",
+      "risk": "UPDATE",
       "argsSha256": "sha256:f48c4c16bf120cae39879ea246ab72bcc757054c091e9c143fda02fa2971e91e",
       "createdAt": "2026-10-26T20:00:00Z"
     },
     {
       "confirmationId": "cnf_limit0000000002",
       "serverId": "mcp-jira",
-      "tool": "delete_issue",
+      "tool": "update_issue",
+      "risk": "UPDATE",
       "argsSha256": "sha256:c09bce2c6c2f312bc4173e1ec010ea5e487d1e026932f85a8d564e066e56ac36",
       "createdAt": "2026-10-26T20:00:00Z"
     }
@@ -28,7 +31,8 @@
   "pendingLimit": 3,
   "call": {
     "serverId": "mcp-jira",
-    "tool": "delete_issue",
+    "tool": "update_issue",
+    "risk": "UPDATE",
     "arguments": {
       "issueKey": "ABC-4"
     }

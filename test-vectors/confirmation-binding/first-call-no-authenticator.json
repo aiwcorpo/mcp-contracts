@@ -7,6 +7,7 @@
   "call": {
     "serverId": "mcp-jira",
     "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
     "arguments": {
       "issueKey": "ABC-123"
     }

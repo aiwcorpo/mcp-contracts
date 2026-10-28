@@ -1,0 +1,8 @@
+{
+  "description": "Plain text.",
+  "mode": "argument",
+  "input": "Fix the login page",
+  "expected": {
+    "valid": true
+  }
+}

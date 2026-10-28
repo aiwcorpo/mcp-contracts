@@ -1,0 +1,9 @@
+{
+  "description": "BOM / zero width no-break space in the middle of text inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\ufeffcd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

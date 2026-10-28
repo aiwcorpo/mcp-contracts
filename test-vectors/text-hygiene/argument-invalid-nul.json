@@ -1,0 +1,9 @@
+{
+  "description": "NUL inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u0000cd",
+  "expected": {
+    "valid": false,
+    "reason": "control_character"
+  }
+}

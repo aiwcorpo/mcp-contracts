@@ -1,0 +1,8 @@
+{
+  "description": "ZWNJ (U+200C) is allowed, it is part of Persian orthography.",
+  "mode": "argument",
+  "input": "mi\u200ckhaham",
+  "expected": {
+    "valid": true
+  }
+}

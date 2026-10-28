@@ -1,0 +1,9 @@
+{
+  "description": "The first character of the range, U+FF01.",
+  "mode": "argument-mention-filtered",
+  "input": "\uff01",
+  "expected": {
+    "valid": false,
+    "reason": "full_width_ascii"
+  }
+}

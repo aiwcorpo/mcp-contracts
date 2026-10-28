@@ -1,0 +1,9 @@
+{
+  "description": "The general rules apply to mention-filtered arguments too.",
+  "mode": "argument-mention-filtered",
+  "input": "@all\u200b",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

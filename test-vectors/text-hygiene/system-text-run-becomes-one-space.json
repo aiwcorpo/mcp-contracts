@@ -1,0 +1,8 @@
+{
+  "description": "A run of forbidden characters becomes one space.",
+  "mode": "system-text",
+  "input": "a\u200b\u2060\ufeff\u00adb",
+  "expected": {
+    "output": "a b"
+  }
+}

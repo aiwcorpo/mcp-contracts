@@ -1,0 +1,9 @@
+{
+  "description": "right-to-left override inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u202ecd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

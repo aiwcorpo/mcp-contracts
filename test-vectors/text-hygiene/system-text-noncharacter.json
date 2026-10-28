@@ -1,0 +1,8 @@
+{
+  "description": "A noncharacter is replaced.",
+  "mode": "system-text",
+  "input": "a\ufffeb",
+  "expected": {
+    "output": "a b"
+  }
+}

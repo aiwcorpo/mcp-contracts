@@ -1,0 +1,8 @@
+{
+  "description": "Polish text with precomposed letters is untouched.",
+  "mode": "system-text",
+  "input": "Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144",
+  "expected": {
+    "output": "Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144"
+  }
+}

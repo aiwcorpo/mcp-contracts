@@ -1,0 +1,9 @@
+{
+  "description": "A single U+FE0F after an emoji: the second one is rejected.",
+  "mode": "argument",
+  "input": "\u2764\ufe0f\ufe0f",
+  "expected": {
+    "valid": false,
+    "reason": "variation_selector"
+  }
+}

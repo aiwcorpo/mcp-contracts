@@ -1,0 +1,9 @@
+{
+  "description": "U+2028 inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u2028cd",
+  "expected": {
+    "valid": false,
+    "reason": "line_separator"
+  }
+}

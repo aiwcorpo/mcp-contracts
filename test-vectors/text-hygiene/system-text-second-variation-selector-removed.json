@@ -1,0 +1,8 @@
+{
+  "description": "Only a single U+FE0F is kept.",
+  "mode": "system-text",
+  "input": "\u2764\ufe0f\ufe0fx",
+  "expected": {
+    "output": "\u2764\ufe0f x"
+  }
+}

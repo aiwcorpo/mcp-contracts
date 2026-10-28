@@ -1,0 +1,9 @@
+{
+  "description": "SOFT HYPHEN inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u00adcd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

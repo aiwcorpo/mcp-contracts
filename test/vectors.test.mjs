@@ -9,6 +9,7 @@ import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, retry } from '../scripts/lib/confirmation.mjs';
+import { gatewayAuthenticationResponse } from '../scripts/lib/gateway-authentication.mjs';
 
 const ajv = createAjv();
 
@@ -233,4 +234,26 @@ test('catalog action vectors (CC-083)', async () => {
     assert.deepEqual(catalogActions(data.input), data.expected.actions, name);
     for (const a of data.expected.actions) assert.ok(actions.has(a), `${name}: ${a}`);
   }
+});
+
+test('gateway answers to rejected and unavailable authentication (CC-124)', () => {
+  const vectors = listJson('test-vectors', 'gateway-authentication');
+  assert.ok(vectors.some((v) => v.data.expected.status === 401) && vectors.some((v) => v.data.expected.status === 503));
+  const validateError = schemaValidator(ajv, 'tool-error.schema.json');
+  for (const { name, data } of vectors) {
+    assert.deepEqual(gatewayAuthenticationResponse(data.input), data.expected, name);
+    assert.ok(validateError(data.expected.body), `${name}: body is a C10 error`);
+    for (const header of data.expected.absentHeaders) assert.equal(data.expected.headers[header], undefined, `${name}: ${header} absent`);
+    if (data.expected.status === 503) {
+      assert.ok(!('WWW-Authenticate' in data.expected.headers), `${name}: no challenge, the client must not re-authenticate`);
+      assert.match(data.expected.headers['Retry-After'], /^[1-9][0-9]?$/);
+    }
+  }
+});
+
+test('the audit schema ties jwks_unavailable to upstream_unavailable, the 503 of CC-124', () => {
+  const validate = schemaValidator(ajv, 'audit-event.schema.json');
+  const base = { ts: '2026-10-28T10:00:00.123Z', requestId: '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f', component: 'gateway', componentId: 'mcp-gateway', event: 'authentication', decision: 'deny', reason: 'jwks_unavailable', outcome: 'denied' };
+  assert.ok(validate({ ...base, errorCode: 'upstream_unavailable' }));
+  assert.ok(!validate({ ...base, errorCode: 'unauthenticated' }));
 });

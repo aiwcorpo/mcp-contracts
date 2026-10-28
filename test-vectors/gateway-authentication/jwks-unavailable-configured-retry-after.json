@@ -1,0 +1,25 @@
+{
+  "description": "Retry-After is the configured back-off of the key fetch (1 to 60 s), here 30.",
+  "input": {
+    "reason": "jwks_unavailable",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/v/team-a-dev",
+    "retryAfterSeconds": 30
+  },
+  "expected": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "30"
+    },
+    "absentHeaders": [
+      "WWW-Authenticate",
+      "Set-Cookie"
+    ],
+    "body": {
+      "error": "upstream_unavailable",
+      "message": "The identity provider keys are temporarily unavailable. Try again in a few seconds."
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "description": "C1 NEL inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u0085cd",
+  "expected": {
+    "valid": false,
+    "reason": "control_character"
+  }
+}

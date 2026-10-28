@@ -1,0 +1,8 @@
+{
+  "description": "Ordinary ASCII text passes this check (the filter for ASCII mentions is separate).",
+  "mode": "argument-mention-filtered",
+  "input": "please review",
+  "expected": {
+    "valid": true
+  }
+}

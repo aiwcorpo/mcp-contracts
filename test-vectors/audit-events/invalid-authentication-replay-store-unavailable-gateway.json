@@ -1,7 +1,7 @@
 {
-  "description": "The replay store (Redis) is down: errorCode upstream_unavailable.",
+  "description": "replay_store_unavailable is emitted by receivers of the internal JWT only (server, broker), never by the gateway (CC-125).",
   "expected": {
-    "valid": true
+    "valid": false
   },
   "event": {
     "ts": "2026-10-28T10:00:00.123Z",

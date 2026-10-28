@@ -1,0 +1,9 @@
+{
+  "description": "TAB in an identifier value.",
+  "mode": "argument-identifier",
+  "input": "ABC\t123",
+  "expected": {
+    "valid": false,
+    "reason": "line_break_in_identifier"
+  }
+}

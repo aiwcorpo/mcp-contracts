@@ -1,0 +1,9 @@
+{
+  "description": "WORD JOINER inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u2060cd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

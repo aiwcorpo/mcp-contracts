@@ -1,0 +1,8 @@
+{
+  "description": "VS17 (U+E0100) is removed.",
+  "mode": "system-text",
+  "input": "a\udb40\udd00b",
+  "expected": {
+    "output": "a b"
+  }
+}

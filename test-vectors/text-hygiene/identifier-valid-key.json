@@ -1,0 +1,8 @@
+{
+  "description": "An issue key.",
+  "mode": "argument-identifier",
+  "input": "ABC-123",
+  "expected": {
+    "valid": true
+  }
+}

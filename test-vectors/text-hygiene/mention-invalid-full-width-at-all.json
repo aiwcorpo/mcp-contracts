@@ -1,0 +1,9 @@
+{
+  "description": "Full-width \"@all\" would be read as @all by a recipient that applies NFKC.",
+  "mode": "argument-mention-filtered",
+  "input": "\uff20\uff41\uff4c\uff4c look",
+  "expected": {
+    "valid": false,
+    "reason": "full_width_ascii"
+  }
+}

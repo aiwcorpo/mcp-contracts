@@ -1,0 +1,9 @@
+{
+  "description": "VS1 inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\ufe00cd",
+  "expected": {
+    "valid": false,
+    "reason": "variation_selector"
+  }
+}

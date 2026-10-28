@@ -1,0 +1,8 @@
+{
+  "description": "LRM and RLM (U+200E, U+200F) are allowed.",
+  "mode": "argument",
+  "input": "a\u200eb\u200fc",
+  "expected": {
+    "valid": true
+  }
+}

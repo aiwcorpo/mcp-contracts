@@ -1,0 +1,9 @@
+{
+  "description": "TAG LATIN CAPITAL LETTER A (hidden text in tag characters) inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\udb40\udc41cd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

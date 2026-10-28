@@ -1,0 +1,8 @@
+{
+  "description": "C0, DEL and C1 controls are replaced.",
+  "mode": "system-text",
+  "input": "x\u0007\u007f\u0085y",
+  "expected": {
+    "output": "x y"
+  }
+}

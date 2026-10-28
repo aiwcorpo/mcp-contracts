@@ -1,0 +1,8 @@
+{
+  "description": "LF, CR and TAB are ordinary in a page body.",
+  "mode": "system-text",
+  "input": "a\nb\r\nc\td",
+  "expected": {
+    "output": "a\nb\r\nc\td"
+  }
+}

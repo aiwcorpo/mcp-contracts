@@ -1,0 +1,9 @@
+{
+  "description": "left-to-right isolate inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u2066cd",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

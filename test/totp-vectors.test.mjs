@@ -20,8 +20,10 @@ function run(data) {
   let state = data.initial ? {
     lastAcceptedStep: data.initial.lastAcceptedStep,
     failures: data.initial.failures.map(epoch),
+    dailyFailures: (data.initial.dailyFailures ?? []).map(epoch),
     lockedUntil: data.initial.lockedUntil === null ? null : epoch(data.initial.lockedUntil),
-  } : { lastAcceptedStep: null, failures: [], lockedUntil: null };
+    disabled: data.initial.disabled ?? false,
+  } : { lastAcceptedStep: null, failures: [], dailyFailures: [], lockedUntil: null, disabled: false };
   let pending = data.enrollment ? { createdAt: epoch(data.enrollment.createdAt), wrongCodes: data.enrollment.wrongCodes } : null;
   const trace = [];
   for (const step of data.steps) {
@@ -29,7 +31,8 @@ function run(data) {
     if (step.op === 'confirm') {
       const out = confirmEnrollment(data.secret, pending, step.code, at);
       pending = out.pending;
-      if (out.result === 'active') state = { lastAcceptedStep: out.lastAcceptedStep, failures: [], lockedUntil: null };
+      // A new registration starts with clean counters and no disabled state; a lock belongs to the user and stays.
+      if (out.result === 'active') state = { lastAcceptedStep: out.lastAcceptedStep, failures: [], dailyFailures: [], lockedUntil: state.lockedUntil, disabled: false };
       trace.push({ step, actual: { result: out.result, ...(out.result === 'active' && { lastAcceptedStep: out.lastAcceptedStep }) } });
     } else {
       const out = verify(data.secret, state, step.code, at);
@@ -39,7 +42,11 @@ function run(data) {
         actual: {
           result: out.result,
           ...(out.retryAfterSeconds !== undefined && { retryAfterSeconds: out.retryAfterSeconds }),
-          after: { lastAcceptedStep: state.lastAcceptedStep, lockedUntil: state.lockedUntil === null ? null : new Date(state.lockedUntil * 1000).toISOString().replace('.000Z', 'Z') },
+          after: {
+            lastAcceptedStep: state.lastAcceptedStep,
+            lockedUntil: state.lockedUntil === null ? null : new Date(state.lockedUntil * 1000).toISOString().replace('.000Z', 'Z'),
+            ...(state.disabled && { disabled: true }),
+          },
         },
       });
     }

@@ -1,0 +1,8 @@
+{
+  "description": "Invisible fillers outside Cf: U+034F, U+115F, U+1160, U+3164, U+FFA0, U+2800 are one run.",
+  "mode": "system-text",
+  "input": "a\u034f\u115f\u1160\u3164\uffa0\u2800b",
+  "expected": {
+    "output": "a b"
+  }
+}

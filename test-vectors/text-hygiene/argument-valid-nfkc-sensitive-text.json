@@ -1,0 +1,8 @@
+{
+  "description": "Text that NFKC would change is not touched and not rejected (CC-122): ligature, circled digit, combining accent.",
+  "mode": "argument",
+  "input": "\ufb01 \u2460 e\u0301",
+  "expected": {
+    "valid": true
+  }
+}

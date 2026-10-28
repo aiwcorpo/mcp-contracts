@@ -822,6 +822,20 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 200,
+        "name": "disabled",
+        "body": {
+          "state": "disabled",
+          "registeredAt": "2026-10-27T09:00:00Z",
+          "lastUsedAt": "2026-10-27T09:30:00Z",
+          "disabledAt": "2026-10-28T11:00:00Z",
+          "disabledReason": "daily_failure_limit"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 401,
         "name": "unauthenticated",
         "body": {

@@ -1,0 +1,8 @@
+{
+  "description": "ZWJ (U+200D) is allowed: family emoji sequence.",
+  "mode": "argument",
+  "input": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67",
+  "expected": {
+    "valid": true
+  }
+}

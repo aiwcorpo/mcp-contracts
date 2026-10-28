@@ -1,0 +1,9 @@
+{
+  "description": "CR in an identifier value.",
+  "mode": "argument-identifier",
+  "input": "ABC-123\r",
+  "expected": {
+    "valid": false,
+    "reason": "line_break_in_identifier"
+  }
+}

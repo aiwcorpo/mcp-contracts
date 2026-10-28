@@ -1,0 +1,9 @@
+{
+  "description": "U+10FFFF (supplementary plane) inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\udbff\udfffcd",
+  "expected": {
+    "valid": false,
+    "reason": "noncharacter"
+  }
+}

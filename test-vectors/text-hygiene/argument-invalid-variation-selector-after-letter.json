@@ -1,0 +1,9 @@
+{
+  "description": "U+FE0F only follows an emoji; after a letter it hides nothing visible and is rejected.",
+  "mode": "argument",
+  "input": "a\ufe0fb",
+  "expected": {
+    "valid": false,
+    "reason": "variation_selector"
+  }
+}

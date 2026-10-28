@@ -1,0 +1,8 @@
+{
+  "description": "A run of tag characters (hidden ASCII) becomes one space.",
+  "mode": "system-text",
+  "input": "a\udb40\udc49\udb40\udc67\udb40\udc6e\udb40\udc6f\udb40\udc72\udb40\udc65b",
+  "expected": {
+    "output": "a b"
+  }
+}

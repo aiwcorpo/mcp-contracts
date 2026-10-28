@@ -15,25 +15,33 @@ export function argumentsHash(args) {
 
 /**
  * First call of a tool that needs confirmation. `authenticator` is the answer of GET /v1/authenticator
- * ('none', 'active' or 'unavailable'); `pendingCalls` are the user's pending calls
- * [{ tool, serverId, argsSha256, createdAt, confirmationId }]; `pendingLimit` is the configured limit (default 3).
+ * ('none', 'active', 'disabled' or 'unavailable'); `pendingCalls` are the user's pending calls
+ * [{ tool, serverId, argsSha256, risk, createdAt, confirmationId }]; `pendingLimit` is the configured limit for
+ * pending calls that are not DESTRUCTIVE (default 3). A user has at most one pending DESTRUCTIVE operation (CC-127):
+ * a new one supersedes the older ones, whose ids are returned in `supersededIds`.
  */
 export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at }) {
   if (authenticator === 'unavailable') return { outcome: 'upstream_unavailable', pendingCreated: false };
-  if (authenticator === 'none') return { outcome: 'confirmation_required', register: true, pendingCreated: false };
+  if (authenticator === 'none' || authenticator === 'disabled') return { outcome: 'confirmation_required', register: true, pendingCreated: false };
   const hash = argumentsHash(call.arguments);
   const live = pendingCalls.filter((p) => at <= p.createdAt + TTL_SECONDS);
   const same = live.find((p) => p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash);
-  if (same) return { outcome: 'confirmation_required', register: false, confirmationId: same.confirmationId, expiresAt: same.createdAt + TTL_SECONDS, pendingCreated: false };
-  if (live.length >= pendingLimit) return { outcome: 'rate_limited', pendingCreated: false };
-  return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true };
+  if (same) return { outcome: 'confirmation_required', register: false, confirmationId: same.confirmationId, expiresAt: same.createdAt + TTL_SECONDS, pendingCreated: false, supersededIds: [] };
+  if (call.risk === 'DESTRUCTIVE') {
+    const supersededIds = live.filter((p) => p.risk === 'DESTRUCTIVE').map((p) => p.confirmationId);
+    return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds };
+  }
+  if (live.filter((p) => p.risk !== 'DESTRUCTIVE').length >= pendingLimit) return { outcome: 'rate_limited', pendingCreated: false };
+  return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds: [] };
 }
 
 /**
  * Retry with confirmation_code. `pending` is the stored record or null; `verification` is what the broker answers
  * to POST /v1/authenticator/verify ({result, retryAfterSeconds?}) and is only consulted when the gateway calls the
  * broker (`verifyCalled`), which it does only for a live pending call bound to the retry. A pending call that is
- * found but whose broker call fails keeps its attempts: the code is not "spent".
+ * found but whose broker call fails keeps its attempts: the code is not "spent". A pending call that was superseded
+ * by a newer DESTRUCTIVE one is kept as a tombstone until its own TTL ends (`supersededBy`), so that its retry gets
+ * confirmation_superseded instead of confirmation_failed (CC-127); the broker is not asked.
  */
 export function retry({ pending, attempt, verification, at }) {
   const hash = argumentsHash(attempt.arguments);
@@ -41,6 +49,7 @@ export function retry({ pending, attempt, verification, at }) {
     && pending.sub === attempt.sub && pending.serverId === attempt.serverId && pending.tool === attempt.tool && pending.argsSha256 === hash;
   if (!bound) return { outcome: 'confirmation_failed', verifyCalled: false };
   if (at > pending.createdAt + TTL_SECONDS) return { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'confirmation_expired' };
+  if (pending.supersededBy) return { outcome: 'confirmation_superseded', verifyCalled: false, auditReason: 'superseded' };
   if (pending.attemptsLeft <= 0) return { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'attempts_exhausted' };
   switch (verification.result) {
     case 'ok':
@@ -54,6 +63,8 @@ export function retry({ pending, attempt, verification, at }) {
     }
     case 'locked':
       return { outcome: 'rate_limited', verifyCalled: true, pendingConsumed: false, attemptsLeft: pending.attemptsLeft, retryAfterSeconds: verification.retryAfterSeconds };
+    case 'disabled':
+      return { outcome: 'confirmation_required', register: true, verifyCalled: true, pendingConsumed: false, attemptsLeft: pending.attemptsLeft, auditReason: 'authenticator_disabled' };
     case 'not_registered':
       return { outcome: 'confirmation_required', register: true, verifyCalled: true, pendingConsumed: false, attemptsLeft: pending.attemptsLeft, auditReason: 'authenticator_not_registered' };
     default:

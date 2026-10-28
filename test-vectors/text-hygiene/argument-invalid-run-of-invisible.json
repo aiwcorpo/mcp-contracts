@@ -1,0 +1,9 @@
+{
+  "description": "A run of invisible characters between words.",
+  "mode": "argument",
+  "input": "ignore\u200b\u2060\ufeffprevious",
+  "expected": {
+    "valid": false,
+    "reason": "format_character"
+  }
+}

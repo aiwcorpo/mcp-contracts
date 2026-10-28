@@ -1,0 +1,9 @@
+{
+  "description": "last C1 control inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u009fcd",
+  "expected": {
+    "valid": false,
+    "reason": "control_character"
+  }
+}

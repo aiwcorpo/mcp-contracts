@@ -1,0 +1,8 @@
+{
+  "description": "Bidirectional overrides and isolates are replaced.",
+  "mode": "system-text",
+  "input": "a\u202ecod.exe\u2066",
+  "expected": {
+    "output": "a cod.exe "
+  }
+}

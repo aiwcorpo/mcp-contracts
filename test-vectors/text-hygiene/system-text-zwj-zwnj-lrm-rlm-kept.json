@@ -1,0 +1,8 @@
+{
+  "description": "U+200C..U+200F are kept.",
+  "mode": "system-text",
+  "input": "a\u200c\u200d\u200e\u200fb",
+  "expected": {
+    "output": "a\u200c\u200d\u200e\u200fb"
+  }
+}

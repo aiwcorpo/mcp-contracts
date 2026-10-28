@@ -1,0 +1,9 @@
+{
+  "description": "The last character of the range, U+FF5E.",
+  "mode": "argument-mention-filtered",
+  "input": "\uff5e",
+  "expected": {
+    "valid": false,
+    "reason": "full_width_ascii"
+  }
+}

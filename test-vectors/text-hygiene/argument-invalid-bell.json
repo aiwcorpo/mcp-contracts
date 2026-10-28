@@ -1,0 +1,9 @@
+{
+  "description": "BEL inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u0007cd",
+  "expected": {
+    "valid": false,
+    "reason": "control_character"
+  }
+}

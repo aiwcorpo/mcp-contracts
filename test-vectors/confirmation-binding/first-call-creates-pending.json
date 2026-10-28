@@ -7,6 +7,7 @@
   "call": {
     "serverId": "mcp-jira",
     "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
     "arguments": {
       "issueKey": "ABC-123"
     }
@@ -16,6 +17,7 @@
     "outcome": "confirmation_required",
     "register": false,
     "expiresAt": "2026-10-26T20:02:00Z",
-    "pendingCreated": true
+    "pendingCreated": true,
+    "supersededIds": []
   }
 }

@@ -1,0 +1,9 @@
+{
+  "description": "An unpaired low surrogate.",
+  "mode": "argument",
+  "input": "ab\udc00cd",
+  "expected": {
+    "valid": false,
+    "reason": "unpaired_surrogate"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "description": "U+FE0F after a letter is removed.",
+  "mode": "system-text",
+  "input": "a\ufe0fb",
+  "expected": {
+    "output": "a b"
+  }
+}

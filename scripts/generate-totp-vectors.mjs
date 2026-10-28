@@ -28,9 +28,9 @@ write('rfc6238-sha1', {
   cases: [59, 1111111109, 1111111111, 1234567890, 2000000000, 20000000000].map((time) => ({ time, step: stepOf(time), code: totpCode(SECRET, stepOf(time)) })),
 });
 
-const state = (lastAcceptedStep = null, failures = [], lockedUntil = null) => ({ lastAcceptedStep, failures: failures.map(iso), lockedUntil: lockedUntil === null ? null : iso(lockedUntil) });
+const state = (lastAcceptedStep = null, failures = [], lockedUntil = null, extra = {}) => ({ lastAcceptedStep, failures: failures.map(iso), lockedUntil: lockedUntil === null ? null : iso(lockedUntil), ...extra });
 const verifyVector = (name, description, initial, steps) => write(name, { description: `${description} ${NOTE}`, secret: SECRET, initial, steps });
-const stepAfter = (lastAcceptedStep, lockedUntil = null) => ({ lastAcceptedStep, lockedUntil: lockedUntil === null ? null : iso(lockedUntil) });
+const stepAfter = (lastAcceptedStep, lockedUntil = null, extra = {}) => ({ lastAcceptedStep, lockedUntil: lockedUntil === null ? null : iso(lockedUntil), ...extra });
 
 const S = stepOf(T0);
 verifyVector('verify-valid-current', 'Code of the current step, no history: accepted, the step becomes the last accepted one.', state(),
@@ -115,11 +115,60 @@ verifyVector('verify-not-counted-malformed-then-lockout-unaffected', 'Malformed 
     [first, ...[1, 2, 3, 4, 5].map(replay)]);
 }
 
+// Daily limit (CC-126): 20 failures (invalid or replayed) within 24 hours disable the authenticator until the user
+// registers again. A success does not reset this counter; the 5/15 minute lock is separate and unchanged.
+{
+  const gap = 1200; // 20 minutes: never five failures in 15 minutes, so the short lock does not interfere
+  const at = (i) => T0 + i * gap;
+  Array.from({ length: 25 }, (_, i) => at(i)).forEach(assertWrong);
+  const wrong = (i, after = stepAfter(null)) => ({ op: 'verify', at: iso(at(i)), code: WRONG, expected: { result: 'invalid', after } });
+  const first19 = Array.from({ length: 19 }, (_, i) => wrong(i));
+  verifyVector('daily-limit-disables-at-twenty', 'The 20th failure within 24 hours disables the authenticator; afterwards even a correct code gets disabled and is not looked at.', state(),
+    [...first19, wrong(19, stepAfter(null, null, { disabled: true })),
+      { op: 'verify', at: iso(at(20)), code: codeAt(at(20)), expected: { result: 'disabled', after: stepAfter(null, null, { disabled: true }) } }]);
+  verifyVector('daily-limit-nineteen-is-not-enough', 'Nineteen failures leave the authenticator active; a correct code is accepted.', state(),
+    [...first19, { op: 'verify', at: iso(at(19)), code: codeAt(at(19)), expected: { result: 'ok', after: stepAfter(stepOf(at(19))) } }]);
+  const late = T0 + 25 * 3600;
+  assertWrong(late);
+  verifyVector('daily-limit-old-failures-expire', 'The window is rolling: nineteen failures older than 24 hours do not count, the next one is only invalid.', state(),
+    [...first19, { op: 'verify', at: iso(late), code: WRONG, expected: { result: 'invalid', after: stepAfter(null) } }]);
+  const okAt = at(10) + 600;
+  verifyVector('daily-limit-success-does-not-reset', 'A success resets the 5/15 minute counter but not the daily one: ten failures, a success, ten more failures disable.', state(),
+    [...Array.from({ length: 10 }, (_, i) => wrong(i)),
+      { op: 'verify', at: iso(okAt), code: codeAt(okAt), expected: { result: 'ok', after: stepAfter(stepOf(okAt)) } },
+      ...Array.from({ length: 10 }, (_, i) => ({ op: 'verify', at: iso(at(11 + i)), code: WRONG,
+        expected: { result: 'invalid', after: stepAfter(stepOf(okAt), null, i === 9 ? { disabled: true } : {}) } }))]);
+  verifyVector('daily-limit-replayed-counts', 'Replayed codes count toward the daily limit as well: initial state with 19 failures in the last hours, one replay disables.',
+    state(S, [], null, { dailyFailures: Array.from({ length: 19 }, (_, i) => T0 - 3600 - i * 600).map(iso) }),
+    [{ op: 'verify', at: iso(T0 + 3), code: codeAt(T0), expected: { result: 'replayed', after: stepAfter(S, null, { disabled: true }) } }]);
+  verifyVector('daily-limit-disabled-ignores-lock-state', 'A disabled authenticator answers disabled, not locked, and malformed codes are still 400.', state(S, [], null, { disabled: true }),
+    [{ op: 'verify', at: iso(T0), code: codeAt(T0, 1), expected: { result: 'disabled', after: stepAfter(S, null, { disabled: true }) } },
+      { op: 'verify', at: iso(T0 + 1), code: '12345', expected: { result: 'malformed', after: stepAfter(S, null, { disabled: true }) } }]);
+  verifyVector('daily-limit-locked-attempts-not-counted', 'Attempts answered locked are not failures: five failures lock, ten attempts during the lock change nothing, and the sixth real failure after the lock is only invalid.', state(),
+    (() => {
+      const f = Array.from({ length: 5 }, (_, i) => T0 + i * 60);
+      const until = f[4] + 900;
+      return [...f.map((t) => ({ op: 'verify', at: iso(t), code: WRONG, expected: { result: 'invalid', after: stepAfter(null, t === f[4] ? until : null) } })),
+        ...Array.from({ length: 10 }, (_, i) => ({ op: 'verify', at: iso(f[4] + 10 + i), code: WRONG, expected: { result: 'locked', retryAfterSeconds: until - (f[4] + 10 + i), after: stepAfter(null, until) } })),
+        { op: 'verify', at: iso(until), code: WRONG, expected: { result: 'invalid', after: stepAfter(null) } }];
+    })());
+}
+
 // Enrollment: the pending seed lives 10 minutes, three wrong codes destroy it.
 const enrollVector = (name, description, createdAt, steps) =>
   write(name, { description: `${description} ${NOTE}`, secret: SECRET, enrollment: { createdAt: iso(createdAt), wrongCodes: 0 }, steps });
 {
   const created = T0 - 60;
+  write('enrollment-replaces-disabled-registration', {
+    description: `Registering again is the only way out of a disabled authenticator (CC-126): the confirmed enrollment clears the disabled state and the daily counter, the code of the activation is replayed afterwards and the next step works. ${NOTE}`,
+    secret: SECRET,
+    initial: state(S - 100, [], null, { disabled: true, dailyFailures: Array.from({ length: 20 }, (_, i) => T0 - 7200 - i * 60).map(iso) }),
+    enrollment: { createdAt: iso(T0 - 60), wrongCodes: 0 },
+    steps: [{ op: 'verify', at: iso(T0 - 30), code: codeAt(T0 - 30), expected: { result: 'disabled', after: stepAfter(S - 100, null, { disabled: true }) } },
+      { op: 'confirm', at: iso(T0), code: codeAt(T0), expected: { result: 'active', lastAcceptedStep: S } },
+      { op: 'verify', at: iso(T0 + 5), code: codeAt(T0), expected: { result: 'replayed', after: stepAfter(S) } },
+      { op: 'verify', at: iso(T0 + 35), code: codeAt(T0 + 35), expected: { result: 'ok', after: stepAfter(S + 1) } }],
+  });
   enrollVector('enrollment-valid-activates', 'A correct first code activates the registration and sets the last accepted step.', created,
     [{ op: 'confirm', at: iso(T0), code: codeAt(T0), expected: { result: 'active', lastAcceptedStep: S } }]);
   enrollVector('enrollment-code-is-replayed-afterwards', 'The code that activated the registration cannot confirm an operation right after; the next step can.', created,

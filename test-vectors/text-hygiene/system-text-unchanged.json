@@ -1,0 +1,8 @@
+{
+  "description": "Clean text stays byte for byte.",
+  "mode": "system-text",
+  "input": "Title: fix login",
+  "expected": {
+    "output": "Title: fix login"
+  }
+}

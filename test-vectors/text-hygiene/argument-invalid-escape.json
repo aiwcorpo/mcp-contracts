@@ -1,0 +1,9 @@
+{
+  "description": "ESC (terminal escape sequences) inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\u001bcd",
+  "expected": {
+    "valid": false,
+    "reason": "control_character"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "Authenticator disabled by the daily limit (CC-126): the same answer as without a registration, the user registers again.",
+  "kind": "first-call",
+  "authenticator": "disabled",
+  "pendingCalls": [],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "arguments": {
+      "issueKey": "ABC-123"
+    }
+  },
+  "at": "2026-10-26T20:00:00Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": true,
+    "pendingCreated": false
+  }
+}

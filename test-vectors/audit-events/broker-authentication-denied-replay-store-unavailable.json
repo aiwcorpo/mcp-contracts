@@ -1,0 +1,17 @@
+{
+  "description": "The replay store of the broker is down.",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "broker",
+    "componentId": "mcp-credential-broker",
+    "event": "authentication",
+    "decision": "deny",
+    "reason": "replay_store_unavailable",
+    "outcome": "denied",
+    "errorCode": "upstream_unavailable"
+  }
+}

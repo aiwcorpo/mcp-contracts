@@ -1,0 +1,8 @@
+{
+  "description": "An unpaired surrogate is replaced.",
+  "mode": "system-text",
+  "input": "a\ud800b",
+  "expected": {
+    "output": "a b"
+  }
+}

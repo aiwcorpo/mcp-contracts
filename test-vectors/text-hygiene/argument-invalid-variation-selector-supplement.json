@@ -1,0 +1,9 @@
+{
+  "description": "VS17 inside an argument is rejected (invalid_argument).",
+  "mode": "argument",
+  "input": "ab\udb40\udd00cd",
+  "expected": {
+    "valid": false,
+    "reason": "variation_selector"
+  }
+}

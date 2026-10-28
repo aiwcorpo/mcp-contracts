@@ -1,0 +1,9 @@
+{
+  "description": "One full-width letter U+FF41 inside text.",
+  "mode": "argument-mention-filtered",
+  "input": "hello \uff41",
+  "expected": {
+    "valid": false,
+    "reason": "full_width_ascii"
+  }
+}
