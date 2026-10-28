@@ -1,0 +1,41 @@
+{
+  "description": "Refused because the preview of another pending DESTRUCTIVE call is open (CC-127): result blocked_by_pending.",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:30.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e20",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "deny",
+      "reason": "pending_exists",
+      "outcome": "denied",
+      "errorCode": "confirmation_pending"
+    }
+  ],
+  "expected": {
+    "ts": "2026-10-26T20:00:30.000Z",
+    "client": "claude-code",
+    "tool": "jira__delete_issue",
+    "risk": "DESTRUCTIVE",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e20",
+    "result": "blocked_by_pending",
+    "wrongCodeCount": 0,
+    "errorCode": "confirmation_pending"
+  }
+}

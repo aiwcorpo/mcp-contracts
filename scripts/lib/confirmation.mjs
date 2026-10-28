@@ -30,6 +30,13 @@ export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at 
   const same = live.find((p) => p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash);
   if (same) return { outcome: 'confirmation_required', register: false, confirmationId: same.confirmationId, expiresAt: same.createdAt + TTL_SECONDS, pendingCreated: false, supersededIds: [] };
   if (call.risk === 'DESTRUCTIVE') {
+    // First wins after the preview (CC-127): if the owner opened the preview of the pending DESTRUCTIVE call, a different
+    // DESTRUCTIVE operation does not replace it but is refused until that one is confirmed, expires or runs out of attempts.
+    const viewed = live.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewed);
+    if (viewed.length > 0) {
+      const retryAfterSeconds = Math.ceil(Math.max(...viewed.map((p) => p.createdAt + TTL_SECONDS)) - at);
+      return { outcome: 'confirmation_pending', retryAfterSeconds, pendingCreated: false };
+    }
     const supersededIds = live.filter((p) => p.risk === 'DESTRUCTIVE').map((p) => p.confirmationId);
     return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds };
   }
@@ -85,10 +92,20 @@ export function retry({ pending, attempt, verification, at }) {
  * after the other in some order: at most one DESTRUCTIVE call stays pending. Returns the result of each call and the
  * ids that are pending at the end.
  */
-export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, calls, at }) {
+export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, calls, steps, at }) {
   let live = pendingCalls.map((p) => ({ ...p }));
   const results = [];
-  calls.forEach((call, index) => {
+  // `steps` mixes first calls ({ call }) and openings of a preview ({ preview: confirmationId }); marking the preview as
+  // viewed and the check for it in a new first call are atomic with each other (one operation per user).
+  const sequence = steps ?? calls.map((call) => ({ call }));
+  sequence.forEach((step, index) => {
+    if (step.preview !== undefined) {
+      const target = live.find((p) => p.confirmationId === step.preview && !p.supersededBy && at <= p.createdAt + TTL_SECONDS);
+      if (target) target.previewViewed = true;
+      results.push(target ? { previewed: true } : { previewed: false, status: 404 });
+      return;
+    }
+    const call = step.call;
     const result = firstCall({ authenticator, pendingCalls: live, pendingLimit, call, at });
     results.push(result);
     if (result.pendingCreated) {

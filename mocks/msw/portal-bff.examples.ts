@@ -1492,6 +1492,15 @@ export const portalBffExamples: OperationExamples[] = [
             "errorCode": "confirmation_superseded"
           },
           {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84",
+            "ts": "2026-10-26T19:25:00.000Z",
+            "tool": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "result": "blocked_by_pending",
+            "wrongCodeCount": 0,
+            "errorCode": "confirmation_pending"
+          },
+          {
             "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83",
             "ts": "2026-10-26T19:20:00.000Z",
             "tool": "gitlab__get_project",

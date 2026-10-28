@@ -484,6 +484,10 @@ audit('gateway-confirmation-superseded', 'The pending DESTRUCTIVE call was repla
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', resource: { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::ABC' },
   decision: 'deny', reason: 'superseded', outcome: 'denied', errorCode: 'confirmation_superseded',
 }, true);
+audit('gateway-confirmation-pending-exists', 'A new DESTRUCTIVE call was refused because the preview of the pending one is open (CC-127).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_pending',
+}, true);
 audit('gateway-confirmation-authenticator-disabled', 'The code could not be used because the authenticator is disabled; the user is sent to register again (CC-126).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'authenticator_disabled', outcome: 'denied', errorCode: 'confirmation_required',
@@ -898,6 +902,9 @@ aggregation('superseded', 'Replaced by a newer DESTRUCTIVE operation (CC-127).',
   gw(15, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(16, '2026-10-26T20:00:40.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'superseded', outcome: 'denied', errorCode: 'confirmation_superseded' }),
 ], { ...callRow, requestId: RID(15), result: 'superseded', wrongCodeCount: 0, errorCode: 'confirmation_superseded' });
+aggregation('blocked-by-pending', 'Refused because the preview of another pending DESTRUCTIVE call is open (CC-127): result blocked_by_pending.', [
+  gw(20, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_pending' }),
+], { ...callRow, ts: '2026-10-26T20:00:30.000Z', requestId: RID(20), result: 'blocked_by_pending', wrongCodeCount: 0, errorCode: 'confirmation_pending' });
 aggregation('denied-link-scope', 'Tool outside the link: denied_link_scope, no confirmation fields.', [
   gw(17, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-gitlab', tool: 'get_project', risk: 'READ_ONLY', virtualServer: 'team-a-dev', decision: 'deny', reason: 'link_scope', outcome: 'denied', errorCode: 'not_found_or_denied' }),
 ], { requestId: RID(17), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', virtualServer: 'team-a-dev', tool: 'gitlab__get_project', risk: 'READ_ONLY', result: 'denied_link_scope', errorCode: 'not_found_or_denied' });
@@ -914,6 +921,7 @@ activityRow('confirmed-with-wrong-codes', 'Confirmed after wrong codes.', { ...c
 activityRow('confirmation-pending', 'Waiting for a code.', { ...callRow, requestId: RID(3), result: 'confirmation_pending', wrongCodeCount: 0 }, true);
 activityRow('expired', 'Expired.', { ...callRow, requestId: RID(4), result: 'expired', errorCode: 'confirmation_failed' }, true);
 activityRow('superseded', 'Superseded (CC-127).', { ...callRow, requestId: RID(5), result: 'superseded', errorCode: 'confirmation_superseded' }, true);
+activityRow('blocked-by-pending', 'A refused DESTRUCTIVE call (CC-127).', { ...callRow, requestId: RID(6), result: 'blocked_by_pending', errorCode: 'confirmation_pending' }, true);
 activityRow('unknown-result', 'An unknown result value is allowed (open string); clients show a generic label.', { ...rowBase, result: 'quota_exceeded' }, true);
 activityRow('no-resource', 'A tool without a resource identifier has no resource.', rowBase, true);
 activityRow('result-uppercase', 'result is snake_case.', { ...rowBase, result: 'OK' }, false);
@@ -936,11 +944,37 @@ retryVector('retry-after-reissue', 'After the operation was issued again the ret
   { pending: pendingCall({ confirmationId: 'cnf_reissued00000001', createdAt: '2026-10-26T20:01:00Z' }), attempt: { at: '2026-10-26T20:01:30Z' } },
   { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed' });
 
-// Parallel requests (H1): the counters and the one-pending rule are atomic, so the outcome equals a sequential one.
-const parallelFirst = (name, description, { pendingCalls = [], calls }, expected) => write('confirmation-binding', `${name}.json`, {
+const parallelFirst = (name, description, { pendingCalls = [], calls, steps }, expected) => write('confirmation-binding', `${name}.json`, {
   description, kind: 'first-calls-parallel', authenticator: 'active', pendingCalls, pendingLimit: 3, at: '2026-10-26T20:00:00Z',
-  calls: calls.map((c) => ({ serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', ...c })), expected,
+  ...(steps ? { steps: steps.map((st) => (st.call ? { call: { serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', ...st.call } } : st)) }
+    : { calls: calls.map((c) => ({ serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', ...c })) }), expected,
 });
+// First wins after the preview (CC-127): once the owner opened the preview of the pending DESTRUCTIVE call, a different
+// DESTRUCTIVE operation does not replace it.
+const viewedA = stored({ previewViewed: true });
+firstCallVector('first-call-preview-viewed-blocks-new-destructive', 'The owner opened the preview of A: a different DESTRUCTIVE operation B is refused with confirmation_pending until A ends; nothing is created, nothing is superseded.',
+  { pendingCalls: [viewedA], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:30Z' },
+  { outcome: 'confirmation_pending', retryAfterSeconds: 90, pendingCreated: false });
+firstCallVector('first-call-preview-viewed-same-operation-returns-record', 'The same operation as the viewed one is not "another": it gets the same record.',
+  { pendingCalls: [viewedA], at: '2026-10-26T20:00:30Z' },
+  { outcome: 'confirmation_required', register: false, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', expiresAt: '2026-10-26T20:02:00Z', pendingCreated: false, supersededIds: [] });
+firstCallVector('first-call-preview-not-viewed-supersedes', 'Preview not opened: as before, the new operation supersedes the old one.',
+  { pendingCalls: [stored({ previewViewed: false })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:30Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
+firstCallVector('first-call-preview-viewed-but-expired-does-not-block', 'A viewed pending call that has expired blocks nothing.',
+  { pendingCalls: [viewedA], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:00Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:00Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-preview-viewed-other-risk-not-blocked', 'The rule concerns DESTRUCTIVE operations only: a confirmation of another risk is created.',
+  { pendingCalls: [viewedA], call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-5', summary: 'z' } }, at: '2026-10-26T20:00:30Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: [] });
+parallelFirst('first-calls-race-preview-then-new-destructive', 'Race: the preview of A is opened, then B arrives. Checking the preview and creating B are one atomic operation, so B is refused and A stays.',
+  { pendingCalls: [stored()], steps: [{ preview: 'cnf_4k9Qe2LxW7tB3mZp' }, { call: { arguments: { issueKey: 'ABC-999' } } }] },
+  { supersededIds: [[], []], outcomes: [null, 'confirmation_pending'], pendingIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
+parallelFirst('first-calls-race-new-destructive-then-preview', 'Race: B arrives first and supersedes A, then the preview of A is requested: it is 404 ("link nieaktualny") and B is the only pending call.',
+  { pendingCalls: [stored()], steps: [{ call: { arguments: { issueKey: 'ABC-999' } } }, { preview: 'cnf_4k9Qe2LxW7tB3mZp' }] },
+  { supersededIds: [['cnf_4k9Qe2LxW7tB3mZp'], []], outcomes: ['confirmation_required', null], previews: [null, 404], pendingIds: ['new-0'] });
+
+// Parallel requests (H1): the counters and the one-pending rule are atomic, so the outcome equals a sequential one.
 parallelFirst('first-calls-parallel-three-destructive', 'Three different DESTRUCTIVE operations arrive at the same time: creating a pending call and superseding the older one is one atomic step per user, so exactly one stays pending.',
   { calls: [{ arguments: { issueKey: 'ABC-1' } }, { arguments: { issueKey: 'ABC-2' } }, { arguments: { issueKey: 'ABC-3' } }] },
   { supersededIds: [[], ['new-0'], ['new-1']], pendingIds: ['new-2'] });
@@ -1036,6 +1070,9 @@ toolError('confirmation-required-register-disabled', 'Authenticator disabled by 
   error: 'confirmation_required', ...safe('The authenticator was switched off after too many wrong codes. Register it again in the portal.'),
   registerUrl: 'https://mcp.aiwcorpo.pl/authenticator',
 }, true);
+toolError('confirmation-pending', 'A different DESTRUCTIVE operation is refused while the preview of the waiting one is open (CC-127).', { error: 'confirmation_pending', ...safe('Another destructive operation is waiting for its code. Confirm it, or try again later.'), retryAfterSeconds: 90 }, true);
+toolError('invalid-confirmation-pending-without-retry-after', 'retryAfterSeconds is required.', { error: 'confirmation_pending', ...safe('Waiting.') }, false);
+toolError('invalid-confirmation-pending-with-id', 'No confirmationId: nothing was created for the refused operation.', { error: 'confirmation_pending', ...safe('Waiting.'), retryAfterSeconds: 5, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
 toolError('credential-required', 'No connected account.', {
   error: 'credential_required', ...safe('Connect your Jira account in the portal.'), system: 'jira',
   connectUrl: 'https://mcp-portal.internal/connections?system=jira',

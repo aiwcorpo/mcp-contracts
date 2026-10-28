@@ -1,0 +1,12 @@
+{
+  "description": "No confirmationId: nothing was created for the refused operation.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_pending",
+    "message": "Waiting.",
+    "retryAfterSeconds": 5,
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp"
+  }
+}

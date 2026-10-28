@@ -148,6 +148,7 @@
         "confirmation_required",
         "confirmation_failed",
         "confirmation_superseded",
+        "confirmation_pending",
         "credential_required",
         "not_found_or_denied",
         "invalid_argument",

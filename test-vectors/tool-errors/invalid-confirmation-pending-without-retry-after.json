@@ -1,0 +1,10 @@
+{
+  "description": "retryAfterSeconds is required.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_pending",
+    "message": "Waiting."
+  }
+}

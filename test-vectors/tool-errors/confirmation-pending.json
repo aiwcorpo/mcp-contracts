@@ -1,0 +1,11 @@
+{
+  "description": "A different DESTRUCTIVE operation is refused while the preview of the waiting one is open (CC-127).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_pending",
+    "message": "Another destructive operation is waiting for its code. Confirm it, or try again later.",
+    "retryAfterSeconds": 90
+  }
+}

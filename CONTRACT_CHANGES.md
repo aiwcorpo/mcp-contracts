@@ -2265,6 +2265,7 @@ G-15, G-16, G-18, G-22.
 | Wygasło | `expired` | `confirmation` |
 | Błędny kod | `confirmation_failed` | `confirmation` |
 | Zastąpione nowszą operacją (CC-127) | `superseded` | `confirmation` |
+| Odrzucone, bo oczekuje inna operacja z otwartym podglądem (CC-127) | `blocked_by_pending` | `confirmation` |
 | Błąd | `error` (z `errorCode`) | `error` |
 
   Wyniki pomocnicze spoza listy etykiet makiet, które gateway już zna z C10: `tool_disabled`, `credential_required`,
@@ -2388,7 +2389,7 @@ G-15, G-16, G-18, G-22.
           description: |
             Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
-            expired, confirmation_failed, superseded. A client must show an unknown value as a generic label.
+            expired, confirmation_failed, superseded, blocked_by_pending. A client must show an unknown value as a generic label.
         wrongCodeCount:
           description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
           type: integer
@@ -2758,6 +2759,7 @@ G-15, G-16, G-18, G-22.
 
 - **Zgłasza:** C4 (ws-07)
 - **Propozycja:** osobny `event` dla zmian wirtualnych serwerów zamiast `admin_change` (nowa wartość enum, major). Razem z CC-107 i listą narzędzi linku (grupa A).
+- **Decyzja człowieka 2026-10-28:** nazwa `virtual_server_change` zostaje.
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28, przyjęte do 3.0.0; wcześniej deferred, grupa C pakietu M2). Wdrożone w 3.0.0 (wersja robocza): nowa wartość `event: "virtual_server_change"` (powody z CC-107: `vs_created`, `vs_deleted`, `slug_taken`, `not_granted`, `invalid_request`, `virtual_server_limit`, `not_found_or_denied`), wymagane `outcome` i `reason`; `admin_change` zostaje dla pozostałych zmian administracyjnych. Lista narzędzi linku w zdarzeniu nie weszła (poza zakresem).
 
 ## CC-117 | C8 | `backendUser` w zdarzeniu `connection_change`
@@ -2809,6 +2811,7 @@ G-15, G-16, G-18, G-22.
 
 - **Zgłasza:** A3 (starter); grupa A pakietu M2
 - **Propozycja:** nie normalizować NFKC; odrzucać lub oznaczać znaki pełnej szerokości ASCII (U+FF01..U+FF5E) w filtrach wzmianek (`＠ａｌｌ`), wektory w `text-hygiene/`. Wydanie 3.0.0.
+- **Decyzja człowieka 2026-10-28:** zakres higieny tekstu jak w szkicu: pełna szerokość odrzucana tylko w argumentach filtrowanych pod kątem wzmianek, tekst z systemu bez zmian, U+FE0F tylko po `Extended_Pictographic` (dotyczy też CC-121).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): tryb `argument-mention-filtered`, brak NFKC.
 
 ## CC-123 | C6/C10 | Zamknięty i ograniczony `inputSchema` (rozszerzenie CC-078)
@@ -2852,6 +2855,7 @@ G-15, G-16, G-18, G-22.
   README zmiana oczekiwanego zachowania, wydana z 3.0.0.
 - **Wpływ:** ws-05 (obsługa błędu JWKS, `Retry-After`, konfiguracja odstępu), ws-10 (test: awaria IdP daje 503 bez
   `WWW-Authenticate`), klienty MCP (nie logują się ponownie przy 503).
+- **Decyzja człowieka 2026-10-28:** nieznany `kid` przy nieudanym pobraniu JWKS to `503` (potwierdzone).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
 
 ## CC-125 | C8 | Audyt odrzuceń mTLS i tokenów BFF na porcie C5; `replay_store_unavailable` tylko u odbiorców JWT
@@ -2881,6 +2885,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** zaostrzenie walidacji (wektor `gateway`/`replay_store_unavailable` przestaje być poprawny), major; wchodzi do
   3.0.0.
 - **Wpływ:** ws-05 (emisja na porcie C5), ws-02 i ws-06 (`replay_store_unavailable` z `component` serwera/brokera).
+- **Decyzja człowieka 2026-10-28:** audyt odrzuceń mTLS na porcie C5 bez CN ani innych danych z certyfikatu; lista pól zdarzenia zostaje zamknięta.
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
 
 ## CC-126 | C4/C11/C12/C8 | Dzienny limit błędnych kodów TOTP wyłącza Authenticator
@@ -2950,11 +2955,25 @@ G-15, G-16, G-18, G-22.
     raz; unieważnienie starszej jest jawne i widoczne w audycie. Nie zapobiega podmianie: zmanipulowany agent może
     unieważnić operację A swoją B i dopiero B potwierdzić kodem wpisanym dla A. Podgląd pozostaje opcjonalny (ryzyko
     rezydualne przyjęte, opisane w README, "Potwierdzenia kodem TOTP", pkt 7).
+- **ZMIANA po decyzji człowieka 2026-10-28 (przegląd M1): "pierwsza wygrywa po otwarciu podglądu".** Jeśli właściciel
+  otworzył podgląd oczekującej operacji `DESTRUCTIVE` A (`previewViewedAt` ustawione), nowa, inna operacja `DESTRUCTIVE` B
+  **nie** unieważnia A: B dostaje błąd C10 `confirmation_pending` (nowy kod: `{error, message, retryAfterSeconds}`, bez
+  `confirmationId`; `retryAfterSeconds` = czas do wygaśnięcia A) do czasu potwierdzenia, wygaśnięcia albo wyczerpania prób
+  A; nic nie powstaje i nic nie jest unieważniane. Bez otwartego podglądu działa jak wyżej (nowa unieważnia starą). To samo
+  wywołanie co A zwraca rekord A. Zapis `previewViewedAt` (skutek `GET` podglądu) i sprawdzenie go przy B są atomowe
+  względem siebie (jedna operacja na użytkownika, jak w H1); wyścig "podgląd kontra B" kończy się albo odrzuceniem B (podgląd
+  pierwszy), albo unieważnieniem A i `404` podglądu (B pierwsze). Dotyczy tylko `DESTRUCTIVE`. Audyt: `event: confirmation`
+  dla B z `decision: deny`, `reason: pending_exists`, `errorCode: confirmation_pending`. W `/activity/calls` wynik
+  `blocked_by_pending` (grupa `confirmation`). Wektory: `confirmation-binding/first-call-preview-viewed-*`,
+  `first-calls-race-*`, `tool-errors/confirmation-pending*`, `audit-events/gateway-confirmation-pending-exists`,
+  `activity-calls/*blocked-by-pending`. Nazwa kodu: `confirmation_pending` (propozycja koordynatora; w audycie
+  `confirmation_pending` jest też wartością pola `decision`, to inne pole).
+- **Limit 3 oczekujących potwierdzeń o ryzyku innym niż DESTRUCTIVE: potwierdzone przez człowieka 2026-10-28.**
 - **Uczciwy opis ograniczeń (przegląd 3.0.0, M1):** unieważnienie następuje przed wpisaniem kodu i zostawia ślad w
   audycie, ale użytkownik nie dostaje sygnału: strona podglądu pokazuje stan z chwili otwarcia i się nie odświeża (frontend
   powinien ją odpytywać i po `404` pokazać "link nieaktualny"); podmiana jest możliwa także po obejrzeniu podglądu; kod może
-  też potwierdzić jedno z oczekujących potwierdzeń o innym ryzyku (do 3, nie są unieważniane). Zmiana zasady (np. "pierwsza
-  wygrywa po podglądzie", jedno oczekujące potwierdzenie na wszystkie ryzyka) jest decyzją człowieka, nie wchodzi.
+  też potwierdzić jedno z oczekujących potwierdzeń o innym ryzyku (do 3, nie są unieważniane). Zasada "pierwsza wygrywa po podglądzie"
+  weszła decyzją człowieka (zob. wyżej); jedno oczekujące potwierdzenie na wszystkie ryzyka nie weszło.
 - **Ślad (przegląd 3.0.0, M2):** ślad po unieważnionym wywołaniu nie jest oczekującym wywołaniem: ponowne wywołanie tej
   samej operacji tworzy nowe oczekujące wywołanie (nowy `confirmationId`, nowy TTL), unieważnia bieżące DESTRUCTIVE i
   zastępuje ślad pod tym samym kluczem; ślady nie liczą się do limitu. Wektory `first-call-after-superseded-same-operation`,

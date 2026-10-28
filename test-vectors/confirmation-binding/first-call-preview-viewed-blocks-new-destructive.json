@@ -1,0 +1,31 @@
+{
+  "description": "The owner opened the preview of A: a different DESTRUCTIVE operation B is refused with confirmation_pending until A ends; nothing is created, nothing is superseded.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "previewViewed": true
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "arguments": {
+      "issueKey": "ABC-999"
+    }
+  },
+  "at": "2026-10-26T20:00:30Z",
+  "expected": {
+    "outcome": "confirmation_pending",
+    "retryAfterSeconds": 90,
+    "pendingCreated": false
+  }
+}

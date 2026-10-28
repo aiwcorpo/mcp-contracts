@@ -22,6 +22,9 @@
       "$ref": "#/$defs/ConfirmationSuperseded"
     },
     {
+      "$ref": "#/$defs/ConfirmationPending"
+    },
+    {
       "$ref": "#/$defs/CredentialRequired"
     },
     {
@@ -354,6 +357,29 @@
         },
         "message": {
           "$ref": "#/$defs/Message"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmationPending": {
+      "type": "object",
+      "required": [
+        "error",
+        "message",
+        "retryAfterSeconds"
+      ],
+      "properties": {
+        "error": {
+          "const": "confirmation_pending",
+          "description": "Another DESTRUCTIVE operation of this user is waiting for a code and its owner has opened the portal preview, so a different DESTRUCTIVE operation is refused until that one is confirmed, expires or runs out of attempts (first wins after the preview, CC-127). Not a rate limit: nothing was created. Without an opened preview the new operation supersedes the old one instead."
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
+        },
+        "retryAfterSeconds": {
+          "description": "Seconds until the waiting operation expires at the latest.",
+          "type": "integer",
+          "minimum": 1
         }
       },
       "additionalProperties": false

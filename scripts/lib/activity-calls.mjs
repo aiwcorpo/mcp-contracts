@@ -22,7 +22,7 @@ export function aggregateCall(events) {
   if (last.event === 'confirmation') {
     result = {
       confirmation_pending: 'confirmation_pending', superseded: 'superseded', confirmation_expired: 'expired',
-      attempts_exhausted: 'confirmation_failed',
+      attempts_exhausted: 'confirmation_failed', pending_exists: 'blocked_by_pending',
     }[last.reason ?? (last.decision === 'confirmation_pending' ? 'confirmation_pending' : 'confirmation_failed')] ?? 'confirmation_failed';
     errorCode = last.errorCode ?? null;
   } else if (last.event === 'tool_call') {

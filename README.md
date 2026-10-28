@@ -331,7 +331,10 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    sesja bez świeżego MFA, `no-store`; kod działa także bez jego otwarcia. Ryzyko rezydualne przyjęte przez człowieka
    (2026-10-27): kod potwierdza obecność człowieka, nie operację. Podgląd pokazuje stan z chwili otwarcia i się nie
    odświeża: nowa operacja `DESTRUCTIVE` może unieważnić oglądaną przed wpisaniem kodu, a strona dalej ją pokazuje (frontend
-   powinien ją odpytywać i po `404` pokazać "link nieaktualny"). Opis operacji w niezaufanym kliencie może się różnić od
+   powinien ją odpytywać i po `404` pokazać "link nieaktualny"). **Pierwsza wygrywa po otwarciu podglądu** (CC-127): gdy
+   właściciel otworzył podgląd oczekującej operacji `DESTRUCTIVE` A, inna operacja `DESTRUCTIVE` B jej nie unieważnia,
+   tylko dostaje błąd C10 `confirmation_pending` z `retryAfterSeconds` (czas do wygaśnięcia A) do czasu potwierdzenia,
+   wygaśnięcia albo wyczerpania prób A; zapis `previewViewedAt` i sprawdzenie go przy B są atomowe względem siebie. Opis operacji w niezaufanym kliencie może się różnić od
    oczekującej niezależnie od tego, czy podgląd był otwarty. Audyt odróżnia oba przypadki
    (`user_confirmed` i `user_confirmed_no_preview`).
 3. Ponowienie z tymi samymi argumentami i `confirmation_code` (wzorzec `^[0-9]{6}$`, pole dokładane do `inputSchema`
@@ -376,13 +379,15 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
 7. Ryzyko rezydualne i jego ograniczenia (niezmiennik 9 planu, decyzja człowieka 2026-10-27): kod TOTP nie jest
    związany z operacją, więc potwierdza obecność człowieka, a nie argumenty; zmanipulowany agent może pokazać opis
    operacji A, mając oczekującą B, i użyć kodu wpisanego dla B. Mechanizmy ograniczające, bez wymogu podglądu: jedna
-   oczekująca operacja `DESTRUCTIVE` na użytkownika (unieważnienie starszej następuje przed wpisaniem kodu i zostawia ślad
-   w audycie; kod może potwierdzić najnowszą oczekującą `DESTRUCTIVE`, ale także jedno z oczekujących potwierdzeń o innym
+   oczekująca operacja `DESTRUCTIVE` na użytkownika (bez otwartego podglądu nowa unieważnia starszą przed wpisaniem kodu i
+   zostawia ślad w audycie; po otwarciu podglądu pierwsza wygrywa i nowa jest odrzucana, więc człowiek, który zobaczył
+   operację w zaufanym kanale, nie traci jej po cichu; kod może potwierdzić najnowszą oczekującą `DESTRUCTIVE`, ale także jedno z oczekujących potwierdzeń o innym
    ryzyku, których to nie obejmuje, i tylko raz), TTL 120 s, 3 próby na wywołanie, blokada 5/15 min, wyłączenie po 20 błędach na dobę,
    jednorazowość kroku TOTP, opcjonalny podgląd w zaufanym kanale i audyt, który odróżnia potwierdzenie z podglądem
-   (`user_confirmed`) od bez (`user_confirmed_no_preview`). Mechanizm "jedna operacja" nie zapobiega podmianie (agent może unieważnić A własnym B i dopiero B potwierdzić
-   kodem, także gdy człowiek widział podgląd A), tylko zawęża liczbę oczekujących i zostawia ślad `superseded`; w chwili
-   wpisywania kodu użytkownik nie dostaje żadnego sygnału. Konsekwencja limitu dziennego: agent może wyłączyć Authenticator
+   (`user_confirmed`) od bez (`user_confirmed_no_preview`). Mechanizm "jedna operacja" bez podglądu nie zapobiega podmianie (agent może unieważnić A własnym B i dopiero B
+   potwierdzić kodem), tylko zawęża liczbę oczekujących i zostawia ślad `superseded`; użytkownik, który nie otworzył
+   podglądu, nie dostaje w chwili wpisywania kodu żadnego sygnału. Po otwarciu podglądu podmiana przez inną operację
+   `DESTRUCTIVE` jest zablokowana (nie obejmuje to potwierdzeń o innym ryzyku). Konsekwencja limitu dziennego: agent może wyłączyć Authenticator
    ok. 20 błędnymi kodami (ok. godziny), czyli odmowa usługi dla potwierdzeń do ponownej rejestracji ze step-up MFA Entra
    (CC-126).
 8. Reguła `destructive-requires-fresh-mfa` (`cedar/examples/step-up.cedar`, wektory `gw-destructive-*-mfa`) zostaje w
@@ -674,8 +679,8 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 55 | odbiorca C2: 21 poprawnych, 34 odrzucenia (podpis, `kid`, klucz testowy, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 52 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 69 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
-| `tool-errors/` | 26 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`) |
+| `audit-events/` | 70 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `tool-errors/` | 29 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`) |
 | `bundles/` | 40 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
 | `entity-builder/` | 36 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
@@ -683,10 +688,10 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
-| `confirmation-binding/` | 40 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
+| `confirmation-binding/` | 47 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
 | `totp/` | 41 | Authenticator brokera: RFC 6238, okno, jednorazowość kroku, blokada 5/15 min, limit dzienny, rejestracja, URI `otpauth` (CC-092, CC-126); ziarno z RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | zbiór zakazany w argumentach, identyfikatorach i filtrach wzmianek oraz zastępowanie w tekście z systemu (CC-121, CC-122) |
-| `activity-calls/` | 24 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
+| `activity-calls/` | 26 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
 | `gateway-authentication-decision/` | 12 | wybór powodu i statusu 401/503 ze stanu kopii kluczy, `kid` i odświeżenia (CC-124) |
 | `gateway-authentication/` | 13 | 401 z `resource_metadata` albo 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |

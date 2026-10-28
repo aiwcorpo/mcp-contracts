@@ -24,15 +24,15 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
      `confirmation_declined` (C10 i `ErrorCode`), powód audytu `user_declined` (nie jest emitowany).
    - `confirmation_required` (C10): wariant z oczekującym wywołaniem ma `confirmationId`, `description`, `previewUrl`,
      `expiresAt` (wszystkie wymagane); wariant bez rejestracji ma tylko `registerUrl`.
-   - Nowe w C10: `confirmation_superseded`. Nowe w C8: `event: "authenticator"` (wymaga `outcome` i `reason`),
-     powody `user_confirmed_no_preview`, `attempts_exhausted`, `authenticator_not_registered`,
+   - Nowe w C10: `confirmation_superseded`, `confirmation_pending` (odrzucona operacja DESTRUCTIVE, gdy podgląd oczekującej jest otwarty). Nowe w C8: `event: "authenticator"` (wymaga `outcome` i `reason`),
+     powody `pending_exists`, `user_confirmed_no_preview`, `attempts_exhausted`, `authenticator_not_registered`,
      `authenticator_disabled`, `superseded`, `totp_*`.
    - Nowe w C4: grupa `/v1/authenticator` (status, usunięcie, `enrollment`, `enrollment/confirm`, `verify`) i
      `POST /v1/admin/users/{sub}/authenticator/reset` (CN `mcp-offboarding`); `purge` usuwa też rejestrację. Nowe w
      C12: `/api/v1/authenticator` (GET, DELETE) i `/enrollment`, `/enrollment/confirm`. Ziarno TOTP wychodzi tylko w `201`
      rejestracji (wyjątek w niezmienniku 4). `GET /api/v1/confirmations/{id}`: bez step-up, `ConfirmationView.resource`
      (CC-098); `401` to zwykłe `Unauthenticated`; unieważnione i wygasłe wywołanie to `404`.
-   - Atomowość (normatywna): liczniki 5/15 min i 20/24 h w brokerze, rezerwacja próby w gateway'u przed pytaniem brokera i jedna oczekująca DESTRUCTIVE to kroki atomowe na użytkownika; ślad po unieważnionym wywołaniu nie jest oczekującym (ponowne wywołanie tworzy nowe); ziarno TOTP tylko w Transit pod `mcp/authenticators/<sha256(sub)>`. Wektory współbieżności `totp/concurrent-*`, `confirmation-binding/*-parallel-*`.
+   - Atomowość (normatywna): liczniki 5/15 min i 20/24 h w brokerze, rezerwacja próby w gateway'u przed pytaniem brokera i jedna oczekująca DESTRUCTIVE to kroki atomowe na użytkownika; ślad po unieważnionym wywołaniu nie jest oczekującym (ponowne wywołanie tworzy nowe); po otwarciu podglądu pierwsza operacja DESTRUCTIVE wygrywa, inna dostaje `confirmation_pending` z `retryAfterSeconds` (CC-127); ziarno TOTP tylko w Transit pod `mcp/authenticators/<sha256(sub)>`. Wektory współbieżności `totp/concurrent-*`, `confirmation-binding/*-parallel-*`.
    - `test-vectors/confirmation-binding/` przepisane (usunięte `issued.code`, nowy format `first-call`/`retry`);
      nowe `test-vectors/totp/`; wektor `tool-errors/confirmation-declined` zastąpiony negatywnym.
    - Reguła `destructive-requires-fresh-mfa` zostaje w `cedar/examples/`, ale nie wchodzi do paczki produkcyjnej.

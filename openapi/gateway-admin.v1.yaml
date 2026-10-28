@@ -643,7 +643,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed and superseded confirmations.
+          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded and blocked-by-pending confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -719,6 +719,13 @@ paths:
                       result: superseded
                       wrongCodeCount: 0
                       errorCode: confirmation_superseded
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84
+                      ts: '2026-10-26T19:25:00.000Z'
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      result: blocked_by_pending
+                      wrongCodeCount: 0
+                      errorCode: confirmation_pending
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83
                       ts: '2026-10-26T19:20:00.000Z'
                       tool: gitlab__get_project
@@ -741,7 +748,9 @@ paths:
         The preview is optional: the code from the authenticator works without opening it (CC-091). The gateway
         computes everything from its own record of the pending call, never from the client. A successful call
         records that the owner viewed the preview (`previewViewedAt`, CC-091); this is the only side effect of a GET
-        in C5. There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
+        in C5. Since the preview is opened, a different DESTRUCTIVE operation of the user does not supersede this one: it
+        is refused with `confirmation_pending` until this one is confirmed, expires or runs out of attempts (CC-127);
+        recording the view and that check are atomic with each other. There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
         refusing is not typing it (the call expires after 120 s).
       security:
         - mtls: []
@@ -778,7 +787,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
-          description: Unknown, expired, superseded by a newer DESTRUCTIVE operation of the user (CC-127) or not owned by the caller; one answer for all of them (invariant 8).
+          description: Unknown, expired, superseded by a newer DESTRUCTIVE operation of the user (CC-127; only when the preview had not been opened) or not owned by the caller; one answer for all of them (invariant 8).
           content:
             application/json:
               schema:
@@ -1189,7 +1198,7 @@ components:
           description: |
             Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
-            expired, confirmation_failed, superseded. A client must show an unknown value as a generic label.
+            expired, confirmation_failed, superseded, blocked_by_pending. A client must show an unknown value as a generic label.
         wrongCodeCount:
           description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
           type: integer

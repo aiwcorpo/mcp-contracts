@@ -128,9 +128,12 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
     if (data.kind === 'first-calls-parallel') {
       const { results, pendingIds } = firstCallsInOrder({
         authenticator: data.authenticator, pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt) })),
-        pendingLimit: data.pendingLimit, calls: data.calls, at: toSeconds(data.at),
+        pendingLimit: data.pendingLimit, calls: data.calls, steps: data.steps, at: toSeconds(data.at),
       });
-      assert.deepEqual(results.map((r) => r.supersededIds ?? []), data.expected.supersededIds, name);
+      const calls = results.map((r) => (r.previewed === undefined ? r : null));
+      assert.deepEqual(calls.map((r) => (r === null ? [] : (r.supersededIds ?? []))), data.expected.supersededIds, name);
+      if (data.expected.outcomes) assert.deepEqual(calls.map((r) => (r === null ? null : r.outcome)), data.expected.outcomes, name);
+      if (data.expected.previews) assert.deepEqual(results.map((r) => (r.previewed === false ? r.status : null)), data.expected.previews, name);
       assert.deepEqual(pendingIds, data.expected.pendingIds, name);
       assert.ok(pendingIds.length <= 1, `${name}: at most one pending DESTRUCTIVE call`);
     } else if (data.kind === 'retries-parallel') {
