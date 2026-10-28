@@ -1,0 +1,7 @@
+{
+  "description": "A reserved prefix in the query does not matter.",
+  "value": "/catalog?next=/api",
+  "expected": {
+    "valid": true
+  }
+}

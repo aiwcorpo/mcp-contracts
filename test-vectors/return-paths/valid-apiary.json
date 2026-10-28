@@ -1,0 +1,7 @@
+{
+  "description": "/apiary only starts with the letters api; it is not the /api prefix.",
+  "value": "/apiary",
+  "expected": {
+    "valid": true
+  }
+}

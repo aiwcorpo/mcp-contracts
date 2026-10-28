@@ -1,0 +1,7 @@
+{
+  "description": "A browser resolves /catalog/../api/... to /api/....",
+  "value": "/catalog/../api/v1/me",
+  "expected": {
+    "valid": false
+  }
+}

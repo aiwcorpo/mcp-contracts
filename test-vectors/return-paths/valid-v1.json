@@ -1,0 +1,7 @@
+{
+  "description": "/v1 is not the /v/ prefix.",
+  "value": "/v1/guide",
+  "expected": {
+    "valid": true
+  }
+}

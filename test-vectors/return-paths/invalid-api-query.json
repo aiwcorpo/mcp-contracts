@@ -1,0 +1,7 @@
+{
+  "description": "/api followed by a query is still the BFF.",
+  "value": "/api?x=1",
+  "expected": {
+    "valid": false
+  }
+}

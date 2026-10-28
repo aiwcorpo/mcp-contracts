@@ -43,7 +43,7 @@ mcp-contracts/
 │   ├── untrusted-text/      # kształt UntrustedText (CC-072)
 │   ├── confirmation-binding/  # oczekujące wywołanie i wynik weryfikacji kodu (C11, CC-091)
 │   ├── totp/                  # Authenticator: RFC 6238, blokada, rejestracja (CC-092)
-│   ├── connect-redirects/  secret-expiry/  catalog-actions/  # CC-086, CC-084, CC-083
+│   ├── connect-redirects/  catalog-actions/  return-paths/  # CC-086, CC-083, CC-032, CC-099
 │   ├── servicedesk-service-account/  # reguła kolejek konta serwisowego (CC-076)
 │   ├── entity-builder/      # wejście buildera -> encje i kontekst Cedar
 │   └── policy-decisions/    # żądanie Cedar -> decyzja i polityki rozstrzygające
@@ -411,9 +411,9 @@ dacie (CC-084).
 Od 2.2.3 (CC-101) broker wywołuje whoami systemu docelowego po zapisie sekretu lub wymianie kodu OAuth **tylko** po to,
 żeby sprawdzić ważność poświadczenia (`422 secret_invalid`) i odczytać `backendUser`. Nie porównuje go z tożsamością
 SSO: ta sama osoba ma różne loginy w różnych systemach (np. `asmith` w Jirze, `alice.smith` w GitLabie), a e-mail
-bywa niepewny. `identity_mismatch` nie jest już zwracane (kod zostaje w enum jako deprecated do 3.0.0). Portal pokazuje
-"Połączono jako <backendUser>" po zapisie i w Połączeniach. Reguły porównania z 2.2.1 i 2.2.2 (CC-090, CC-100) są
-wycofane; wektory `test-vectors/whoami-identity/` mają pole `deprecated` i nie są używane przez testy.
+bywa niepewny. Od 3.0.0 kod `identity_mismatch` nie istnieje w żadnym enum (`PutSecretError`, `OAuthCompleteError`,
+`ConnectErrorCode`), a katalog `test-vectors/whoami-identity/` (reguły porównania z 2.2.1 i 2.2.2, CC-100) jest usunięty.
+Portal pokazuje "Połączono jako <backendUser>" po zapisie i w Połączeniach.
 
 | System | Żądanie | Pole czytane jako `backendUser` |
 | --- | --- | --- |
@@ -595,7 +595,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `audit-events/` | 31 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071) |
 | `tool-errors/` | 18 | każdy kod C10 + przypadki odrzucane |
 | `bundles/` | 40 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
-| `return-paths/` | 12 | `returnPath` C4/C12 (CC-032) |
+| `return-paths/` | 27 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` (CC-099) |
 | `entity-builder/` | 36 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
 | `policy-decisions/` | 69 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
 | `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |

@@ -1,0 +1,7 @@
+{
+  "description": "A browser resolves /./api/... to /api/...; the dot segment would bypass the prefix check.",
+  "value": "/./api/v1/me",
+  "expected": {
+    "valid": false
+  }
+}

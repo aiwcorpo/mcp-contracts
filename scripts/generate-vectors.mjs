@@ -472,6 +472,22 @@ returnPath('invalid-encoded-slashes', 'Encoded slashes that become //evil.test a
 returnPath('invalid-encoded-slash-lowercase', 'Lower-case encoding is the same character.', '/%2f%2fevil.test', false);
 returnPath('invalid-encoded-backslash', 'Encoded backslash.', '/%5Cevil.test', false);
 returnPath('invalid-relative', 'Not starting with a slash.', 'catalog', false);
+// CC-099 (3.0.0): prefixes the reverse proxy sends to the BFF and the gateway are not valid return paths.
+returnPath('invalid-api', 'A redirect after login must not land on a BFF endpoint.', '/api/v1/auth/login?returnPath=/catalog', false);
+returnPath('invalid-api-exact', 'The bare /api prefix.', '/api', false);
+returnPath('invalid-api-query', '/api followed by a query is still the BFF.', '/api?x=1', false);
+returnPath('invalid-gateway-s', 'Gateway route of a whole server.', '/s/mcp-jira/mcp', false);
+returnPath('invalid-gateway-v', 'Gateway route of a virtual server.', '/v/team-a-dev/mcp', false);
+returnPath('invalid-well-known', 'RFC 9728 metadata is served by the gateway.', '/.well-known/oauth-protected-resource', false);
+returnPath('invalid-dot-segment-to-api', 'A browser resolves /./api/... to /api/...; the dot segment would bypass the prefix check.', '/./api/v1/me', false);
+returnPath('invalid-dot-dot-segment-to-api', 'A browser resolves /catalog/../api/... to /api/....', '/catalog/../api/v1/me', false);
+returnPath('invalid-dot-dot-segment-at-end', 'A trailing .. segment.', '/catalog/..', false);
+returnPath('valid-apiary', '/apiary only starts with the letters api; it is not the /api prefix.', '/apiary', true);
+returnPath('valid-settings', '/settings only starts with s.', '/settings', true);
+returnPath('valid-v1', '/v1 is not the /v/ prefix.', '/v1/guide', true);
+returnPath('valid-reserved-word-in-query', 'A reserved prefix in the query does not matter.', '/catalog?next=/api', true);
+returnPath('valid-dots-inside-names', 'Dots that are not whole . or .. segments.', '/docs/v1.2/..notes', true);
+returnPath('valid-root', 'The root path.', '/', true);
 
 // ---------- login failure redirects (C12, CC-051) ----------
 

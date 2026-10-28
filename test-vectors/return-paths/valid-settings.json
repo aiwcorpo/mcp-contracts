@@ -1,0 +1,7 @@
+{
+  "description": "/settings only starts with s.",
+  "value": "/settings",
+  "expected": {
+    "valid": true
+  }
+}

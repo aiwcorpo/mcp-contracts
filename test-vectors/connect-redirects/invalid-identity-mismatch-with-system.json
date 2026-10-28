@@ -1,0 +1,7 @@
+{
+  "description": "identity_mismatch was removed from ConnectErrorCode in 3.0.0 (CC-101): the broker no longer compares identities.",
+  "location": "/catalog?connectError=identity_mismatch&system=gitlab",
+  "expected": {
+    "valid": false
+  }
+}

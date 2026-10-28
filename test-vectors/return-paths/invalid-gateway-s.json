@@ -1,0 +1,7 @@
+{
+  "description": "Gateway route of a whole server.",
+  "value": "/s/mcp-jira/mcp",
+  "expected": {
+    "valid": false
+  }
+}

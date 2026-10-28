@@ -1,0 +1,7 @@
+{
+  "description": "A trailing .. segment.",
+  "value": "/catalog/..",
+  "expected": {
+    "valid": false
+  }
+}

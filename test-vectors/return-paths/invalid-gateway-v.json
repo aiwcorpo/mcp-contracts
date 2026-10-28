@@ -1,0 +1,7 @@
+{
+  "description": "Gateway route of a virtual server.",
+  "value": "/v/team-a-dev/mcp",
+  "expected": {
+    "valid": false
+  }
+}

@@ -143,6 +143,16 @@ test('MSW: invalid returnPath gives 400 (CC-032)', async () => {
   assert.equal(start.status, 400);
 });
 
+test('MSW: returnPath on a reserved prefix gives 400, /apiary does not (CC-099)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  for (const [returnPath, status] of [['/api/v1/me', 400], ['/v/team-a-dev/mcp', 400], ['/./api/v1/me', 400], ['/apiary', 200]]) {
+    const res = await fetch(`${BASE}/api/v1/connections/gitlab/oauth`, { method: 'POST', headers, body: JSON.stringify({ returnPath }) });
+    assert.equal(res.status, status, returnPath);
+  }
+  const login = await fetch(`${BASE}/api/v1/auth/login?returnPath=${encodeURIComponent('/s/mcp-jira/mcp')}`, { redirect: 'manual' });
+  assert.equal(login.status, 400);
+});
+
 test('MSW: /me can report mfaFreshUntil (CC-053) and login error codes are exported (CC-051)', async () => {
   const res = await fetch(`${BASE}/api/v1/me`, { headers: { Prefer: 'example=mfa_fresh' } });
   assert.match((await res.json()).mfaFreshUntil, /Z$/);

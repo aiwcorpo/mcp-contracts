@@ -519,7 +519,7 @@ paths:
         `returnPath` with `connected=<system>` appended (`?` when returnPath has no query, `&` otherwise). On
         failure it appends `connectError=<code>` the same way with a code from `ConnectErrorCode` only
         (CC-022, CC-086): `cancelled` when the provider reports `error=access_denied`, `provider_error` for any other
-        `error` or a failed exchange, `flow_invalid`. A failure carries `system=<system>` next to `connectError` (CC-111). An error or `503` of the broker while completing the flow gives `connectError=provider_error` (CC-107). `identity_mismatch` is deprecated and no longer returned (CC-101). Provider details never appear in the URL.
+        `error` or a failed exchange, `flow_invalid`. A failure carries `system=<system>` next to `connectError` (CC-111). An error or `503` of the broker while completing the flow gives `connectError=provider_error` (CC-107). Provider details never appear in the URL.
         Without a valid session the browser goes to `/?loginError=session_expired` (the BFF checks the session
         itself). Never returns JSON.
       x-connect-error-code:
@@ -1616,9 +1616,8 @@ components:
       additionalProperties: false
     ConnectErrorCode:
       type: string
-      description: Value of `connectError` appended to returnPath after a failed OAuth connection (CC-022, CC-086). Closed list. cancelled = the user cancelled at the provider (error=access_denied). identity_mismatch is deprecated and no longer returned (CC-101; removed in 3.0.0).
+      description: Value of `connectError` appended to returnPath after a failed OAuth connection (CC-022, CC-086). Closed list. cancelled = the user cancelled at the provider (error=access_denied).
       enum:
-        - identity_mismatch
         - flow_invalid
         - provider_error
         - cancelled
@@ -1806,8 +1805,8 @@ components:
       additionalProperties: false
     ReturnPath:
       type: string
-      description: Relative path inside the portal, optionally with a query. No percent-encoding at all (portal paths do not need it), no backslash, no absolute or protocol-relative URL, so no number of decoding passes can turn it into //host (open redirect, CC-032). The BFF redirects only to the validated value as is, without decoding it.
-      pattern: ^/(?!/)[A-Za-z0-9._~!$&'()*+,;=:@/?-]*$
+      description: Relative path inside the portal, optionally with a query. No percent-encoding at all (portal paths do not need it), no backslash, no absolute or protocol-relative URL, so no number of decoding passes can turn it into //host (open redirect, CC-032). The BFF redirects only to the validated value as is, without decoding it. Since 3.0.0 (CC-099) the path must not start with a prefix that the reverse proxy sends to the BFF or the gateway (`/api`, `/s`, `/v`, `/.well-known`, each as a whole segment, so `/apiary` is fine), because a redirect after login or OAuth would land on an endpoint instead of in the SPA; and it must not contain a `.` or `..` segment (before the query), which a browser would resolve to such a prefix.
+      pattern: ^(?![^?]*/\.\.?(?:[/?]|$))(?!/(?:api|s|v|\.well-known)(?:[/?]|$))/(?!/)[A-Za-z0-9._~!$&'()*+,;=:@/?-]*$
       maxLength: 512
     RequestId:
       description: UUIDv7 request id (C2 rid, X-Request-Id).
@@ -1992,10 +1991,8 @@ components:
       properties:
         error:
           type: string
-          description: identity_mismatch is deprecated and no longer returned (CC-101; removed in 3.0.0).
           enum:
             - secret_invalid
-            - identity_mismatch
       additionalProperties: false
     ConfirmationId:
       description: Opaque, unguessable id of a pending confirmation (C11); used in URL paths and as the key of the portal preview.

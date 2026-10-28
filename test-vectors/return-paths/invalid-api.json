@@ -1,0 +1,7 @@
+{
+  "description": "A redirect after login must not land on a BFF endpoint.",
+  "value": "/api/v1/auth/login?returnPath=/catalog",
+  "expected": {
+    "valid": false
+  }
+}

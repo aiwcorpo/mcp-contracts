@@ -1,0 +1,7 @@
+{
+  "description": "The root path.",
+  "value": "/",
+  "expected": {
+    "valid": true
+  }
+}

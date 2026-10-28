@@ -1,0 +1,7 @@
+{
+  "description": "RFC 9728 metadata is served by the gateway.",
+  "value": "/.well-known/oauth-protected-resource",
+  "expected": {
+    "valid": false
+  }
+}

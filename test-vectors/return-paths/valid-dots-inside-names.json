@@ -1,0 +1,7 @@
+{
+  "description": "Dots that are not whole . or .. segments.",
+  "value": "/docs/v1.2/..notes",
+  "expected": {
+    "valid": true
+  }
+}

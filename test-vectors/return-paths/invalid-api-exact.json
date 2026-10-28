@@ -1,0 +1,7 @@
+{
+  "description": "The bare /api prefix.",
+  "value": "/api",
+  "expected": {
+    "valid": false
+  }
+}
