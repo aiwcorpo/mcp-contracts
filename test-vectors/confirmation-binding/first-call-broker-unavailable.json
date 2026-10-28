@@ -1,0 +1,19 @@
+{
+  "description": "The broker does not answer: upstream_unavailable.",
+  "kind": "first-call",
+  "authenticator": "unavailable",
+  "pendingCalls": [],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "arguments": {
+      "issueKey": "ABC-123"
+    }
+  },
+  "at": "2026-10-26T20:00:00Z",
+  "expected": {
+    "outcome": "upstream_unavailable",
+    "pendingCreated": false
+  }
+}

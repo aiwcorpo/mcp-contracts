@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
   version: 3.0.0-SNAPSHOT
-  summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
+  summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, read-only confirmation preview).
   description: |
     Callers and their authentication:
 
@@ -609,7 +609,13 @@ paths:
       tags: [confirmations]
       operationId: getConfirmation
       x-allowed-client-cn: [mcp-portal-bff]
-      summary: Preview a pending confirmation; owner only, fresh MFA required (CC-034).
+      summary: Read-only preview of a pending confirmation; owner only, valid session, no fresh MFA.
+      description: |
+        The preview is optional: the code from the authenticator works without opening it (CC-091). The gateway
+        computes everything from its own record of the pending call, never from the client. A successful call
+        records that the owner viewed the preview (`previewViewedAt`, CC-091); this is the only side effect of a GET
+        in C5. There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
+        refusing is not typing it (the call expires after 120 s).
       security:
         - mtls: []
           bffUserToken: []
@@ -633,62 +639,17 @@ paths:
                     confirmationId: cnf_4k9Qe2LxW7tB3mZp
                     tool: jira__delete_issue
                     system: jira
+                    resource:
+                      type: Jira::Issue
+                      id: ABC-123
+                      parent: Jira::Project::ABC
                     arguments:
                       - name: issueKey
                         value: '"ABC-123"'
                         truncated: false
                     expiresAt: '2026-10-26T20:02:00Z'
         '401':
-          $ref: '#/components/responses/StepUpOrUnauthenticated'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    post:
-      tags: [confirmations]
-      operationId: decideConfirmation
-      x-allowed-client-cn: [mcp-portal-bff]
-      summary: Approve or decline a pending confirmation; owner only, fresh MFA required. Approval returns the one-time code (CC-077).
-      security:
-        - mtls: []
-          bffUserToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConfirmationDecision'
-            examples:
-              approve:
-                value:
-                  decision: approve
-      responses:
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '200':
-          description: |
-            Decision recorded. Approval returns the one-time confirmation code; approving never executes the
-            action. The user pastes the code into the MCP client session and the agent retries the call with the
-            same arguments plus confirmation_code (C11, CC-077). Decline returns no code.
-          headers:
-            Cache-Control:
-              $ref: '#/components/headers/NoStore'
-            Pragma:
-              $ref: '#/components/headers/PragmaNoCache'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConfirmationOutcome'
-              examples:
-                approved:
-                  value:
-                    decision: approve
-                    code: '493201'
-                    codeExpiresAt: '2026-10-26T20:02:00Z'
-                    attemptsLeft: 3
-                declined:
-                  value:
-                    decision: decline
-        '401':
-          $ref: '#/components/responses/StepUpOrUnauthenticated'
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
   /admin/v1/policy/status:
@@ -722,7 +683,7 @@ paths:
 components:
   headers:
     NoStore:
-      description: Required on responses carrying a one-time confirmation code or the arguments of a pending call (CC-077); intermediaries and clients must not cache them.
+      description: Required on responses carrying the arguments of a pending call (CC-091); intermediaries and clients must not cache them.
       required: true
       schema:
         type: string
@@ -784,19 +745,6 @@ components:
         maximum: 200
         default: 50
   responses:
-    StepUpOrUnauthenticated:
-      description: Missing or invalid token, or the user's last MFA authentication is not fresh enough (step_up_required with stepUpUrl, CC-010, CC-034).
-      content:
-        application/json:
-          schema:
-            oneOf:
-              - $ref: '#/components/schemas/StepUpRequired'
-              - $ref: '#/components/schemas/Error'
-          examples:
-            step_up_required:
-              value:
-                error: step_up_required
-                stepUpUrl: https://mcp-portal.internal/api/v1/auth/login?stepUp=true&returnPath=/confirm/cnf_4k9Qe2LxW7tB3mZp
     BadRequest:
       description: Malformed request or schema violation.
       content:
@@ -838,17 +786,6 @@ components:
               value:
                 error: not_found_or_denied
   schemas:
-    StepUpRequired:
-      type: object
-      required: [error, stepUpUrl]
-      properties:
-        error:
-          const: step_up_required
-        stepUpUrl:
-          type: string
-          format: uri
-          description: Portal URL that re-authenticates with max_age / acr_values (configured in the gateway).
-      additionalProperties: false
     Error:
       type: object
       description: Generic error body for statuses whose body C5 does not define.
@@ -1100,43 +1037,28 @@ components:
         system:
           description: System the tool acts on; the portal shows it next to the tool (CC-077). Read by the gateway from its own record of the pending call, never from the client.
           $ref: '../schemas/common.schema.json#/$defs/SystemId'
+        resource:
+          description: Main resource of the call from resourceRefs (type, id, parent), computed by the gateway, the same value that goes to the audit event (CC-098); absent when the tool takes no resource identifier.
+          type: object
+          required: [type, id]
+          properties:
+            type:
+              $ref: '../schemas/common.schema.json#/$defs/ResourceType'
+            id:
+              type: string
+              maxLength: 512
+            parent:
+              type: string
+              maxLength: 600
+          additionalProperties: false
         arguments:
           description: Arguments sorted by name (fixed order), without confirmation_code.
           type: array
           items:
             $ref: '#/components/schemas/ConfirmationArgument'
         expiresAt:
-          description: End of the confirmation TTL (C11, 120 s after creation); the portal shows a countdown.
+          description: End of the validity of the pending call (C11, 120 s after creation, not extended by a repeated first call); the portal shows a countdown.
           $ref: '../schemas/common.schema.json#/$defs/Timestamp'
-      additionalProperties: false
-    ConfirmationOutcome:
-      type: object
-      required: [decision]
-      properties:
-        decision:
-          type: string
-          enum: [approve, decline]
-        code:
-          description: Present exactly when decision is approve.
-          $ref: '../schemas/common.schema.json#/$defs/ConfirmationCode'
-        codeExpiresAt:
-          description: End of the code TTL (120 s); present with code.
-          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
-        attemptsLeft:
-          description: Remaining verification attempts of the code (3 at issue); present with code.
-          type: integer
-          minimum: 0
-          maximum: 3
-      additionalProperties: false
-      dependentRequired:
-        code: [codeExpiresAt, attemptsLeft]
-    ConfirmationDecision:
-      type: object
-      required: [decision]
-      properties:
-        decision:
-          type: string
-          enum: [approve, decline]
       additionalProperties: false
     PolicyStatus:
       type: object

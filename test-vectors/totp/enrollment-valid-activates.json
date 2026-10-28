@@ -1,0 +1,19 @@
+{
+  "description": "A correct first code activates the registration and sets the last accepted step. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "enrollment": {
+    "createdAt": "2026-10-14T17:46:10Z",
+    "wrongCodes": 0
+  },
+  "steps": [
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "705202",
+      "expected": {
+        "result": "active",
+        "lastAcceptedStep": 59733334
+      }
+    }
+  ]
+}

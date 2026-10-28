@@ -93,3 +93,31 @@ test('credential-broker.v1.yaml: every response declares X-Request-Id (CC-047)',
     }
   }
 });
+
+// The seed of the authenticator leaves the platform exactly once, in the 201 of enrollment (CC-092, CC-093): no other
+// response of C4 or C12 may carry `secret` or `otpauthUri`, and the 201 must be no-store.
+for (const [file, enrollmentOperation] of [['credential-broker.v1.yaml', 'startAuthenticatorEnrollment'], ['portal-bff.v1.yaml', 'startMyAuthenticatorEnrollment']]) {
+  test(`${file}: only ${enrollmentOperation} returns the authenticator seed`, async () => {
+    const spec = await dereferenceOpenApi(file);
+    const seedFields = new Set(['secret', 'otpauthUri']);
+    const hasSeed = (value) => value !== null && typeof value === 'object'
+      && (Array.isArray(value) ? value.some(hasSeed) : Object.entries(value).some(([k, v]) => (seedFields.has(k) && typeof v === 'string') || hasSeed(v)));
+    let found = 0;
+    for (const { route, method, operation } of operations(spec)) {
+      for (const [status, response] of Object.entries(operation.responses)) {
+        const media = response.content?.['application/json'];
+        const withSeed = Object.values(media?.examples ?? {}).some((example) => hasSeed(example.value));
+        const properties = JSON.stringify(media?.schema?.properties ?? {});
+        const schemaSeed = /"(secret|otpauthUri)"/.test(properties);
+        if (operation.operationId === enrollmentOperation && status === '201') {
+          found++;
+          assert.ok(withSeed && schemaSeed, 'the 201 carries the seed');
+          assert.equal(response.headers['Cache-Control'].schema.const, 'no-store');
+        } else {
+          assert.ok(!withSeed && !schemaSeed, `${method.toUpperCase()} ${route} ${status} must not carry a seed`);
+        }
+      }
+    }
+    assert.equal(found, 1);
+  });
+}

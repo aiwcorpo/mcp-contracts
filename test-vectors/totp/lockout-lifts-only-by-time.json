@@ -1,0 +1,96 @@
+{
+  "description": "One second before the lock ends the answer is still locked, at the end the correct code is accepted. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": null,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:48:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:49:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:50:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:51:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T18:06:09Z",
+      "code": "357151",
+      "expected": {
+        "result": "locked",
+        "retryAfterSeconds": 1,
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T18:06:10Z",
+      "code": "357151",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 59733372,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

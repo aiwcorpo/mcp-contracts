@@ -1,0 +1,22 @@
+{
+  "description": "No pending call (never created, already spent or removed).",
+  "kind": "retry",
+  "pending": null,
+  "attempt": {
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "at": "2026-10-26T20:01:00Z",
+    "arguments": {
+      "issueKey": "ABC-123",
+      "confirmation_code": "705202"
+    }
+  },
+  "verification": {
+    "result": "ok"
+  },
+  "expected": {
+    "outcome": "confirmation_failed",
+    "verifyCalled": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "Active authenticator: a pending call is created, valid 120 s.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "arguments": {
+      "issueKey": "ABC-123"
+    }
+  },
+  "at": "2026-10-26T20:00:00Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": false,
+    "expiresAt": "2026-10-26T20:02:00Z",
+    "pendingCreated": true
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": "Exactly 10 minutes after the start the enrollment is still valid. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "enrollment": {
+    "createdAt": "2026-10-14T17:47:10Z",
+    "wrongCodes": 0
+  },
+  "steps": [
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:57:10Z",
+      "code": "085962",
+      "expected": {
+        "result": "active",
+        "lastAcceptedStep": 59733354
+      }
+    }
+  ]
+}

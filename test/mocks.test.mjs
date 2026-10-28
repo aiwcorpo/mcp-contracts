@@ -54,7 +54,7 @@ test('MSW: mutating call with matching cookie and header succeeds', async () => 
     body: JSON.stringify({ secret: 'test-only' }),
   });
   assert.equal(put.status, 200, 'no step-up for PUT secret (CC-090)');
-  const stepUp = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`, { headers: { Prefer: 'example=step_up_required' } });
+  const stepUp = await fetch(`${BASE}/api/v1/authenticator/enrollment`, { method: 'POST', headers: { ...headers, Prefer: 'example=step_up_required' } });
   assert.equal(stepUp.status, 401);
   const body = await stepUp.json();
   assert.equal(body.error, 'step_up_required');
@@ -97,9 +97,42 @@ test('MSW: logout requires the XSRF header (CC-023)', async () => {
   assert.equal((await fetch(`${BASE}/api/v1/auth/logout`, { method: 'POST', headers })).status, 204);
 });
 
-test('MSW: confirmation preview carries expiresAt (CC-015)', async () => {
+test('MSW: confirmation preview carries expiresAt and the resource, and needs no step-up (CC-015, CC-091, CC-098)', async () => {
   const res = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`);
-  assert.ok((await res.json()).expiresAt);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.expiresAt);
+  assert.deepEqual(body.resource, { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::ABC' });
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+});
+
+test('MSW: there is no decision endpoint for confirmations (CC-091)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  await assert.rejects(fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp`, { method: 'POST', headers, body: JSON.stringify({ decision: 'approve' }) }));
+});
+
+test('MSW: authenticator registration (CC-093)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
+  const status = await fetch(`${BASE}/api/v1/authenticator`);
+  assert.equal((await status.json()).state, 'active');
+  assert.equal((await (await fetch(`${BASE}/api/v1/authenticator`, { headers: { Prefer: 'example=none' } })).json()).state, 'none');
+  assert.match((await (await fetch(`${BASE}/api/v1/authenticator`, { headers: { Prefer: 'example=locked' } })).json()).lockedUntil, /Z$/);
+  const started = await fetch(`${BASE}/api/v1/authenticator/enrollment`, { method: 'POST', headers });
+  assert.equal(started.status, 201);
+  assert.equal(started.headers.get('cache-control'), 'no-store');
+  const body = await started.json();
+  assert.match(body.secret, /^[A-Z2-7]{32}$/);
+  assert.ok(body.otpauthUri.includes(`secret=${body.secret}`));
+  const confirm = await fetch(`${BASE}/api/v1/authenticator/enrollment/confirm`, { method: 'POST', headers, body: JSON.stringify({ enrollmentId: body.enrollmentId, code: '705202' }) });
+  assert.equal(confirm.status, 200);
+  for (const [example, status422] of [['invalid_code', 'invalid_code'], ['enrollment_invalid', 'enrollment_invalid']]) {
+    const res = await fetch(`${BASE}/api/v1/authenticator/enrollment/confirm`, { method: 'POST', headers: { ...headers, Prefer: `example=${example}` }, body: '{}' });
+    assert.equal(res.status, 422);
+    assert.equal((await res.json()).error, status422);
+  }
+  assert.equal((await fetch(`${BASE}/api/v1/authenticator`, { method: 'DELETE', headers })).status, 204);
+  const noStepUp = await fetch(`${BASE}/api/v1/authenticator`, { method: 'DELETE', headers: { ...headers, Prefer: 'example=step_up_required' } });
+  assert.equal(noStepUp.status, 401);
 });
 
 test('MSW: invalid returnPath gives 400 (CC-032)', async () => {

@@ -1,5 +1,5 @@
 {
-  "description": "Wrong or expired code.",
+  "description": "Wrong, used or expired code, other arguments, or attempts exhausted.",
   "expected": {
     "valid": true
   },

@@ -1,0 +1,47 @@
+{
+  "description": "GET /v1/authenticator from the gateway: user variant with tool (CC-092).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImRlbGV0ZV9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6IjIwMjYxMDI2MTIwMDAwLWExYjJjM2QiLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDcyIn0.UYdg2diUVhL0u92GQ2wR-71pDCN7NdP9_1HTebUitdFTyKm0TlE3TCEJu7GcUwDjRQl1EJRdoXdhpyIcX77ekg",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-credential-broker",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "usr": "jkowalski",
+    "grp": [
+      "mcp-jira-read",
+      "mcp-jira-write",
+      "mcp-jira-proj-ABC"
+    ],
+    "azp": "claude-code",
+    "tool": "delete_issue",
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "prv": "20261026120000-a1b2c3d",
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000072"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-credential-broker",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "http",
+    "method": "GET",
+    "path": "/v1/authenticator",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+  },
+  "expected": {
+    "valid": true,
+    "httpStatus": 200
+  }
+}

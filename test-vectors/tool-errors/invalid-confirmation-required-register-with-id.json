@@ -1,0 +1,12 @@
+{
+  "description": "registerUrl with a confirmationId: no pending call exists without a registration.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "Register first.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+    "registerUrl": "https://mcp.aiwcorpo.pl/authenticator"
+  }
+}

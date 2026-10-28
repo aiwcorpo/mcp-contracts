@@ -41,7 +41,8 @@ mcp-contracts/
 │   ├── keys/                # KLUCZE TESTOWE, NOT FOR PRODUCTION
 │   ├── jwt/  manifests/  definition-hash/  audit-events/  tool-errors/  bundles/
 │   ├── untrusted-text/      # kształt UntrustedText (CC-072)
-│   ├── confirmation-binding/  # kod potwierdzenia C11 (CC-077)
+│   ├── confirmation-binding/  # oczekujące wywołanie i wynik weryfikacji kodu (C11, CC-091)
+│   ├── totp/                  # Authenticator: RFC 6238, blokada, rejestracja (CC-092)
 │   ├── connect-redirects/  secret-expiry/  catalog-actions/  # CC-086, CC-084, CC-083
 │   ├── servicedesk-service-account/  # reguła kolejek konta serwisowego (CC-076)
 │   ├── entity-builder/      # wejście buildera -> encje i kontekst Cedar
@@ -290,6 +291,7 @@ Reguły wariantów JWT (CC-030, CC-033, CC-038, CC-069, CC-070):
 | `initialize`, `server/discover`, `tools/list`, `ping`, `GET /mcp-manifest` | użytkownika albo serwisowy | zabroniony |
 | `subscriptions/listen`, `notifications/*`, odpowiedzi JSON-RPC, `GET`/`DELETE` na endpoincie MCP | tylko użytkownika | zabroniony |
 | broker `POST /v1/credentials/resolve` | tylko użytkownika | wymagany |
+| broker `GET /v1/authenticator`, `POST /v1/authenticator/verify` (z gateway'a, CC-092) | tylko użytkownika | wymagany (narzędzie, które jest potwierdzane) |
 | broker `GET /v1/systems` | użytkownika albo serwisowy | zabroniony |
 
 Wariant serwisowy jest używany wyłącznie bez sesji (bezstanowo): wszystkie żądania w ramach sesji, w tym
@@ -299,19 +301,49 @@ Wariant serwisowy jest używany wyłącznie bez sesji (bezstanowo): wszystkie ż
 paczki; odbiorca nie wnioskuje z niej o polityce. Od M2 gateway bez paczki nie wstaje (CC-068).
 
 C11: w erze MCP 2026-07-28 kanał potwierdzenia "elicitation URL" to `InputRequiredResult` z żądaniem elicitation w
-trybie URL, ponawiany `tools/call` niesie `inputResponses`. Semantyka potwierdzenia (kod, wygaśnięcie, świeże MFA)
-bez zmian.
+trybie URL, ponawiany `tools/call` niesie `inputResponses`. Elicitation może tylko otworzyć `previewUrl`; kod wpisuje
+człowiek w kliencie (CC-091, 3.0.0).
 
-## Potwierdzenia (C11, kanał kodu)
+## Potwierdzenia kodem TOTP (C11, od 3.0.0)
 
-Kanał kodu jest domyślny dla wszystkich klientów (CC-077): `confirmation_required` z `confirmationId` i `confirmUrl`
--> portal pokazuje narzędzie, system i argumenty z gateway'a (`GET /api/v1/confirmations/{id}`) -> "Zatwierdź"
-wymaga świeżego MFA -> `POST /api/v1/confirmations/{id}` zwraca jednorazowy kod (`ConfirmationOutcome`) -> człowiek
-wkleja kod w sesji klienta, agent ponawia wywołanie z tymi samymi argumentami i `confirmation_code`. Kod jest
-związany z (`sub`, `serverId`, `tool`, SHA-256 kanonicznych argumentów bez `confirmation_code`), ma TTL 120 s, 3
-próby i działa raz (`test-vectors/confirmation-binding/`). Elicitation URL może tylko otwierać ten sam `confirmUrl`;
-zatwierdzenie bez kodu niczego nie wykonuje. `ConfirmationCodeSender` to opcjonalny kanał dostarczenia kodu poza
-modelem.
+Akcję destrukcyjną potwierdza bieżący 6-cyfrowy kod z konta "MCP Platform" w aplikacji Authenticator, wpisywany w
+kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gateway dostaje tylko wynik.
+
+1. Pierwsze wywołanie: gateway pyta brokera o rejestrację (`GET /v1/authenticator`). Brak rejestracji: fail-closed,
+   `confirmation_required` z samym `registerUrl`, bez oczekującego wywołania. Rejestracja jest: gateway zapisuje
+   oczekujące wywołanie pod kluczem (`sub`, `serverId`, `tool`, SHA-256 kanonicznych argumentów bez
+   `confirmation_code`), TTL 120 s, 3 próby, i odpowiada `confirmation_required` z `confirmationId`, `description`
+   (opis liczony przez gateway), `previewUrl` i `expiresAt`. Powtórzone pierwsze wywołanie zwraca ten sam rekord bez
+   przedłużania TTL; limit oczekujących na `sub` (domyślnie 3) daje `rate_limited`.
+2. Podgląd (`previewUrl`, C12 `GET /api/v1/confirmations/{id}`) jest **opcjonalny**: tylko odczyt, tylko właściciel,
+   sesja bez świeżego MFA, `no-store`; kod działa także bez jego otwarcia. Ryzyko rezydualne przyjęte przez człowieka
+   (2026-10-27): kod potwierdza obecność człowieka, nie operację, a opis operacji widziany w niezaufanym kliencie
+   może się różnić od oczekującej, jeśli podgląd nie zostanie otwarty. Audyt odróżnia oba przypadki
+   (`user_confirmed` i `user_confirmed_no_preview`).
+3. Ponowienie z tymi samymi argumentami i `confirmation_code` (wzorzec `^[0-9]{6}$`, pole dokładane do `inputSchema`
+   poza `definitionHash`): kod o złym formacie to `invalid_argument` i nie zużywa próby. Gateway szuka oczekującego
+   wywołania; gdy go nie ma, wygasło albo argumenty się różnią, odpowiada `confirmation_failed` bez pytania brokera
+   (krok TOTP zostaje niewykorzystany). W przeciwnym razie woła brokera i mapuje wynik: `ok` wykonuje narzędzie i
+   zużywa oczekujące wywołanie, `invalid`/`replayed` to `confirmation_failed` i -1 próba (przy 0 oczekujące
+   wywołanie znika), `locked` to `rate_limited` z `retryAfterSeconds` bez zużycia próby, `not_registered` to
+   `confirmation_required` z `registerUrl`, błąd brokera to `upstream_unavailable` (kod nie jest "oddawany").
+4. Broker (RFC 6238: HMAC-SHA-1, 6 cyfr, krok 30 s, okno +-1 krok, każdy krok przyjęty raz): 5 błędnych kodów
+   (`invalid` lub `replayed`) w 15 minut blokuje weryfikację użytkownika na 15 minut. **Blokada zdejmuje się tylko
+   upływem czasu** (decyzja człowieka 2026-10-28): w portalu nie ma odblokowania, usunięcie i ponowna rejestracja jej
+   nie zdejmują, reset przez `mcp-offboarding` też nie. Rejestracja w toku ważna 10 minut, trzy błędne kody ją
+   niszczą. Rejestrację zakłada się i usuwa po świeżym MFA Entra (BFF, CC-093); zgubiony telefon: usunięcie
+   rejestracji po MFA Entra i założenie od nowa, a gdy utracony jest też czynnik Entra, helpdesk woła
+   `POST /v1/admin/users/{sub}/authenticator/reset` (CN `mcp-offboarding`).
+5. Ziarno wychodzi z brokera raz, w `201` rejestracji do właściciela (`no-store`, wyjątek w niezmienniku 4 planu), nigdy
+   do logów, audytu ani sesji BFF. Kodu, ziarna i `otpauthUri` nie ma w C8 (pole `event: "authenticator"`, CC-094).
+6. Nie ma decyzji "odrzuć" ani endpointu decyzji: odmowa to niewpisanie kodu, a oczekujące wywołanie wygasa po
+   120 s. Kod `confirmation_declined` zniknął z C10. SPI `ConfirmationCodeSender` jest bezprzedmiotowe.
+7. Reguła `destructive-requires-fresh-mfa` (`cedar/examples/step-up.cedar`, wektory `gw-destructive-*-mfa`) zostaje w
+   przykładach bez zmian, ale **nie wchodzi do paczki produkcyjnej** (ws-09): użytkownik nie ma mieć dwóch mechanizmów.
+
+Wektory: `test-vectors/confirmation-binding/` (pierwsze wywołanie i ponowienie, wynik brokera jest daną wejściową),
+`test-vectors/totp/` (RFC 6238, okno, jednorazowość kroku, blokada, rejestracja, URI `otpauth`; ziarno testowe z RFC
+6238, NOT FOR PRODUCTION), referencje w `scripts/lib/confirmation.mjs` i `scripts/lib/totp.mjs`.
 
 ## Jedna domena (CC-089)
 

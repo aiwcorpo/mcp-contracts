@@ -1,0 +1,23 @@
+{
+  "description": "After a step was used, the code of the next step is accepted (two confirmations need two codes). Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": 59733334,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "165886",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 59733335,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

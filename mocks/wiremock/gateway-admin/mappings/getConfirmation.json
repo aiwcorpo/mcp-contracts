@@ -45,6 +45,11 @@
           "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
           "tool": "jira__delete_issue",
           "system": "jira",
+          "resource": {
+            "type": "Jira::Issue",
+            "id": "ABC-123",
+            "parent": "Jira::Project::ABC"
+          },
           "arguments": [
             {
               "name": "issueKey",
@@ -57,7 +62,7 @@
       }
     },
     {
-      "name": "getConfirmation 401 step_up_required",
+      "name": "getConfirmation 401 unauthenticated",
       "priority": 2,
       "request": {
         "method": "GET",
@@ -67,7 +72,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
           }
         }
       },
@@ -77,8 +82,7 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "step_up_required",
-          "stepUpUrl": "https://mcp-portal.internal/api/v1/auth/login?stepUp=true&returnPath=/confirm/cnf_4k9Qe2LxW7tB3mZp"
+          "error": "unauthenticated"
         }
       }
     },

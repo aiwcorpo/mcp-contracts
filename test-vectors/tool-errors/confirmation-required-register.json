@@ -1,0 +1,11 @@
+{
+  "description": "No authenticator registered: only registerUrl, no pending call (CC-091).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "Register the authenticator in the portal first, then repeat the call.",
+    "registerUrl": "https://mcp.aiwcorpo.pl/authenticator"
+  }
+}

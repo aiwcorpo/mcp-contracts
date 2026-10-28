@@ -312,6 +312,60 @@ audit('gateway-confirmation-pending', 'Destructive call waiting for confirmation
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE',
   decision: 'confirmation_pending',
 }, true);
+audit('gateway-confirmation-user-confirmed', 'The retry with a valid code runs the call; the preview had been opened (CC-094).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE',
+  resource: { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::ABC' }, decision: 'allow', reason: 'user_confirmed', outcome: 'ok',
+}, true);
+audit('gateway-confirmation-preview-not-viewed', 'Code accepted although the owner did not open the portal preview (CC-094).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'allow', reason: 'user_confirmed_no_preview', outcome: 'ok',
+}, true);
+audit('gateway-confirmation-attempts-exhausted', 'Third wrong code: the pending call is removed (CC-094).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'attempts_exhausted', outcome: 'denied', errorCode: 'confirmation_failed',
+}, true);
+audit('broker-authenticator-registered', 'Authenticator registration activated; the seed is never audited (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', reason: 'authenticator_registered', outcome: 'ok',
+}, true);
+audit('broker-authenticator-verify-ok', 'Code verified for a destructive call; tool and client come from the internal JWT (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', virtualServer: 'team-a-dev', tool: 'delete_issue',
+  decision: 'allow', reason: 'totp_verified', outcome: 'ok',
+}, true);
+audit('broker-authenticator-verify-replayed', 'A code of a step that was already used.', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', client: 'claude-code', tool: 'delete_issue', decision: 'deny', reason: 'totp_replayed', outcome: 'denied',
+}, true);
+audit('broker-authenticator-verify-locked', 'Verification blocked after repeated wrong codes; the code is not looked at.', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', client: 'claude-code', tool: 'delete_issue', decision: 'deny', reason: 'totp_locked', outcome: 'denied', errorCode: 'rate_limited',
+}, true);
+audit('portal-authenticator-removed', 'The user removed the registration after a fresh MFA.', {
+  ...auditBase, component: 'portal', componentId: 'mcp-portal-bff', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', reason: 'authenticator_removed', outcome: 'ok',
+}, true);
+audit('broker-authenticator-reset-by-admin', 'Registration reset by helpdesk; sub is the target user, the caller is the mTLS CN and has no field (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', reason: 'authenticator_reset_by_admin', outcome: 'ok',
+}, true);
+audit('invalid-authenticator-with-code', 'A TOTP code is never audited (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator', reason: 'totp_invalid', outcome: 'denied', code: '705202',
+}, false);
+audit('invalid-authenticator-with-secret', 'The seed is never audited (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator', reason: 'authenticator_registered', outcome: 'ok', secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+}, false);
+audit('invalid-authenticator-with-otpauth-uri', 'The otpauth URI contains the seed and is never audited (CC-094).', {
+  ...auditBase, component: 'portal', componentId: 'mcp-portal-bff', event: 'authenticator', reason: 'authenticator_enrollment_started', outcome: 'ok',
+  otpauthUri: 'otpauth://totp/MCP%20Platform:jkowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+}, false);
+audit('invalid-authenticator-without-reason', 'An authenticator event says why (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator', outcome: 'ok',
+}, false);
+audit('invalid-authenticator-outcome-missing', 'An authenticator event says how it ended (CC-094).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator', reason: 'totp_verified',
+}, false);
 audit('server-resource-denied', 'Server denied a resolved resource (Restricted project).', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
@@ -493,34 +547,92 @@ sdAccount('srv-servicedesk-user-secret-not-restricted-by-grants',
   { credentialType: 'user-secret', bundleQueueGrants: [], serverConfiguredQueues: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
   { decision: 'continue' });
 
-// ---------- confirmation code binding (C11, CC-077) ----------
+// ---------- pending confirmations and the TOTP code (C11, CC-091) ----------
 
 const SUB1 = '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11';
-const issued = { code: '493201', sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', arguments: { issueKey: 'ABC-123' }, issuedAt: '2026-10-26T20:00:00Z' };
 const argsHash = (args) => {
   const { confirmation_code: _omitted, ...rest } = args;
   return 'sha256:' + createHash('sha256').update(canonicalize(rest), 'utf8').digest('hex');
 };
-const binding = (name, description, attempt, expected, state = {}) => write('confirmation-binding', `${name}.json`, {
-  description,
-  issued: { ...issued, argsSha256: argsHash(issued.arguments), ttlSeconds: 120, maxAttempts: 3 },
-  state: { failedAttempts: 0, used: false, ...state },
-  attempt: { sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', code: '493201', at: '2026-10-26T20:01:00Z', ...attempt, arguments: { ...(attempt.arguments ?? issued.arguments), confirmation_code: attempt.code ?? '493201' } },
-  expected,
+const PENDING_ARGS = { issueKey: 'ABC-123' };
+const pendingCall = (extra = {}) => ({
+  confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', argsSha256: argsHash(PENDING_ARGS),
+  createdAt: '2026-10-26T20:00:00Z', attemptsLeft: 3, previewViewed: true, ...extra,
 });
-binding('valid-same-arguments', 'Retry with the same arguments plus confirmation_code: accepted; confirmation_code is not part of the hash.', {}, { valid: true });
-binding('valid-key-order-irrelevant', 'Arguments are hashed in RFC 8785 canonical form, so key order does not matter.',
-  { arguments: { issueKey: 'ABC-123' } }, { valid: true });
-binding('invalid-arguments-changed', 'The agent changed an argument after the human approved the original.', { arguments: { issueKey: 'ABC-124' } }, { valid: false, reason: 'binding_mismatch' });
-binding('invalid-argument-added', 'An extra argument changes the hash.', { arguments: { issueKey: 'ABC-123', notify: true } }, { valid: false, reason: 'binding_mismatch' });
-binding('invalid-other-user', 'Code issued for another sub.', { sub: 'b1a7c0de-0000-4000-8000-000000000001' }, { valid: false, reason: 'binding_mismatch' });
-binding('invalid-other-tool', 'Code issued for another tool.', { tool: 'update_issue' }, { valid: false, reason: 'binding_mismatch' });
-binding('invalid-other-server', 'Code issued for another server.', { serverId: 'mcp-gitlab' }, { valid: false, reason: 'binding_mismatch' });
-binding('invalid-wrong-code', 'Wrong digits; counts as a failed attempt.', { code: '000000' }, { valid: false, reason: 'wrong_code' });
-binding('invalid-expired', 'Used 121 s after issue.', { at: '2026-10-26T20:02:01Z' }, { valid: false, reason: 'expired' });
-binding('valid-last-second', 'Used exactly at the 120 s limit.', { at: '2026-10-26T20:02:00Z' }, { valid: true });
-binding('invalid-attempts-exhausted', 'Three failed attempts already used; the right code no longer works.', {}, { valid: false, reason: 'attempts_exhausted' }, { failedAttempts: 3 });
-binding('invalid-already-used', 'One-time: a second use of an accepted code is refused.', {}, { valid: false, reason: 'already_used' }, { used: true });
+// Vectors of the retry with confirmation_code. `verification` is the answer of the broker (C4 verifyAuthenticatorCode),
+// an input here: whether the code is a valid TOTP is specified by test-vectors/totp/.
+const retryVector = (name, description, { pending = pendingCall(), attempt = {}, verification = { result: 'ok' } }, expected) =>
+  write('confirmation-binding', `${name}.json`, {
+    description, kind: 'retry', pending,
+    attempt: { sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', at: '2026-10-26T20:01:00Z', ...attempt,
+      arguments: { ...(attempt.arguments ?? PENDING_ARGS), confirmation_code: '705202' } },
+    verification, expected,
+  });
+const unbound = { outcome: 'confirmation_failed', verifyCalled: false };
+retryVector('retry-valid-code', 'Same arguments plus confirmation_code and the broker accepts the code: the call runs, the pending call is spent.', {},
+  { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed' });
+retryVector('retry-valid-code-preview-not-viewed', 'The code is accepted although the owner never opened the preview: allowed (the preview is optional), audited as user_confirmed_no_preview.',
+  { pending: pendingCall({ previewViewed: false }) },
+  { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed_no_preview' });
+retryVector('retry-key-order-irrelevant', 'Arguments are hashed in RFC 8785 canonical form, so key order does not matter.',
+  { pending: pendingCall({ tool: 'update_issue', argsSha256: argsHash({ issueKey: 'ABC-123', summary: 'x' }) }),
+    attempt: { tool: 'update_issue', arguments: { summary: 'x', issueKey: 'ABC-123' } } },
+  { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed' });
+retryVector('retry-last-second', 'Used exactly at the 120 s limit.', { attempt: { at: '2026-10-26T20:02:00Z' } },
+  { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed' });
+retryVector('retry-arguments-changed', 'The agent changed an argument after the pending call was created: no broker call, so the TOTP step stays unused.',
+  { attempt: { arguments: { issueKey: 'ABC-124' } } }, unbound);
+retryVector('retry-argument-added', 'An extra argument changes the hash.', { attempt: { arguments: { issueKey: 'ABC-123', notify: true } } }, unbound);
+retryVector('retry-other-user', 'Pending call of another sub.', { attempt: { sub: 'b1a7c0de-0000-4000-8000-000000000001' } }, unbound);
+retryVector('retry-other-tool', 'Pending call of another tool.', { attempt: { tool: 'update_issue' } }, unbound);
+retryVector('retry-other-server', 'Pending call of another server.', { attempt: { serverId: 'mcp-gitlab' } }, unbound);
+retryVector('retry-no-pending-call', 'No pending call (never created, already spent or removed).', { pending: null }, unbound);
+retryVector('retry-expired', 'Used 121 s after the pending call was created: no broker call.', { attempt: { at: '2026-10-26T20:02:01Z' } },
+  { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'confirmation_expired' });
+retryVector('retry-attempts-exhausted', 'No attempts left; the broker is not asked.', { pending: pendingCall({ attemptsLeft: 0 }) },
+  { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'attempts_exhausted' });
+retryVector('retry-wrong-code', 'The broker says invalid: confirmation_failed and one attempt less.', { verification: { result: 'invalid' } },
+  { outcome: 'confirmation_failed', verifyCalled: true, pendingConsumed: false, attemptsLeft: 2 });
+retryVector('retry-replayed-code', 'The broker says replayed (step already used): counts like a wrong code.', { verification: { result: 'replayed' } },
+  { outcome: 'confirmation_failed', verifyCalled: true, pendingConsumed: false, attemptsLeft: 2 });
+retryVector('retry-third-wrong-code-removes-pending', 'The third wrong code spends the last attempt and removes the pending call.',
+  { pending: pendingCall({ attemptsLeft: 1 }), verification: { result: 'invalid' } },
+  { outcome: 'confirmation_failed', verifyCalled: true, pendingConsumed: true, attemptsLeft: 0, auditReason: 'attempts_exhausted' });
+retryVector('retry-user-locked', 'The user is locked in the broker: rate_limited with the time left; no attempt is spent and the code is not checked.',
+  { verification: { result: 'locked', retryAfterSeconds: 840 } },
+  { outcome: 'rate_limited', verifyCalled: true, pendingConsumed: false, attemptsLeft: 3, retryAfterSeconds: 840 });
+retryVector('retry-registration-vanished', 'The registration was removed in the meantime: confirmation_required with registerUrl; the pending call is untouched.',
+  { verification: { result: 'not_registered' } },
+  { outcome: 'confirmation_required', register: true, verifyCalled: true, pendingConsumed: false, attemptsLeft: 3, auditReason: 'authenticator_not_registered' });
+retryVector('retry-broker-unavailable', 'The broker does not answer: upstream_unavailable (fail-closed), the code is not spent.',
+  { verification: { result: 'unavailable' } },
+  { outcome: 'upstream_unavailable', verifyCalled: true, pendingConsumed: false, attemptsLeft: 3 });
+
+const firstCallVector = (name, description, { authenticator = 'active', pendingCalls = [], pendingLimit = 3, call = {}, at = '2026-10-26T20:00:00Z' }, expected) =>
+  write('confirmation-binding', `${name}.json`, {
+    description, kind: 'first-call', authenticator, pendingCalls, pendingLimit,
+    call: { serverId: 'mcp-jira', tool: 'delete_issue', arguments: PENDING_ARGS, ...call }, at, expected,
+  });
+const stored = (extra = {}) => ({ confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', serverId: 'mcp-jira', tool: 'delete_issue', argsSha256: argsHash(PENDING_ARGS), createdAt: '2026-10-26T20:00:00Z', ...extra });
+firstCallVector('first-call-creates-pending', 'Active authenticator: a pending call is created, valid 120 s.', {},
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:00Z', pendingCreated: true });
+firstCallVector('first-call-no-authenticator', 'No registration: fail-closed, no pending call, only registerUrl; no code would be accepted.', { authenticator: 'none' },
+  { outcome: 'confirmation_required', register: true, pendingCreated: false });
+firstCallVector('first-call-broker-unavailable', 'The broker does not answer: upstream_unavailable.', { authenticator: 'unavailable' },
+  { outcome: 'upstream_unavailable', pendingCreated: false });
+firstCallVector('first-call-repeated-returns-same-record', 'The same first call again returns the same confirmationId and does not extend the TTL.',
+  { pendingCalls: [stored()], at: '2026-10-26T20:01:00Z' },
+  { outcome: 'confirmation_required', register: false, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', expiresAt: '2026-10-26T20:02:00Z', pendingCreated: false });
+firstCallVector('first-call-other-arguments-new-pending', 'Other arguments are another operation: a new pending call.',
+  { pendingCalls: [stored()], call: { arguments: { issueKey: 'ABC-124' } }, at: '2026-10-26T20:01:00Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:03:00Z', pendingCreated: true });
+firstCallVector('first-call-expired-pending-is-replaced', 'An expired pending call does not count and is not returned.',
+  { pendingCalls: [stored()], at: '2026-10-26T20:05:00Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:07:00Z', pendingCreated: true });
+firstCallVector('first-call-pending-limit', 'Three live pending calls of the user (default limit): the fourth operation is rate_limited.',
+  { pendingCalls: ['ABC-1', 'ABC-2', 'ABC-3'].map((key, i) => stored({ confirmationId: `cnf_limit000000000${i}`, argsSha256: argsHash({ issueKey: key }) })),
+    call: { arguments: { issueKey: 'ABC-4' } }, at: '2026-10-26T20:00:30Z' },
+  { outcome: 'rate_limited', pendingCreated: false });
 
 // ---------- RFC 8785 numbers (CC-063) ----------
 {
@@ -551,12 +663,30 @@ const safe = (text) => ({ message: text });
 toolError('unauthenticated', 'Token missing or invalid.', { error: 'unauthenticated', ...safe('Authentication required.') }, true);
 toolError('access-denied', 'Policy denied the tool.', { error: 'access_denied', ...safe('You do not have access to this tool.'), requiredEntitlements: ['mcp-jira-write'] }, true);
 toolError('tool-disabled', 'Kill switch or pending approval.', { error: 'tool_disabled', ...safe('This tool is temporarily disabled.') }, true);
-toolError('confirmation-required', 'Fallback channel without elicitation (C11).', {
-  error: 'confirmation_required', ...safe('Confirm this action in the portal, then retry with confirmation_code.'),
-  confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', confirmUrl: 'https://mcp-portal.internal/confirm/cnf_4k9Qe2LxW7tB3mZp',
+toolError('confirmation-required', 'A pending call exists: type the code from the authenticator and retry (C11, CC-091).', {
+  error: 'confirmation_required', ...safe('Type the current 6-digit code of the MCP Platform account from your authenticator app and retry the call with confirmation_code.'),
+  confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', description: 'jira__delete_issue (jira): issueKey="ABC-123"',
+  previewUrl: 'https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp', expiresAt: '2026-10-26T20:02:00Z',
 }, true);
-toolError('confirmation-failed', 'Wrong or expired code.', { error: 'confirmation_failed', ...safe('Confirmation failed.') }, true);
-toolError('confirmation-declined', 'User declined.', { error: 'confirmation_declined', ...safe('The action was declined.') }, true);
+toolError('confirmation-required-register', 'No authenticator registered: only registerUrl, no pending call (CC-091).', {
+  error: 'confirmation_required', ...safe('Register the authenticator in the portal first, then repeat the call.'),
+  registerUrl: 'https://mcp.aiwcorpo.pl/authenticator',
+}, true);
+toolError('invalid-confirmation-required-both', 'previewUrl and registerUrl together: a pending call and a missing registration exclude each other.', {
+  error: 'confirmation_required', ...safe('Confirm.'), confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', description: 'jira__delete_issue (jira): issueKey="ABC-123"',
+  previewUrl: 'https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp', expiresAt: '2026-10-26T20:02:00Z', registerUrl: 'https://mcp.aiwcorpo.pl/authenticator',
+}, false);
+toolError('invalid-confirmation-required-register-with-id', 'registerUrl with a confirmationId: no pending call exists without a registration.', {
+  error: 'confirmation_required', ...safe('Register first.'), confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', registerUrl: 'https://mcp.aiwcorpo.pl/authenticator',
+}, false);
+toolError('invalid-confirmation-required-without-description', 'A pending call needs description, previewUrl and expiresAt.', {
+  error: 'confirmation_required', ...safe('Confirm.'), confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', previewUrl: 'https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp',
+}, false);
+toolError('invalid-confirmation-required-old-confirm-url', 'confirmUrl was renamed to previewUrl in 3.0.0.', {
+  error: 'confirmation_required', ...safe('Confirm.'), confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', confirmUrl: 'https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp',
+}, false);
+toolError('confirmation-failed', 'Wrong, used or expired code, other arguments, or attempts exhausted.', { error: 'confirmation_failed', ...safe('Confirmation failed.') }, true);
+toolError('invalid-confirmation-declined-removed', 'confirmation_declined was removed in 3.0.0: there is no decline, an unconfirmed call expires.', { error: 'confirmation_declined', ...safe('The action was declined.') }, false);
 toolError('credential-required', 'No connected account.', {
   error: 'credential_required', ...safe('Connect your Jira account in the portal.'), system: 'jira',
   connectUrl: 'https://mcp-portal.internal/connections?system=jira',

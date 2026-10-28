@@ -8,6 +8,7 @@ import { manifestEntryHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
+import { argumentsHash, firstCall, retry } from '../scripts/lib/confirmation.mjs';
 
 const ajv = createAjv();
 
@@ -114,25 +115,41 @@ test('service desk service account vectors (CC-076)', () => {
   }
 });
 
-// Reference check of C11 (CC-077): the code is bound to (sub, serverId, tool, sha256 of the canonical arguments
-// without confirmation_code), valid 120 s, 3 attempts, one-time.
-function checkConfirmationCode({ issued, state, attempt }) {
-  const { confirmation_code: _omitted, ...args } = attempt.arguments;
-  const hash = 'sha256:' + createHash('sha256').update(canonicalize(args), 'utf8').digest('hex');
-  if (state.used) return { valid: false, reason: 'already_used' };
-  if (state.failedAttempts >= issued.maxAttempts) return { valid: false, reason: 'attempts_exhausted' };
-  if (Date.parse(attempt.at) > Date.parse(issued.issuedAt) + issued.ttlSeconds * 1000) return { valid: false, reason: 'expired' };
-  if (attempt.sub !== issued.sub || attempt.serverId !== issued.serverId || attempt.tool !== issued.tool || hash !== issued.argsSha256) {
-    return { valid: false, reason: 'binding_mismatch' };
-  }
-  return attempt.arguments.confirmation_code === issued.code ? { valid: true } : { valid: false, reason: 'wrong_code' };
-}
+const toSeconds = (iso) => (iso === undefined ? undefined : Date.parse(iso) / 1000);
 
-test('confirmation code binding vectors (CC-077)', () => {
+// Reference rules of C11 (CC-091): the gateway binds a pending call to (sub, serverId, tool, sha256 of the canonical
+// arguments without confirmation_code), valid 120 s with 3 attempts, and maps the answer of the broker.
+test('confirmation vectors: first call and retry (CC-091)', () => {
+  const vectors = listJson('test-vectors', 'confirmation-binding');
+  assert.ok(vectors.some((v) => v.data.kind === 'retry') && vectors.some((v) => v.data.kind === 'first-call'));
+  for (const { name, data } of vectors) {
+    if (data.kind === 'first-call') {
+      const actual = firstCall({
+        authenticator: data.authenticator,
+        pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt) })),
+        pendingLimit: data.pendingLimit, call: data.call, at: toSeconds(data.at),
+      });
+      const { expiresAt, ...rest } = actual;
+      const expected = { ...data.expected };
+      const expectedExpires = toSeconds(expected.expiresAt);
+      delete expected.expiresAt;
+      assert.deepEqual(rest, expected, name);
+      assert.equal(expiresAt, expectedExpires, `${name}: expiresAt`);
+    } else {
+      const actual = retry({
+        pending: data.pending === null ? null : { ...data.pending, createdAt: toSeconds(data.pending.createdAt) },
+        attempt: data.attempt, verification: data.verification, at: toSeconds(data.attempt.at),
+      });
+      assert.deepEqual(actual, data.expected, name);
+    }
+  }
+});
+
+test('confirmation vectors: code format and the pending argument hash are consistent (CC-091)', () => {
   const pattern = new RegExp(readJson('schemas', 'common.schema.json').$defs.ConfirmationCode.pattern);
-  for (const { name, data } of listJson('test-vectors', 'confirmation-binding')) {
-    assert.ok(pattern.test(data.issued.code), name);
-    assert.deepEqual(checkConfirmationCode(data), data.expected, name);
+  for (const { name, data } of listJson('test-vectors', 'confirmation-binding').filter((v) => v.data.kind === 'retry')) {
+    assert.ok(pattern.test(data.attempt.arguments.confirmation_code), name);
+    if (data.expected.outcome === 'execute') assert.equal(argumentsHash(data.attempt.arguments), data.pending.argsSha256, `${name}: executed arguments are the pending ones`);
   }
 });
 

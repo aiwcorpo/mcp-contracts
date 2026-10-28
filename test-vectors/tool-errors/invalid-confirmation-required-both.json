@@ -1,0 +1,15 @@
+{
+  "description": "previewUrl and registerUrl together: a pending call and a missing registration exclude each other.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "Confirm.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+    "description": "jira__delete_issue (jira): issueKey=\"ABC-123\"",
+    "previewUrl": "https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp",
+    "expiresAt": "2026-10-26T20:02:00Z",
+    "registerUrl": "https://mcp.aiwcorpo.pl/authenticator"
+  }
+}

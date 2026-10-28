@@ -1,0 +1,16 @@
+{
+  "description": "The otpauth URI contains the seed and is never audited (CC-094).",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "portal",
+    "componentId": "mcp-portal-bff",
+    "event": "authenticator",
+    "reason": "authenticator_enrollment_started",
+    "outcome": "ok",
+    "otpauthUri": "otpauth://totp/MCP%20Platform:jkowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+  }
+}

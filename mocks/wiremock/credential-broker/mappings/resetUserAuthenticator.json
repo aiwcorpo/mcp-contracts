@@ -1,0 +1,64 @@
+{
+  "mappings": [
+    {
+      "name": "resetUserAuthenticator 204 status-204",
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/admin/users/{sub}/authenticator/reset"
+      },
+      "response": {
+        "status": 204,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    },
+    {
+      "name": "resetUserAuthenticator 403 forbidden",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/admin/users/{sub}/authenticator/reset",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=forbidden($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "forbidden"
+        }
+      }
+    },
+    {
+      "name": "resetUserAuthenticator 503 upstream_unavailable",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/admin/users/{sub}/authenticator/reset",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=upstream_unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

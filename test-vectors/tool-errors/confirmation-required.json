@@ -1,12 +1,14 @@
 {
-  "description": "Fallback channel without elicitation (C11).",
+  "description": "A pending call exists: type the code from the authenticator and retry (C11, CC-091).",
   "expected": {
     "valid": true
   },
   "error": {
     "error": "confirmation_required",
-    "message": "Confirm this action in the portal, then retry with confirmation_code.",
+    "message": "Type the current 6-digit code of the MCP Platform account from your authenticator app and retry the call with confirmation_code.",
     "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
-    "confirmUrl": "https://mcp-portal.internal/confirm/cnf_4k9Qe2LxW7tB3mZp"
+    "description": "jira__delete_issue (jira): issueKey=\"ABC-123\"",
+    "previewUrl": "https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp",
+    "expiresAt": "2026-10-26T20:02:00Z"
   }
 }

@@ -19,9 +19,6 @@
       "$ref": "#/$defs/ConfirmationFailed"
     },
     {
-      "$ref": "#/$defs/ConfirmationDeclined"
-    },
-    {
       "$ref": "#/$defs/CredentialRequired"
     },
     {
@@ -107,11 +104,11 @@
       "additionalProperties": false
     },
     "ConfirmationRequired": {
+      "description": "The confirmation of a destructive call is the current code of the user's TOTP authenticator (C11, CC-091). One of two shapes: a pending call exists (confirmationId, description, previewUrl, expiresAt) or the user has no authenticator and only registerUrl is given.",
       "type": "object",
       "required": [
         "error",
-        "message",
-        "confirmationId"
+        "message"
       ],
       "properties": {
         "error": {
@@ -123,12 +120,70 @@
         "confirmationId": {
           "$ref": "common.schema.json#/$defs/ConfirmationId"
         },
-        "confirmUrl": {
-          "description": "Portal page /confirm/<confirmationId> (C11 channel 2).",
+        "description": {
+          "description": "Operation as the gateway computed it from the arguments it received: qualified tool name, system and arguments sorted by name, JSON-serialized, truncated like ConfirmationView. Not model text. Unlike message it carries argument values (the client already has them). A client shows it to the user, but a client is untrusted: the portal preview is the reference.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "previewUrl": {
+          "description": "Read-only portal page /confirm/<confirmationId> (owner only, a session without fresh MFA is enough). Opening it is optional.",
           "type": "string",
           "format": "uri"
+        },
+        "registerUrl": {
+          "description": "Portal page where the user registers the authenticator. Present exactly when the user has no active authenticator; no pending call exists then.",
+          "type": "string",
+          "format": "uri"
+        },
+        "expiresAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
         }
       },
+      "oneOf": [
+        {
+          "required": [
+            "confirmationId",
+            "description",
+            "previewUrl",
+            "expiresAt"
+          ],
+          "not": {
+            "required": [
+              "registerUrl"
+            ]
+          }
+        },
+        {
+          "required": [
+            "registerUrl"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "confirmationId"
+                ]
+              },
+              {
+                "required": [
+                  "description"
+                ]
+              },
+              {
+                "required": [
+                  "previewUrl"
+                ]
+              },
+              {
+                "required": [
+                  "expiresAt"
+                ]
+              }
+            ]
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "ConfirmationFailed": {
@@ -139,23 +194,8 @@
       ],
       "properties": {
         "error": {
-          "const": "confirmation_failed"
-        },
-        "message": {
-          "$ref": "#/$defs/Message"
-        }
-      },
-      "additionalProperties": false
-    },
-    "ConfirmationDeclined": {
-      "type": "object",
-      "required": [
-        "error",
-        "message"
-      ],
-      "properties": {
-        "error": {
-          "const": "confirmation_declined"
+          "const": "confirmation_failed",
+          "description": "No pending call, expired, arguments different from the first call, wrong or already used code, or attempts exhausted (C11, CC-091)."
         },
         "message": {
           "$ref": "#/$defs/Message"

@@ -1,0 +1,183 @@
+{
+  "mappings": [
+    {
+      "name": "startAuthenticatorEnrollment without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "startAuthenticatorEnrollment 201 started",
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "enrollmentId": "enr_8Hq2Zk5LpW9vXc3N",
+          "otpauthUri": "otpauth://totp/MCP%20Platform:jkowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30",
+          "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+          "expiresAt": "2026-10-27T09:10:00Z"
+        }
+      }
+    },
+    {
+      "name": "startAuthenticatorEnrollment 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "startAuthenticatorEnrollment 403 forbidden",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=forbidden($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "forbidden"
+        }
+      }
+    },
+    {
+      "name": "startAuthenticatorEnrollment 409 already_registered",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=already_registered($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "already_registered"
+        }
+      }
+    },
+    {
+      "name": "startAuthenticatorEnrollment 429 rate_limited",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=rate_limited($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "rate_limited"
+        }
+      }
+    },
+    {
+      "name": "startAuthenticatorEnrollment 503 upstream_unavailable",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/enrollment",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=upstream_unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

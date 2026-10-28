@@ -147,7 +147,6 @@
         "tool_disabled",
         "confirmation_required",
         "confirmation_failed",
-        "confirmation_declined",
         "credential_required",
         "not_found_or_denied",
         "invalid_argument",
@@ -162,12 +161,12 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
     },
     "ConfirmationId": {
-      "description": "Opaque, unguessable id of a pending confirmation (C11); used in URL paths.",
+      "description": "Opaque, unguessable id of a pending confirmation (C11); used in URL paths and as the key of the portal preview.",
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{16,128}$"
     },
     "ConfirmationCode": {
-      "description": "One-time confirmation code shown in the portal after approval with fresh MFA (C11, CC-077): 6 digits, valid 120 s, 3 attempts, bound to (sub, serverId, tool, sha256 of the canonical arguments without confirmation_code).",
+      "description": "Code typed by the user from the authenticator app (TOTP, RFC 6238: 6 digits), sent by the agent as confirmation_code; not issued by the platform (CC-091). The text form matters: a code can start with a zero.",
       "type": "string",
       "pattern": "^[0-9]{6}$"
     },

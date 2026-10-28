@@ -17,7 +17,9 @@ info:
     header `X-XSRF-TOKEN` for POST, PUT and DELETE (Angular: `withXsrfConfiguration({cookieName:
     '__Host-XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})`).
 
-    Secrets go only from the browser to the BFF (`PUT /connections/{system}/secret`); no response contains one.
+    Secrets go only from the browser to the BFF (`PUT /connections/{system}/secret`); no response contains one,
+    except the one-time display of the seed of the TOTP authenticator in the `201` of
+    `POST /authenticator/enrollment` (CC-093), shown to the owner after a fresh MFA, `no-store`.
     Error bodies for statuses whose body C12 does not define use the generic `Error` shape (CC-012).
     Operations backed by the broker (C4) or the gateway admin API (C5) answer `503 upstream_unavailable` when
     those (or the IdP token exchange) fail; there are no partial answers (CC-050).
@@ -38,6 +40,7 @@ tags:
   - name: catalog
   - name: connections
   - name: confirmations
+  - name: authenticator
   - name: access-requests
   - name: virtual-servers
   - name: activity
@@ -599,12 +602,17 @@ paths:
     get:
       tags: [confirmations]
       operationId: getMyConfirmation
-      summary: Confirmation page data (proxy to C5; tool, system and arguments come from the gateway, never from the client); owner only, fresh MFA required (CC-034, CC-077).
+      summary: Read-only preview of a pending confirmation (proxy to C5; tool, system, resource and arguments come from the gateway, never from the client); owner only, a valid session is enough.
+      description: |
+        Optional (CC-091): the code from the authenticator is accepted without opening this page. The page shows what
+        the pending call really is, so a user who opens it sees the operation in a trusted channel and not only in the
+        description given by the AI client. No buttons: the confirmation is the code typed in the client. A successful
+        call records at the gateway that the owner viewed the preview.
       security:
         - session: []
       responses:
         '200':
-          description: Tool and arguments to confirm.
+          description: Tool, system, resource and arguments of the pending call.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
@@ -622,21 +630,161 @@ paths:
                     confirmationId: cnf_4k9Qe2LxW7tB3mZp
                     tool: jira__delete_issue
                     system: jira
+                    resource:
+                      type: Jira::Issue
+                      id: ABC-123
+                      parent: Jira::Project::ABC
                     arguments:
                       - name: issueKey
                         value: '"ABC-123"'
                         truncated: false
                     expiresAt: '2026-10-26T20:02:00Z'
         '401':
-          $ref: '#/components/responses/StepUpOrUnauthenticated'
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/authenticator:
+    get:
+      tags: [authenticator]
+      operationId: getMyAuthenticator
+      summary: State of my authenticator registration (proxy to C4 GET /v1/authenticator); no secret.
+      description: |
+        `lockedUntil` is shown by the portal as "locked until HH:MM"; there is no unlock action, only the passing of
+        time lifts it (CC-091). Removing the registration and registering again does not lift it either.
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: State of the registration of the signed-in user.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/AuthenticatorStatus'
+              examples:
+                active:
+                  value:
+                    state: active
+                    registeredAt: '2026-10-27T09:00:00Z'
+                    lastUsedAt: '2026-10-27T09:30:00Z'
+                none:
+                  value:
+                    state: none
+                locked:
+                  value:
+                    state: active
+                    registeredAt: '2026-10-27T09:00:00Z'
+                    lastUsedAt: '2026-10-27T09:30:00Z'
+                    lockedUntil: '2026-10-27T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [authenticator]
+      operationId: deleteMyAuthenticator
+      summary: Remove my registration (proxy to C4 DELETE /v1/authenticator). Needs a fresh MFA in the IdP.
+      description: |
+        Without a fresh MFA the answer is `401 step_up_required` with `stepUpUrl` (`returnPath` = the registration
+        page, CC-048). Idempotent. Lost phone: the user signs in with MFA, removes the registration and registers
+        again; if the MFA factor is lost as well, helpdesk calls `resetUserAuthenticator` (C4, CN=mcp-offboarding).
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Removed (or there was none).
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/authenticator/enrollment:
     post:
-      tags: [confirmations]
-      operationId: decideMyConfirmation
-      summary: Approve or decline; requires fresh MFA. Approval returns the one-time confirmation code (CC-077).
+      tags: [authenticator]
+      operationId: startMyAuthenticatorEnrollment
+      summary: Start the registration (proxy to C4 POST /v1/authenticator/enrollment); shows the seed once. Needs a fresh MFA in the IdP.
+      description: |
+        The only response of C12 that carries a secret (`secret`, `otpauthUri`; exception to invariant 4, CC-093):
+        shown once to the owner after a fresh MFA authentication, `Cache-Control: no-store`, never written to a log,
+        audit event or the session (the BFF keeps only `enrollmentId` in the session). The frontend draws the QR code
+        locally from `otpauthUri`, keeps the values only in component memory (no storage, URL, tab title, history),
+        and clears them when the registration ends or the page is left. Valid for 10 minutes; calling it again
+        replaces a pending enrollment. `409 already_registered` when a registration is active (remove it first,
+        which needs a fresh MFA too).
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '201':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Pragma:
+              $ref: '#/components/headers/PragmaNoCache'
+          description: Seed shown once; it cannot be read again.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/AuthenticatorEnrollment'
+              examples:
+                started:
+                  value:
+                    enrollmentId: enr_8Hq2Zk5LpW9vXc3N
+                    otpauthUri: otpauth://totp/MCP%20Platform:jkowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30
+                    secret: GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ
+                    expiresAt: '2026-10-27T09:10:00Z'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: A registration is already active; remove it first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                already_registered:
+                  value:
+                    error: already_registered
+        '429':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Too many enrollment starts (broker limit).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                rate_limited:
+                  value:
+                    error: rate_limited
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/authenticator/enrollment/confirm:
+    post:
+      tags: [authenticator]
+      operationId: confirmMyAuthenticatorEnrollment
+      summary: Activate the registration with the first code (proxy to C4 POST /v1/authenticator/enrollment/confirm).
+      description: |
+        `enrollmentId` must belong to the current session, otherwise `404 not_found_or_denied`. No fresh MFA is
+        needed here: the pending enrollment was created under one. `422 invalid_code` (try again) or
+        `422 enrollment_invalid` (expired, destroyed after three wrong codes; start again).
       security:
         - session: []
           csrf: []
@@ -645,38 +793,51 @@ paths:
         content:
           application/json:
             schema:
-              $ref: 'gateway-admin.v1.yaml#/components/schemas/ConfirmationDecision'
+              $ref: 'credential-broker.v1.yaml#/components/schemas/AuthenticatorEnrollmentConfirm'
             examples:
-              approve:
+              first_code:
                 value:
-                  decision: approve
+                  enrollmentId: enr_8Hq2Zk5LpW9vXc3N
+                  code: '705202'
       responses:
         '200':
-          description: Decision recorded; approval returns the one-time code for the MCP client session, it never executes the action.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-            Cache-Control:
-              $ref: '#/components/headers/NoStore'
-            Pragma:
-              $ref: '#/components/headers/PragmaNoCache'
+          description: Registration active.
           content:
             application/json:
               schema:
-                $ref: 'gateway-admin.v1.yaml#/components/schemas/ConfirmationOutcome'
+                $ref: 'credential-broker.v1.yaml#/components/schemas/AuthenticatorStatus'
               examples:
-                approved:
+                active:
                   value:
-                    decision: approve
-                    code: '493201'
-                    codeExpiresAt: '2026-10-26T20:02:00Z'
-                    attemptsLeft: 3
+                    state: active
+                    registeredAt: '2026-10-27T09:05:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/StepUpOrUnauthenticated'
+          $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/CsrfInvalid'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Wrong code or the enrollment is no longer valid.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/AuthenticatorEnrollmentError'
+              examples:
+                invalid_code:
+                  value:
+                    error: invalid_code
+                enrollment_invalid:
+                  value:
+                    error: enrollment_invalid
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/access-requests:
@@ -1139,7 +1300,7 @@ components:
         $ref: '../schemas/common.schema.json#/$defs/RequestId'
       example: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
     NoStore:
-      description: Required on responses carrying a one-time confirmation code or the arguments of a pending call (CC-077); intermediaries and clients must not cache them.
+      description: Required on responses carrying the authenticator seed or the arguments of a pending call (CC-091, CC-093); intermediaries and clients must not cache them.
       required: true
       schema:
         type: string
@@ -1327,7 +1488,7 @@ components:
           type: boolean
           description: Member of mcp-platform-admin.
         mfaFreshUntil:
-          description: Until when the last MFA authentication counts as fresh for step-up protected operations (CC-053). Absent when MFA is not fresh or unknown. Informational only; the BFF still enforces step-up on the operations that need it (confirmations until the confirmation channel changes; PUT secret does not, CC-090), so the frontend uses it to start step-up before showing a form that needs it.
+          description: Until when the last MFA authentication counts as fresh for step-up protected operations (CC-053). Absent when MFA is not fresh or unknown. Informational only; the BFF still enforces step-up on the operations that need it (registering and removing the authenticator, CC-093; PUT secret does not, CC-090), so the frontend uses it to start step-up before showing a form that needs it.
           $ref: '../schemas/common.schema.json#/$defs/Timestamp'
       additionalProperties: false
     CatalogStatus:

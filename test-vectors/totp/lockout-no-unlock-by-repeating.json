@@ -1,0 +1,135 @@
+{
+  "description": "Hammering during the lock does not extend it and does not lift it. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": null,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:48:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:49:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:50:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:51:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:51:11Z",
+      "code": "000000",
+      "expected": {
+        "result": "locked",
+        "retryAfterSeconds": 899,
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:52:50Z",
+      "code": "000000",
+      "expected": {
+        "result": "locked",
+        "retryAfterSeconds": 800,
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:59:30Z",
+      "code": "000000",
+      "expected": {
+        "result": "locked",
+        "retryAfterSeconds": 400,
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T18:06:09Z",
+      "code": "000000",
+      "expected": {
+        "result": "locked",
+        "retryAfterSeconds": 1,
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": "2026-10-14T18:06:10Z"
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T18:06:11Z",
+      "code": "357151",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 59733372,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

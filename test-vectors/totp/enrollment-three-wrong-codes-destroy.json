@@ -1,0 +1,42 @@
+{
+  "description": "The third wrong code destroys the enrollment; a correct code afterwards is enrollment_invalid and the user starts again. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "enrollment": {
+    "createdAt": "2026-10-14T17:46:10Z",
+    "wrongCodes": 0
+  },
+  "steps": [
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid_code"
+      }
+    },
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:47:11Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid_code"
+      }
+    },
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:47:12Z",
+      "code": "000000",
+      "expected": {
+        "result": "enrollment_invalid"
+      }
+    },
+    {
+      "op": "confirm",
+      "at": "2026-10-14T17:47:13Z",
+      "code": "705202",
+      "expected": {
+        "result": "enrollment_invalid"
+      }
+    }
+  ]
+}

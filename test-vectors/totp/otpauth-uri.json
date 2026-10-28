@@ -1,0 +1,28 @@
+{
+  "description": "Fixed form of the otpauth URI (CC-092); username is percent-encoded. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "cases": [
+    {
+      "username": "jkowalski",
+      "uri": "otpauth://totp/MCP%20Platform:jkowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30"
+    },
+    {
+      "username": "a b",
+      "uri": "otpauth://totp/MCP%20Platform:a%20b?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30"
+    },
+    {
+      "username": "jan.kowalski",
+      "uri": "otpauth://totp/MCP%20Platform:jan.kowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30"
+    },
+    {
+      "username": "zoe",
+      "uri": "otpauth://totp/MCP%20Platform:zoe?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30"
+    }
+  ],
+  "invalidSecrets": [
+    "gezdgnbvgy3tqojqgezdgnbvgy3tqojq",
+    "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJ",
+    "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ=",
+    "GEZDGNBVGY3TQOJ1GEZDGNBVGY3TQOJQ"
+  ]
+}

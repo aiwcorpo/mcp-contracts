@@ -1,0 +1,12 @@
+{
+  "description": "confirmUrl was renamed to previewUrl in 3.0.0.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "Confirm.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+    "confirmUrl": "https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp"
+  }
+}

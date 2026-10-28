@@ -1,0 +1,143 @@
+{
+  "description": "Malformed codes do not count toward the lock: 10 of them, then a good code. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": null,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:11Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:12Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:13Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:14Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:15Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:16Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:17Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:18Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:19Z",
+      "code": "12345",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:21Z",
+      "code": "705202",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 59733334,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

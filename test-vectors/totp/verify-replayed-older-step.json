@@ -1,0 +1,23 @@
+{
+  "description": "A code of an older step than the last accepted one is replayed too. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": 59733334,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "405874",
+      "expected": {
+        "result": "replayed",
+        "after": {
+          "lastAcceptedStep": 59733334,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "description": "A pending call needs description, previewUrl and expiresAt.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_required",
+    "message": "Confirm.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+    "previewUrl": "https://mcp.aiwcorpo.pl/confirm/cnf_4k9Qe2LxW7tB3mZp"
+  }
+}

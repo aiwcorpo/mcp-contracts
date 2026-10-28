@@ -1,0 +1,35 @@
+{
+  "description": "The code 081804 is compared as text; the number 81804 is not a code. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": null,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2005-03-18T01:58:29Z",
+      "code": "081804",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 37037036,
+          "lockedUntil": null
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2005-03-18T01:58:59Z",
+      "code": "81804",
+      "expected": {
+        "result": "malformed",
+        "after": {
+          "lastAcceptedStep": 37037036,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

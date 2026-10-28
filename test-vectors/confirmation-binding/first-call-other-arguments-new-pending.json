@@ -1,0 +1,29 @@
+{
+  "description": "Other arguments are another operation: a new pending call.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z"
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "arguments": {
+      "issueKey": "ABC-124"
+    }
+  },
+  "at": "2026-10-26T20:01:00Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": false,
+    "expiresAt": "2026-10-26T20:03:00Z",
+    "pendingCreated": true
+  }
+}

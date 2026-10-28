@@ -232,6 +232,22 @@ await add('tools-call-without-tool', 'tools/call with a user token that has no t
     token: await sign(claims, 'test-gateway-jwt-a'), request: http('POST', '/v1/credentials/resolve'),
     verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'tool_missing' });
 }
+await add('valid-broker-authenticator-verify', 'POST /v1/authenticator/verify: user variant with the tool whose call is being confirmed (CC-092).', {
+  token: await sign(userClaims({ aud: 'mcp-credential-broker', tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000071' }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/authenticator/verify'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+await add('valid-broker-authenticator-status', 'GET /v1/authenticator from the gateway: user variant with tool (CC-092).', {
+  token: await sign(userClaims({ aud: 'mcp-credential-broker', tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000072' }), 'test-gateway-jwt-a'),
+  request: http('GET', '/v1/authenticator'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+{
+  const claims = userClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000073' });
+  delete claims.tool;
+  await add('broker-authenticator-verify-without-tool', 'verify needs the tool being confirmed, like resolve (CC-092).', {
+    token: await sign(claims, 'test-gateway-jwt-a'), request: http('POST', '/v1/authenticator/verify'),
+    verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'tool_missing' });
+}
+await add('service-variant-broker-authenticator', 'Service variant sent to verify; the broker accepts it only for GET /v1/systems (CC-092).', {
+  token: await sign(serviceClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000074' }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/authenticator/verify', SERVICE_RID), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'service_token_not_allowed' });
 await add('test-kid-rejected-by-default', 'Otherwise valid token signed with a published test key; a receiver without allowTestKeys rejects it (CC-044).', {
   token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000053' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: { allowTestKeys: false }, valid: false, reason: 'test_key_not_allowed' });

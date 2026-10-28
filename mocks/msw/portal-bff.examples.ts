@@ -728,6 +728,11 @@ export const portalBffExamples: OperationExamples[] = [
           "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
           "tool": "jira__delete_issue",
           "system": "jira",
+          "resource": {
+            "type": "Jira::Issue",
+            "id": "ABC-123",
+            "parent": "Jira::Project::ABC"
+          },
           "arguments": [
             {
               "name": "issueKey",
@@ -745,10 +750,9 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "step_up_required",
+        "name": "unauthenticated",
         "body": {
-          "error": "step_up_required",
-          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+          "error": "unauthenticated"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -777,19 +781,128 @@ export const portalBffExamples: OperationExamples[] = [
     ]
   },
   {
-    "operationId": "decideMyConfirmation",
-    "method": "POST",
-    "route": "/api/v1/confirmations/{id}",
-    "defaultExample": "approved",
+    "operationId": "getMyAuthenticator",
+    "method": "GET",
+    "route": "/api/v1/authenticator",
+    "defaultExample": "active",
     "responses": [
       {
         "status": 200,
-        "name": "approved",
+        "name": "active",
         "body": {
-          "decision": "approve",
-          "code": "493201",
-          "codeExpiresAt": "2026-10-26T20:02:00Z",
-          "attemptsLeft": 3
+          "state": "active",
+          "registeredAt": "2026-10-27T09:00:00Z",
+          "lastUsedAt": "2026-10-27T09:30:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 200,
+        "name": "none",
+        "body": {
+          "state": "none"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 200,
+        "name": "locked",
+        "body": {
+          "state": "active",
+          "registeredAt": "2026-10-27T09:00:00Z",
+          "lastUsedAt": "2026-10-27T09:30:00Z",
+          "lockedUntil": "2026-10-27T10:00:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteMyAuthenticator",
+    "method": "DELETE",
+    "route": "/api/v1/authenticator",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "csrf_invalid",
+        "body": {
+          "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "startMyAuthenticatorEnrollment",
+    "method": "POST",
+    "route": "/api/v1/authenticator/enrollment",
+    "defaultExample": "started",
+    "responses": [
+      {
+        "status": 201,
+        "name": "started",
+        "body": {
+          "enrollmentId": "enr_8Hq2Zk5LpW9vXc3N",
+          "otpauthUri": "otpauth://totp/MCP%20Platform:jkowalski?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=MCP%20Platform&algorithm=SHA1&digits=6&period=30",
+          "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+          "expiresAt": "2026-10-27T09:10:00Z"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
@@ -819,10 +932,109 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 409,
+        "name": "already_registered",
+        "body": {
+          "error": "already_registered"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 429,
+        "name": "rate_limited",
+        "body": {
+          "error": "rate_limited"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "confirmMyAuthenticatorEnrollment",
+    "method": "POST",
+    "route": "/api/v1/authenticator/enrollment/confirm",
+    "defaultExample": "active",
+    "responses": [
+      {
+        "status": 200,
+        "name": "active",
+        "body": {
+          "state": "active",
+          "registeredAt": "2026-10-27T09:05:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "csrf_invalid",
+        "body": {
+          "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 404,
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "invalid_code",
+        "body": {
+          "error": "invalid_code"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "enrollment_invalid",
+        "body": {
+          "error": "enrollment_invalid"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

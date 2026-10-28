@@ -1,0 +1,36 @@
+{
+  "description": "Codes of RFC 6238 appendix B (last 6 digits of the 8 digit values), HMAC-SHA-1, step 30 s. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "cases": [
+    {
+      "time": 59,
+      "step": 1,
+      "code": "287082"
+    },
+    {
+      "time": 1111111109,
+      "step": 37037036,
+      "code": "081804"
+    },
+    {
+      "time": 1111111111,
+      "step": 37037037,
+      "code": "050471"
+    },
+    {
+      "time": 1234567890,
+      "step": 41152263,
+      "code": "005924"
+    },
+    {
+      "time": 2000000000,
+      "step": 66666666,
+      "code": "279037"
+    },
+    {
+      "time": 20000000000,
+      "step": 666666666,
+      "code": "353130"
+    }
+  ]
+}

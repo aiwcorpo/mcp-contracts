@@ -1,0 +1,23 @@
+{
+  "description": "Code of the current step, no history: accepted, the step becomes the last accepted one. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": null,
+    "failures": [],
+    "lockedUntil": null
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "705202",
+      "expected": {
+        "result": "ok",
+        "after": {
+          "lastAcceptedStep": 59733334,
+          "lockedUntil": null
+        }
+      }
+    }
+  ]
+}

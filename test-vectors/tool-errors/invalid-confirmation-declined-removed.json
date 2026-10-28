@@ -1,0 +1,10 @@
+{
+  "description": "confirmation_declined was removed in 3.0.0: there is no decline, an unconfirmed call expires.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_declined",
+    "message": "The action was declined."
+  }
+}
