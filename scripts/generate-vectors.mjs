@@ -492,6 +492,22 @@ audit('gateway-confirmation-cancelled-by-owner', 'The owner cancelled the pendin
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'cancelled_by_owner', outcome: 'denied', errorCode: 'confirmation_cancelled',
 }, true);
+audit('broker-authenticator-steps-burned', 'The owner cancelled a pending operation: the current codes were invalidated (CC-128).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', tool: 'delete_issue', reason: 'totp_steps_burned', outcome: 'ok',
+}, true);
+audit('invalid-resource-parent-bidi', 'resource.parent keeps the exclusions of resource.id: no bidirectional override (CC-031).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::AB\u202eC' },
+}, false);
+audit('invalid-resource-parent-control-char', 'resource.parent with a control character.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::ABC\nX' },
+}, false);
+audit('invalid-resource-parent-c1-and-line-separator', 'resource.parent with U+0085 and U+2028.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::AB\u0085C\u2028' },
+}, false);
+audit('valid-resource-parent-with-slash', 'A GitLab parent keeps its path characters.', {
+  ...auditBase, component: 'server', componentId: 'mcp-gitlab', event: 'policy_decision', resource: { type: 'GitLab::Project', id: 'team-a/app', parent: 'GitLab::Group::team-a' },
+}, true);
 audit('gateway-confirmation-authenticator-disabled', 'The code could not be used because the authenticator is disabled; the user is sent to register again (CC-126).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'authenticator_disabled', outcome: 'denied', errorCode: 'confirmation_required',
@@ -957,6 +973,7 @@ activityRow('wrong-code-count-4', 'At most 3 attempts exist, so wrongCodeCount i
 activityRow('resource-extra-field', 'resource has only type, id and parent.', { ...rowBase, resource: { ...callRes, name: 'x' } }, false);
 activityRow('resource-id-bidi', 'resource.id keeps the C8 limits: no bidirectional override (CC-031).', { ...rowBase, resource: { type: 'Jira::Issue', id: 'ABC-1\u202Ecod.exe' } }, false);
 activityRow('resource-id-control', 'resource.id keeps the C8 limits: no control character.', { ...rowBase, resource: { type: 'Jira::Issue', id: 'ABC-1\nX' } }, false);
+activityRow('resource-parent-bidi', 'resource.parent keeps the C8 limits (CC-031).', { ...rowBase, resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::AB\u202eC' } }, false);
 activityRow('confirmation-id', 'The internal confirmationId never leaves the gateway.', { ...rowBase, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
 activityRow('tool-not-qualified', 'tool is the qualified name <system>__<tool>.', { ...rowBase, tool: 'get_issue' }, false);
 

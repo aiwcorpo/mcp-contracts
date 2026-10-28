@@ -856,7 +856,9 @@ paths:
         nothing. This is not a decision endpoint: a confirmation is still given only by the TOTP code typed in the MCP
         client. The gateway removes the pending call with a compare-and-delete that is ordered with the code check on the
         same record, so a code typed in parallel after the cancel does not confirm the call (the check answers
-        `confirmation_cancelled`). The block of "first wins after the preview" (CC-127) ends with it. A later retry of the
+        `confirmation_cancelled`). The cancel also burns the current TOTP codes of the owner at the broker
+        (`invalidateAuthenticatorCodes`, called first; if it fails the answer is `503` and nothing is cancelled), so that a
+        code typed for this operation and kept by the agent cannot confirm a new one. The block of "first wins after the preview" (CC-127) ends with it. A later retry of the
         cancelled call gets the C10 error `confirmation_cancelled` (the gateway keeps a tombstone until the original TTL
         ends; no broker call, no attempt or TOTP step spent), the audit event is `confirmation` with
         `reason: cancelled_by_owner`, and the call is `cancelled` in `activity/calls`. Idempotent while the tombstone lives
@@ -881,6 +883,16 @@ paths:
                 not_found_or_denied:
                   value:
                     error: not_found_or_denied
+        '503':
+          description: The broker could not burn the current codes; nothing was cancelled (fail-closed).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                upstream_unavailable:
+                  value:
+                    error: upstream_unavailable
   /admin/v1/policy/status:
     get:
       tags: [policy]

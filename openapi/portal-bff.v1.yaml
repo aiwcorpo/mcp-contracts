@@ -902,7 +902,9 @@ paths:
         A valid session and the CSRF header are enough, no fresh MFA: the call removes a pending operation and approves
         nothing. It is not a decision endpoint (the confirmation is still only the TOTP code typed in the client). Ends the
         "first wins after the preview" block and makes the next retry of the call fail with `confirmation_cancelled`.
-        Idempotent; `404 not_found_or_denied` for a foreign, unknown, expired or superseded call.
+        The gateway also burns the owner's current TOTP codes at the broker, so a code typed for this operation and kept by
+        the agent cannot confirm a new one; the user waits for the next code (30 to 60 s). `503` when that fails (nothing is
+        cancelled). Idempotent; `404 not_found_or_denied` for a foreign, unknown, expired or superseded call.
       security:
         - session: []
           csrf: []

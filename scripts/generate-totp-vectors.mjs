@@ -172,6 +172,32 @@ verifyVector('verify-not-counted-malformed-then-lockout-unaffected', 'Malformed 
     [0, 1, 2].map((i) => ({ op: 'verify', at: iso(T0), code: WRONG, expected: i === 0 ? { result: 'invalid', after: stepAfter(null, null, { disabled: true }) } : { result: 'disabled', after: stepAfter(null, null, { disabled: true }) } })));
 }
 
+// Invalidation of the current codes when the owner cancels an operation (CC-128): a held code is replayed and is not a
+// wrong guess; the next step works.
+{
+  const held = codeAt(T0);
+  const heldAhead = codeAt(T0, 1);
+  const verifyHeld = (i, code, at = T0 + 10 + i) => ({ op: 'verify', at: iso(at), code, expected: { result: 'replayed', after: stepAfter(S + 1) } });
+  const nextOk = T0 + 60;
+  verifyVector('burn-held-code-is-replayed-and-not-counted', 'The owner cancels: the codes of the current and the next step are burned. The held code is replayed ten times without any effect on the limits, and the code of the next step (two steps on) is accepted.', state(),
+    [{ op: 'burn', at: iso(T0 + 5), expected: { after: stepAfter(S + 1) } },
+      ...Array.from({ length: 10 }, (_, i) => verifyHeld(i, held)),
+      { op: 'verify', at: iso(nextOk), code: codeAt(nextOk), expected: { result: 'ok', after: stepAfter(stepOf(nextOk)) } }]);
+  verifyVector('burn-also-burns-the-next-step-code', 'A phone that runs ahead shows the code of the next step: it is burned too.', state(),
+    [{ op: 'burn', at: iso(T0 + 5), expected: { after: stepAfter(S + 1) } }, verifyHeld(0, heldAhead)]);
+  const wrong = [0, 10, 20, 30].map((d) => T0 + d);
+  wrong.forEach(assertWrong);
+  verifyVector('burn-does-not-feed-the-lockout', 'Four wrong codes are on record, the held code is replayed many times after the burn: no lock; the next real wrong code is the fifth failure and locks. Replays of burned codes did not count.', state(),
+    [...wrong.map((t) => ({ op: 'verify', at: iso(t), code: WRONG, expected: { result: 'invalid', after: stepAfter(null) } })),
+      { op: 'burn', at: iso(T0 + 35), expected: { after: stepAfter(S + 2) } },
+      ...Array.from({ length: 8 }, (_, i) => ({ op: 'verify', at: iso(T0 + 36 + i), code: held, expected: { result: 'replayed', after: stepAfter(S + 2) } })),
+      { op: 'verify', at: iso(T0 + 50), code: WRONG, expected: { result: 'invalid', after: stepAfter(S + 2, T0 + 50 + 900) } }]);
+  verifyVector('burn-does-not-feed-the-daily-limit', 'Nineteen failures in the last day and many replays of the burned code: the daily counter is untouched, still active.', state(null, [], null, { dailyFailures: Array.from({ length: 19 }, (_, i) => T0 - 3600 - i * 600).map(iso) }),
+    [{ op: 'burn', at: iso(T0 + 5), expected: { after: stepAfter(S + 1) } }, ...Array.from({ length: 5 }, (_, i) => verifyHeld(i, held))]);
+  verifyVector('burn-is-idempotent-and-never-goes-back', 'A second burn in the same step changes nothing; a burn never lowers lastAcceptedStep.', state(S + 5),
+    [{ op: 'burn', at: iso(T0 + 5), expected: { after: stepAfter(S + 5) } }, { op: 'burn', at: iso(T0 + 6), expected: { after: stepAfter(S + 5) } }]);
+}
+
 // Enrollment: the pending seed lives 10 minutes, three wrong codes destroy it.
 const enrollVector = (name, description, createdAt, steps) =>
   write(name, { description: `${description} ${NOTE}`, secret: SECRET, enrollment: { createdAt: iso(createdAt), wrongCodes: 0 }, steps });

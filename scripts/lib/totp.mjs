@@ -94,6 +94,7 @@ export function verify(secret, state, code, at, config = DEFAULTS) {
     dailyFailures: [...(state.dailyFailures ?? [])],
     lockedUntil: state.lockedUntil,
     disabled: state.disabled ?? false,
+    burnedThrough: state.burnedThrough ?? null,
   };
   if (!isCodeFormat(code)) return { result: 'malformed', state: next };
   if (next.disabled) return { result: 'disabled', state: next };
@@ -105,6 +106,9 @@ export function verify(secret, state, code, at, config = DEFAULTS) {
     next.failures = [];
   }
   const step = matchingStep(secret, code, at, config.windowSteps);
+  // A code of a burned step (the owner cancelled an operation, CC-128) is replayed, but it is not a wrong guess: it does
+  // not count toward the 5/15 minute or the daily limit, otherwise a held code could be used to lock the user out.
+  if (step !== null && next.burnedThrough !== null && step <= next.burnedThrough) return { result: 'replayed', state: next };
   if (step !== null && (next.lastAcceptedStep === null || step > next.lastAcceptedStep)) {
     next.lastAcceptedStep = step;
     next.failures = [];
@@ -139,5 +143,15 @@ export function confirmEnrollment(secret, pending, code, at, config = DEFAULTS) 
  * belongs to the user, not to the registration; only time lifts it, CC-091, CC-126).
  */
 export function activate(previous, lastAcceptedStep) {
-  return { lastAcceptedStep, failures: [], dailyFailures: [], lockedUntil: previous.lockedUntil, disabled: false };
+  return { lastAcceptedStep, failures: [], dailyFailures: [], lockedUntil: previous.lockedUntil, disabled: false, burnedThrough: null };
+}
+
+/**
+ * Invalidation of the current codes when the owner cancels a pending operation (CC-128): the step of the broker clock and
+ * the next one are marked as used, like a replay, so that a code the user typed for the cancelled operation and the agent
+ * kept cannot confirm a new one. The next code (two steps on, after 30 to 60 s) works. Not a failure for the counters.
+ */
+export function burn(state, at) {
+  const through = Math.max(state.burnedThrough ?? -1, stepOf(at) + 1);
+  return { ...state, burnedThrough: through, lastAcceptedStep: Math.max(state.lastAcceptedStep ?? -1, through) };
 }

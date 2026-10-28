@@ -49,7 +49,7 @@ async function verify(vector) {
   const toolCall = request.kind === 'jsonrpc' && request.method === 'tools/call';
   // Broker operations that serve one tool call: resolve and the authenticator checks of the gateway (CC-092).
   const resolve = request.kind === 'http' && (
-    (request.method === 'POST' && ['/v1/credentials/resolve', '/v1/authenticator/verify'].includes(request.path))
+    (request.method === 'POST' && ['/v1/credentials/resolve', '/v1/authenticator/verify', '/v1/authenticator/invalidate-codes'].includes(request.path))
     || (request.method === 'GET' && request.path === '/v1/authenticator'));
   if (!service) {
     if ((toolCall || resolve) && claims.tool === undefined) return 'tool_missing';

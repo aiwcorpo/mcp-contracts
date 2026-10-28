@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { listJson } from '../scripts/lib/contracts.mjs';
-import { activate, base32Decode, base32Encode, confirmEnrollment, otpauthUri, stepOf, totpCode, verify } from '../scripts/lib/totp.mjs';
+import { activate, base32Decode, burn, base32Encode, confirmEnrollment, otpauthUri, stepOf, totpCode, verify } from '../scripts/lib/totp.mjs';
 
 const epoch = (iso) => Date.parse(iso) / 1000;
 const vectors = listJson('test-vectors', 'totp');
@@ -33,6 +33,9 @@ function run(data) {
       pending = out.pending;
       if (out.result === 'active') state = activate(state, out.lastAcceptedStep);
       trace.push({ step, actual: { result: out.result, ...(out.result === 'active' && { lastAcceptedStep: out.lastAcceptedStep }) } });
+    } else if (step.op === 'burn') {
+      state = burn(state, at);
+      trace.push({ step, actual: { after: { lastAcceptedStep: state.lastAcceptedStep, lockedUntil: state.lockedUntil === null ? null : new Date(state.lockedUntil * 1000).toISOString().replace('.000Z', 'Z') } } });
     } else {
       const out = verify(data.secret, state, step.code, at);
       state = out.state;

@@ -3032,13 +3032,29 @@ G-15, G-16, G-18, G-22.
   - C8: `event: confirmation`, `decision: deny`, `reason: cancelled_by_owner`, `errorCode: confirmation_cancelled`
     (przy przyjęciu anulowania i przy ponowieniu); `/activity/calls`: wynik `cancelled` (etykieta "Anulowane", grupa
     `confirmation`).
+  - **Unieważnienie bieżących kodów (przegląd bezpieczeństwa fd930f9, decyzja koordynatora):** bez tego agent trzymający kod
+    wpisany przez człowieka dla A mógłby po anulowaniu A (zdejmującym blokadę CC-127) utworzyć B i potwierdzić je tym kodem.
+    Nowa operacja C4 `POST /v1/authenticator/invalidate-codes` (`invalidateAuthenticatorCodes`, tylko gateway, wariant
+    użytkownika JWT z `tool` anulowanej operacji, `204`, idempotentna): broker ustawia `burnedThrough = max(burnedThrough,
+    krok zegara brokera + 1)` i `lastAcceptedStep = max(lastAcceptedStep, burnedThrough)` atomowo na `sub` (razem z
+    licznikami `verify`). Kod z kroku `<= burnedThrough` to `replayed`, ale **nie liczy się** do limitów 5/15 min i 20/24 h
+    (inaczej trzymany kod służyłby do zablokowania użytkownika); kod z kroku o dwa dalej działa (po 30-60 s). Gateway woła
+    broker PRZED usunięciem oczekującego wywołania: błąd brokera to `503` na anulowaniu i nic nie jest anulowane
+    (fail-closed); użytkownik bez aktywnej rejestracji: `204`, nic do unieważnienia. Audyt brokera: `event: authenticator`,
+    `reason: totp_steps_burned`. Wektory: `totp/burn-*` (5: trzymany kod `replayed` bez wpływu na limity, kod następnego
+    kroku działa, kod o krok do przodu też spalony, brak zasilania blokady 5/15 i limitu dziennego, idempotencja), JWT
+    `valid-broker-authenticator-invalidate-codes` i `...-without-tool`, audyt `broker-authenticator-steps-burned`.
   - To **nie** przywraca `confirmation_declined`: w portalu nie ma decyzji pozytywnej, potwierdzenie nadal tylko kodem TOTP.
-- **Pliki:** `gateway-admin.v1.yaml` (`cancelConfirmation`), `portal-bff.v1.yaml` (`cancelMyConfirmation`),
+- **Pliki:** `credential-broker.v1.yaml` (`invalidateAuthenticatorCodes`), `gateway-admin.v1.yaml` (`cancelConfirmation`, dodane `503`), `portal-bff.v1.yaml` (`cancelMyConfirmation`),
   `tool-error.schema.json`, `common.schema.json` (`ErrorCode`), `audit-event.schema.json` (opis `reason`), przykłady i mocki
   (WireMock, MSW), wektory `confirmation-binding/` (`retry-cancelled*`, `first-call-cancelled-*`,
   `first-calls-race-view-cancel-*`, `retries-parallel-cancel-*`, `retries-parallel-code-typed-after-cancel-*`),
   `tool-errors/confirmation-cancelled*`, `audit-events/gateway-confirmation-cancelled-by-owner`, `activity-calls/*cancelled*`.
 - **SemVer:** nowa wartość enum (`ErrorCode`) i nowe endpointy: major (3.0.0).
-- **Wpływ:** ws-05 (anulowanie atomowo z weryfikacją, ślad, audyt), ws-07 (proxy), ws-08 (przycisk "Anuluj" w podglądzie, etykieta
+- **Wpływ:** ws-06 (`invalidate-codes`, `burnedThrough`, replay bez liczenia do limitów), ws-05 (anulowanie atomowo z weryfikacją, wołanie brokera przed usunięciem, ślad, audyt), ws-07 (proxy), ws-08 (przycisk "Anuluj" w podglądzie, etykieta
   "Anulowane"), ws-10 (test wyścigu anulowania z kodem), klienty MCP (obsługa `confirmation_cancelled`).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+- **Poprawka pola `resource.parent` (przegląd bezpieczeństwa fd930f9, CC-031):** `parent` w `audit-event.schema.json` (stąd też w
+  `ActivityCall` i `ConfirmationView`) ma to samo wykluczenie znaków co `resource.id`: C0, C1, DEL, U+2028, U+2029,
+  U+202A..U+202E i U+2066..U+2069 w części `<id>`; wektory negatywne `invalid-resource-parent-*`, pozytywny z ukośnikiem.
