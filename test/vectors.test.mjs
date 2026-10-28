@@ -217,15 +217,21 @@ test('catalog action vectors (CC-083)', async () => {
   }
 });
 
-// Reference rule of C4.1 (README, "Whoami"): exact comparison after Unicode NFC and lower-casing, no trimming,
-// no substring, no stripping of the domain; the e-mail mapping needs email_verified=true.
+// Reference rule of C4.1 (README, "Whoami", CC-100): both values ASCII-only -> compare ignoring the case of ASCII
+// letters; otherwise exact equality after NFC (no Unicode case folding); the e-mail mapping needs
+// email_verified=true; no trimming, substring or domain stripping.
 function whoamiMatches({ mapping, sso, systemIdentity }) {
   const source = sso[mapping];
   if (typeof source !== 'string' || typeof systemIdentity !== 'string') return false;
   if (mapping === 'email' && sso.email_verified !== true) return false;
   if (source === '' || systemIdentity === '') return false;
-  const norm = (value) => value.normalize('NFC').toLowerCase();
-  return norm(source) === norm(systemIdentity);
+  // The ASCII test runs on the raw values: NFC itself maps U+212A KELVIN SIGN to ASCII K, which must not make a
+  // non-ASCII value eligible for the case-insensitive path.
+  const ascii = /^[\x00-\x7f]*$/;
+  if (ascii.test(source) && ascii.test(systemIdentity)) {
+    return source.replace(/[A-Z]/g, (c) => c.toLowerCase()) === systemIdentity.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  }
+  return source.normalize('NFC') === systemIdentity.normalize('NFC');
 }
 
 test('whoami identity vectors (C4.1, CC-090)', () => {

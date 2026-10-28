@@ -1,0 +1,15 @@
+{
+  "description": "U+FF41 FULLWIDTH LATIN SMALL LETTER A is not NFC-equal to a.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "anowak",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\uff41nowak"
+  },
+  "expected": {
+    "match": false
+  }
+}

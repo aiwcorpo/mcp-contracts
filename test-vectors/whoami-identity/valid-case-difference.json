@@ -1,5 +1,5 @@
 {
-  "description": "Case is ignored (both sides lower-cased).",
+  "description": "Both values are ASCII: case is ignored.",
   "input": {
     "mapping": "preferred_username",
     "sso": {

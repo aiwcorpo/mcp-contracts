@@ -1,0 +1,15 @@
+{
+  "description": "U+017F LATIN SMALL LETTER LONG S must not fold to s.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "susan",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\u017fusan"
+  },
+  "expected": {
+    "match": false
+  }
+}

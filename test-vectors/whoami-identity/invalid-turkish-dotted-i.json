@@ -1,0 +1,15 @@
+{
+  "description": "U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE must not match i.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "irena",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\u0130rena"
+  },
+  "expected": {
+    "match": false
+  }
+}

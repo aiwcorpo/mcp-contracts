@@ -1,0 +1,15 @@
+{
+  "description": "Non-ASCII values: exact equality after NFC.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "\u0142ukasz",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\u0142ukasz"
+  },
+  "expected": {
+    "match": true
+  }
+}

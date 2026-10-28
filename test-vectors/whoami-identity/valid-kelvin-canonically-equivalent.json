@@ -1,0 +1,15 @@
+{
+  "description": "U+212A is canonically equivalent to K (NFC maps it to ASCII K): same case matches exactly after NFC; only the case-insensitive fold is blocked.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "Karen",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\u212aaren"
+  },
+  "expected": {
+    "match": true
+  }
+}

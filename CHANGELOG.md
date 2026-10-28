@@ -4,6 +4,20 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.2.2 - 2026-10-28
+
+Poprawka reguły tożsamości z C4.1 po przeglądzie bezpieczeństwa brokera (CC-100). `cedar/mcp.cedarschema` bez zmian.
+
+- Porównanie: obie surowe wartości ASCII -> bez wielkości liter ASCII; w przeciwnym razie dokładna równość po NFC
+  bez zmiany wielkości liter. Test ASCII jest przed NFC (NFC zamienia U+212A na ASCII `K`; kelwin w tej samej wielkości
+  liter jest kanonicznie równoważny i pasuje, inna wielkość liter nie). Zamyka kolizje typu U+212A KELVIN SIGN -> `k`, U+017F -> `s`, U+0130 -> `i`.
+- Wektory `whoami-identity/`: dodane kelvin, długie s, tureckie İ, fullwidth, `Łukasz` vs `łukasz` (mismatch),
+  `łukasz` exact (match), e-mail ASCII; NFC vs NFD tej samej nazwy nadal pasuje.
+- Wyjątek SemVer: zaostrzenie reguły z 2.2.1 (formalnie major); jedynym konsumentem jest broker w trakcie M2. Wyjątek
+  jak CC-085.
+- Broker musi: zastąpić `toLowerCase`/`equalsIgnoreCase` Unicode tą regułą (NFC, ASCII-only -> ASCII lowercase,
+  inaczej `equals`), przejść wektory `whoami-identity/`.
+
 ## 2.2.1 - 2026-10-28
 
 Poprawki po przeglądzie 2.2.0 (0 CRITICAL/HIGH, 6 MEDIUM, 11 LOW) i decyzje człowieka z 2026-10-28.

@@ -1,5 +1,5 @@
 {
-  "description": "Both sides are compared after Unicode NFC normalization.",
+  "description": "Non-ASCII values: the same name in NFC and NFD matches (exact equality after NFC).",
   "input": {
     "mapping": "preferred_username",
     "sso": {

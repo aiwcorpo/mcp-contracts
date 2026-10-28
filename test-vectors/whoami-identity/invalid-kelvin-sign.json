@@ -1,0 +1,15 @@
+{
+  "description": "U+212A KELVIN SIGN must not fold to k: non-ASCII values are compared exactly.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "karen",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\u212aaren"
+  },
+  "expected": {
+    "match": false
+  }
+}

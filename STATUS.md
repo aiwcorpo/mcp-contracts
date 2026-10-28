@@ -1,17 +1,17 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **2.2.1**, tag `v2.2.1` (poprawki po przeglądzie 2.2.0; wcześniej `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **2.2.2**, tag `v2.2.2` (CC-100: reguła tożsamości bez Unicode case folding; wcześniej `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 103 testów Node; `./mvnw verify`: 391 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 
-## Artefakty 2.2.1
+## Artefakty 2.2.2
 
-- `pl.aiwcorpo.mcp:mcp-contracts:2.2.1` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.2.1`,
-  `mcp-policy-bundle:2.2.1`, `mcp-manifest:2.2.1`, `mcp-contracts-parent:2.2.1` (w `~/.m2` po `./mvnw install`).
-- `release/aiwcorpo-mcp-contracts-2.2.1.tgz` obok tarballi 1.0.0 ... 2.2.0.
+- `pl.aiwcorpo.mcp:mcp-contracts:2.2.2` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.2.2`,
+  `mcp-policy-bundle:2.2.2`, `mcp-manifest:2.2.2`, `mcp-contracts-parent:2.2.2` (w `~/.m2` po `./mvnw install`).
+- `release/aiwcorpo-mcp-contracts-2.2.2.tgz` obok tarballi 1.0.0 ... 2.2.1.
 
 ## Zrobione w 2.2.1
 

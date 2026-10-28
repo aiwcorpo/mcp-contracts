@@ -1,0 +1,15 @@
+{
+  "description": "Non-ASCII values: no case folding, so a different case does not match.",
+  "input": {
+    "mapping": "preferred_username",
+    "sso": {
+      "preferred_username": "\u0141ukasz",
+      "email": "x@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "\u0142ukasz"
+  },
+  "expected": {
+    "match": false
+  }
+}

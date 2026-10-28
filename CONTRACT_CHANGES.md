@@ -2494,3 +2494,28 @@ G-15, G-16, G-18, G-22.
 - **Wpływ na strumienie:** ws-06 (C4 `oauth/start`), ws-07 (login, `startConnectOAuth`), ws-08 (generowane ścieżki
   powrotu nie zaczynają się od zarezerwowanych prefiksów).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-100 | C4.1 | Porównanie tożsamości bez zmiany wielkości liter dla całego Unicode
+
+- **Zgłasza:** automatyczny przegląd bezpieczeństwa brokera; decyzja człowieka 2026-10-28
+- **Kamień:** M2, wydanie 2.2.2
+- **Problem:** reguła z 2.2.1 (NFC + zamiana na małe litery) zlewa znaki Unicode ze zwykłymi literami: U+212A KELVIN
+  SIGN -> `k`, U+017F LATIN SMALL LETTER LONG S -> `s`, U+0130 -> `i` (w zależności od implementacji). Konto
+  "Karen" z kelwinem w systemie docelowym byłoby równe `karen` w portalu. `identity_mismatch` jest główną ochroną
+  zapisu tokenu bez MFA (CC-090), więc taka kolizja ją osłabia.
+- **Przyjęty wariant:** jeśli obie surowe wartości są w całości ASCII, porównanie bez wielkości liter (zamiana tylko
+  liter ASCII); w przeciwnym razie dokładna równość po NFC, bez zmiany wielkości liter. Test ASCII jest na wartościach
+  **przed** NFC, bo NFC zamienia U+212A KELVIN SIGN na ASCII `K` (singleton kanoniczny); przy teście po NFC kelwin
+  przeszedłby ścieżką bez wielkości liter. Znane, zamierzone: kelwin w wielkości zgodnej (`Karen` z U+212A vs `Karen`
+  ASCII) jest kanonicznie równoważny i pasuje. Bez przycinania,
+  podciągu, odcinania domeny; e-mail tylko przy `email_verified=true`; domyślny claim `preferred_username`.
+  Skutek uboczny: nazwy nie-ASCII różniące się wielkością liter (`Łukasz` vs `łukasz`) nie pasują; administrator
+  poprawia nazwę w systemie albo konfiguracji mapowania.
+- **Zmiany plików:** `README.md` (C4.1), opis `putSecret` w `credential-broker.v1.yaml`, wektory `whoami-identity/`
+  (nowe: `invalid-kelvin-sign`, `invalid-long-s`, `invalid-turkish-dotted-i`, `invalid-fullwidth`,
+  `valid-kelvin-canonically-equivalent`, `invalid-polish-case-difference`, `valid-polish-exact`, `valid-ascii-case-difference-email`; opisy istniejących
+  poprawione, ich oczekiwania nie zmieniły się), referencja w `test/vectors.test.mjs`.
+- **SemVer:** zaostrzenie reguły z 2.2.1, formalnie major. Jedynym konsumentem jest broker w trakcie M2; wydane
+  jako 2.2.2 z wyjątkiem jak CC-085 (adnotacja w `CHANGELOG.md`).
+- **Wpływ na strumienie:** ws-06 (broker: nowa funkcja porównania, bez `toLowerCase` Unicode), ws-10 (testy z wektorów).
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.2)

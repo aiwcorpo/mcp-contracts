@@ -1,0 +1,15 @@
+{
+  "description": "ASCII e-mail compared without case.",
+  "input": {
+    "mapping": "email",
+    "sso": {
+      "preferred_username": "x",
+      "email": "ann@aiwcorpo.pl",
+      "email_verified": true
+    },
+    "systemIdentity": "Ann@Aiwcorpo.PL"
+  },
+  "expected": {
+    "match": true
+  }
+}

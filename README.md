@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.1**, tag `v2.2.1` (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.2**, tag `v2.2.2` (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -92,13 +92,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.2.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.1` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.2.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.1.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.2:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.2` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.2.2` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.2` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.2.2.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.2.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -107,8 +107,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.1/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.1.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.2/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.2.tgz
 ```
 
 ```xml
@@ -359,9 +359,11 @@ ją z tożsamością SSO. To jest główna ochrona zapisu tokenu (CC-090), więc
 
 - Pole SSO: domyślnie claim `preferred_username`; konfiguracja może wskazać `email`. E-mail liczy się **tylko** gdy
   `email_verified` jest `true` (brak claimu = `false`).
-- Porównanie: dokładna równość po normalizacji Unicode NFC i zamianie na małe litery (bez ustawień regionalnych), obu
-  stron. Bez przycinania spacji, bez dopasowania podciągu lub prefiksu, bez odcinania domeny z adresu e-mail. Pusta
-  wartość po którejkolwiek stronie nigdy nie pasuje.
+- Porównanie (CC-100): jeśli **obie** surowe wartości są w całości ASCII, porównanie bez rozróżniania wielkości liter
+  (zamiana tylko liter ASCII `A-Z` na małe). W przeciwnym razie dokładna równość po normalizacji Unicode NFC, bez
+  zmiany wielkości liter. Test ASCII dotyczy wartości przed NFC (NFC zamienia U+212A na ASCII `K`) (żadnego pełnego `toLowerCase` Unicode, który zlewa np. U+212A KELVIN SIGN z `k`, U+017F
+  z `s`, U+0130 z `i`). Bez przycinania spacji, bez dopasowania podciągu lub prefiksu, bez odcinania domeny z adresu
+  e-mail. Pusta wartość po którejkolwiek stronie nigdy nie pasuje.
 - Niezgodność: `422 identity_mismatch`, nic nie jest zapisane. Wektory: `test-vectors/whoami-identity/`.
 
 | System | Żądanie | Pole porównywane z tożsamością SSO |
