@@ -844,6 +844,75 @@ gatewayAuth('jwks-unavailable-configured-retry-after', 'Retry-After is the confi
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '30' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The identity provider keys are temporarily unavailable. Try again in a few seconds.' } });
 
+// ---------- activity calls (C5, C12, CC-095) ----------
+
+const SUBJ = '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11';
+const RID = (n) => `0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e${String(n).padStart(2, '0')}`;
+const gw = (n, ts, e) => ({ ts, requestId: RID(n), component: 'gateway', componentId: 'mcp-gateway', sub: SUBJ, client: 'claude-code', ...e });
+const callRes = { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::ABC' };
+const deleteBase = { server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', resource: callRes };
+const callRow = { ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__delete_issue', risk: 'DESTRUCTIVE', resource: callRes };
+const aggregation = (name, description, events, expected) => write('activity-calls', `aggregation-${name}.json`, { description, events, expected });
+const activityRow = (name, description, value, valid) => write('activity-calls', `${valid ? 'valid' : 'invalid'}-${name}.json`, { description, value, expected: { valid } });
+
+aggregation('ok', 'A read call without confirmation: one tool_call event, result ok.',
+  [gw(1, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', outcome: 'ok', errorCode: null })],
+  { requestId: RID(1), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'ok', errorCode: null });
+aggregation('confirmed-two-wrong-codes', 'First call, two wrong codes, then the right one: one row, result confirmed, wrongCodeCount 2, requestId of the first request.', [
+  gw(2, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(3, '2026-10-26T20:00:20.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(4, '2026-10-26T20:00:40.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(5, '2026-10-26T20:01:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'allow', reason: 'user_confirmed', outcome: 'ok' }),
+  gw(5, '2026-10-26T20:01:00.100Z', { ...deleteBase, event: 'tool_call', decision: 'allow', outcome: 'ok', errorCode: null }),
+], { ...callRow, requestId: RID(2), result: 'confirmed', wrongCodeCount: 2, errorCode: null });
+aggregation('confirmed-no-wrong-code', 'Confirmed on the first code: wrongCodeCount 0.', [
+  gw(6, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(7, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'allow', reason: 'user_confirmed_no_preview', outcome: 'ok' }),
+  gw(7, '2026-10-26T20:00:30.100Z', { ...deleteBase, event: 'tool_call', decision: 'allow', outcome: 'ok', errorCode: null }),
+], { ...callRow, requestId: RID(6), result: 'confirmed', wrongCodeCount: 0, errorCode: null });
+aggregation('three-wrong-codes', 'Third wrong code: result confirmation_failed with wrongCodeCount 3.', [
+  gw(8, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(9, '2026-10-26T20:00:10.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(10, '2026-10-26T20:00:20.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(11, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'attempts_exhausted', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(8), result: 'confirmation_failed', wrongCodeCount: 3, errorCode: 'confirmation_failed' });
+aggregation('pending', 'Waiting for a code: confirmation_pending.', [
+  gw(12, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+], { ...callRow, requestId: RID(12), result: 'confirmation_pending', wrongCodeCount: 0, errorCode: null });
+aggregation('expired', 'No valid code within 120 s: expired.', [
+  gw(13, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(14, '2026-10-26T20:03:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'confirmation_expired', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(13), result: 'expired', wrongCodeCount: 1, errorCode: 'confirmation_failed' });
+aggregation('superseded', 'Replaced by a newer DESTRUCTIVE operation (CC-127).', [
+  gw(15, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(16, '2026-10-26T20:00:40.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'superseded', outcome: 'denied', errorCode: 'confirmation_superseded' }),
+], { ...callRow, requestId: RID(15), result: 'superseded', wrongCodeCount: 0, errorCode: 'confirmation_superseded' });
+aggregation('denied-link-scope', 'Tool outside the link: denied_link_scope, no confirmation fields.', [
+  gw(17, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-gitlab', tool: 'get_project', risk: 'READ_ONLY', virtualServer: 'team-a-dev', decision: 'deny', reason: 'link_scope', outcome: 'denied', errorCode: 'not_found_or_denied' }),
+], { requestId: RID(17), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', virtualServer: 'team-a-dev', tool: 'gitlab__get_project', risk: 'READ_ONLY', result: 'denied_link_scope', errorCode: 'not_found_or_denied' });
+aggregation('denied-not-granted', 'No entitlement: denied_not_granted.', [
+  gw(18, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-jira', tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: 'access_denied' }),
+], { requestId: RID(18), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__create_issue', risk: 'UPDATE', result: 'denied_not_granted', errorCode: 'access_denied' });
+aggregation('error', 'The call ran and failed in the system: result error with the code.', [
+  gw(19, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', outcome: 'error', errorCode: 'upstream_unavailable' }),
+], { requestId: RID(19), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'error', errorCode: 'upstream_unavailable' });
+
+const rowBase = { requestId: RID(1), ts: '2026-10-26T20:00:00.000Z', tool: 'jira__get_issue', result: 'ok' };
+activityRow('ok', 'Smallest row.', rowBase, true);
+activityRow('confirmed-with-wrong-codes', 'Confirmed after wrong codes.', { ...callRow, requestId: RID(2), result: 'confirmed', wrongCodeCount: 2, errorCode: null }, true);
+activityRow('confirmation-pending', 'Waiting for a code.', { ...callRow, requestId: RID(3), result: 'confirmation_pending', wrongCodeCount: 0 }, true);
+activityRow('expired', 'Expired.', { ...callRow, requestId: RID(4), result: 'expired', errorCode: 'confirmation_failed' }, true);
+activityRow('superseded', 'Superseded (CC-127).', { ...callRow, requestId: RID(5), result: 'superseded', errorCode: 'confirmation_superseded' }, true);
+activityRow('unknown-result', 'An unknown result value is allowed (open string); clients show a generic label.', { ...rowBase, result: 'quota_exceeded' }, true);
+activityRow('no-resource', 'A tool without a resource identifier has no resource.', rowBase, true);
+activityRow('result-uppercase', 'result is snake_case.', { ...rowBase, result: 'OK' }, false);
+activityRow('contains-arguments', 'Arguments are never part of a row.', { ...rowBase, arguments: { issueKey: 'ABC-123' } }, false);
+activityRow('contains-code', 'A confirmation code is never part of a row.', { ...rowBase, confirmation_code: '705202' }, false);
+activityRow('wrong-code-count-4', 'At most 3 attempts exist, so wrongCodeCount is at most 3.', { ...callRow, result: 'confirmation_failed', wrongCodeCount: 4 }, false);
+activityRow('resource-extra-field', 'resource has only type, id and parent.', { ...rowBase, resource: { ...callRes, name: 'x' } }, false);
+activityRow('confirmation-id', 'The internal confirmationId never leaves the gateway.', { ...rowBase, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
+activityRow('tool-not-qualified', 'tool is the qualified name <system>__<tool>.', { ...rowBase, tool: 'get_issue' }, false);
+
 // ---------- RFC 8785 numbers (CC-063) ----------
 {
   // Deterministic pseudo-random doubles plus edge cases; expected strings come from the JavaScript engine itself.

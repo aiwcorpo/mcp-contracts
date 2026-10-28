@@ -56,11 +56,13 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - `$defs` używane przez serwery wymienione jako stabilne API (CC-079), test pilnuje listy.
 - `ConfirmationView.resource`, `AuthenticatorStatus.disabledAt`/`disabledReason`, wektory JWT dla wywołań
   `authenticator` brokera (z `tool`), przykłady `disabled` w C4 i C12.
-- Nie wchodzą do 3.0.0: CC-095 i CC-097 (tekst gotowy do akceptacji człowieka, `proposed`), CC-096, CC-113, CC-114.
+- CC-095: `GET /admin/v1/activity/calls` (C5) i `GET /api/v1/activity/calls` (C12), `ActivityCall` (jedno wywołanie = jeden wiersz, wynik końcowy, `wrongCodeCount`, filtry `from`, `to`, `result`, `q`, kursor `X-Next-Cursor`); wektory `activity-calls/` (24). Stary `/activity` bez zmian.
+- Nie wchodzą do 3.0.0: CC-097 (przyjęte, kamień M4), CC-096, CC-113, CC-114.
 
 ### Migracja
 
 **gateway (ws-05)**
+- Zaimplementować `listActivityCalls` (agregacja wywołania i ponowień, licznik błędnych kodów, filtry, kursor, `sub` z tokenu BFF); wektory `activity-calls/`.
 - Usunąć ścieżkę decyzji (`decideConfirmation`) i wydawanie kodu. Wdrożyć oczekujące wywołanie: klucz (`sub`, `serverId`,
   `tool`, SHA-256 argumentów bez `confirmation_code`), TTL 120 s, 3 próby, jednorazowość; `description` liczony z
   argumentów otrzymanych przez gateway; `previewViewedAt` jako skutek `GET` podglądu.
@@ -86,6 +88,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
   `oauth/start` bez zarezerwowanych prefiksów.
 
 **BFF (ws-07)**
+- Proxy `GET /api/v1/activity/calls` z nagłówkiem `X-Next-Cursor`.
 - Usunąć `decideMyConfirmation`; `getMyConfirmation` z samą sesją, `resource` w odpowiedzi.
 - Dodać proxy `/api/v1/authenticator` (GET, DELETE), `/enrollment` (POST), `/enrollment/confirm`: step-up MFA Entra przy
   starcie rejestracji i usunięciu, `enrollmentId` tylko w sesji, ciało `201` tylko z `no-store`, bez logowania ciał;
@@ -94,6 +97,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - `ConnectErrorCode` bez `identity_mismatch`; zdarzenie `authenticator` (`authenticator_removed`, rejestracja).
 
 **web (ws-08)**
+- Ekran logów na `listMyActivityCalls`: filtry, etykiety `result`, szczegół z liczbą błędnych kodów, nieznana wartość jako etykieta ogólna.
 - Klient i mock MSW z 3.0.0: usunąć wywołania `POST /api/v1/confirmations/{id}` i ekran decyzji; podgląd tylko do
   odczytu z `resource`; stany "Czas minął" i "Ten link jest nieaktualny" (także dla unieważnionego).
 - Nowe ekrany: rejestracja Authenticatora (QR rysowany lokalnie z `otpauthUri`, klucz tylko w pamięci komponentu),

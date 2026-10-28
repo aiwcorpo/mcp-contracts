@@ -9,6 +9,7 @@ import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, retry } from '../scripts/lib/confirmation.mjs';
+import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
 import { gatewayAuthenticationResponse } from '../scripts/lib/gateway-authentication.mjs';
 
 const ajv = createAjv();
@@ -256,4 +257,22 @@ test('the audit schema ties jwks_unavailable to upstream_unavailable, the 503 of
   const base = { ts: '2026-10-28T10:00:00.123Z', requestId: '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f', component: 'gateway', componentId: 'mcp-gateway', event: 'authentication', decision: 'deny', reason: 'jwks_unavailable', outcome: 'denied' };
   assert.ok(validate({ ...base, errorCode: 'upstream_unavailable' }));
   assert.ok(!validate({ ...base, errorCode: 'unauthenticated' }));
+});
+
+test('activity-calls vectors: ActivityCall schema and aggregation of one call (CC-095)', async () => {
+  const spec = await dereferenceOpenApi('gateway-admin.v1.yaml');
+  const validate = ajv.compile(structuredClone(spec.components.schemas.ActivityCall));
+  const vectors = listJson('test-vectors', 'activity-calls');
+  assert.ok(vectors.length >= 15);
+  for (const { name, data } of vectors) {
+    if (data.events) {
+      const row = aggregateCall(data.events);
+      assert.deepEqual(row, data.expected, name);
+      assert.ok(validate(row), `${name}: ${formatErrors(validate.errors)}`);
+      const auditValidate = schemaValidator(ajv, 'audit-event.schema.json');
+      for (const event of data.events) assert.ok(auditValidate(event), `${name}: input event is a valid C8 event`);
+    } else {
+      assert.equal(validate(data.value), data.expected.valid, `${name}: ${formatErrors(validate.errors)}`);
+    }
+  }
 });

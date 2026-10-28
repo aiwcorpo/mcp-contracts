@@ -1,0 +1,118 @@
+{
+  "description": "First call, two wrong codes, then the right one: one row, result confirmed, wrongCodeCount 2, requestId of the first request.",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e02",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "confirmation_pending"
+    },
+    {
+      "ts": "2026-10-26T20:00:20.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e03",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "deny",
+      "outcome": "denied",
+      "errorCode": "confirmation_failed"
+    },
+    {
+      "ts": "2026-10-26T20:00:40.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e04",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "deny",
+      "outcome": "denied",
+      "errorCode": "confirmation_failed"
+    },
+    {
+      "ts": "2026-10-26T20:01:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e05",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "allow",
+      "reason": "user_confirmed",
+      "outcome": "ok"
+    },
+    {
+      "ts": "2026-10-26T20:01:00.100Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e05",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "tool_call",
+      "decision": "allow",
+      "outcome": "ok",
+      "errorCode": null
+    }
+  ],
+  "expected": {
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "jira__delete_issue",
+    "risk": "DESTRUCTIVE",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e02",
+    "result": "confirmed",
+    "wrongCodeCount": 2,
+    "errorCode": null
+  }
+}

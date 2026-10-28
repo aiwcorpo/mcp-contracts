@@ -641,6 +641,127 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /admin/v1/activity/calls:
+    get:
+      tags:
+        - activity
+      operationId: listActivityCalls
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Tool calls of the current user, one row per call, with filters (without arguments).
+      description: |
+        One row per call, computed by the gateway from its audit events and from its internal link between a first
+        call and its retries with a code (the confirmationId never leaves the gateway, CC-095). The row carries the
+        final result and the number of wrong codes; requestId and ts are those of the first request. `sub` is always
+        the `sub` of the BFF token. Newest first, at most 30 days back. Page with the `X-Next-Cursor` header.
+      security:
+        - mtls: []
+          bffUserToken: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - name: from
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Timestamp"
+        - name: to
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Timestamp"
+        - name: result
+          in: query
+          required: false
+          description: Result group. confirmation covers pending, confirmed, expired, failed and superseded confirmations.
+          schema:
+            type: string
+            enum:
+              - ok
+              - denied
+              - error
+              - confirmation
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring of the qualified tool name or of resource.id. Never matches argument values (they are not stored).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque value of the X-Next-Cursor header of the previous page.
+          schema:
+            type: string
+            maxLength: 256
+      responses:
+        "200":
+          description: Rows of ActivityCall. X-Next-Cursor is present when more rows exist.
+          headers:
+            X-Next-Cursor:
+              required: false
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityCall"
+              examples:
+                recent:
+                  value:
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
+                      ts: 2026-10-26T20:00:00.123Z
+                      client: claude-code
+                      virtualServer: team-a-dev
+                      tool: jira__get_issue
+                      risk: READ_ONLY
+                      resource:
+                        type: Jira::Issue
+                        id: ABC-123
+                        parent: Jira::Project::ABC
+                      result: ok
+                      errorCode: null
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80
+                      ts: 2026-10-26T19:50:00.000Z
+                      client: claude-code
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      resource:
+                        type: Jira::Issue
+                        id: ABC-124
+                        parent: Jira::Project::ABC
+                      result: confirmed
+                      wrongCodeCount: 2
+                      errorCode: null
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e81
+                      ts: 2026-10-26T19:40:00.000Z
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      result: confirmation_pending
+                      wrongCodeCount: 0
+                      errorCode: null
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e82
+                      ts: 2026-10-26T19:30:00.000Z
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      result: superseded
+                      wrongCodeCount: 0
+                      errorCode: confirmation_superseded
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83
+                      ts: 2026-10-26T19:20:00.000Z
+                      tool: gitlab__get_project
+                      risk: READ_ONLY
+                      result: denied_link_scope
+                      errorCode: not_found_or_denied
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /admin/v1/confirmations/{confirmationId}:
     parameters:
       - $ref: "#/components/parameters/ConfirmationId"
@@ -1098,6 +1219,63 @@ components:
       properties:
         definitionHash:
           $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    ActivityCall:
+      type: object
+      required:
+        - requestId
+        - ts
+        - tool
+        - result
+      properties:
+        requestId:
+          description: requestId of the first request of the call (the one that created a pending confirmation, if any).
+          $ref: "#/components/schemas/RequestId"
+        ts:
+          description: Time of that first request.
+          $ref: "#/components/schemas/Timestamp"
+        client:
+          type: string
+          maxLength: 255
+          description: Client id (azp), e.g. claude-code; the UI maps it to a display name.
+        virtualServer:
+          $ref: "#/components/schemas/VirtualServerSlug"
+        tool:
+          $ref: "#/components/schemas/QualifiedToolName"
+        risk:
+          $ref: "#/components/schemas/Risk"
+        resource:
+          type: object
+          required:
+            - type
+            - id
+          properties:
+            type:
+              $ref: "#/components/schemas/ResourceType"
+            id:
+              type: string
+              maxLength: 512
+            parent:
+              type: string
+              maxLength: 600
+          additionalProperties: false
+        result:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+          maxLength: 64
+          description: |
+            Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
+            tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
+            expired, confirmation_failed, superseded. A client must show an unknown value as a generic label.
+        wrongCodeCount:
+          description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
+          type: integer
+          minimum: 0
+          maximum: 3
+        errorCode:
+          oneOf:
+            - $ref: "#/components/schemas/ErrorCode"
+            - type: "null"
       additionalProperties: false
     ConfirmationArgument:
       type: object

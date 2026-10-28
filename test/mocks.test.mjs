@@ -176,3 +176,11 @@ test('MSW: unknown system gives 400 (CC-054)', async () => {
   assert.equal(res.status, 400);
   assert.deepEqual(await res.json(), { error: 'invalid_request' });
 });
+
+test('MSW: activity calls list with the X-Next-Cursor header allowed and rows without arguments (CC-095)', async () => {
+  const res = await fetch(`${BASE}/api/v1/activity/calls?result=confirmation&q=delete`);
+  assert.equal(res.status, 200);
+  const rows = await res.json();
+  assert.ok(rows.some((r) => r.result === 'confirmed' && r.wrongCodeCount === 2));
+  for (const row of rows) assert.equal(row.arguments, undefined);
+});

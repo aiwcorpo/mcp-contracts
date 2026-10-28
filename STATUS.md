@@ -12,7 +12,7 @@ w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 - Zakres i migracja per komponent: `CHANGELOG.md` ("3.0.0"). Nowe CC: CC-124 (503 przy niedostępnym JWKS), CC-125
   (audyt C5, `replay_store_unavailable` u odbiorców), CC-126 (dzienny limit błędnych kodów), CC-127 (jedna oczekująca
   operacja DESTRUCTIVE).
-- CC-095 i CC-097: tekst gotowy do akceptacji człowieka, `proposed`, nie wdrożone w OpenAPI.
+- CC-095 przyjęte i wdrożone w wersji roboczej; CC-097 przyjęte, kamień M4 (poza 3.0.0).
 - Wersja robocza `3.0.0-SNAPSHOT` (poms, `package.json`, `info.version`); nic nie zainstalowane w `~/.m2`, brak
   `release/aiwcorpo-mcp-contracts-3.0.0.tgz` i tagu `v3.0.0`.
 - Pytania do człowieka: raport koordynatora (`CONTRACT_CHANGES.md`, statusy CC-099 i CC-116).

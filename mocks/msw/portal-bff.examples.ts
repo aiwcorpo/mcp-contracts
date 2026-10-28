@@ -1434,6 +1434,109 @@ export const portalBffExamples: OperationExamples[] = [
     ]
   },
   {
+    "operationId": "listMyActivityCalls",
+    "method": "GET",
+    "route": "/api/v1/activity/calls",
+    "defaultExample": "recent",
+    "responses": [
+      {
+        "status": 200,
+        "name": "recent",
+        "body": [
+          {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+            "ts": "2026-10-26T20:00:00.123Z",
+            "client": "claude-code",
+            "virtualServer": "team-a-dev",
+            "tool": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "resource": {
+              "type": "Jira::Issue",
+              "id": "ABC-123",
+              "parent": "Jira::Project::ABC"
+            },
+            "result": "ok",
+            "errorCode": null
+          },
+          {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
+            "ts": "2026-10-26T19:50:00.000Z",
+            "client": "claude-code",
+            "tool": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "resource": {
+              "type": "Jira::Issue",
+              "id": "ABC-124",
+              "parent": "Jira::Project::ABC"
+            },
+            "result": "confirmed",
+            "wrongCodeCount": 2,
+            "errorCode": null
+          },
+          {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e81",
+            "ts": "2026-10-26T19:40:00.000Z",
+            "tool": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "result": "confirmation_pending",
+            "wrongCodeCount": 0,
+            "errorCode": null
+          },
+          {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e82",
+            "ts": "2026-10-26T19:30:00.000Z",
+            "tool": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "result": "superseded",
+            "wrongCodeCount": 0,
+            "errorCode": "confirmation_superseded"
+          },
+          {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83",
+            "ts": "2026-10-26T19:20:00.000Z",
+            "tool": "gitlab__get_project",
+            "risk": "READ_ONLY",
+            "result": "denied_link_scope",
+            "errorCode": "not_found_or_denied"
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
     "operationId": "getAdminRegistry",
     "method": "GET",
     "route": "/api/v1/admin/registry",

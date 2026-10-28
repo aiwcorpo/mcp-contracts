@@ -1078,7 +1078,7 @@ opisuje CC-091.
 | CC-092 | Broker: rejestracja i weryfikacja Authenticatora (C4) | pivot | M3 | minor (część pakietu major) |
 | CC-093 | BFF: rejestracja Authenticatora ze step-up MFA (C12) | pivot | M3 (ekran rejestracji od M2/M3) | minor (część pakietu major) |
 | CC-094 | Audyt C8 dla Authenticatora | pivot | M3 | major, jeśli nowy `event`; minor w wariancie bez |
-| CC-095 | `GET /api/v1/activity/calls` i `ActivityCall` | G-11, G-12, G-13 | M3 | minor |
+| CC-095 | `GET /api/v1/activity/calls` i `ActivityCall` | G-11, G-12, G-13 | 3.0.0 | minor |
 | CC-096 | Odpowiedzi błędów wniosków o dostęp | G-19 | M4 | minor |
 | CC-097 | `change` i wersje w rejestrze (przed/po) | G-23 | M4 | minor |
 | CC-098 | `resource` w `ConfirmationView` | G-17 | M3 | minor |
@@ -2423,9 +2423,7 @@ G-15, G-16, G-18, G-22.
      `denied`, `error`, `confirmation`.
   5. `q` dopasowuje tylko nazwę narzędzia i `resource.id`; stary `GET /api/v1/activity` zostaje.
   6. Dodana wartość `superseded` wynika z CC-127 (jedna oczekująca operacja DESTRUCTIVE).
-- **Status:** proposed - kierunek zatwierdzony (decyzje człowieka 2026-10-27 i 2026-10-28), tekst gotowy do akceptacji
-  człowieka (nie zaimplementowane w OpenAPI 3.0.0-SNAPSHOT; po akceptacji wdrożenie jest mechaniczne i nie zmienia
-  innych kontraktów)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; tekst przyjęty). Wdrożone w 3.0.0 (wersja robocza): `listActivityCalls` (C5) i `listMyActivityCalls` (C12), schemat `ActivityCall` w C5 (C12 odwołuje się do niego), 24 wektory `activity-calls/` (w tym agregacja zdarzeń jednego wywołania, `scripts/lib/activity-calls.mjs`), mocki WireMock i MSW.
 
 ## CC-096 | C12 | Odpowiedzi błędów wniosków o dostęp
 
@@ -2522,8 +2520,7 @@ G-15, G-16, G-18, G-22.
      "Zatwierdź zmiany" serwera to seria `approve` po stronie frontendu.
   4. Pełny diff pokazuje frontend z istniejących `approvedEntry` i `pendingEntry` (od CC-115 także `title`).
   5. Kamień M4, wydanie z kamieniem (nie 3.0.0).
-- **Status:** proposed - kierunek zatwierdzony (decyzja człowieka 2026-10-27), tekst gotowy do akceptacji człowieka (nie
-  zaimplementowane w OpenAPI 3.0.0-SNAPSHOT)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28; tekst przyjęty), kamień M4, poza 3.0.0 (nie zaimplementowane w OpenAPI; wydanie z kamieniem M4).
 
 ## CC-098 | C5/C12 | `resource` w `ConfirmationView`
 

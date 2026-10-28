@@ -1,0 +1,38 @@
+{
+  "description": "Waiting for a code: confirmation_pending.",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e12",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "confirmation_pending"
+    }
+  ],
+  "expected": {
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "jira__delete_issue",
+    "risk": "DESTRUCTIVE",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e12",
+    "result": "confirmation_pending",
+    "wrongCodeCount": 0,
+    "errorCode": null
+  }
+}
