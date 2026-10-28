@@ -1,5 +1,5 @@
 {
-  "description": "A was confirmed: the block ends with it.",
+  "description": "A was confirmed: the block ends with it, but a second code the user typed for A may still be valid, so the current codes are burned before B is created (G-H1).",
   "kind": "first-call",
   "authenticator": "active",
   "pendingCalls": [
@@ -29,6 +29,7 @@
     "register": false,
     "expiresAt": "2026-10-26T20:02:40Z",
     "pendingCreated": true,
-    "supersededIds": []
+    "supersededIds": [],
+    "invalidatedCodes": true
   }
 }

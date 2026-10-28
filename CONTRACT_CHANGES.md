@@ -3037,11 +3037,11 @@ G-15, G-16, G-18, G-22.
     Nowa operacja C4 `POST /v1/authenticator/invalidate-codes` (`invalidateAuthenticatorCodes`, tylko gateway, wariant
     użytkownika JWT z `tool` anulowanej operacji, `204`, idempotentna): broker ustawia `burnedThrough = max(burnedThrough,
     krok zegara brokera + 1)` i `lastAcceptedStep = max(lastAcceptedStep, burnedThrough)` atomowo na `sub` (razem z
-    licznikami `verify`). Kod z kroku `<= burnedThrough` to `replayed`, ale **nie liczy się** do limitów 5/15 min i 20/24 h
+    licznikami `verify`). Kod z kroku `<= burnedThrough` ma wynik `burned` (gateway pokazuje go klientowi jak `replayed`), **nie liczy się** do limitów 5/15 min i 20/24 h
     (inaczej trzymany kod służyłby do zablokowania użytkownika); kod z kroku o dwa dalej działa (po 30-60 s). Gateway woła
     broker PRZED usunięciem oczekującego wywołania: błąd brokera to `503` na anulowaniu i nic nie jest anulowane
     (fail-closed); użytkownik bez aktywnej rejestracji: `204`, nic do unieważnienia. Audyt brokera: `event: authenticator`,
-    `reason: totp_steps_burned`. Wektory: `totp/burn-*` (5: trzymany kod `replayed` bez wpływu na limity, kod następnego
+    `reason: totp_steps_burned`. Wektory: `totp/burn-*` (5: trzymany kod `burned` bez wpływu na limity, kod następnego
     kroku działa, kod o krok do przodu też spalony, brak zasilania blokady 5/15 i limitu dziennego, idempotencja), JWT
     `valid-broker-authenticator-invalidate-codes` i `...-without-tool`, audyt `broker-authenticator-steps-burned`.
   - To **nie** przywraca `confirmation_declined`: w portalu nie ma decyzji pozytywnej, potwierdzenie nadal tylko kodem TOTP.
@@ -3071,3 +3071,12 @@ G-15, G-16, G-18, G-22.
   nie zużywa próby i nie liczy błędnego kodu (`code_burned`), na zewnątrz `confirmation_failed`; audyt brokera `totp_burned`.
   (5) Powtórzone anulowanie nie pali kodów ponownie. (6) Kursor `/activity/calls`: HMAC-SHA-256 kluczem gateway'a po (`sub`,
   pozycja, `iat`), znacznik >= 128 bitów, porównanie w stałym czasie, ważność 15 min (`activity-cursor/`).
+- **Poprawki po przeglądzie końcowym e154309 (G-H1, G-M1, G-L1, G-L2, G-L3):** (1) G-H1: spalanie przy tworzeniu B dotyczy też
+  obejrzanego A **potwierdzonego** (drugi kod wpisany "dla A" mógłby potwierdzić B); wyjątek zostaje tylko dla tej samej operacji i
+  anulowanego A; blokada bez zmian (potwierdzone A nie blokuje); wektory `first-call-preview-viewed-confirmed-burns-before-b`,
+  `-confirmed-long-ago-no-burn`, `-confirmed-burn-failed`. (2) G-M1: ślad obejrzanego A, w dowolnym stanie, jest przechowywany co
+  najmniej do `A.expiresAt + 90 s` (210 s od utworzenia), niezależnie od końca blokady; wcześniejsze usunięcie jest niezgodne z
+  kontraktem. (3) G-L1: stan potwierdzeń w trwałym magazynie, brak rekordu to brak potwierdzenia, niedostępny magazyn to 503 dla
+  tworzenia DESTRUCTIVE, po niepewnej ciągłości stanu przez 210 s `invalidate-codes` przed utworzeniem. (4) G-L2: wynik `burned`
+  (nie `replayed`) w tekście CC-128 i migracji. (5) G-L3: `invalidate-codes` wołane przy anulowaniu (`tool` = anulowana operacja)
+  i przy tworzeniu DESTRUCTIVE B po obejrzanym śladzie A (`tool` = B).

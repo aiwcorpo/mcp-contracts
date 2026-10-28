@@ -46,9 +46,11 @@ export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at,
     }
     // The block has ended, but a code typed for a viewed, unconfirmed A can still be valid (up to 90 s after A expired).
     // So creating B first burns the current codes at the broker, in the same per-user step as the creation; if the broker
-    // fails, B is not created (review 3.0.0, F-H1). Not needed for the same operation, nor for A that was confirmed or
-    // cancelled (a cancel burned already).
-    const toBurn = pendingCalls.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewedAt !== undefined && p.ended !== 'confirmed' && p.ended !== 'cancelled'
+    // fails, B is not created (review 3.0.0, F-H1). Needed also when A was CONFIRMED: a second code the user typed for A
+    // (after a code that was refused for being on a step boundary) could still confirm B (G-H1). Not needed for the same
+    // operation, nor for A that was cancelled (a cancel burned already). The trace of a viewed A is kept at least until
+    // A.expiresAt + 90 s, whatever its state and whatever the end of the block (G-M1).
+    const toBurn = pendingCalls.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewedAt !== undefined && p.ended !== 'cancelled'
       && p.cancelledAt === undefined && !p.supersededBy && !p.burned && !(p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash)
       && at <= p.createdAt + TTL_SECONDS + CODE_VALIDITY_SECONDS);
     if (toBurn.length > 0 && burn === 'failed') return { outcome: 'upstream_unavailable', pendingCreated: false };

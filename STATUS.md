@@ -7,6 +7,17 @@ SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 102 testów Node; `./mvnw verify`: 391 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 
+## Plan 3.0.1 (z przeglądu końcowego e154309, LOW)
+
+- G-L4: jedna reguła dla `GET`, `viewed` i `cancel` przy wyczerpanym A (obejrzane/nieobejrzane) i wektor.
+- G-L5: czy anulowanie ma działać na ślad blokujący po TTL A przy późnym podglądzie (dziś 404 po `expiresAt`).
+- G-L6: zdanie o zegarach gateway'a i brokera (NTP, rozjazd do 5 s, margines 90 s).
+- G-L7: wymagania ws-08 (po `expiresAt` lub 404 strona nie pokazuje operacji jako oczekującej; błąd `viewed` widoczny), `503` w `markConfirmationViewed` (C5).
+- G-L8: potwierdzenie przyjęcia eskalacji z potwierdzeń o innym ryzyku do DESTRUCTIVE albo spalanie także po obejrzanym potwierdzeniu innego ryzyka.
+- G-L9: agregacja `/activity/calls` dla `authenticator_disabled` i `authenticator_not_registered` (jak `waiting`, po TTL `expired`) i wektor.
+- G-L10: usunąć "for example" z opisu kursora w C5.
+- Wektor i wejście "błąd brokera" dla kroku `cancel` w referencji (anulowanie przy niedostępnym brokerze to 503).
+
 ## 3.0.0 (w przygotowaniu)
 
 - Zakres i migracja per komponent: `CHANGELOG.md` ("3.0.0"). Nowe CC: CC-124 (503 przy niedostępnym JWKS), CC-125

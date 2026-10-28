@@ -1045,9 +1045,18 @@ firstCallVector('first-call-preview-viewed-late-expired-still-blocks', 'The prev
 firstCallVector('first-call-preview-viewed-block-ends-after-code-validity', 'One second after the block ended B is created, and because a code typed for the viewed A can still be valid, the current codes are burned first (same per-user step).',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:01:40Z' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:11Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:11Z', pendingCreated: true, supersededIds: [], invalidatedCodes: true });
-firstCallVector('first-call-preview-viewed-confirmed-does-not-block', 'A was confirmed: the block ends with it.',
+firstCallVector('first-call-preview-viewed-confirmed-does-not-block', 'A was confirmed: the block ends with it, but a second code the user typed for A may still be valid, so the current codes are burned before B is created (G-H1).',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'confirmed' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:40Z' },
-  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [], invalidatedCodes: true });
+firstCallVector('first-call-preview-viewed-confirmed-burns-before-b', 'G-H1 sequence: A viewed at 5 s, the user types c1 at 20 s and c2 at 40 s, the agent executes A with c1 and creates B at 42 s: B is created only after invalidate-codes, so c2 (a step later) is burned.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:05Z', ended: 'confirmed' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:42Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:42Z', pendingCreated: true, supersededIds: [], invalidatedCodes: true });
+firstCallVector('first-call-preview-viewed-confirmed-long-ago-no-burn', 'More than 90 s after A expired nothing typed for it can be valid: no burn.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:05Z', ended: 'confirmed' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:31Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:31Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-preview-viewed-confirmed-burn-failed', 'The broker cannot burn the codes after a confirmed, viewed A: B is not created.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:05Z', ended: 'confirmed' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:42Z', burn: 'failed' },
+  { outcome: 'upstream_unavailable', pendingCreated: false });
 firstCallVector('first-call-preview-viewed-same-operation-after-exhaustion', 'The same operation A issued again after its attempts ran out is not "another" operation: a new pending call.',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'exhausted' })], at: '2026-10-26T20:00:40Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });

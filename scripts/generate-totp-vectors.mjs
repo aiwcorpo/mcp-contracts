@@ -179,7 +179,7 @@ verifyVector('verify-not-counted-malformed-then-lockout-unaffected', 'Malformed 
   const heldAhead = codeAt(T0, 1);
   const verifyHeld = (i, code, at = T0 + 10 + i) => ({ op: 'verify', at: iso(at), code, expected: { result: 'burned', after: stepAfter(S + 1) } });
   const nextOk = T0 + 60;
-  verifyVector('burn-held-code-is-replayed-and-not-counted', 'The owner cancels: the codes of the current and the next step are burned. The held code is burned ten times without any effect on the limits, and the code of the next step (two steps on) is accepted.', state(),
+  verifyVector('burn-held-code-is-burned-and-not-counted', 'The owner cancels: the codes of the current and the next step are burned. The held code is burned ten times without any effect on the limits, and the code of the next step (two steps on) is accepted.', state(),
     [{ op: 'burn', at: iso(T0 + 5), expected: { after: stepAfter(S + 1) } },
       ...Array.from({ length: 10 }, (_, i) => verifyHeld(i, held)),
       { op: 'verify', at: iso(nextOk), code: codeAt(nextOk), expected: { result: 'ok', after: stepAfter(stepOf(nextOk)) } }]);

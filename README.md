@@ -291,7 +291,7 @@ Reguły wariantów JWT (CC-030, CC-033, CC-038, CC-069, CC-070):
 | `initialize`, `server/discover`, `tools/list`, `ping`, `GET /mcp-manifest` | użytkownika albo serwisowy | zabroniony |
 | `subscriptions/listen`, `notifications/*`, odpowiedzi JSON-RPC, `GET`/`DELETE` na endpoincie MCP | tylko użytkownika | zabroniony |
 | broker `POST /v1/credentials/resolve` | tylko użytkownika | wymagany |
-| broker `GET /v1/authenticator`, `POST /v1/authenticator/verify`, `POST /v1/authenticator/invalidate-codes` (z gateway'a, CC-092, CC-128) | tylko użytkownika | wymagany (narzędzie, które jest potwierdzane) |
+| broker `GET /v1/authenticator`, `POST /v1/authenticator/verify`, `POST /v1/authenticator/invalidate-codes` (z gateway'a, CC-092, CC-128) | tylko użytkownika | wymagany (narzędzie, które jest potwierdzane; dla `invalidate-codes` narzędzie operacji, która powoduje spalenie) |
 | broker `GET /v1/systems` | użytkownika albo serwisowy | zabroniony |
 
 Wariant serwisowy jest używany wyłącznie bez sesji (bezstanowo): wszystkie żądania w ramach sesji, w tym
@@ -339,16 +339,15 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    tylko dostaje błąd C10 `confirmation_blocked` z `retryAfterSeconds` (czas do końca blokady) do czasu potwierdzenia A
    albo do `max(wygaśnięcie A, otwarcie podglądu + 90 s)`, także gdy A wyczerpało próby lub wygasło wcześniej;
    `retryAfterSeconds` ma zawsze co najmniej 1. Po końcu blokady kod wpisany dla A może być jeszcze ważny (do 90 s po
-   wygaśnięciu A, np. podgląd otwarty od razu, a kod wpisany tuż przed końcem TTL), więc **tworzenie B po obejrzanym,
-   niepotwierdzonym śladzie A najpierw woła u brokera `invalidate-codes`** (w tej samej sekcji per użytkownik co utworzenie B;
-   błąd brokera to `upstream_unavailable` dla B i nic nie powstaje; nie dotyczy tej samej operacji, potwierdzonego i
-   anulowanego A: `first-call-late-code-viewed-early-burns-before-creating-b`). Klient nie ma wtedy prosić użytkownika o kod dla B. Otwarcie podglądu zapisuje jawne
+   wygaśnięciu A, np. podgląd otwarty od razu, a kod wpisany tuż przed końcem TTL), więc **tworzenie B po obejrzanym śladzie A w dowolnym stanie (oczekujące, wyczerpane, wygasłe, a także potwierdzone: drugi kod wpisany "dla A" mógłby potwierdzić B) najpierw woła u brokera `invalidate-codes`** (w tej samej sekcji per użytkownik co utworzenie B;
+   błąd brokera to `upstream_unavailable` dla B i nic nie powstaje; nie dotyczy tej samej operacji ani anulowanego A, bo anulowanie już spaliło kody; wektory
+   `first-call-late-code-viewed-early-burns-before-creating-b` i `first-call-preview-viewed-confirmed-burns-before-b`). **Ślad obejrzanego A (w dowolnym stanie) gateway przechowuje co najmniej do `A.expiresAt + 90 s` (210 s od utworzenia), niezależnie od końca blokady; wcześniejsze usunięcie jest niezgodne z kontraktem** (inaczej tworzenie B po końcu blokady nie wiedziałoby, że ma spalić kody). Klient nie ma wtedy prosić użytkownika o kod dla B. Otwarcie podglądu zapisuje jawne
    wywołanie z wyrenderowanej, widocznej strony (`POST /api/v1/confirmations/{id}/viewed`), nie sam `GET`, więc prerender
    nie blokuje operacji; zapis i sprawdzenie przy B są atomowe względem siebie. **Anulowanie** (CC-128): właściciel może w
    podglądzie anulować oczekującą operację (`POST /api/v1/confirmations/{id}/cancel`, sesja i XSRF, bez MFA, bo niczego nie
    zatwierdza i nie jest to decyzja "zatwierdź"); anulowanie usuwa oczekujące wywołanie atomowo z weryfikacją kodu (kod wpisany
    równolegle po anulowaniu go nie potwierdza), zdejmuje blokadę, a następne ponowienie agenta dostaje `confirmation_cancelled`
-   (audyt `cancelled_by_owner`, w `/activity/calls` wynik `cancelled`). Anulowanie **unieważnia też bieżące kody TOTP właściciela** u brokera (`POST /v1/authenticator/invalidate-codes`, wołane przez gateway przed usunięciem oczekującego wywołania; błąd to `503` i nic nie jest anulowane; pali tylko pierwsze skuteczne anulowanie, powtórzone jest zwykłym `204`; anulowanie obejrzanego śladu z wyczerpanymi próbami też jest dozwolone i zdejmuje blokadę): krok zegara brokera i następny są oznaczone jako zużyte, więc kod wpisany dla anulowanej operacji i trzymany przez agenta nie potwierdzi nowej (jest `replayed` i nie liczy się do limitów 5/15 min i 20/24 h); poprawny jest dopiero kod z kroku o dwa dalej (po 30-60 s). Opis operacji w niezaufanym kliencie może się różnić od
+   (audyt `cancelled_by_owner`, w `/activity/calls` wynik `cancelled`). Anulowanie **unieważnia też bieżące kody TOTP właściciela** u brokera (`POST /v1/authenticator/invalidate-codes`, wołane przez gateway przed usunięciem oczekującego wywołania; błąd to `503` i nic nie jest anulowane; pali tylko pierwsze skuteczne anulowanie, powtórzone jest zwykłym `204`; anulowanie obejrzanego śladu z wyczerpanymi próbami też jest dozwolone i zdejmuje blokadę): krok zegara brokera i następny są oznaczone jako zużyte, więc kod wpisany dla anulowanej operacji i trzymany przez agenta nie potwierdzi nowej (jest `burned` (wynik brokera) i nie liczy się do limitów 5/15 min i 20/24 h); poprawny jest dopiero kod z kroku o dwa dalej (po 30-60 s). Opis operacji w niezaufanym kliencie może się różnić od
    oczekującej niezależnie od tego, czy podgląd był otwarty. Audyt odróżnia oba przypadki
    (`user_confirmed` i `user_confirmed_no_preview`).
 3. Ponowienie z tymi samymi argumentami i `confirmation_code` (wzorzec `^[0-9]{6}$`, pole dokładane do `inputSchema`
@@ -356,7 +355,7 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    wywołania; gdy go nie ma, wygasło albo argumenty się różnią, odpowiada `confirmation_failed` bez pytania brokera
    (krok TOTP zostaje niewykorzystany). W przeciwnym razie woła brokera i mapuje wynik: `ok` wykonuje narzędzie i
    zużywa oczekujące wywołanie, `invalid`/`replayed` to `confirmation_failed` i -1 próba (przy 0 oczekujące
-   wywołanie znika), `burned` (kod ze spalonego kroku) to `confirmation_failed` na zewnątrz jak `replayed`, ale bez zużycia próby i bez liczenia jako błędny kod (`code_burned`), `locked` to `rate_limited` z `retryAfterSeconds` bez zużycia próby, `not_registered` to
+   wywołanie znika), `burned` (kod ze spalonego kroku) to `confirmation_failed` na zewnątrz jak `replayed` (bez nowej wyroczni), ale bez zużycia próby i bez liczenia jako błędny kod (`code_burned`), `locked` to `rate_limited` z `retryAfterSeconds` bez zużycia próby, `not_registered` to
    `confirmation_required` z `registerUrl`, błąd brokera to `upstream_unavailable` (kod nie jest "oddawany").
    **Atomowość (wymóg normatywny):** gateway rezerwuje próbę atomowo PRZED pytaniem brokera (dekrement `attemptsLeft`;
    rezerwacja wraca przy `locked`, `disabled`, `not_registered` i błędzie brokera, zostaje przy `invalid` i `replayed`), więc
@@ -406,6 +405,13 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    (CC-126).
 8. Reguła `destructive-requires-fresh-mfa` (`cedar/examples/step-up.cedar`, wektory `gw-destructive-*-mfa`) zostaje w
    przykładach bez zmian, ale **nie wchodzi do paczki produkcyjnej** (ws-09): użytkownik nie ma mieć dwóch mechanizmów.
+
+**Utrata stanu potwierdzeń (niezmiennik 6, fail-closed):** stan potwierdzeń gateway'a (oczekujące wywołania, ślady, `previewViewedAt`) leży w
+trwałym magazynie (Redis z `appendonly`, `maxmemory-policy noeviction`, przy replikacji `WAIT` dla zapisu widoku). Brak rekordu lub
+śladu po restarcie albo failoverze to brak potwierdzenia (nigdy "potwierdzone"), a tworzenie `DESTRUCTIVE` przy niedostępnym magazynie to
+`503 upstream_unavailable`. Gdy gateway nie może wykazać ciągłości stanu (brak znacznika epoki zapisanego przy starcie), przez 210 s od
+startu pierwsze utworzenie `DESTRUCTIVE` na danym `sub` woła `invalidate-codes` przed utworzeniem (jak po obejrzanym śladzie), a pierwszy kod
+przyjęty od użytkownika poprzedza takie wywołanie, żeby kod wpisany przed utratą stanu nie potwierdził nowej operacji.
 
 Wektory: `test-vectors/confirmation-binding/` (pierwsze wywołanie i ponowienie, wynik brokera jest daną wejściową),
 `test-vectors/totp/` (RFC 6238, okno, jednorazowość kroku, blokada, rejestracja, URI `otpauth`; ziarno testowe z RFC
@@ -702,7 +708,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
-| `confirmation-binding/` | 70 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
+| `confirmation-binding/` | 73 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | Authenticator brokera: RFC 6238, okno, jednorazowość kroku, blokada 5/15 min, limit dzienny, rejestracja, URI `otpauth` (CC-092, CC-126); ziarno z RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | zbiór zakazany w argumentach, identyfikatorach i filtrach wzmianek oraz zastępowanie w tekście z systemu (CC-121, CC-122) |
 | `activity-calls/` | 38 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |

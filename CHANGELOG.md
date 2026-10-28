@@ -66,7 +66,8 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 
 **gateway (ws-05)**
 - Rezerwacja próby przed pytaniem brokera i zwrot rezerwacji, compare-and-delete przy `ok`, atomowe "utwórz i unieważnij" per użytkownik, ślad unieważnionego wywołania nie jest oczekującym, blokada `confirmation_blocked` po zapisanym podglądzie do `max(wygaśnięcie, podgląd + 90 s)` (także po wyczerpaniu prób i wygaśnięciu), reason `pending_exists`; kursor `/activity/calls` uwierzytelniony (HMAC związany z `sub`, zmieniony -> 400), agregacja z bieżącym czasem.
-- Tworzenie DESTRUCTIVE B po obejrzanym, niepotwierdzonym śladzie A: najpierw `invalidate-codes` (błąd = 503 dla B), ślad blokujący na `sub`, `retryAfterSeconds` >= 1; wynik brokera `burned` bez zużycia próby (`code_burned`).
+- Stan potwierdzeń w trwałym magazynie, ślad obejrzanego A (w dowolnym stanie, także potwierdzony) co najmniej do `A.expiresAt + 90 s`; utrata stanu to brak potwierdzenia, niedostępny magazyn to 503.
+- Tworzenie DESTRUCTIVE B po obejrzanym śladzie A (także potwierdzonym): najpierw `invalidate-codes` (błąd = 503 dla B), ślad blokujący na `sub`, `retryAfterSeconds` >= 1; wynik brokera `burned` bez zużycia próby (`code_burned`).
 - `POST /admin/v1/confirmations/{id}/viewed` i `.../cancel` (anulowanie najpierw woła `invalidate-codes` u brokera, błąd to 503 bez anulowania; anulowanie atomowo z weryfikacją kodu, ślad do końca TTL, `confirmation_cancelled`, audyt `cancelled_by_owner`); `GET` podglądu bez skutków ubocznych.
 - Zaimplementować `listActivityCalls` (agregacja wywołania i ponowień, licznik błędnych kodów, filtry, kursor, `sub` z tokenu BFF); wektory `activity-calls/`.
 - Usunąć ścieżkę decyzji (`decideConfirmation`) i wydawanie kodu. Wdrożyć oczekujące wywołanie: klucz (`sub`, `serverId`,
@@ -84,7 +85,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - Higiena tekstu argumentów i `returnPath` bez zarezerwowanych prefiksów (po stronie gateway'a przy walidacji linków).
 
 **broker (ws-06)**
-- `POST /v1/authenticator/invalidate-codes` (CC-128): `burnedThrough`, kody spalonych kroków to `replayed` bez liczenia do limitów 5/15 i 20/24 h, audyt `totp_steps_burned`.
+- `POST /v1/authenticator/invalidate-codes` (CC-128): `burnedThrough`, kody spalonych kroków mają wynik `burned` bez liczenia do limitów 5/15 i 20/24 h, audyt `totp_steps_burned`.
 - Ziarno TOTP (aktywne i w toku) tylko w Transit pod `mcp/authenticators/<sha256(sub)>`, rekord z `sub`, ziarno w toku usuwane po aktywacji, TTL i trzecim błędzie, baza tylko metadane; liczniki 5/15 min i 20/24 h oraz blokada jako krok atomowy na `sub` (test: 50 równoległych błędów -> 5 sprawdzeń).
 - Zaimplementować `/v1/authenticator*` i reset (RFC 6238, SHA-1, 6 cyfr, 30 s, okno +-1, jednorazowość kroku warunkowym
   zapisem, ziarno tylko w Transit, patrz niżej, metadane w bazie). Limity: 5 błędów / 15 min -> blokada 15 min (własność użytkownika,
