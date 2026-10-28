@@ -4,12 +4,10 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
-## 3.0.0 - w przygotowaniu (wersja robocza 3.0.0-SNAPSHOT, bez tagu)
+## 3.0.0 - 2026-10-28
 
-Wydanie major, ścisły SemVer. Wersja robocza w pomach i `package.json` to `3.0.0-SNAPSHOT` (Maven: artefakt mutowalny, nie
-koliduje z niezmiennymi wydaniami w `~/.m2`; ten sam numer w `package.json` i `info.version` OpenAPI, bo jar, npm i tag
-mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma własną konwencję `-alpha-N`. Tag `v3.0.0`,
-`release/aiwcorpo-mcp-contracts-3.0.0.tgz` i `./mvnw install` powstaną dopiero po przeglądzie i zgodzie koordynatora.
+Wydanie major, ścisły SemVer. Wersja robocza przed wydaniem miała numer `3.0.0-SNAPSHOT` (Maven: artefakt mutowalny, nie
+koliduje z niezmiennymi wydaniami w `~/.m2`; repo nie używało przyrostków `-rc`); po wydaniu praca idzie na `3.0.1-SNAPSHOT`.
 `cedar/mcp.cedarschema` bez zmian (skrót SHA-256 jak w 2.0.0), więc istniejące paczki polityk działają.
 
 ### Zmiany niezgodne z 2.2.5

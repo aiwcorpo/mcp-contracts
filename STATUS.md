@@ -1,11 +1,11 @@
 # Status ws-00 (mcp-contracts)
 
-**Praca nad 3.0.0 (wersja robocza `3.0.0-SNAPSHOT`, bez tagu i bez artefaktów wydania; czeka na przegląd i zgodę koordynatora).** Ostatnie wydanie: **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **3.0.0**, tag `v3.0.0` (po wydaniu praca na `3.0.1-SNAPSHOT`); wcześniej **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
-Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 102 testów Node; `./mvnw verify`: 391 testów JUnit,
-w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
+Walidacja 3.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 253 testy Node; `./mvnw verify`: 418 testów JUnit,
+w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
 
 ## Plan 3.0.1 (z przeglądu końcowego e154309, LOW)
 
@@ -18,17 +18,16 @@ w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 - G-L10: usunąć "for example" z opisu kursora w C5.
 - Wektor i wejście "błąd brokera" dla kroku `cancel` w referencji (anulowanie przy niedostępnym brokerze to 503).
 
-## 3.0.0 (w przygotowaniu)
+## 3.0.0 (wydane 2026-10-28)
 
 - Zakres i migracja per komponent: `CHANGELOG.md` ("3.0.0"). Nowe CC: CC-124 (503 przy niedostępnym JWKS), CC-125
   (audyt C5, `replay_store_unavailable` u odbiorców), CC-126 (dzienny limit błędnych kodów), CC-127 (jedna oczekująca
   operacja DESTRUCTIVE).
 - CC-095 przyjęte i wdrożone w wersji roboczej; CC-097 przyjęte, kamień M4 (poza 3.0.0).
-- Wersja robocza `3.0.0-SNAPSHOT` (poms, `package.json`, `info.version`); nic nie zainstalowane w `~/.m2`, brak
-  `release/aiwcorpo-mcp-contracts-3.0.0.tgz` i tagu `v3.0.0`.
+- Wydane jako 3.0.0: artefakty `pl.aiwcorpo.mcp:*:3.0.0` w `~/.m2`, `release/aiwcorpo-mcp-contracts-3.0.0.tgz`, tag `v3.0.0`.
 - Pytania do człowieka: raport koordynatora (`CONTRACT_CHANGES.md`, statusy CC-099 i CC-116).
 
-## Artefakty 2.2.5
+## Artefakty 2.2.5 (poprzednie wydanie)
 
 - `pl.aiwcorpo.mcp:mcp-contracts:2.2.5` (+ klasyfikator `test-vectors`), `mcp-cedar-entities:2.2.5`,
   `mcp-policy-bundle:2.2.5`, `mcp-manifest:2.2.5`, `mcp-contracts-parent:2.2.5` (w `~/.m2` po `./mvnw install`).
