@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code identity_mismatch; the system is named (CC-111).",
+  "location": "/catalog?connectError=identity_mismatch&system=gitlab",
+  "expected": {
+    "valid": true
+  }
+}

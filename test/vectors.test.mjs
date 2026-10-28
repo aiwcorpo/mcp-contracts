@@ -199,6 +199,7 @@ test('connectError redirect vectors (CC-086)', async () => {
     '/?loginError=session_expired', '/catalog?connected=gitlab',
     ...codes.map((c) => `/catalog?connectError=${c}`),
     ...codes.map((c) => `/connect/gitlab?step=2&connectError=${c}`),
+    ...codes.map((c) => `/catalog?connectError=${c}&system=gitlab`),
   ]);
   const vectors = listJson('test-vectors', 'connect-redirects');
   for (const code of codes) assert.ok(vectors.some((v) => v.data.expected.valid && v.data.location.endsWith(`connectError=${code}`)), code);

@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code provider_error; the system is named (CC-111).",
+  "location": "/catalog?connectError=provider_error&system=gitlab",
+  "expected": {
+    "valid": true
+  }
+}

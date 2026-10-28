@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.2.3
+  version: 2.2.4
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -192,6 +192,9 @@ paths:
         - `not_connected`: `connect_oauth` and/or `add_secret`, one per type in `credential.supportedTypes`
         - `request_pending`: `view_request`
         - `no_access`: `request_access`
+
+        `request_access` is added to `expiring`, `reconnect_required` and `not_connected` never, whatever the denied tools (CC-110;
+        vectors `catalog-actions/`).
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
         (CC-080).
@@ -513,7 +516,7 @@ paths:
         `returnPath` with `connected=<system>` appended (`?` when returnPath has no query, `&` otherwise). On
         failure it appends `connectError=<code>` the same way with a code from `ConnectErrorCode` only
         (CC-022, CC-086): `cancelled` when the provider reports `error=access_denied`, `provider_error` for any other
-        `error` or a failed exchange, `flow_invalid`. `identity_mismatch` is deprecated and no longer returned (CC-101). Provider details never appear in the URL.
+        `error` or a failed exchange, `flow_invalid`. A failure carries `system=<system>` next to `connectError` (CC-111). An error or `503` of the broker while completing the flow gives `connectError=provider_error` (CC-107). `identity_mismatch` is deprecated and no longer returned (CC-101). Provider details never appear in the URL.
         Without a valid session the browser goes to `/?loginError=session_expired` (the BFF checks the session
         itself). Never returns JSON.
       x-connect-error-code:
@@ -550,9 +553,9 @@ paths:
                 connected:
                   value: /catalog?connected=gitlab
                 failed:
-                  value: /catalog?connectError=identity_mismatch
+                  value: /catalog?connectError=flow_invalid&system=gitlab
                 cancelled:
-                  value: /catalog?connectError=cancelled
+                  value: /catalog?connectError=cancelled&system=gitlab
                 no_session:
                   value: /?loginError=session_expired
   /api/v1/connections/{system}/secret:
@@ -957,6 +960,8 @@ paths:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
           description: Deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1669,7 +1674,7 @@ components:
         - opensearch
     ConnectionStatus:
       type: string
-      description: expiring = expires in less than 7 days.
+      description: expiring = expires in less than 7 days; only for `user-secret` with a declared `expiresAt` (CC-103). A `user-oauth` connection has expiresAt null (the token is refreshed by the broker) and never becomes expiring.
       enum:
         - connected
         - expiring
@@ -2273,7 +2278,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited. For event authentication it is the rejection code of the internal JWT vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited. For event admin_change of the gateway's virtual server changes (CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied (the list of tools of a link is not a field of this schema). For event authentication it is the rejection code of the internal JWT vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64

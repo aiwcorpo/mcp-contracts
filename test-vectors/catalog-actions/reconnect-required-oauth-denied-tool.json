@@ -1,0 +1,19 @@
+{
+  "description": "A denied tool does not add request_access outside the connected status.",
+  "input": {
+    "status": "reconnect_required",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": true,
+    "hasConnection": true
+  },
+  "expected": {
+    "actions": [
+      "disconnect",
+      "reconnect"
+    ]
+  }
+}

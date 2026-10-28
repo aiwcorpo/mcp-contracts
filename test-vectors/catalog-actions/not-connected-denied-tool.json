@@ -1,0 +1,19 @@
+{
+  "description": "A denied tool does not add request_access outside the connected status.",
+  "input": {
+    "status": "not_connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": true,
+    "hasConnection": false
+  },
+  "expected": {
+    "actions": [
+      "add_secret",
+      "connect_oauth"
+    ]
+  }
+}

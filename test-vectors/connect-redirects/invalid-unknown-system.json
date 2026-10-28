@@ -1,0 +1,7 @@
+{
+  "description": "system must be a known SystemId.",
+  "location": "/catalog?connectError=cancelled&system=sonarqube",
+  "expected": {
+    "valid": false
+  }
+}

@@ -48,6 +48,32 @@
       }
     },
     {
+      "name": "completeOAuth 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/complete",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
       "name": "completeOAuth 401 unauthenticated",
       "priority": 2,
       "request": {

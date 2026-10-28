@@ -2550,3 +2550,126 @@ G-15, G-16, G-18, G-22.
   mapowania `identity_mismatch`; zwraca `backendUser`), ws-08 (komunikat "Połączono jako <backendUser>", usunięcie
   ekranów błędu `identity_mismatch`).
 - **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.3)
+
+## CC-102 | C4/C12 | `completeOAuth`: 400 dla systemu bez `user-oauth`, `503` -> `provider_error`
+
+- **Zgłasza:** B1 (ws-06); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** opis i odpowiedź `400 BadRequest` w `completeOAuth` (jak `oauth/start`); opis, że BFF mapuje `503` brokera na `connectError=provider_error`. Usunięty też nieaktualny opis porównania tożsamości z CC-101.
+- **Pliki:** `credential-broker.v1.yaml`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-103 | C4 | `expiring` i `expiresAt` tylko dla `user-secret`
+
+- **Zgłasza:** B2 (ws-06); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** opis `ConnectionStatus`; przykład `two_connections`: połączenie GitLab OAuth ma `status: connected`, `expiresAt: null`.
+- **Pliki:** `credential-broker.v1.yaml`, mocki.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-104 | D6/C4 | Miejsce `client_secret` klienta OAuth w OpenBao
+
+- **Zgłasza:** B3 (ws-06); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** README ("Doprecyzowania z fali M2"): `secret/data/mcp/oauth-clients/<system>`, osobno od połączeń użytkowników. Aktualizacja D6 w `02-decisions.md` należy do człowieka.
+- **Pliki:** `README.md`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-105 | C4 | `CredentialRequired.connectUrl` jest informacyjne
+
+- **Zgłasza:** B4 (ws-05); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** opis pola: gateway buduje link z własnego `publicBaseUrl` i ignoruje wartość brokera.
+- **Pliki:** `credential-broker.v1.yaml`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-106 | C5/C2 | Jeden port TLS dla `/admin/v1` i JWKS
+
+- **Zgłasza:** B5 (ws-05); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** README: cel certyfikatu klienta (clientAuth) sprawdzany w aplikacji dla `/admin/v1`, nie w handshake, bo klienci JWKS mogą go nie przedstawić.
+- **Pliki:** `README.md`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-107 | C8 | Słownik `reason` dla `admin_change` (zmiany linków)
+
+- **Zgłasza:** B6 (ws-05); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** opis pola `reason` w `audit-event.schema.json`: `vs_created`, `vs_deleted`, `slug_taken`, `not_granted`, `invalid_request`, `virtual_server_limit`, `not_found_or_denied`. Lista narzędzi linku w zdarzeniu wymaga nowego pola w schemacie C8, więc zostaje poza 2.2.4 (grupa A).
+- **Pliki:** `schemas/audit-event.schema.json`, `README.md`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-108 | C5 | Tożsamość scrapera metryk (`mcp-prometheus`)
+
+- **Zgłasza:** B7 (ws-05); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** README: scraper `/actuator/prometheus` z certyfikatem clientAuth z CA wewnętrznego i CN `mcp-prometheus`; certyfikat z `gen-certs.sh` (ws-01).
+- **Pliki:** `README.md`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-109 | C12 | 400 dla zakodowanych ścieżek, `provider_error` przy błędzie brokera
+
+- **Zgłasza:** B8 (ws-07); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** `deleteMyVirtualServer` dostaje `400 BadRequest` (`disconnect` już go ma, CC-054); opis `oauthCallback`: błąd lub `503` brokera daje `connectError=provider_error`.
+- **Pliki:** `portal-bff.v1.yaml`, mocki.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-110 | C12 | Wektory `catalog-actions/` dla odmówionego narzędzia i konta serwisowego
+
+- **Zgłasza:** B9 (ws-07); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** nowe wektory: odmówione narzędzie przy `expiring`, `reconnect_required` i `not_connected` nie dodaje `request_access` (tylko `connected` je dodaje); konto serwisowe z odmówionym narzędziem: `copy_link` + `request_access`. Reguła zapisana w opisie `getPortalCatalog`.
+- **Pliki:** `test-vectors/catalog-actions/`, `portal-bff.v1.yaml`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-111 | C12 | Przekierowanie po błędzie OAuth niesie `system=<system>`
+
+- **Zgłasza:** B10 (ws-08); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** błąd w `oauthCallback` dokleja `system=<system>` obok `connectError` (frontend toleruje brak). Wektory `connect-redirects/`: `valid-*-with-system`, `invalid-unknown-system`.
+- **Pliki:** `portal-bff.v1.yaml`, wektory, test Node.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-112 | C10/C6 | `structuredContent` zgodny z `outputSchema`, pola systemu obok `UntrustedText`
+
+- **Zgłasza:** B11 (starter; uzupełnienie CC-072); pakiet M2, grupa B (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.4
+- **Zmiana:** opis `UntrustedText` w `common.schema.json`: wynik z `outputSchema` jest zgodny ze schematem, `UntrustedText` to rekord wyniku, pola systemu leżą obok, wiki markup konwertuje serwer (w `format` nie ma wartości wiki).
+- **Pliki:** `schemas/common.schema.json`.
+- **SemVer:** patch (opisy, przykłady, wektory zgodne ze schematem)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.4)
+
+## CC-113 | C12 | Tabela CC-083: `request_access` bez `requiredEntitlements`, `view_request` przy oczekującym wniosku
+
+- **Zgłasza:** C1 (ws-07)
+- **Propozycja:** rozstrzygnąć `request_access` przy `no_access` bez `requiredEntitlements` i `view_request` przy `connected` z oczekującym wnioskiem na odmówione narzędzie. Razem z wnioskami IGA.
+- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M4)
+
+## CC-114 | C4/C12 | Format poświadczenia Basic w `PutSecretRequest`
+
+- **Zgłasza:** C2 (ws-08)
+- **Propozycja:** format dla Basic, gdy pojawi się system, który go wymaga (dziś `user-secret` to pojedynczy token, CC-049).
+- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: gdy pojawi się taki system)
+
+## CC-115 | C6 | Wymagane `title` narzędzia w manifeście
+
+- **Zgłasza:** C3 (ws-08)
+- **Propozycja:** wymagać `title` (zaostrzenie manifestu, major). Razem z rejestrem definicji.
+- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M3)
+
+## CC-116 | C8 | Osobna wartość `event` dla zmian linków
+
+- **Zgłasza:** C4 (ws-07)
+- **Propozycja:** osobny `event` dla zmian wirtualnych serwerów zamiast `admin_change` (nowa wartość enum, major). Razem z CC-107 i listą narzędzi linku (grupa A).
+- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M3/M4)

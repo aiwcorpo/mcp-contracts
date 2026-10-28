@@ -54,9 +54,9 @@
           {
             "system": "gitlab",
             "type": "user-oauth",
-            "status": "expiring",
+            "status": "connected",
             "backendUser": "jkowalski",
-            "expiresAt": "2026-10-30T08:00:00Z",
+            "expiresAt": null,
             "connectedAt": "2026-09-30T08:00:00Z",
             "lastUsedAt": null
           }

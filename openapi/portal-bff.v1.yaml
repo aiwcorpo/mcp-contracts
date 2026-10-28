@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 2.2.3
+  version: 2.2.4
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -179,6 +179,9 @@ paths:
         - `not_connected`: `connect_oauth` and/or `add_secret`, one per type in `credential.supportedTypes`
         - `request_pending`: `view_request`
         - `no_access`: `request_access`
+
+        `request_access` is added to `expiring`, `reconnect_required` and `not_connected` never, whatever the denied tools (CC-110;
+        vectors `catalog-actions/`).
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
         (CC-080).
@@ -460,7 +463,7 @@ paths:
         `returnPath` with `connected=<system>` appended (`?` when returnPath has no query, `&` otherwise). On
         failure it appends `connectError=<code>` the same way with a code from `ConnectErrorCode` only
         (CC-022, CC-086): `cancelled` when the provider reports `error=access_denied`, `provider_error` for any other
-        `error` or a failed exchange, `flow_invalid`. `identity_mismatch` is deprecated and no longer returned (CC-101). Provider details never appear in the URL.
+        `error` or a failed exchange, `flow_invalid`. A failure carries `system=<system>` next to `connectError` (CC-111). An error or `503` of the broker while completing the flow gives `connectError=provider_error` (CC-107). `identity_mismatch` is deprecated and no longer returned (CC-101). Provider details never appear in the URL.
         Without a valid session the browser goes to `/?loginError=session_expired` (the BFF checks the session
         itself). Never returns JSON.
       x-connect-error-code:
@@ -497,9 +500,9 @@ paths:
                 connected:
                   value: /catalog?connected=gitlab
                 failed:
-                  value: /catalog?connectError=identity_mismatch
+                  value: /catalog?connectError=flow_invalid&system=gitlab
                 cancelled:
-                  value: /catalog?connectError=cancelled
+                  value: /catalog?connectError=cancelled&system=gitlab
                 no_session:
                   value: /?loginError=session_expired
   /api/v1/connections/{system}/secret:
@@ -882,6 +885,8 @@ paths:
         - session: []
           csrf: []
       responses:
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '204':
           headers:
             X-Request-Id:

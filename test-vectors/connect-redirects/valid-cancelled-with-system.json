@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code cancelled; the system is named (CC-111).",
+  "location": "/catalog?connectError=cancelled&system=gitlab",
+  "expected": {
+    "valid": true
+  }
+}

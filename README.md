@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.3**, tag `v2.2.3` (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.4**, tag `v2.2.4` (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -92,13 +92,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.3` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.3:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.3` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.3` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.2.3` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.3` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.2.3.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.3.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.4` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.4:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.4` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.4` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.2.4` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.4` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.2.4.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.4.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -107,8 +107,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.3/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.3.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.4/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.4.tgz
 ```
 
 ```xml
@@ -351,6 +351,28 @@ potem jego zawartość; wartość, która nie jest obiektem, to `400 invalid_req
 chroniony porównaniem tożsamości (CC-101); użytkownik widzi podpięte konto (`backendUser`). `expiresAt` jest opcjonalną informacją użytkownika (prawdziwy termin PAT ustawia się w systemie
 docelowym): broker przyjmuje każdą poprawną datę albo brak pola, a status `expiring` (< 7 dni) istnieje tylko przy podanej
 dacie (CC-084).
+
+## Doprecyzowania z fali M2 (2.2.4)
+
+- **OAuth w C4 (CC-102):** `completeOAuth` odpowiada `400 invalid_request` dla systemu bez `user-oauth` (jak `oauth/start`); BFF
+  mapuje błąd lub `503` tej operacji na `connectError=provider_error`.
+- **`client_secret` klienta OAuth (CC-104, D6):** broker trzyma go w OpenBao w `secret/data/mcp/oauth-clients/<system>`, osobno
+  od połączeń użytkowników (`mcp/connections/<sha256(sub)>/<system>`); żadna odpowiedź poza `resolve` go nie zwraca.
+- **`CredentialRequired.connectUrl` (CC-105):** pole informacyjne; gateway buduje link z własnego `publicBaseUrl` i
+  ignoruje wartość brokera (jedno źródło adresu portalu).
+- **Port wewnętrzny gateway'a (CC-106):** `/admin/v1/*` i JWKS (C2) są na jednym porcie TLS. Klienci JWKS mogą nie
+  przedstawić certyfikatu klienta (clientAuth), więc cel certyfikatu klienta sprawdza się w warstwie aplikacji dla
+  `/admin/v1`, nie w handshake TLS (dotyczy też brokera i startera).
+- **Metryki (CC-108):** `/actuator/prometheus` czyta scraper z certyfikatem clientAuth z CA wewnętrznego i CN `mcp-prometheus`
+  (lista CN w konfiguracji komponentu; certyfikat z `gen-certs.sh` w ws-01).
+- **Audyt zmian linków (CC-107):** `admin_change` z `reason` ze słownika `vs_created`, `vs_deleted`, `slug_taken`,
+  `not_granted`, `invalid_request`, `virtual_server_limit`, `not_found_or_denied` (opis pola `reason` w C8). Lista narzędzi
+  linku wymaga nowego pola w schemacie C8 i jest w grupie A (poza 2.2.4).
+- **Wygasanie (CC-103):** `expiring` i `expiresAt` dotyczą tylko `user-secret` z podaną datą; `user-oauth` ma
+  `expiresAt: null`.
+- **Struktura wyniku (CC-112):** narzędzie z `outputSchema` zwraca `structuredContent` zgodny ze schematem; `UntrustedText`
+  jest rekordem wyniku, pola systemu leżą obok; wiki markup konwertuje serwer (`format` to `text/plain` albo
+  `text/markdown`).
 
 ## Whoami (C4.1)
 

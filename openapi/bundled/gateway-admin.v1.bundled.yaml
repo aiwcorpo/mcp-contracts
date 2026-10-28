@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 2.2.3
+  version: 2.2.4
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -1700,7 +1700,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited. For event authentication it is the rejection code of the internal JWT vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_declined, confirmation_expired, credential_required, step_up_required, rate_limited. For event admin_change of the gateway's virtual server changes (CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied (the list of tools of a link is not a field of this schema). For event authentication it is the rejection code of the internal JWT vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64

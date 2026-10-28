@@ -1,0 +1,7 @@
+{
+  "description": "OAuth connection failed with code flow_invalid; the system is named (CC-111).",
+  "location": "/catalog?connectError=flow_invalid&system=gitlab",
+  "expected": {
+    "valid": true
+  }
+}

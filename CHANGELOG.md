@@ -4,6 +4,25 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.2.4 - 2026-10-28
+
+Grupa B pakietu M2 (CC-102 ... CC-112, decyzja człowieka 2026-10-28): doprecyzowania, przykłady i wektory; schematy bez
+zmian strukturalnych, `cedar/mcp.cedarschema` bez zmian. Grupa C (CC-113 ... CC-116) `deferred`; grupa A (w tym CC-078,
+CC-079) nie ruszona.
+
+- CC-102 C4 `completeOAuth`: `400` dla systemu bez `user-oauth`; BFF mapuje `503` brokera na `provider_error`; usunięty
+  nieaktualny opis porównania tożsamości.
+- CC-103 `expiring`/`expiresAt` tylko dla `user-secret`; poprawiony przykład `two_connections`.
+- CC-104 miejsce `client_secret` OAuth w OpenBao; CC-105 `connectUrl` informacyjne; CC-106 jeden port TLS i sprawdzanie
+  certyfikatu klienta w aplikacji; CC-108 CN `mcp-prometheus`.
+- CC-107 słownik `reason` dla `admin_change` (opis w C8; lista narzędzi linku wymaga pola w schemacie, grupa A).
+- CC-109 `400` w `deleteMyVirtualServer`, `provider_error` przy błędzie brokera w `oauthCallback`.
+- CC-110 wektory `catalog-actions/` (4 nowe); CC-111 `system=<system>` w przekierowaniu po błędzie OAuth (wektory
+  `connect-redirects/`); CC-112 `structuredContent` i `UntrustedText` (opis).
+- Wpływ: ws-05 (`publicBaseUrl` w `connectUrl`, port TLS, scraper), ws-06 (400 w `completeOAuth`, `expiresAt` null dla
+  OAuth, ścieżka `client_secret`), ws-07 (400 w `deleteMyVirtualServer`, `provider_error`, `system=` w przekierowaniu), ws-08
+  (`system` w komunikacie błędu OAuth), starter (`structuredContent`).
+
 ## 2.2.3 - 2026-10-28
 
 CC-101 (decyzja człowieka 2026-10-28): brak sprawdzania tożsamości w whoami. `cedar/mcp.cedarschema` bez zmian.
