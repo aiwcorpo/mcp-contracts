@@ -28,6 +28,7 @@
     "register": false,
     "expiresAt": "2026-10-26T20:05:00Z",
     "pendingCreated": true,
-    "supersededIds": []
+    "supersededIds": [],
+    "invalidatedCodes": true
   }
 }

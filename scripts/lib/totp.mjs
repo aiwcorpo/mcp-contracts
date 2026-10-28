@@ -82,7 +82,7 @@ export function otpauthUri(username, secretBase32) {
 
 /**
  * Check of a code against a registration. `state` is {lastAcceptedStep, failures, dailyFailures, lockedUntil,
- * disabled}; failures and dailyFailures are epoch seconds. Results: ok, invalid, replayed, locked, disabled,
+ * disabled}; failures and dailyFailures are epoch seconds. Results: ok, invalid, replayed, burned, locked, disabled,
  * malformed (HTTP 400, nothing changes). Only the passing of time lifts a lock (CC-091). 20 failures in 24 hours
  * (CC-126) disable the authenticator until the user registers again; a success does not reset that counter and
  * a disabled authenticator never looks at the code.
@@ -106,9 +106,10 @@ export function verify(secret, state, code, at, config = DEFAULTS) {
     next.failures = [];
   }
   const step = matchingStep(secret, code, at, config.windowSteps);
-  // A code of a burned step (the owner cancelled an operation, CC-128) is replayed, but it is not a wrong guess: it does
+  // A code of a burned step (the owner cancelled an operation, or a new DESTRUCTIVE operation burned it, CC-128) gets its own
+  // result `burned`, which the gateway shows to the client like a replay. It is not a wrong guess: it does
   // not count toward the 5/15 minute or the daily limit, otherwise a held code could be used to lock the user out.
-  if (step !== null && next.burnedThrough !== null && step <= next.burnedThrough) return { result: 'replayed', state: next };
+  if (step !== null && next.burnedThrough !== null && step <= next.burnedThrough) return { result: 'burned', state: next };
   if (step !== null && (next.lastAcceptedStep === null || step > next.lastAcceptedStep)) {
     next.lastAcceptedStep = step;
     next.failures = [];

@@ -1,0 +1,12 @@
+{
+  "description": "One second after the lifetime. Key: test only, NOT FOR PRODUCTION.",
+  "key": "test-only-activity-cursor-key-NOT-FOR-PRODUCTION",
+  "input": {
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "cursor": "eyJ0cyI6IjIwMjYtMTAtMjZUMTk6NTA6MDAuMDAwWiIsInJlcXVlc3RJZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsImlhdCI6MTc5MzA0NDgwMH0.wQdbPg36iN-U6l9gnY1xVQ",
+    "now": "2026-10-26T20:15:01Z"
+  },
+  "expected": {
+    "valid": false
+  }
+}

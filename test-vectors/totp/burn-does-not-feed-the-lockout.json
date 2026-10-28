@@ -1,5 +1,5 @@
 {
-  "description": "Four wrong codes are on record, the held code is replayed many times after the burn: no lock; the next real wrong code is the fifth failure and locks. Replays of burned codes did not count. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "description": "Four wrong codes are on record, the held code is burned many times after the burn: no lock; the next real wrong code is the fifth failure and locks. Replays of burned codes did not count. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
   "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
   "initial": {
     "lastAcceptedStep": null,
@@ -70,7 +70,7 @@
       "at": "2026-10-14T17:47:46Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -82,7 +82,7 @@
       "at": "2026-10-14T17:47:47Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -94,7 +94,7 @@
       "at": "2026-10-14T17:47:48Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -106,7 +106,7 @@
       "at": "2026-10-14T17:47:49Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -118,7 +118,7 @@
       "at": "2026-10-14T17:47:50Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -130,7 +130,7 @@
       "at": "2026-10-14T17:47:51Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -142,7 +142,7 @@
       "at": "2026-10-14T17:47:52Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null
@@ -154,7 +154,7 @@
       "at": "2026-10-14T17:47:53Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733336,
           "lockedUntil": null

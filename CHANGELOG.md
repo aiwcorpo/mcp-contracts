@@ -59,13 +59,14 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - `$defs` używane przez serwery wymienione jako stabilne API (CC-079), test pilnuje listy.
 - `ConfirmationView.resource`, `AuthenticatorStatus.disabledAt`/`disabledReason`, wektory JWT dla wywołań
   `authenticator` brokera (z `tool`), przykłady `disabled` w C4 i C12.
-- CC-095: `GET /admin/v1/activity/calls` (C5) i `GET /api/v1/activity/calls` (C12), `ActivityCall` (jedno wywołanie = jeden wiersz, wynik końcowy, `wrongCodeCount`, filtry `from`, `to`, `result`, `q`, kursor `X-Next-Cursor`); wektory `activity-calls/` (33). Stary `/activity` bez zmian.
+- CC-095: `GET /admin/v1/activity/calls` (C5) i `GET /api/v1/activity/calls` (C12), `ActivityCall` (jedno wywołanie = jeden wiersz, wynik końcowy, `wrongCodeCount`, filtry `from`, `to`, `result`, `q`, kursor `X-Next-Cursor`); wektory `activity-calls/` (38). Stary `/activity` bez zmian.
 - Nie wchodzą do 3.0.0: CC-097 (przyjęte, kamień M4), CC-096, CC-113, CC-114.
 
 ### Migracja
 
 **gateway (ws-05)**
 - Rezerwacja próby przed pytaniem brokera i zwrot rezerwacji, compare-and-delete przy `ok`, atomowe "utwórz i unieważnij" per użytkownik, ślad unieważnionego wywołania nie jest oczekującym, blokada `confirmation_blocked` po zapisanym podglądzie do `max(wygaśnięcie, podgląd + 90 s)` (także po wyczerpaniu prób i wygaśnięciu), reason `pending_exists`; kursor `/activity/calls` uwierzytelniony (HMAC związany z `sub`, zmieniony -> 400), agregacja z bieżącym czasem.
+- Tworzenie DESTRUCTIVE B po obejrzanym, niepotwierdzonym śladzie A: najpierw `invalidate-codes` (błąd = 503 dla B), ślad blokujący na `sub`, `retryAfterSeconds` >= 1; wynik brokera `burned` bez zużycia próby (`code_burned`).
 - `POST /admin/v1/confirmations/{id}/viewed` i `.../cancel` (anulowanie najpierw woła `invalidate-codes` u brokera, błąd to 503 bez anulowania; anulowanie atomowo z weryfikacją kodu, ślad do końca TTL, `confirmation_cancelled`, audyt `cancelled_by_owner`); `GET` podglądu bez skutków ubocznych.
 - Zaimplementować `listActivityCalls` (agregacja wywołania i ponowień, licznik błędnych kodów, filtry, kursor, `sub` z tokenu BFF); wektory `activity-calls/`.
 - Usunąć ścieżkę decyzji (`decideConfirmation`) i wydawanie kodu. Wdrożyć oczekujące wywołanie: klucz (`sub`, `serverId`,
@@ -105,7 +106,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - `ConnectErrorCode` bez `identity_mismatch`; zdarzenie `authenticator` (`authenticator_removed`, rejestracja).
 
 **web (ws-08)**
-- Przycisk "Anuluj" w podglądzie (`cancel`, bez MFA) i etykieta "Anulowane". Podgląd wywołuje `viewed` raz, po wyrenderowaniu i gdy `document.prerendering` jest false i `document.visibilityState` to `visible`; odpytuje podgląd (np. co 5 s i po powrocie na kartę) i po `404` pokazuje "link nieaktualny"; etykieta `blocked_by_pending`; przy `confirmation_blocked` (po stronie klienta MCP) nie prosić o kod.
+- Przycisk "Anuluj" w podglądzie (`cancel`, bez MFA) i etykieta "Anulowane". Podgląd wywołuje `viewed` raz, po wyrenderowaniu i gdy `document.prerendering` jest false i `document.visibilityState` to `visible`; odpytuje podgląd (np. co 5 s i po powrocie na kartę) i po `404` pokazuje "link nieaktualny"; etykieta `blocked_by_pending`; po `404` na `cancel` komunikat "Nie udało się anulować: operacja mogła zostać wykonana albo wygasła" z linkiem do logów aktywności; przy `confirmation_blocked` (po stronie klienta MCP) nie prosić o kod.
 - Ekran logów na `listMyActivityCalls`: filtry, etykiety `result`, szczegół z liczbą błędnych kodów, nieznana wartość jako etykieta ogólna.
 - Klient i mock MSW z 3.0.0: usunąć wywołania `POST /api/v1/confirmations/{id}` i ekran decyzji; podgląd tylko do
   odczytu z `resource`; stany "Czas minął" i "Ten link jest nieaktualny" (także dla unieważnionego).

@@ -1,0 +1,35 @@
+{
+  "description": "F-H1 sequence: A created at 0, preview at 5 s, the user types the code at about 110 s, A is never retried; B at 121 s. The block (expiry 120 s) is over, but the code is valid until about 200 s, so the current codes are burned before B is created.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "previewViewedAt": "2026-10-26T20:00:05Z",
+      "ended": "exhausted"
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "arguments": {
+      "issueKey": "ABC-999"
+    }
+  },
+  "at": "2026-10-26T20:02:01Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": false,
+    "expiresAt": "2026-10-26T20:04:01Z",
+    "pendingCreated": true,
+    "supersededIds": [],
+    "invalidatedCodes": true
+  }
+}

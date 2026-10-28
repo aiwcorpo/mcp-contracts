@@ -1,5 +1,5 @@
 {
-  "description": "One second after the block ended (view + 90 s) B is created.",
+  "description": "One second after the block ended B is created, and because a code typed for the viewed A can still be valid, the current codes are burned first (same per-user step).",
   "kind": "first-call",
   "authenticator": "active",
   "pendingCalls": [
@@ -28,6 +28,7 @@
     "register": false,
     "expiresAt": "2026-10-26T20:05:11Z",
     "pendingCreated": true,
-    "supersededIds": []
+    "supersededIds": [],
+    "invalidatedCodes": true
   }
 }

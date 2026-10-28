@@ -1,5 +1,5 @@
 {
-  "description": "Nineteen failures in the last day and many replays of the burned code: the daily counter is untouched, still active. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "description": "Nineteen failures in the last day and many presentations of the burned code: the daily counter is untouched, still active. Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
   "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
   "initial": {
     "lastAcceptedStep": null,
@@ -43,7 +43,7 @@
       "at": "2026-10-14T17:47:20Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733335,
           "lockedUntil": null
@@ -55,7 +55,7 @@
       "at": "2026-10-14T17:47:21Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733335,
           "lockedUntil": null
@@ -67,7 +67,7 @@
       "at": "2026-10-14T17:47:22Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733335,
           "lockedUntil": null
@@ -79,7 +79,7 @@
       "at": "2026-10-14T17:47:23Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733335,
           "lockedUntil": null
@@ -91,7 +91,7 @@
       "at": "2026-10-14T17:47:24Z",
       "code": "705202",
       "expected": {
-        "result": "replayed",
+        "result": "burned",
         "after": {
           "lastAcceptedStep": 59733335,
           "lockedUntil": null

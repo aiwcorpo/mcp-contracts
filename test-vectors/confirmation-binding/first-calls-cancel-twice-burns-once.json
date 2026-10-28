@@ -1,0 +1,45 @@
+{
+  "description": "The second cancel of the same call is a plain 204 and does not burn the codes again (a code the user types meanwhile for a new operation survives).",
+  "kind": "first-calls-parallel",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "previewViewedAt": "2026-10-26T20:00:10Z"
+    }
+  ],
+  "pendingLimit": 3,
+  "at": "2026-10-26T20:00:00Z",
+  "steps": [
+    {
+      "cancel": "cnf_4k9Qe2LxW7tB3mZp"
+    },
+    {
+      "cancel": "cnf_4k9Qe2LxW7tB3mZp"
+    }
+  ],
+  "expected": {
+    "supersededIds": [
+      [],
+      []
+    ],
+    "outcomes": [
+      null,
+      null
+    ],
+    "pendingIds": [],
+    "cancels": [
+      true,
+      true
+    ],
+    "burns": [
+      true,
+      false
+    ]
+  }
+}

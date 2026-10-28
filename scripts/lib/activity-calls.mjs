@@ -35,12 +35,18 @@ export function aggregateCall(allEvents, now) {
   let result;
   let errorCode = null;
   if (last.event === 'confirmation') {
-    const reason = last.reason ?? (last.decision === 'confirmation_pending' ? 'waiting' : 'confirmation_failed');
-    result = { waiting: 'confirmation_pending', superseded: 'superseded', confirmation_expired: 'expired', attempts_exhausted: 'confirmation_failed', pending_exists: 'blocked_by_pending', cancelled_by_owner: 'cancelled' }[reason] ?? 'confirmation_failed';
-    errorCode = last.errorCode ?? null;
-    if (result === 'confirmation_pending') {
-      if (now !== undefined && now - Date.parse(last.ts) / 1000 > TTL_SECONDS) { result = 'expired'; errorCode = null; }
+    // The TTL runs from the first event of the call (the pending call was created then), not from the last one.
+    const startedAt = Date.parse((events.find((e) => e.decision === 'confirmation_pending') ?? first).ts) / 1000;
+    const timedOut = now !== undefined && now - startedAt > TTL_SECONDS;
+    // A wrong code (or a burned one) with attempts left decides nothing: the call still waits, and after the TTL it expired.
+    const waiting = last.decision === 'confirmation_pending' || (last.reason === undefined || last.reason === 'code_burned');
+    if (last.reason === 'confirmation_expired') { result = 'expired'; }
+    else if (waiting) { result = timedOut ? 'expired' : 'confirmation_pending'; }
+    else {
+      result = { superseded: 'superseded', attempts_exhausted: 'confirmation_failed', pending_exists: 'blocked_by_pending', cancelled_by_owner: 'cancelled' }[last.reason] ?? 'confirmation_failed';
+      errorCode = last.errorCode ?? null;
     }
+    if (result === 'expired' || result === 'confirmation_pending') errorCode = null;
   } else if (last.event === 'tool_call') {
     const confirmed = confirmations.some((e) => e.reason === 'user_confirmed' || e.reason === 'user_confirmed_no_preview');
     if (last.outcome === 'ok') result = confirmed ? 'confirmed' : 'ok';

@@ -628,7 +628,7 @@ paths:
         caller's own calls are ever returned, also for an administrator: there is no view of other users' calls in 3.0.0.
         Newest first. Page with the `X-Next-Cursor` header: the cursor is opaque, carries only the position (`ts`,
         `requestId`) and is authenticated by the gateway (for example an HMAC with a gateway key, bound to the `sub`); a
-        cursor that was changed, is foreign or has expired is `400`, and the gateway never takes `sub`, filters or the window
+        cursor that was changed, is foreign or has expired is `400` (HMAC-SHA-256 with a gateway key over `sub`, position and issue time, tag of at least 128 bits compared in constant time, valid 15 minutes; `test-vectors/activity-cursor/`), and the gateway never takes `sub`, filters or the window
         from it.
       security:
         - mtls: []
@@ -763,7 +763,7 @@ paths:
         the view is recorded only by the explicit `markConfirmationViewed` call (CC-127), so that a prerender or a
         prefetch of the page cannot set it. Once the view is recorded, a different DESTRUCTIVE operation of the user does
         not supersede this one: it is refused with `confirmation_blocked` until this one is confirmed or the block ends at
-        max(expiry, view + 90 s), also when its attempts ran out or it expired earlier (CC-127). There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
+        max(expiry, view + 90 s), also when its attempts ran out or it expired earlier (CC-127). When B is created after that block, the gateway first burns the current codes at the broker (`invalidateAuthenticatorCodes`, same per-user step as the creation; if it fails B is not created), because a code typed for A can stay valid for 90 s after A expired. There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
         refusing is not typing it (the call expires after 120 s).
       security:
         - mtls: []
@@ -834,7 +834,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
-          description: Unknown, expired, superseded or not owned by the caller (not_found_or_denied).
+          description: Unknown, expired, attempts exhausted, superseded or not owned by the caller (not_found_or_denied).
           content:
             application/json:
               schema:
@@ -862,7 +862,7 @@ paths:
         cancelled call gets the C10 error `confirmation_cancelled` (the gateway keeps a tombstone until the original TTL
         ends; no broker call, no attempt or TOTP step spent), the audit event is `confirmation` with
         `reason: cancelled_by_owner`, and the call is `cancelled` in `activity/calls`. Idempotent while the tombstone lives
-        (a second cancel is `204`); `404 not_found_or_denied` for an unknown, expired, superseded, executed or foreign call.
+        (a second cancel is `204` and does not burn the codes again: only the cancel that changes the state calls the broker); cancelling a viewed call whose attempts ran out is allowed (`204`, lifts the block); `404 not_found_or_denied` for an unknown, expired, superseded, executed or foreign call.
       security:
         - mtls: []
           bffUserToken: []

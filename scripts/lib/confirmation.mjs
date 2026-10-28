@@ -23,7 +23,7 @@ export function argumentsHash(args) {
  * a new one supersedes the older ones, whose ids are returned in `supersededIds`, unless the preview of an older one was
  * opened (see below).
  */
-export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at }) {
+export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at, burn = 'ok' }) {
   if (authenticator === 'unavailable') return { outcome: 'upstream_unavailable', pendingCreated: false };
   if (authenticator === 'none' || authenticator === 'disabled') return { outcome: 'confirmation_required', register: true, pendingCreated: false };
   const hash = argumentsHash(call.arguments);
@@ -42,15 +42,23 @@ export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at 
       && at <= Math.max(p.createdAt + TTL_SECONDS, p.previewViewedAt + CODE_VALIDITY_SECONDS));
     if (blockers.length > 0) {
       const until = Math.max(...blockers.map((p) => Math.max(p.createdAt + TTL_SECONDS, p.previewViewedAt + CODE_VALIDITY_SECONDS)));
-      return { outcome: 'confirmation_blocked', retryAfterSeconds: Math.ceil(until - at), pendingCreated: false };
+      return { outcome: 'confirmation_blocked', retryAfterSeconds: Math.max(1, Math.ceil(until - at)), pendingCreated: false };
     }
+    // The block has ended, but a code typed for a viewed, unconfirmed A can still be valid (up to 90 s after A expired).
+    // So creating B first burns the current codes at the broker, in the same per-user step as the creation; if the broker
+    // fails, B is not created (review 3.0.0, F-H1). Not needed for the same operation, nor for A that was confirmed or
+    // cancelled (a cancel burned already).
+    const toBurn = pendingCalls.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewedAt !== undefined && p.ended !== 'confirmed' && p.ended !== 'cancelled'
+      && p.cancelledAt === undefined && !p.supersededBy && !p.burned && !(p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash)
+      && at <= p.createdAt + TTL_SECONDS + CODE_VALIDITY_SECONDS);
+    if (toBurn.length > 0 && burn === 'failed') return { outcome: 'upstream_unavailable', pendingCreated: false };
     const supersededIds = live.filter((p) => p.risk === 'DESTRUCTIVE').map((p) => p.confirmationId);
-    return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds };
+    return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds, ...(toBurn.length > 0 && { invalidatedCodes: true }) };
   }
   const others = live.filter((p) => p.risk !== 'DESTRUCTIVE');
   if (others.length >= pendingLimit) {
     // Seconds until the oldest of them expires, i.e. until a slot is free.
-    const retryAfterSeconds = Math.ceil(Math.min(...others.map((p) => p.createdAt + TTL_SECONDS)) - at);
+    const retryAfterSeconds = Math.max(1, Math.ceil(Math.min(...others.map((p) => p.createdAt + TTL_SECONDS)) - at));
     return { outcome: 'rate_limited', retryAfterSeconds, pendingCreated: false };
   }
   return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds: [] };
@@ -83,6 +91,10 @@ export function retry({ pending, attempt, verification, at }) {
       return { outcome: 'confirmation_failed', verifyCalled: true, pendingConsumed: attemptsLeft === 0, attemptsLeft,
         ...(attemptsLeft === 0 && { auditReason: 'attempts_exhausted' }) };
     }
+    case 'burned':
+      // Broker: the code is of a step burned by a cancel. Not a wrong guess: no attempt is spent, nothing counted; the client
+      // sees confirmation_failed like for a replay (no new oracle).
+      return { outcome: 'confirmation_failed', verifyCalled: true, pendingConsumed: false, attemptsLeft: pending.attemptsLeft, auditReason: 'code_burned' };
     case 'locked':
       return { outcome: 'rate_limited', verifyCalled: true, pendingConsumed: false, attemptsLeft: pending.attemptsLeft, retryAfterSeconds: verification.retryAfterSeconds };
     case 'disabled':
@@ -115,13 +127,16 @@ export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, c
     }
     if (step.cancel !== undefined) {
       const target = live.find((p) => p.confirmationId === step.cancel && !p.supersededBy && at <= p.createdAt + TTL_SECONDS && p.ended !== 'confirmed');
+      // Only the cancel that changes the state burns the codes; repeating it is a plain 204 (review 3.0.0, F-L8).
+      const first = target && target.ended !== 'cancelled';
       if (target) target.ended = 'cancelled';
-      results.push(target ? { cancelled: true } : { cancelled: false, status: 404 });
+      results.push(target ? { cancelled: true, burnedCodes: Boolean(first) } : { cancelled: false, status: 404 });
       return;
     }
     const call = step.call;
-    const result = firstCall({ authenticator, pendingCalls: live, pendingLimit, call, at });
+    const result = firstCall({ authenticator, pendingCalls: live, pendingLimit, call, at, burn: step.burn });
     results.push(result);
+    if (result.invalidatedCodes) live = live.map((p) => (p.previewViewedAt !== undefined ? { ...p, burned: true } : p));
     if (result.pendingCreated) {
       live = live.map((p) => (result.supersededIds?.includes(p.confirmationId) ? { ...p, supersededBy: `new-${index}` } : p));
       live.push({ confirmationId: `new-${index}`, serverId: call.serverId, tool: call.tool, risk: call.risk, argsSha256: argumentsHash(call.arguments), createdAt: at });
@@ -174,6 +189,7 @@ export function retriesInOrder({ pending, attempts, at }) {
         outcomes.push('confirmation_failed');
         if (current.attemptsLeft === 0) current = null;
         break;
+      case 'burned': current.attemptsLeft += 1; outcomes.push('confirmation_failed'); break;
       case 'locked': current.attemptsLeft += 1; outcomes.push('rate_limited'); break;
       case 'disabled': case 'not_registered': current.attemptsLeft += 1; outcomes.push('confirmation_required'); break;
       default: current.attemptsLeft += 1; outcomes.push('upstream_unavailable');

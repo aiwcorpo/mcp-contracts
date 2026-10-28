@@ -9,6 +9,7 @@ import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
+import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
 import { gatewayAuthenticationResponse, keyDecision } from '../scripts/lib/gateway-authentication.mjs';
 
@@ -131,6 +132,7 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
         pendingLimit: data.pendingLimit, calls: data.calls, steps: data.steps, at: toSeconds(data.at),
       });
       const calls = results.map((r) => (r.previewed === undefined && r.cancelled === undefined ? r : null));
+      if (data.expected.burns) assert.deepEqual(results.map((r) => (r.cancelled === undefined ? null : (r.cancelled ? r.burnedCodes : null))), data.expected.burns, name);
       if (data.expected.cancels) assert.deepEqual(results.map((r) => (r.cancelled === undefined ? null : (r.cancelled ? true : r.status))), data.expected.cancels, name);
       assert.deepEqual(calls.map((r) => (r === null ? [] : (r.supersededIds ?? []))), data.expected.supersededIds, name);
       if (data.expected.outcomes) assert.deepEqual(calls.map((r) => (r === null ? null : r.outcome)), data.expected.outcomes, name);
@@ -144,7 +146,7 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
       const actual = firstCall({
         authenticator: data.authenticator,
         pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt), previewViewedAt: toSeconds(p.previewViewedAt), cancelledAt: toSeconds(p.cancelledAt) })),
-        pendingLimit: data.pendingLimit, call: data.call, at: toSeconds(data.at),
+        pendingLimit: data.pendingLimit, call: data.call, at: toSeconds(data.at), burn: data.burn,
       });
       const { expiresAt, ...rest } = actual;
       const expected = { ...data.expected };
@@ -296,4 +298,14 @@ test('gateway key decision: which reason a token gets and whether it is 401 or 5
   const vectors = listJson('test-vectors', 'gateway-authentication-decision');
   assert.ok(vectors.some((v) => v.data.expected.status === 503) && vectors.some((v) => v.data.expected.status === 401));
   for (const { name, data } of vectors) assert.deepEqual(keyDecision(data.input), data.expected, name);
+});
+
+test('activity cursor vectors: authenticated, bound to sub, 15 minutes (CC-095)', () => {
+  const vectors = listJson('test-vectors', 'activity-cursor');
+  assert.ok(vectors.some((v) => v.data.expected.valid) && vectors.some((v) => !v.data.expected.valid));
+  for (const { name, data } of vectors) {
+    const position = openCursor({ key: data.key, sub: data.input.sub, cursor: data.input.cursor, now: toSeconds(data.input.now) });
+    assert.equal(position !== null, data.expected.valid, name);
+    if (data.expected.valid) assert.deepEqual(position, data.expected.position, name);
+  }
 });

@@ -508,6 +508,14 @@ audit('invalid-resource-parent-c1-and-line-separator', 'resource.parent with U+0
 audit('valid-resource-parent-with-slash', 'A GitLab parent keeps its path characters.', {
   ...auditBase, component: 'server', componentId: 'mcp-gitlab', event: 'policy_decision', resource: { type: 'GitLab::Project', id: 'team-a/app', parent: 'GitLab::Group::team-a' },
 }, true);
+audit('broker-authenticator-verify-burned', 'A code of a burned step: not a failure, not counted (CC-128).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', client: 'claude-code', tool: 'delete_issue', decision: 'deny', reason: 'totp_burned', outcome: 'denied',
+}, true);
+audit('gateway-confirmation-code-burned', 'The retry carried a burned code: no attempt spent (CC-128).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'code_burned', outcome: 'denied', errorCode: 'confirmation_failed',
+}, true);
 audit('gateway-confirmation-authenticator-disabled', 'The code could not be used because the authenticator is disabled; the user is sent to register again (CC-126).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'authenticator_disabled', outcome: 'denied', errorCode: 'confirmation_required',
@@ -816,9 +824,9 @@ retryVector('retry-broker-unavailable', 'The broker does not answer: upstream_un
   { verification: { result: 'unavailable' } },
   { outcome: 'upstream_unavailable', verifyCalled: true, pendingConsumed: false, attemptsLeft: 3 });
 
-const firstCallVector = (name, description, { authenticator = 'active', pendingCalls = [], pendingLimit = 3, call = {}, at = '2026-10-26T20:00:00Z' }, expected) =>
+const firstCallVector = (name, description, { authenticator = 'active', pendingCalls = [], pendingLimit = 3, call = {}, at = '2026-10-26T20:00:00Z', burn }, expected) =>
   write('confirmation-binding', `${name}.json`, {
-    description, kind: 'first-call', authenticator, pendingCalls, pendingLimit,
+    description, kind: 'first-call', authenticator, pendingCalls, pendingLimit, ...(burn && { burn }),
     call: { serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', arguments: PENDING_ARGS, ...call }, at, expected,
   });
 const stored = (extra = {}) => ({ confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', argsSha256: argsHash(PENDING_ARGS), createdAt: '2026-10-26T20:00:00Z', ...extra });
@@ -917,7 +925,7 @@ aggregation('pending', 'Waiting for a code: confirmation_pending.', [
 aggregation('expired', 'No valid code within 120 s: expired.', [
   gw(13, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(14, '2026-10-26T20:03:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'confirmation_expired', outcome: 'denied', errorCode: 'confirmation_failed' }),
-], { ...callRow, requestId: RID(13), result: 'expired', wrongCodeCount: 0, errorCode: 'confirmation_failed' }, '2026-10-26T20:03:30.000Z');
+], { ...callRow, requestId: RID(13), result: 'expired', wrongCodeCount: 0, errorCode: null }, '2026-10-26T20:03:30.000Z');
 aggregation('pending-past-ttl', 'No retry and the 120 s ran out: the gateway emits no event, so the aggregation (given the current time) says expired, not "waiting" forever.', [
   gw(21, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
 ], { ...callRow, requestId: RID(21), result: 'expired', wrongCodeCount: 0, errorCode: null }, '2026-10-26T20:05:00.000Z');
@@ -932,7 +940,23 @@ aggregation('late-retry-is-not-a-wrong-code', 'A retry after the TTL (reason con
   gw(27, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(28, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
   gw(29, '2026-10-26T20:02:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'confirmation_expired', outcome: 'denied', errorCode: 'confirmation_failed' }),
-], { ...callRow, requestId: RID(27), result: 'expired', wrongCodeCount: 1, errorCode: 'confirmation_failed' }, '2026-10-26T20:03:00.000Z');
+], { ...callRow, requestId: RID(27), result: 'expired', wrongCodeCount: 1, errorCode: null }, '2026-10-26T20:03:00.000Z');
+aggregation('one-wrong-code-pending', 'One wrong code, attempts left, within the TTL: the call still waits (confirmation_pending), wrongCodeCount 1; confirmation_failed is only for exhausted attempts.', [
+  gw(34, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(35, '2026-10-26T20:00:10.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(34), result: 'confirmation_pending', wrongCodeCount: 1, errorCode: null }, '2026-10-26T20:00:30.000Z');
+aggregation('one-wrong-code-past-ttl', 'The same call an hour later and nobody retried: expired, wrongCodeCount kept; the TTL runs from the first event.', [
+  gw(36, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(37, '2026-10-26T20:00:10.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(36), result: 'expired', wrongCodeCount: 1, errorCode: null }, '2026-10-26T21:00:00.000Z');
+aggregation('repeated-first-call-does-not-move-the-ttl', 'A repeated first call may produce another pending event; the TTL still runs from the first one.', [
+  gw(38, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(39, '2026-10-26T20:01:50.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+], { ...callRow, requestId: RID(38), result: 'expired', wrongCodeCount: 0, errorCode: null }, '2026-10-26T20:02:30.000Z');
+aggregation('burned-code-is-not-a-wrong-code', 'A code of a burned step (code_burned) does not count as a wrong code and does not decide the call.', [
+  gw(40, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(41, '2026-10-26T20:00:10.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'code_burned', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(40), result: 'confirmation_pending', wrongCodeCount: 0, errorCode: null }, '2026-10-26T20:00:30.000Z');
 aggregation('superseded', 'Replaced by a newer DESTRUCTIVE operation (CC-127).', [
   gw(15, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(16, '2026-10-26T20:00:40.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'superseded', outcome: 'denied', errorCode: 'confirmation_superseded' }),
@@ -1008,7 +1032,7 @@ firstCallVector('first-call-preview-not-viewed-supersedes', 'Preview not opened:
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
 firstCallVector('first-call-preview-viewed-but-expired-does-not-block', 'A viewed pending call that has expired blocks nothing.',
   { pendingCalls: [viewedA], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:00Z' },
-  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:00Z', pendingCreated: true, supersededIds: [] });
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:00Z', pendingCreated: true, supersededIds: [], invalidatedCodes: true });
 firstCallVector('first-call-preview-viewed-other-risk-not-blocked', 'The rule concerns DESTRUCTIVE operations only: a confirmation of another risk is created.',
   { pendingCalls: [viewedA], call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-5', summary: 'z' } }, at: '2026-10-26T20:00:30Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: [] });
@@ -1018,15 +1042,42 @@ firstCallVector('first-call-preview-viewed-exhausted-still-blocks', 'The attempt
 firstCallVector('first-call-preview-viewed-late-expired-still-blocks', 'The preview was opened late (100 s into A): after A expires the block lasts until the view + 90 s, because a code typed then is still valid.',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:01:40Z' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:02:01Z' },
   { outcome: 'confirmation_blocked', retryAfterSeconds: 69, pendingCreated: false });
-firstCallVector('first-call-preview-viewed-block-ends-after-code-validity', 'One second after the block ended (view + 90 s) B is created.',
+firstCallVector('first-call-preview-viewed-block-ends-after-code-validity', 'One second after the block ended B is created, and because a code typed for the viewed A can still be valid, the current codes are burned first (same per-user step).',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:01:40Z' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:11Z' },
-  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:11Z', pendingCreated: true, supersededIds: [] });
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:11Z', pendingCreated: true, supersededIds: [], invalidatedCodes: true });
 firstCallVector('first-call-preview-viewed-confirmed-does-not-block', 'A was confirmed: the block ends with it.',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'confirmed' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:40Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
 firstCallVector('first-call-preview-viewed-same-operation-after-exhaustion', 'The same operation A issued again after its attempts ran out is not "another" operation: a new pending call.',
   { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'exhausted' })], at: '2026-10-26T20:00:40Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-late-code-viewed-early-burns-before-creating-b', 'F-H1 sequence: A created at 0, preview at 5 s, the user types the code at about 110 s, A is never retried; B at 121 s. The block (expiry 120 s) is over, but the code is valid until about 200 s, so the current codes are burned before B is created.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:05Z', ended: 'exhausted' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:02:01Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:04:01Z', pendingCreated: true, supersededIds: [], invalidatedCodes: true });
+firstCallVector('first-call-burn-failed-creates-nothing', 'The broker cannot burn the codes: B is not created, upstream_unavailable (fail-closed).',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:05Z', ended: 'exhausted' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:02:01Z', burn: 'failed' },
+  { outcome: 'upstream_unavailable', pendingCreated: false });
+firstCallVector('first-call-viewed-trace-long-gone-no-burn', 'More than 90 s after A expired no code typed for it is valid: nothing to burn.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:05Z', ended: 'exhausted' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:31Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:31Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-never-viewed-trace-no-burn', 'A was never viewed (superseded as before): no burn, the risk of a code unrelated to the operation is the accepted one.',
+  { pendingCalls: [stored()], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:30Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
+firstCallVector('first-call-blocked-retry-after-is-at-least-one', 'At the very end of the block retryAfterSeconds is rounded up and never below 1.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:02:00Z' },
+  { outcome: 'confirmation_blocked', retryAfterSeconds: 1, pendingCreated: false });
+parallelFirst('first-calls-sequence-exhausted-a-then-same-operation-then-b', 'F-M1 sequence: A viewed and exhausted, the agent issues the same operation A again (A\'), then B. The blocking trace is stored per user and is not replaced by A\', so B is still blocked.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'exhausted' })], steps: [{ call: { arguments: PENDING_ARGS } }, { call: { arguments: { issueKey: 'ABC-999' } } }] },
+  { supersededIds: [[], []], outcomes: ['confirmation_required', 'confirmation_blocked'], pendingIds: ['new-0'] });
+parallelFirst('first-calls-cancel-twice-burns-once', 'The second cancel of the same call is a plain 204 and does not burn the codes again (a code the user types meanwhile for a new operation survives).',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z' })], steps: [{ cancel: 'cnf_4k9Qe2LxW7tB3mZp' }, { cancel: 'cnf_4k9Qe2LxW7tB3mZp' }] },
+  { supersededIds: [[], []], outcomes: [null, null], pendingIds: [], cancels: [true, true], burns: [true, false] });
+parallelFirst('first-calls-cancel-exhausted-viewed-trace', 'The owner can cancel a viewed trace whose attempts ran out: 204, the block is lifted, the codes are burned (so B needs no second burn).',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'exhausted' })], steps: [{ cancel: 'cnf_4k9Qe2LxW7tB3mZp' }, { call: { arguments: { issueKey: 'ABC-999' } } }] },
+  { supersededIds: [[], []], outcomes: [null, 'confirmation_required'], pendingIds: ['new-1'], cancels: [true, null], burns: [true, null] });
+retryVector('retry-burned-code', 'The broker says the code is of a burned step: confirmation_failed outwards (like a replay), but no attempt is spent and it is not a wrong code (CC-128).',
+  { verification: { result: 'burned' } },
+  { outcome: 'confirmation_failed', verifyCalled: true, pendingConsumed: false, attemptsLeft: 3, auditReason: 'code_burned' });
 parallelFirst('first-calls-race-preview-then-new-destructive', 'Race: the preview of A is opened, then B arrives. Checking the preview and creating B are one atomic operation, so B is refused and A stays.',
   { pendingCalls: [stored()], steps: [{ preview: 'cnf_4k9Qe2LxW7tB3mZp' }, { call: { arguments: { issueKey: 'ABC-999' } } }] },
   { supersededIds: [[], []], outcomes: [null, 'confirmation_blocked'], pendingIds: ['cnf_4k9Qe2LxW7tB3mZp'] });

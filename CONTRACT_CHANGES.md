@@ -2442,7 +2442,7 @@ G-15, G-16, G-18, G-22.
      `denied`, `error`, `confirmation`.
   5. `q` dopasowuje tylko nazwę narzędzia i `resource.id`; stary `GET /api/v1/activity` zostaje.
   6. Dodana wartość `superseded` wynika z CC-127 (jedna oczekująca operacja DESTRUCTIVE).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; tekst przyjęty). Wdrożone w 3.0.0 (wersja robocza): `listActivityCalls` (C5) i `listMyActivityCalls` (C12), schemat `ActivityCall` w C5 (C12 odwołuje się do niego), 33 wektorów `activity-calls/` (w tym agregacja zdarzeń jednego wywołania, `scripts/lib/activity-calls.mjs`), mocki WireMock i MSW.
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; tekst przyjęty). Wdrożone w 3.0.0 (wersja robocza): `listActivityCalls` (C5) i `listMyActivityCalls` (C12), schemat `ActivityCall` w C5 (C12 odwołuje się do niego), 38 wektory `activity-calls/` (w tym agregacja zdarzeń jednego wywołania, `scripts/lib/activity-calls.mjs`), mocki WireMock i MSW.
 
 ## CC-096 | C12 | Odpowiedzi błędów wniosków o dostęp
 
@@ -3058,3 +3058,16 @@ G-15, G-16, G-18, G-22.
 - **Poprawka pola `resource.parent` (przegląd bezpieczeństwa fd930f9, CC-031):** `parent` w `audit-event.schema.json` (stąd też w
   `ActivityCall` i `ConfirmationView`) ma to samo wykluczenie znaków co `resource.id`: C0, C1, DEL, U+2028, U+2029,
   U+202A..U+202E i U+2066..U+2069 w części `<id>`; wektory negatywne `invalid-resource-parent-*`, pozytywny z ukośnikiem.
+
+- **Poprawki po przeglądzie fd930f9+1308e68 (F-H1, F-M1, F-M3 i drobne):** (1) F-H1: po końcu blokady kod wpisany dla obejrzanego A
+  może być jeszcze ważny (do 90 s po wygaśnięciu A), więc tworzenie B po obejrzanym, niepotwierdzonym śladzie A (oczekującym,
+  wyczerpanym, wygasłym; nie anulowanym ani potwierdzonym, nie dotyczy tej samej operacji) najpierw woła `invalidate-codes`
+  w tej samej sekcji per użytkownik; błąd brokera to `upstream_unavailable` dla B i nic nie powstaje; blokada
+  `max(A.expiresAt, previewViewedAt + 90 s)` zostaje; `retryAfterSeconds` >= 1. (2) F-M1: ślad blokujący jest
+  przechowywany na `sub`, osobno od oczekujących i nie jest zastępowany przez A'; "zastępuje ślad" dotyczy tylko śladów
+  `superseded`. (3) F-M3: w `/activity/calls` błędny kod z pozostałymi próbami to `confirmation_pending`, a po TTL (liczonym od
+  pierwszego zdarzenia, nie od ostatniego) `expired` ze zachowanym `wrongCodeCount`; `confirmation_failed` tylko po wyczerpaniu
+  prób; `expired` zawsze z `errorCode: null`. (4) Kod ze spalonego kroku: wynik brokera `burned` (nie `replayed`), gateway
+  nie zużywa próby i nie liczy błędnego kodu (`code_burned`), na zewnątrz `confirmation_failed`; audyt brokera `totp_burned`.
+  (5) Powtórzone anulowanie nie pali kodów ponownie. (6) Kursor `/activity/calls`: HMAC-SHA-256 kluczem gateway'a po (`sub`,
+  pozycja, `iat`), znacznik >= 128 bitów, porównanie w stałym czasie, ważność 15 min (`activity-cursor/`).

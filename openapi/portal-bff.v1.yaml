@@ -865,8 +865,9 @@ paths:
       summary: Record that the preview is open and visible (proxy to C5 markConfirmationViewed, CC-127).
       description: |
         The web app calls it once, only after the preview is rendered and visible (`document.prerendering` is false and
-        `document.visibilityState` is `visible`), never during prefetch or prerender, and the BFF forwards no view for a
-        request with `Sec-Purpose: prefetch`. Idempotent. Owner only. After it, a different DESTRUCTIVE operation of the
+        `document.visibilityState` is `visible`), never during prefetch or prerender, and the BFF rejects the call unless
+        `Sec-Fetch-Site` is `same-origin` and forwards no view for a request with `Sec-Purpose: prefetch` (defence in depth; the
+        protection is the check in the web app and the CSRF header). Idempotent. Owner only. After it, a different DESTRUCTIVE operation of the
         user is refused with `confirmation_blocked` instead of superseding this one (CC-127). A `404` (the call was
         superseded or expired) is the cue to show "this link is out of date".
       security:

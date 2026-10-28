@@ -1,0 +1,55 @@
+{
+  "description": "The owner can cancel a viewed trace whose attempts ran out: 204, the block is lifted, the codes are burned (so B needs no second burn).",
+  "kind": "first-calls-parallel",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "previewViewedAt": "2026-10-26T20:00:10Z",
+      "ended": "exhausted"
+    }
+  ],
+  "pendingLimit": 3,
+  "at": "2026-10-26T20:00:00Z",
+  "steps": [
+    {
+      "cancel": "cnf_4k9Qe2LxW7tB3mZp"
+    },
+    {
+      "call": {
+        "serverId": "mcp-jira",
+        "tool": "delete_issue",
+        "risk": "DESTRUCTIVE",
+        "arguments": {
+          "issueKey": "ABC-999"
+        }
+      }
+    }
+  ],
+  "expected": {
+    "supersededIds": [
+      [],
+      []
+    ],
+    "outcomes": [
+      null,
+      "confirmation_required"
+    ],
+    "pendingIds": [
+      "new-1"
+    ],
+    "cancels": [
+      true,
+      null
+    ],
+    "burns": [
+      true,
+      null
+    ]
+  }
+}
