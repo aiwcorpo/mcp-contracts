@@ -1,0 +1,198 @@
+{
+  "description": "Server: the topic of an ancestor is normalized like every classification (trim, ASCII lower case): \" RESTRICTED \" forbids (CC-067, CC-129).",
+  "covers": [
+    "restricted"
+  ],
+  "builder": {
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "gitlabreader",
+        "grp": [
+          "mcp-gitlab-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "get_project",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectPath",
+            "type": "GitLab::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectPath": "legal/a/b/app"
+      },
+      "resource": {
+        "type": "GitLab::Project",
+        "id": "legal/a/b/app",
+        "attrs": {
+          "path": "legal/a/b/app",
+          "ancestorClassifications": {
+            "legal": [
+              " RESTRICTED "
+            ],
+            "legal/a": [],
+            "legal/a/b": []
+          }
+        },
+        "parent": {
+          "type": "GitLab::Group",
+          "id": "legal/a/b",
+          "attrs": {
+            "path": "legal/a/b",
+            "ancestorClassifications": {
+              "legal": [],
+              "legal/a": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "legal/a/b/app"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabProject": [
+          "legal/a/b/app"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "GitLab::Group",
+        "id": "legal/a/b"
+      },
+      "attrs": {
+        "path": "legal/a/b",
+        "inheritedClassification": [],
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/legal"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/legal/a"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/legal/a/b"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "GitLab::Project",
+        "id": "legal/a/b/app"
+      },
+      "attrs": {
+        "path": "legal/a/b/app",
+        "inheritedClassification": [
+          "restricted"
+        ],
+        "group": {
+          "__entity": {
+            "type": "GitLab::Group",
+            "id": "legal/a/b"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/legal"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/legal/a"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/legal/a/b"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "GitLab::Group",
+          "id": "legal/a/b"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000006"
+      },
+      "attrs": {
+        "username": "gitlabreader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "gitlab-forbid-restricted-project"
+    ]
+  }
+}

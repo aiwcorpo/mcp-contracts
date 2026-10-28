@@ -1,0 +1,54 @@
+{
+  "description": "Server: topics of an ancestor that are not a list of strings: refused.",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "gitlabwriter",
+      "grp": [
+        "mcp-gitlab-read",
+        "mcp-gitlab-write",
+        "mcp-gitlab-grp-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "update_project",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectPath",
+          "type": "GitLab::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectPath": "team-a/app"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "team-a/app",
+      "attrs": {
+        "path": "team-a/app",
+        "ancestorClassifications": {
+          "team-a": "restricted"
+        }
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a",
+        "attrs": {
+          "path": "team-a",
+          "ancestorClassifications": {}
+        }
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

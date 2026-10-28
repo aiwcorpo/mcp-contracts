@@ -1,0 +1,104 @@
+{
+  "description": "GitLab project list: projects below a restricted group are dropped at any depth (CC-129), the others are kept.",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "policies": "cedar/examples",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "gitlabreader",
+      "grp": [
+        "mcp-gitlab-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "get_project",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "projectPath",
+          "type": "GitLab::Project"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "GitLab::Project",
+      "id": "team-a/app",
+      "attrs": {
+        "path": "team-a/app",
+        "ancestorClassifications": {
+          "team-a": []
+        }
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a",
+        "attrs": {
+          "path": "team-a",
+          "ancestorClassifications": {}
+        }
+      }
+    },
+    {
+      "type": "GitLab::Project",
+      "id": "hr/payroll/app",
+      "attrs": {
+        "path": "hr/payroll/app",
+        "ancestorClassifications": {
+          "hr": [
+            "restricted"
+          ],
+          "hr/payroll": []
+        }
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "hr/payroll",
+        "attrs": {
+          "path": "hr/payroll",
+          "ancestorClassifications": {
+            "hr": []
+          }
+        }
+      }
+    },
+    {
+      "type": "GitLab::Project",
+      "id": "hr/app",
+      "attrs": {
+        "path": "hr/app",
+        "ancestorClassifications": {
+          "hr": [
+            "restricted"
+          ]
+        }
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "hr",
+        "attrs": {
+          "path": "hr",
+          "ancestorClassifications": {}
+        }
+      }
+    }
+  ],
+  "expected": {
+    "kept": [
+      "team-a/app"
+    ],
+    "queryConstraints": {
+      "GitLab::Group": {
+        "virtualServer": null,
+        "virtualServerType": "GitLab::Group",
+        "granted": []
+      }
+    }
+  }
+}

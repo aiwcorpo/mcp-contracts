@@ -37,13 +37,17 @@
       "type": "GitLab::Project",
       "id": "team-a/app",
       "attrs": {
-        "path": "team-a/app"
+        "path": "team-a/app",
+        "ancestorClassifications": {
+          "team-a": []
+        }
       },
       "parent": {
         "type": "GitLab::Group",
         "id": "team-a",
         "attrs": {
-          "path": "team-a"
+          "path": "team-a",
+          "ancestorClassifications": {}
         }
       }
     },
@@ -51,13 +55,20 @@
       "type": "GitLab::Project",
       "id": "team-a/sub/svc",
       "attrs": {
-        "path": "team-a/sub/svc"
+        "path": "team-a/sub/svc",
+        "ancestorClassifications": {
+          "team-a": [],
+          "team-a/sub": []
+        }
       },
       "parent": {
         "type": "GitLab::Group",
         "id": "team-a/sub",
         "attrs": {
-          "path": "team-a/sub"
+          "path": "team-a/sub",
+          "ancestorClassifications": {
+            "team-a": []
+          }
         }
       }
     },
@@ -65,13 +76,17 @@
       "type": "GitLab::Project",
       "id": "team-b/app",
       "attrs": {
-        "path": "team-b/app"
+        "path": "team-b/app",
+        "ancestorClassifications": {
+          "team-b": []
+        }
       },
       "parent": {
         "type": "GitLab::Group",
         "id": "team-b",
         "attrs": {
-          "path": "team-b"
+          "path": "team-b",
+          "ancestorClassifications": {}
         }
       }
     },
@@ -79,13 +94,17 @@
       "type": "GitLab::Project",
       "id": "team-ab/app",
       "attrs": {
-        "path": "team-ab/app"
+        "path": "team-ab/app",
+        "ancestorClassifications": {
+          "team-ab": []
+        }
       },
       "parent": {
         "type": "GitLab::Group",
         "id": "team-ab",
         "attrs": {
-          "path": "team-ab"
+          "path": "team-ab",
+          "ancestorClassifications": {}
         }
       }
     }

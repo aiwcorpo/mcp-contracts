@@ -37,13 +37,17 @@
         "type": "GitLab::Project",
         "id": "platform/api",
         "attrs": {
-          "path": "platform/api"
+          "path": "platform/api",
+          "ancestorClassifications": {
+            "platform": []
+          }
         },
         "parent": {
           "type": "GitLab::Group",
           "id": "platform",
           "attrs": {
-            "path": "platform"
+            "path": "platform",
+            "ancestorClassifications": {}
           }
         }
       }
@@ -80,6 +84,7 @@
       },
       "attrs": {
         "path": "platform",
+        "inheritedClassification": [],
         "scopes": [
           {
             "__entity": {
@@ -98,6 +103,7 @@
       },
       "attrs": {
         "path": "platform/api",
+        "inheritedClassification": [],
         "group": {
           "__entity": {
             "type": "GitLab::Group",

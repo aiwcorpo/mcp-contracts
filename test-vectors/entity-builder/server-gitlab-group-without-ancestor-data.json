@@ -1,0 +1,44 @@
+{
+  "description": "Server: no ancestor data for a group: refused, even for a top-level group where it would be empty (the server must say so).",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "gitlabwriter",
+      "grp": [
+        "mcp-gitlab-read",
+        "mcp-gitlab-write",
+        "mcp-gitlab-grp-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "update_group",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "groupPath",
+          "type": "GitLab::Group"
+        }
+      ]
+    },
+    "arguments": {
+      "groupPath": "team-a"
+    },
+    "resource": {
+      "type": "GitLab::Group",
+      "id": "team-a",
+      "attrs": {
+        "path": "team-a",
+        "ancestorClassifications": null
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

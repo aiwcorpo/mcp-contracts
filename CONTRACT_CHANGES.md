@@ -3087,3 +3087,42 @@ G-15, G-16, G-18, G-22.
   operacji. Wektor `first-call-preview-viewed-confirmed-same-operation-burns`. Razem z doprecyzowaniami tekstowymi z planu 3.0.1
   (G-L4 `GET`/`viewed`/`cancel` przy wyczerpanym A, G-L5 anulowanie do `expiresAt`, G-L6 zegary, G-L7 wymagania ws-08, G-L9
   agregacja `authenticator_disabled`/`authenticator_not_registered`, G-L10 kursor, wektor "broker niedostępny przy anulowaniu").
+
+## CC-129 | C7 | `inheritedClassification` na `GitLab::Group` i `GitLab::Project`
+
+- **Zgłasza:** przegląd paczki polityk M3 (HIGH-1) i propozycja CC-C w STATUS `mcp-policies`; decyzja człowieka 2026-10-28
+- **Kamień:** wydanie 3.1.0 (zmiana addytywna: minor, ale zmienia bajty `cedar/mcp.cedarschema`, więc paczki polityk i biblioteki muszą przejść razem)
+- **Problem:** topics w GitLabie się nie dziedziczą. Oznaczenie grupy `hr` jako `restricted` nie obejmowało projektu `hr/payroll/app`:
+  reguła sprawdzała klasyfikację projektu i jego bezpośredniej grupy (`hr/payroll`). Zasada "restricted zawsze zabrania" miała
+  lukę dla poddrzewa głębszego niż jeden poziom.
+- **Zmiana:** wymagany atrybut `inheritedClassification: Set<String>` na `GitLab::Group` i `GitLab::Project` (schemat Cedar):
+  suma znormalizowanych (CC-067) topics wszystkich grup-przodków (grupa: grupy nad nią; projekt: wszystkie grupy na ścieżce, także
+  rodzic). Własne topics zostają w `classification`. Serwer podaje je w wejściu buildera jako `attrs.ancestorClassifications`
+  (mapa ścieżka grupy -> topics, dokładnie dla grup przodków; `{}` jawnie dla grupy najwyższego poziomu); builder (Java i
+  referencja Node) liczy sumę, a wejście nie trafia do encji. **Fail-closed tylko dla tego atrybutu:** brak mapy, brakująca lub
+  nadmiarowa grupa (w tym sama grupa) albo topics inne niż lista napisów to `internal_error`, zasób nie jest budowany.
+  Przykładowa polityka `forbid-restricted.cedar` sprawdza `inheritedClassification` w regułach grupy i projektu.
+- **Pliki:** `cedar/mcp.cedarschema` (skrót SHA-256 `cf79068b...`), `cedar/entity-builder.md`, `cedar/examples/forbid-restricted.cedar`,
+  `EntityBuilder.java`, `scripts/lib/entity-builder.mjs`, wektory `entity-builder/server-gitlab-*` (9 nowych), `policy-decisions/srv-gitlab-*`
+  (4 nowe: dwa poziomy pod restricted, podgrupa restricted, normalizacja pisowni, kontrola pozytywna), `result-filter/gitlab-projects-in-restricted-subtree`;
+  istniejące wektory GitLaba dostały `ancestorClassifications`; paczki testowe przebudowane.
+- **SemVer:** nowy wymagany atrybut encji i nowe wejście buildera: addytywne dla polityk, ale serwer GitLaba musi podawać
+  `ancestorClassifications`, a paczki muszą zawierać nowy schemat. Wydane jako 3.1.0 (minor) decyzją człowieka.
+- **Wpływ:** ws-04 (serwer GitLab: ścieżki grup i ich topics), ws-02/ws-05 (biblioteki 3.1.0), ws-09 (reguły `forbid` na `inheritedClassification`, przebudowa
+  paczek), ws-10 (test: projekt trzy poziomy pod restricted).
+- **Status:** accepted (decyzja: człowiek, 2026-10-28), wydanie 3.1.0
+
+## CC-130 | C6 | `delete`/`admin` jako `DESTRUCTIVE` w manifeście (propozycja CC-E przeglądu polityk M3)
+
+- **Propozycja:** wymusić w regułach manifestu, że narzędzie z `action` `delete` lub `admin` ma `risk: DESTRUCTIVE`.
+- **Status:** rejected (decyzja: człowiek, 2026-10-28). Odpowiedzialność autora serwera i przeglądu definicji (zatwierdzanie `definitionHash`).
+
+## CC-131 | C7 | Wymagana klasyfikacja GitLab i service desk (propozycja CC-D)
+
+- **Propozycja:** uczynić `classification` wymaganą dla `GitLab::*` i `ServiceDesk::Queue`, jak `category`, `labels`, `tags` (CC-062).
+- **Status:** rejected (decyzja: człowiek, 2026-10-28). Brak klasyfikacji znaczy "nie tajne"; dla GitLaba tajność przodków wynika z CC-129.
+
+## CC-132 | C7/C8 | `BundleFetcher` i powód `upstream_unavailable` w słowniku (propozycja CC-A)
+
+- **Propozycja:** klient pobierania paczek w `mcp-policy-bundle` (`latest.json` z `ETag`, limit 16 MiB, kolejność pobrań) oraz powód `upstream_unavailable` w słowniku odrzuceń.
+- **Status:** deferred (decyzja: człowiek, 2026-10-28).

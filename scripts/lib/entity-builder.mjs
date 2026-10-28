@@ -228,14 +228,38 @@ function systemEntity(resource, parent) {
   for (const a of resource.attrs?.ancestorIds ?? []) {
     if (!validId('Confluence::Page', 'resource', a)) throw new BuilderError('internal_error', 'invalid ancestor page id');
   }
+  // Classification of the ancestor groups of a GitLab group or project (CC-129): the server passes it as
+  // attrs.ancestorClassifications { <group path>: [topics] } for exactly the groups above a group, or all groups on the path of a
+  // project. The builder turns it into inheritedClassification; missing or incomplete data refuses the resource.
+  let inherited;
+  if (resource.type === 'GitLab::Group' || resource.type === 'GitLab::Project') {
+    const given = resource.attrs?.ancestorClassifications;
+    const expected = resource.type === 'GitLab::Group' ? pathPrefixes(resource.id).slice(0, -1) : pathPrefixes(parent?.id ?? '');
+    if (given === null || given === undefined || typeof given !== 'object' || Array.isArray(given)) {
+      throw new BuilderError('internal_error', `${resource.type} without ancestorClassifications`);
+    }
+    const keys = Object.keys(given).sort();
+    if (keys.length !== expected.length || [...expected].sort().some((k, i) => k !== keys[i])) {
+      throw new BuilderError('internal_error', `${resource.type} ancestorClassifications do not match the ancestor groups`);
+    }
+    inherited = [];
+    for (const topics of Object.values(given)) {
+      if (!Array.isArray(topics) || topics.some((v) => typeof v !== 'string')) {
+        throw new BuilderError('internal_error', `${resource.type}.ancestorClassifications must hold lists of strings`);
+      }
+      inherited.push(...topics.map(normalizeClassification));
+    }
+  }
   const required = REQUIRED_CLASSIFICATION[resource.type];
   if (required && !required[1](resource.attrs?.[required[0]])) {
     throw new BuilderError('internal_error', `${resource.type} without ${required[0]}`);
   }
   const out = {};
   for (const [k, v] of Object.entries(resource.attrs ?? {})) {
+    if (k === 'ancestorClassifications') continue;
     if (v !== null && v !== undefined) out[k] = k === 'ancestorIds' ? sortedSet(v) : v;
   }
+  if (inherited) out.inheritedClassification = sortedSet(inherited);
   const classification = CLASSIFICATION[resource.type];
   if (classification && out[classification[0]] !== undefined) {
     const [name, shape] = classification;

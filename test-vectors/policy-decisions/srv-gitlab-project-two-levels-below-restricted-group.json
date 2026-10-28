@@ -1,0 +1,185 @@
+{
+  "description": "Server: topics are not inherited in GitLab; the restricted topic is on hr only, the project is two levels below, and it is still forbidden through inheritedClassification (CC-129).",
+  "covers": [
+    "restricted",
+    "forbid_overrides_permit"
+  ],
+  "builder": {
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "gitlabreader",
+        "grp": [
+          "mcp-gitlab-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-gitlab",
+        "system": "gitlab",
+        "name": "get_project",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectPath",
+            "type": "GitLab::Project"
+          }
+        ]
+      },
+      "arguments": {
+        "projectPath": "hr/payroll/app"
+      },
+      "resource": {
+        "type": "GitLab::Project",
+        "id": "hr/payroll/app",
+        "attrs": {
+          "path": "hr/payroll/app",
+          "ancestorClassifications": {
+            "hr": [
+              "Restricted"
+            ],
+            "hr/payroll": []
+          }
+        },
+        "parent": {
+          "type": "GitLab::Group",
+          "id": "hr/payroll",
+          "attrs": {
+            "path": "hr/payroll",
+            "ancestorClassifications": {
+              "hr": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "hr/payroll/app"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "gitlabProject": [
+          "hr/payroll/app"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "GitLab::Group",
+        "id": "hr/payroll"
+      },
+      "attrs": {
+        "path": "hr/payroll",
+        "inheritedClassification": [],
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/hr"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/hr/payroll"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "GitLab::Project",
+        "id": "hr/payroll/app"
+      },
+      "attrs": {
+        "path": "hr/payroll/app",
+        "inheritedClassification": [
+          "restricted"
+        ],
+        "group": {
+          "__entity": {
+            "type": "GitLab::Group",
+            "id": "hr/payroll"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/hr"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "GitLab::Group/hr/payroll"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "GitLab::Group",
+          "id": "hr/payroll"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000006"
+      },
+      "attrs": {
+        "username": "gitlabreader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-gitlab-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "gitlab-forbid-restricted-project"
+    ]
+  }
+}

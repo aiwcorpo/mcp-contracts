@@ -32,13 +32,17 @@
       "id": "team-a/app",
       "attrs": {
         "path": "team-a/app",
-        "classification": "restricted"
+        "classification": "restricted",
+        "ancestorClassifications": {
+          "team-a": []
+        }
       },
       "parent": {
         "type": "GitLab::Group",
         "id": "team-a",
         "attrs": {
-          "path": "team-a"
+          "path": "team-a",
+          "ancestorClassifications": {}
         }
       }
     }

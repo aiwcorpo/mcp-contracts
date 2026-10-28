@@ -17,7 +17,7 @@
 
     <groupId>pl.aiwcorpo.mcp</groupId>
     <artifactId>mcp-contracts-parent</artifactId>
-    <version>3.0.3-SNAPSHOT</version>
+    <version>3.1.0</version>
     <packaging>pom</packaging>
     <name>Aiwcorpo MCP Platform :: Contracts (parent)</name>
 

@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **3.0.2**, tag `v3.0.2` (poprawka wydania 3.0.0 i 3.0.1; poprzednie wydanie 3.0.1) (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **3.1.0**, tag `v3.1.0` (CC-129; poprzednie wydanie 3.0.2) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -76,6 +76,10 @@ Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defau
 walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1 usunięto odpowiedź `400
 expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
 
+Wyjątek: w 3.1.0 CC-129 (nowy wymagany atrybut encji GitLaba i nowe wymagane wejście buildera, nowe bajty schematu Cedar) jest według tej
+tabeli zmianą major (serwer GitLaba musi podać `ancestorClassifications`, paczki trzeba przebudować); wydane jako minor na wyraźną
+decyzję człowieka z 2026-10-28.
+
 Wyjątek: w 2.1.0 CC-071 (nowa wartość enum `event: "authentication"`) i CC-074 (zawężenie wzorców indeksów
 OpenSearch) są według tej tabeli zmianami major, a wydane jako minor na wyraźną decyzję człowieka z 2026-10-27;
 skutki dla konsumentów opisuje `CHANGELOG.md`.
@@ -93,13 +97,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:3.0.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:3.0.2:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:3.0.2` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:3.0.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:3.0.2` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:3.0.2` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-3.0.2.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-3.0.2.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:3.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:3.1.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:3.1.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:3.1.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:3.1.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:3.1.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-3.1.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-3.1.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -109,7 +113,7 @@ Instalacja lokalna:
 
 ```bash
 ./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.5/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-3.0.2.tgz
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-3.1.0.tgz
 ```
 
 ```xml
@@ -262,13 +266,15 @@ Każdy adapter IGA wybiera identyfikator wnioskodawcy z konfiguracji (np. `reque
 `preferred_username`); brak tego claimu w `Requester` to błąd adaptera i odmowa (fail-closed). Kształty
 `AccessRequest` i `RequestResult`: CC-024.
 
-## Zamrożony schemat Cedar (linia 2.x)
+## Zamrożony schemat Cedar (linia 3.1)
 
-`cedar/mcp.cedarschema` jest bajtowo zamrożony w całej linii 2.x, łącznie z komentarzem nagłówka (`2.0.0`) i
-końcami linii LF: paczka polityk musi nieść dokładnie ten plik (CC-059), więc każda zmiana, nawet komentarza,
-sprawiłaby, że komponenty na różnych wydaniach 2.0.x odrzucałyby nawzajem swoje paczki (`schema_mismatch`).
-Testy (Node i Java) porównują skrót SHA-256 pliku. Potok ws-09 kopiuje plik bez konwersji końców linii
-(`.gitattributes` wymusza LF). Zmiana schematu to wydanie 3.0.0.
+`cedar/mcp.cedarschema` jest bajtowo zamrożony w obrębie linii, łącznie z komentarzem nagłówka i końcami linii LF: paczka
+polityk musi nieść dokładnie ten plik (CC-059), więc każda zmiana, nawet komentarza, sprawia, że komponenty na różnych wydaniach
+odrzucają nawzajem swoje paczki (`schema_mismatch`). Testy (Node i Java) porównują skrót SHA-256 pliku. Potok ws-09 kopiuje plik bez
+konwersji końców linii (`.gitattributes` wymusza LF). Schemat był taki sam w 2.0.0 ... 3.0.2; **3.1.0 dodaje atrybut
+`inheritedClassification` (CC-129) na `GitLab::Group` i `GitLab::Project`**, więc paczki zbudowane na schemacie 3.0.x trzeba
+przebudować (wejście `schemaVersion` paczki i bajty schematu), a komponenty gateway, starter i serwery muszą używać bibliotek 3.1.0.
+Skrót SHA-256 schematu 3.1.0: `cf79068bc845d392a12a96c88431564afc4eb5afc1697cda083180717b7e4d8a`.
 
 ## Identyfikatory zasobów
 
@@ -707,9 +713,9 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `tool-errors/` | 31 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `bundles/` | 41 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
-| `entity-builder/` | 36 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
-| `policy-decisions/` | 69 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
-| `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
+| `entity-builder/` | 45 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
+| `policy-decisions/` | 73 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
+| `result-filter/` | 8 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
 | `confirmation-binding/` | 77 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |

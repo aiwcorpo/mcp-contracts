@@ -328,7 +328,12 @@ public final class EntityBuilder {
             }
         }
         Map<String, Object> input = normalizedClassification(resource);
+        Set<String> inherited = inheritedClassification(resource, parent);
+        input.remove("ancestorClassifications");
         Map<String, Value> attrs = new TreeMap<>();
+        if (inherited != null) {
+            attrs.put("inheritedClassification", stringSet(new TreeSet<>(inherited)));
+        }
         input.forEach((name, value) -> attrs.put(name, "ancestorIds".equals(name)
                 ? stringSet(new TreeSet<>(asStrings(resource.type() + ".ancestorIds", value)))
                 : toValue(resource.type() + "." + name, value)));
@@ -341,6 +346,45 @@ public final class EntityBuilder {
         attrs.put("scopes", scopeSet(scopeIds(resource, parent)));
         Set<EntityUID> parents = parent.map(p -> Set.of(uid(p.type(), p.id()))).orElse(Set.of());
         return new Entity(uid(resource.type(), resource.id()), attrs, parents);
+    }
+
+    /**
+     * Classification of the ancestor groups of a GitLab group or project (CC-129): the server passes
+     * {@code ancestorClassifications} as a map from group path to topics, for exactly the groups above a group, or all
+     * groups on the path of a project. Returns the normalized union, {@code null} for other types, and refuses a resource whose
+     * ancestor data is missing or does not match the path (fail-closed).
+     */
+    private static Set<String> inheritedClassification(ResolvedResource resource, Optional<ResolvedResource> parent) {
+        boolean group = "GitLab::Group".equals(resource.type());
+        if (!group && !"GitLab::Project".equals(resource.type())) {
+            return null;
+        }
+        Object given = resource.attributes().get("ancestorClassifications");
+        if (!(given instanceof Map<?, ?> map)) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " without ancestorClassifications");
+        }
+        Set<String> expected = new TreeSet<>(ResourceScopes.pathPrefixes(group ? resource.id() : parent.map(ResolvedResource::id).orElse("")));
+        if (group) {
+            expected.remove(resource.id());
+        }
+        Set<String> keys = new TreeSet<>();
+        map.keySet().forEach(k -> keys.add(String.valueOf(k)));
+        if (!keys.equals(expected)) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " ancestorClassifications do not match the ancestor groups");
+        }
+        Set<String> union = new TreeSet<>();
+        for (Object topics : map.values()) {
+            if (!(topics instanceof Collection<?> values)) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + ".ancestorClassifications must hold lists of strings");
+            }
+            for (Object element : values) {
+                if (!(element instanceof CharSequence text)) {
+                    throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + ".ancestorClassifications must hold lists of strings");
+                }
+                union.add(normalizeClassification(text.toString()));
+            }
+        }
+        return union;
     }
 
     /** Trim (as {@link String#trim()}) and lower-case ASCII letters only, so Java and JavaScript agree exactly. */

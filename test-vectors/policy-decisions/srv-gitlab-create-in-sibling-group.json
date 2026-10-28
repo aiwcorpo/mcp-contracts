@@ -35,7 +35,8 @@
         "type": "GitLab::Group",
         "id": "team-b",
         "attrs": {
-          "path": "team-b"
+          "path": "team-b",
+          "ancestorClassifications": {}
         }
       }
     }
@@ -76,6 +77,7 @@
       },
       "attrs": {
         "path": "team-b",
+        "inheritedClassification": [],
         "scopes": [
           {
             "__entity": {

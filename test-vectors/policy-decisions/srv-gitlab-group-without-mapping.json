@@ -38,13 +38,17 @@
         "type": "GitLab::Project",
         "id": "team-c/app",
         "attrs": {
-          "path": "team-c/app"
+          "path": "team-c/app",
+          "ancestorClassifications": {
+            "team-c": []
+          }
         },
         "parent": {
           "type": "GitLab::Group",
           "id": "team-c",
           "attrs": {
-            "path": "team-c"
+            "path": "team-c",
+            "ancestorClassifications": {}
           }
         }
       }
@@ -81,6 +85,7 @@
       },
       "attrs": {
         "path": "team-c",
+        "inheritedClassification": [],
         "scopes": [
           {
             "__entity": {
@@ -99,6 +104,7 @@
       },
       "attrs": {
         "path": "team-c/app",
+        "inheritedClassification": [],
         "group": {
           "__entity": {
             "type": "GitLab::Group",

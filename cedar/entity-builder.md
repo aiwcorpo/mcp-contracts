@@ -114,16 +114,26 @@ Klasyfikacja (CC-057, CC-062, CC-067):
 | `Jira::Project` | `category` (napis, `""` gdy brak) | tak | kategoria projektu Jira |
 | `Confluence::Space` | `labels` (zbiór) | tak | etykiety przestrzeni |
 | `OpenSearch::Index` | `tags` (zbiór) | tak | tagi indeksu (konfiguracja serwera OpenSearch MCP) |
-| `GitLab::Group`, `GitLab::Project` | `classification` (zbiór) | nie | topics grupy / projektu |
+| `GitLab::Group`, `GitLab::Project` | `classification` (zbiór) | nie | topics samej grupy / samego projektu |
+| `GitLab::Group`, `GitLab::Project` | `ancestorClassifications` (mapa ścieżka grupy -> topics; wejście) -> `inheritedClassification` (zbiór; atrybut encji) | tak | topics wszystkich grup-przodków, podane przez serwer (CC-129) |
 | `ServiceDesk::Queue` | `classification` (zbiór) | nie | kategoria kolejki w adapterze service desku |
 
 Zasób (także rodzic, np. projekt zgłoszenia) bez wymaganego atrybutu nie jest budowany (`internal_error`), więc
 wywołanie jest odrzucane, a element wyniku pomijany. Builder normalizuje każdą wartość: `trim` (znaki <= U+0020) i
 zamiana wyłącznie liter ASCII na małe; zbiory bez duplikatów. Wartość kanoniczna danych zastrzeżonych to
 `restricted` we wszystkich systemach; polityki porównują tylko z nią. Zgłoszenie dziedziczy klasyfikację kolejki,
-projekt GitLaba także klasyfikację grupy. Resolver GitLaba wypełnia `classification` grupy i projektu sumą
-topics wszystkich grup przodków (dla `team-a/sub/app`: topics `team-a`, `team-a/sub` i samego projektu), bo
-oznaczenie grupy nadrzędnej obejmuje całe poddrzewo. Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
+projekt GitLaba także klasyfikację grupy.
+
+**Klasyfikacja przodków w GitLabie (CC-129, 3.1.0).** Topics w GitLabie się nie dziedziczą, a oznaczenie grupy
+`restricted` ma chronić całe poddrzewo. Dlatego grupa i projekt GitLaba mają wymagany atrybut
+`inheritedClassification` (zbiór): suma znormalizowanych topics **wszystkich** grup-przodków (dla grupy: grupy nad nią; dla
+projektu: każda grupa na jego ścieżce, także rodzic; własne topics zostają w `classification`). Serwer podaje je w
+wejściu zasobu jako `attrs.ancestorClassifications`, mapę `<ścieżka grupy> -> [topics]` dokładnie dla grup przodków (dla
+`hr/payroll/app`: klucze `hr` i `hr/payroll`; dla grupy najwyższego poziomu pusta mapa `{}`, podana jawnie). Builder
+normalizuje topics jak w CC-067, liczy sumę i zapisuje `inheritedClassification`; wejście `ancestorClassifications` nie trafia do encji.
+**Fail-closed:** brak mapy, klucze inne niż grupy przodków (brakująca albo nadmiarowa grupa, w tym sama grupa) albo topics, które nie
+są listą napisów, to `internal_error` (zasób nie jest budowany). Dotyczy tylko tego atrybutu. Reguły `forbid` dla `restricted`
+sprawdzają `inheritedClassification` (`cedar/examples/forbid-restricted.cedar`). Projekt zgłoszenia pochodzi z systemu, nigdy z klucza zgłoszenia (wektor
 `srv-moved-issue-restricted`).
 
 **Kontekst:**

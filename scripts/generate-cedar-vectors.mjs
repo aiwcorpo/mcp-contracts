@@ -2,7 +2,7 @@
 // Expected decisions are written here by hand; the Java tests evaluate them with cedar-java.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { build, BuilderError, vscFromResourceDefaults } from './lib/entity-builder.mjs';
+import { build as buildEntities, BuilderError, pathPrefixes, vscFromResourceDefaults } from './lib/entity-builder.mjs';
 
 const SUB = {
   reader: 'b1a7c0de-0000-4000-8000-000000000001',
@@ -75,7 +75,21 @@ const outDir = (name) => {
   rmSync(path('test-vectors', name), { recursive: true, force: true });
   mkdirSync(path('test-vectors', name), { recursive: true });
 };
-const write = (dir, name, value) => writeFileSync(path('test-vectors', dir, `${name}.json`), JSON.stringify(value, null, 2) + '\n');
+// GitLab resources carry the classification of their ancestor groups (CC-129). Unless a vector sets ancestorClassifications itself
+// (an explicit null leaves it out on purpose), every ancestor group gets no topics.
+function withAncestors(value) {
+  if (Array.isArray(value)) return value.map(withAncestors);
+  if (value === null || typeof value !== 'object') return value;
+  const out = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withAncestors(v)]));
+  if ((out.type === 'GitLab::Group' || out.type === 'GitLab::Project') && out.attrs && !('ancestorClassifications' in out.attrs)) {
+    const groupPath = out.type === 'GitLab::Group' ? out.id : (out.parent?.id ?? out.id.slice(0, out.id.lastIndexOf('/')));
+    const groups = out.type === 'GitLab::Group' ? pathPrefixes(out.id).slice(0, -1) : pathPrefixes(groupPath);
+    out.attrs = { ...out.attrs, ancestorClassifications: Object.fromEntries(groups.map((g) => [g, []])) };
+  }
+  return out;
+}
+const build = (level, input, staticEntities) => buildEntities(level, withAncestors(input), staticEntities);
+const write = (dir, name, value) => writeFileSync(path('test-vectors', dir, `${name}.json`), JSON.stringify(withAncestors(value), null, 2) + '\n');
 
 // ---------- entity builder ----------
 outDir('entity-builder');
@@ -162,6 +176,39 @@ builderVector('refs-opensearch-index-wildcard', 'Index argument with wildcards (
   { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-*,*' } });
 builderVector('refs-jira-project-injection', 'Project key that would break out of a JQL list (CC-056, review H2).', 'gateway',
   { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC) OR project in (HR' } });
+// CC-129: classification of the ancestor groups becomes inheritedClassification; missing or wrong data refuses the resource.
+const gitlabProjectWith = (projectPath, groupPath, ancestorClassifications, extraAttrs = {}) => ({
+  type: 'GitLab::Project', id: projectPath, attrs: { path: projectPath, ...extraAttrs, ancestorClassifications },
+  parent: { type: 'GitLab::Group', id: groupPath, attrs: { path: groupPath, ancestorClassifications: Object.fromEntries(pathPrefixes(groupPath).slice(0, -1).map((g) => [g, []])) } },
+});
+builderVector('server-gitlab-project-inherited-classification', 'Server: inheritedClassification is the normalized union of the topics of every ancestor group (hr and hr/payroll), not of the project itself (CC-129).', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'hr/payroll/app' },
+  resource: gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: [' Restricted '], 'hr/payroll': ['Backend', 'backend'] }, { classification: ['Own'] }) });
+builderVector('server-gitlab-group-inherited-classification', 'Server: a group gets the topics of the groups above it, not its own (CC-129).', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'hr/payroll' },
+  resource: { type: 'GitLab::Group', id: 'hr/payroll', attrs: { path: 'hr/payroll', classification: ['payroll'], ancestorClassifications: { hr: ['RESTRICTED'] } } } });
+builderVector('server-gitlab-top-level-group-no-ancestors', 'Server: a top-level group has no ancestors: an empty map is complete, inheritedClassification is empty (CC-129).', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a' },
+  resource: { type: 'GitLab::Group', id: 'team-a', attrs: { path: 'team-a', ancestorClassifications: {} } } });
+builderVector('server-gitlab-project-without-ancestor-data', 'Server: no ancestor data for a project: refused (internal_error), fail-closed (CC-129).', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
+  resource: { type: 'GitLab::Project', id: 'team-a/sub/app', attrs: { path: 'team-a/sub/app', ancestorClassifications: null },
+    parent: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': [] } } } } });
+builderVector('server-gitlab-group-without-ancestor-data', 'Server: no ancestor data for a group: refused, even for a top-level group where it would be empty (the server must say so).', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a' },
+  resource: { type: 'GitLab::Group', id: 'team-a', attrs: { path: 'team-a', ancestorClassifications: null } } });
+builderVector('server-gitlab-project-missing-ancestor', 'Server: the ancestor data lacks a group of the path (team-a/sub): refused, a restricted middle group must not be skipped (CC-129).', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
+  resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': [] }) });
+builderVector('server-gitlab-project-unknown-ancestor', 'Server: the ancestor data names a group that is not on the path: refused.', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
+  resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': [], 'team-a/sub': [], 'team-b': ['restricted'] }) });
+builderVector('server-gitlab-group-includes-itself', 'Server: the ancestors of a group do not include the group itself: refused.', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a/sub' },
+  resource: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': [], 'team-a/sub': [] } } } });
+builderVector('server-gitlab-ancestor-topics-wrong-shape', 'Server: topics of an ancestor that are not a list of strings: refused.', 'server', {
+  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/app' },
+  resource: gitlabProjectWith('team-a/app', 'team-a', { 'team-a': 'restricted' }) });
 builderVector('refs-gitlab-path-traversal', 'GitLab path with .. segments.', 'gateway',
   { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-a/../team-b' } });
 builderVector('resolved-resource-invalid-id', 'Resolver returned an index id with a comma; the builder refuses to build it.', 'server', {
@@ -426,6 +473,13 @@ resultFilter('gitlab-projects-through-link',
   [projectIn('team-a/app'), projectIn('team-a/sub/svc'), projectIn('team-b/app'), projectIn('team-ab/app')],
   ['team-a/app', 'team-a/sub/svc'],
   { 'GitLab::Group': { virtualServer: ['team-a'], virtualServerType: 'GitLab::Group', granted: [] } });
+resultFilter('gitlab-projects-in-restricted-subtree',
+  'GitLab project list: projects below a restricted group are dropped at any depth (CC-129), the others are kept.',
+  { caller: users.gitlabReader(), tool: tools.getProject, arguments: {} },
+  [gitlabProjectWith('team-a/app', 'team-a', { 'team-a': [] }), gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: ['restricted'], 'hr/payroll': [] }),
+    gitlabProjectWith('hr/app', 'hr', { hr: ['restricted'] })],
+  ['team-a/app'],
+  { 'GitLab::Group': { virtualServer: null, virtualServerType: 'GitLab::Group', granted: [] } });
 resultFilter('confluence-pages-through-link',
   'Confluence page search through a link limited to space ENG: the page query is narrowed by space; pages of OPS and of a restricted space are dropped.',
   { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.getPage, arguments: {} },
@@ -490,6 +544,22 @@ decision('srv-gitlab-project-in-restricted-group', 'Server: project of a GitLab 
     resource: { type: 'GitLab::Project', id: 'legal/app', attrs: { path: 'legal/app' },
       parent: { type: 'GitLab::Group', id: 'legal', attrs: { path: 'legal', classification: [' restricted'] } } } },
   deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-gitlab-project-two-levels-below-restricted-group', 'Server: topics are not inherited in GitLab; the restricted topic is on hr only, the project is two levels below, and it is still forbidden through inheritedClassification (CC-129).', 'server',
+  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'hr/payroll/app' },
+    resource: gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: ['Restricted'], 'hr/payroll': [] }) },
+  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-gitlab-subgroup-of-restricted-group', 'Server: a subgroup of a restricted group is forbidden itself (CC-129).', 'server',
+  { caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a/sub' },
+    resource: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': ['restricted'] } } } },
+  deny('gitlab-forbid-restricted-group'), { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-gitlab-ancestor-topic-spelling-normalized', 'Server: the topic of an ancestor is normalized like every classification (trim, ASCII lower case): " RESTRICTED " forbids (CC-067, CC-129).', 'server',
+  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'legal/a/b/app' },
+    resource: gitlabProjectWith('legal/a/b/app', 'legal/a/b', { legal: [' RESTRICTED '], 'legal/a': [], 'legal/a/b': [] }) },
+  deny('gitlab-forbid-restricted-project'), { covers: ['restricted'] });
+decision('srv-gitlab-ancestors-without-restricted-allowed', 'Server: ancestors with other topics do not forbid; the grant on team-a covers the project (CC-129 control case).', 'server',
+  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
+    resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': ['backend'], 'team-a/sub': ['frontend'] }) },
+  allow('gitlab-update-project-in-scope'));
 decision('srv-servicedesk-ticket-in-restricted-queue', 'Server: ticket of a queue with category Restricted (CC-057).', 'server',
   { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 900 },
     resource: { type: 'ServiceDesk::Ticket', id: '900', attrs: { id: '900' },

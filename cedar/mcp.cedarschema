@@ -1,4 +1,5 @@
-// Cedar model of the MCP platform (contract C7), mcp-contracts 2.0.0.
+// Cedar model of the MCP platform (contract C7), mcp-contracts 3.1.0 (inheritedClassification on GitLab::Group and
+// GitLab::Project; otherwise as 2.0.0).
 //
 // Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
 // and policies must guard it with `has`.
@@ -112,16 +113,22 @@ namespace Confluence {
 }
 
 namespace GitLab {
-  // classification: topics of the group or project in GitLab, normalized; optional (CC-057).
+  // classification: topics of the group or project itself in GitLab, normalized; optional (CC-057).
+  // inheritedClassification (CC-129): union of the normalized classification of ALL ancestor groups (for a group: the
+  // groups above it; for a project: every group on its path, including the parent). Topics are not inherited in GitLab, so
+  // a restricted group protects its whole subtree only through this attribute. Required: the builder derives it from the
+  // ancestor data that the server passes and refuses a resource without it (fail-closed).
   entity Group {
     path: String,
     classification?: Set<String>,
+    inheritedClassification: Set<String>,
     scopes: Set<ResourceScope>,
   };
   entity Project in [Group] {
     path: String,
     group: Group,
     classification?: Set<String>,
+    inheritedClassification: Set<String>,
     scopes: Set<ResourceScope>,
   };
 }

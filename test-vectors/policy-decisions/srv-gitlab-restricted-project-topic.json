@@ -40,13 +40,17 @@
           "classification": [
             "Restricted",
             "backend"
-          ]
+          ],
+          "ancestorClassifications": {
+            "team-a": []
+          }
         },
         "parent": {
           "type": "GitLab::Group",
           "id": "team-a",
           "attrs": {
-            "path": "team-a"
+            "path": "team-a",
+            "ancestorClassifications": {}
           }
         }
       }
@@ -83,6 +87,7 @@
       },
       "attrs": {
         "path": "team-a",
+        "inheritedClassification": [],
         "scopes": [
           {
             "__entity": {
@@ -105,6 +110,7 @@
           "backend",
           "restricted"
         ],
+        "inheritedClassification": [],
         "group": {
           "__entity": {
             "type": "GitLab::Group",

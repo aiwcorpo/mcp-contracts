@@ -22,15 +22,21 @@ when { resource.space.labels.contains("restricted") };
 forbid (principal, action, resource is OpenSearch::Index)
 when { resource.tags.contains("restricted") };
 
+// A topic is not inherited in GitLab, so a restricted group protects its whole subtree through inheritedClassification
+// (the union of the classification of every ancestor group, filled by the entity builder, CC-129).
 @id("gitlab-forbid-restricted-group")
 forbid (principal, action, resource is GitLab::Group)
-when { resource has classification && resource.classification.contains("restricted") };
+when {
+  (resource has classification && resource.classification.contains("restricted")) ||
+  resource.inheritedClassification.contains("restricted")
+};
 
 @id("gitlab-forbid-restricted-project")
 forbid (principal, action, resource is GitLab::Project)
 when {
   (resource has classification && resource.classification.contains("restricted")) ||
-  (resource.group has classification && resource.group.classification.contains("restricted"))
+  (resource.group has classification && resource.group.classification.contains("restricted")) ||
+  resource.inheritedClassification.contains("restricted")
 };
 
 @id("servicedesk-forbid-restricted-queue")

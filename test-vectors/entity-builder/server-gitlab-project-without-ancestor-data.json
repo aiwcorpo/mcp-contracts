@@ -1,0 +1,54 @@
+{
+  "description": "Server: no ancestor data for a project: refused (internal_error), fail-closed (CC-129).",
+  "level": "server",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "gitlabwriter",
+      "grp": [
+        "mcp-gitlab-read",
+        "mcp-gitlab-write",
+        "mcp-gitlab-grp-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "update_project",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectPath",
+          "type": "GitLab::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectPath": "team-a/sub/app"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "team-a/sub/app",
+      "attrs": {
+        "path": "team-a/sub/app",
+        "ancestorClassifications": null
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a/sub",
+        "attrs": {
+          "path": "team-a/sub",
+          "ancestorClassifications": {
+            "team-a": []
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

@@ -36,7 +36,10 @@
         "type": "GitLab::Project",
         "id": "legal/app",
         "attrs": {
-          "path": "legal/app"
+          "path": "legal/app",
+          "ancestorClassifications": {
+            "legal": []
+          }
         },
         "parent": {
           "type": "GitLab::Group",
@@ -45,7 +48,8 @@
             "path": "legal",
             "classification": [
               " restricted"
-            ]
+            ],
+            "ancestorClassifications": {}
           }
         }
       }
@@ -85,6 +89,7 @@
         "classification": [
           "restricted"
         ],
+        "inheritedClassification": [],
         "scopes": [
           {
             "__entity": {
@@ -103,6 +108,7 @@
       },
       "attrs": {
         "path": "legal/app",
+        "inheritedClassification": [],
         "group": {
           "__entity": {
             "type": "GitLab::Group",
