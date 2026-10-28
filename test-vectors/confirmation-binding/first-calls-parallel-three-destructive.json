@@ -1,0 +1,48 @@
+{
+  "description": "Three different DESTRUCTIVE operations arrive at the same time: creating a pending call and superseding the older one is one atomic step per user, so exactly one stays pending.",
+  "kind": "first-calls-parallel",
+  "authenticator": "active",
+  "pendingCalls": [],
+  "pendingLimit": 3,
+  "at": "2026-10-26T20:00:00Z",
+  "calls": [
+    {
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "arguments": {
+        "issueKey": "ABC-1"
+      }
+    },
+    {
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "arguments": {
+        "issueKey": "ABC-2"
+      }
+    },
+    {
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "arguments": {
+        "issueKey": "ABC-3"
+      }
+    }
+  ],
+  "expected": {
+    "supersededIds": [
+      [],
+      [
+        "new-0"
+      ],
+      [
+        "new-1"
+      ]
+    ],
+    "pendingIds": [
+      "new-2"
+    ]
+  }
+}

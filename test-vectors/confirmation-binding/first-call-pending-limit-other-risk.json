@@ -40,6 +40,7 @@
   "at": "2026-10-26T20:00:30Z",
   "expected": {
     "outcome": "rate_limited",
+    "retryAfterSeconds": 90,
     "pendingCreated": false
   }
 }

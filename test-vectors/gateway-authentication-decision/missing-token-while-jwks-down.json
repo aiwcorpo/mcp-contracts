@@ -1,0 +1,13 @@
+{
+  "description": "No token at all is 401 missing_token, never 503.",
+  "input": {
+    "independentReason": "missing_token",
+    "keyCache": "none",
+    "kid": "unknown",
+    "refresh": "failed"
+  },
+  "expected": {
+    "reason": "missing_token",
+    "status": 401
+  }
+}

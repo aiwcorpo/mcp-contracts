@@ -1,0 +1,12 @@
+{
+  "description": "A kid in the usable key set goes on to the signature check without any fetch.",
+  "input": {
+    "keyCache": "usable",
+    "kid": "known",
+    "refresh": null
+  },
+  "expected": {
+    "reason": null,
+    "status": null
+  }
+}

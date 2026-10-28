@@ -1,0 +1,71 @@
+{
+  "description": "Nineteen failures are on record and three wrong codes arrive at the same instant: the first disables the authenticator, the others get disabled (the daily counter cannot be passed by racing). Seed of RFC 6238 appendix B, published: NOT FOR PRODUCTION.",
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "initial": {
+    "lastAcceptedStep": null,
+    "failures": [],
+    "lockedUntil": null,
+    "dailyFailures": [
+      "2026-10-14T11:07:10Z",
+      "2026-10-14T11:27:10Z",
+      "2026-10-14T11:47:10Z",
+      "2026-10-14T12:07:10Z",
+      "2026-10-14T12:27:10Z",
+      "2026-10-14T12:47:10Z",
+      "2026-10-14T13:07:10Z",
+      "2026-10-14T13:27:10Z",
+      "2026-10-14T13:47:10Z",
+      "2026-10-14T14:07:10Z",
+      "2026-10-14T14:27:10Z",
+      "2026-10-14T14:47:10Z",
+      "2026-10-14T15:07:10Z",
+      "2026-10-14T15:27:10Z",
+      "2026-10-14T15:47:10Z",
+      "2026-10-14T16:07:10Z",
+      "2026-10-14T16:27:10Z",
+      "2026-10-14T16:47:10Z",
+      "2026-10-14T17:07:10Z"
+    ]
+  },
+  "steps": [
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "invalid",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null,
+          "disabled": true
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "disabled",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null,
+          "disabled": true
+        }
+      }
+    },
+    {
+      "op": "verify",
+      "at": "2026-10-14T17:47:10Z",
+      "code": "000000",
+      "expected": {
+        "result": "disabled",
+        "after": {
+          "lastAcceptedStep": null,
+          "lockedUntil": null,
+          "disabled": true
+        }
+      }
+    }
+  ]
+}

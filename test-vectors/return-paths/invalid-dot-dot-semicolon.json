@@ -1,0 +1,7 @@
+{
+  "description": "/..;/ is /../ for a servlet container.",
+  "value": "/foo/..;/api/v1/me",
+  "expected": {
+    "valid": false
+  }
+}

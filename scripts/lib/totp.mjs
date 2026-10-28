@@ -133,3 +133,11 @@ export function confirmEnrollment(secret, pending, code, at, config = DEFAULTS) 
   if (wrongCodes >= config.enrollmentMaxWrongCodes) return { result: 'enrollment_invalid', pending: null };
   return { result: 'invalid_code', pending: { ...pending, wrongCodes } };
 }
+
+/**
+ * State after a confirmed enrollment: counters and the disabled state start clean, a lock of the user stays (the lock
+ * belongs to the user, not to the registration; only time lifts it, CC-091, CC-126).
+ */
+export function activate(previous, lastAcceptedStep) {
+  return { lastAcceptedStep, failures: [], dailyFailures: [], lockedUntil: previous.lockedUntil, disabled: false };
+}

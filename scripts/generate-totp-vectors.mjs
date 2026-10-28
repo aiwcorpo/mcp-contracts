@@ -154,6 +154,24 @@ verifyVector('verify-not-counted-malformed-then-lockout-unaffected', 'Malformed 
     })());
 }
 
+// Parallel attempts (H1): the check, the counters and the lock are one atomic step per user (reserve before the code is
+// computed), so fifty wrong codes in the same second give exactly five invalid answers and then locked.
+{
+  const t = T0 + 100;
+  assertWrong(t);
+  const until = t + 900;
+  verifyVector('concurrent-fifty-wrong-codes-give-exactly-five-checks', 'Fifty wrong codes at the same instant: exactly five are checked (invalid), the other forty-five are locked. A broker that reads the counter before writing would answer invalid fifty times.', state(),
+    Array.from({ length: 50 }, (_, i) => ({ op: 'verify', at: iso(t), code: WRONG,
+      expected: i < 5 ? { result: 'invalid', after: stepAfter(null, i === 4 ? until : null) } : { result: 'locked', retryAfterSeconds: 900, after: stepAfter(null, until) } })));
+  const gap = 1200;
+  const base = T0 - 20 * gap;
+  const twentieth = Array.from({ length: 19 }, (_, i) => base + i * gap);
+  twentieth.forEach(assertWrong);
+  verifyVector('concurrent-wrong-codes-hit-the-daily-limit-once', 'Nineteen failures are on record and three wrong codes arrive at the same instant: the first disables the authenticator, the others get disabled (the daily counter cannot be passed by racing).',
+    state(null, [], null, { dailyFailures: twentieth.map(iso) }),
+    [0, 1, 2].map((i) => ({ op: 'verify', at: iso(T0), code: WRONG, expected: i === 0 ? { result: 'invalid', after: stepAfter(null, null, { disabled: true }) } : { result: 'disabled', after: stepAfter(null, null, { disabled: true }) } })));
+}
+
 // Enrollment: the pending seed lives 10 minutes, three wrong codes destroy it.
 const enrollVector = (name, description, createdAt, steps) =>
   write(name, { description: `${description} ${NOTE}`, secret: SECRET, enrollment: { createdAt: iso(createdAt), wrongCodes: 0 }, steps });

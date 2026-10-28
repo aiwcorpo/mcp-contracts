@@ -24,14 +24,21 @@ export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at 
   if (authenticator === 'unavailable') return { outcome: 'upstream_unavailable', pendingCreated: false };
   if (authenticator === 'none' || authenticator === 'disabled') return { outcome: 'confirmation_required', register: true, pendingCreated: false };
   const hash = argumentsHash(call.arguments);
-  const live = pendingCalls.filter((p) => at <= p.createdAt + TTL_SECONDS);
+  // A tombstone of a superseded call (`supersededBy`) is not a pending call: it neither matches a repeated first call nor
+  // counts toward a limit, and a new pending call for the same operation replaces it (CC-127).
+  const live = pendingCalls.filter((p) => !p.supersededBy && at <= p.createdAt + TTL_SECONDS);
   const same = live.find((p) => p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash);
   if (same) return { outcome: 'confirmation_required', register: false, confirmationId: same.confirmationId, expiresAt: same.createdAt + TTL_SECONDS, pendingCreated: false, supersededIds: [] };
   if (call.risk === 'DESTRUCTIVE') {
     const supersededIds = live.filter((p) => p.risk === 'DESTRUCTIVE').map((p) => p.confirmationId);
     return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds };
   }
-  if (live.filter((p) => p.risk !== 'DESTRUCTIVE').length >= pendingLimit) return { outcome: 'rate_limited', pendingCreated: false };
+  const others = live.filter((p) => p.risk !== 'DESTRUCTIVE');
+  if (others.length >= pendingLimit) {
+    // Seconds until the oldest of them expires, i.e. until a slot is free.
+    const retryAfterSeconds = Math.ceil(Math.min(...others.map((p) => p.createdAt + TTL_SECONDS)) - at);
+    return { outcome: 'rate_limited', retryAfterSeconds, pendingCreated: false };
+  }
   return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds: [] };
 }
 
@@ -70,4 +77,58 @@ export function retry({ pending, attempt, verification, at }) {
     default:
       return { outcome: 'upstream_unavailable', verifyCalled: true, pendingConsumed: false, attemptsLeft: pending.attemptsLeft };
   }
+}
+
+/**
+ * Several first calls that arrive at the same time. Creating a pending DESTRUCTIVE call and superseding the older one
+ * is ONE atomic operation per user (a conditional write or a per-user lock), so the result equals applying the calls one
+ * after the other in some order: at most one DESTRUCTIVE call stays pending. Returns the result of each call and the
+ * ids that are pending at the end.
+ */
+export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, calls, at }) {
+  let live = pendingCalls.map((p) => ({ ...p }));
+  const results = [];
+  calls.forEach((call, index) => {
+    const result = firstCall({ authenticator, pendingCalls: live, pendingLimit, call, at });
+    results.push(result);
+    if (result.pendingCreated) {
+      live = live.map((p) => (result.supersededIds?.includes(p.confirmationId) ? { ...p, supersededBy: `new-${index}` } : p));
+      live.push({ confirmationId: `new-${index}`, serverId: call.serverId, tool: call.tool, risk: call.risk, argsSha256: argumentsHash(call.arguments), createdAt: at });
+    }
+  });
+  return { results, pendingIds: live.filter((p) => !p.supersededBy).map((p) => p.confirmationId) };
+}
+
+/**
+ * Retries that arrive at the same time for one pending call. The attempt is RESERVED atomically before the broker is
+ * asked (the counter of attempts is decremented first), so N parallel retries cause at most `attemptsLeft` broker
+ * calls. A reservation is returned when the answer is locked, disabled, not_registered or the broker fails; it is kept
+ * for invalid and replayed. Consuming the pending call on `ok` is a compare-and-delete: only one retry executes.
+ * `attempts[i].verification` is the broker answer for that retry, used only if the retry gets to ask the broker.
+ */
+export function retriesInOrder({ pending, attempts, at }) {
+  let current = pending === null ? null : { ...pending };
+  let brokerCalls = 0;
+  const outcomes = [];
+  for (const { attempt, verification } of attempts) {
+    const hash = argumentsHash(attempt.arguments);
+    const bound = current !== null && current.sub === attempt.sub && current.serverId === attempt.serverId && current.tool === attempt.tool && current.argsSha256 === hash;
+    if (!bound || at > current.createdAt + TTL_SECONDS || current.attemptsLeft <= 0) {
+      outcomes.push('confirmation_failed');
+      continue;
+    }
+    current.attemptsLeft -= 1;
+    brokerCalls += 1;
+    switch (verification.result) {
+      case 'ok': outcomes.push('execute'); current = null; break;
+      case 'invalid': case 'replayed':
+        outcomes.push('confirmation_failed');
+        if (current.attemptsLeft === 0) current = null;
+        break;
+      case 'locked': current.attemptsLeft += 1; outcomes.push('rate_limited'); break;
+      case 'disabled': case 'not_registered': current.attemptsLeft += 1; outcomes.push('confirmation_required'); break;
+      default: current.attemptsLeft += 1; outcomes.push('upstream_unavailable');
+    }
+  }
+  return { outcomes, brokerCalls, attemptsLeft: current === null ? null : current.attemptsLeft };
 }

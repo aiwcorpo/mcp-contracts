@@ -2130,7 +2130,16 @@ G-15, G-16, G-18, G-22.
   (`initial`, `steps`) i referencję w `scripts/lib/totp.mjs`; test Javy z szkicu nie powstał (broker wykonuje wektory
   we własnym teście). Pytanie otwarte człowieka (zgłoszenie z przeglądu): czy reset przez CN `mcp-offboarding` zostaje;
   w tym wydaniu bez zmian (jak w rozstrzygnięciu CC-091).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Doprecyzowania po przeglądzie 3.0.0:** (1) atomowość: sprawdzenie blokady/wyłączenia, liczniki 5/15 min i 20/24 h
+  oraz blokada to jeden krok atomowy na `sub` (serializacja albo rezerwacja próby warunkowym zapisem przed obliczeniem
+  TOTP); wektory `totp/concurrent-*` (50 równoległych błędnych kodów dają dokładnie 5 sprawdzeń); (2) przechowywanie
+  ziarna: Transit bez envelope, ścieżka `mcp/authenticators/<sha256(sub)>`, `sub` w odszyfrowanym rekordzie, ziarno
+  rejestracji w toku tylko zaszyfrowane, TTL 10 min i usunięcie po aktywacji, po TTL i po trzecim błędzie, baza tylko
+  metadane, nigdy jawnie w Redis ani w bazie; (3) broker ufa BFF (mTLS CN `mcp-portal-bff`) co do świeżości MFA przy
+  rejestracji i usunięciu: świadome założenie, broker nie sprawdza `auth_time`/`acr` sam (możliwa druga kontrola, jeśli
+  IdP przeniesie claimy przez token exchange; nie wprowadzona); (4) aktywacja nowej rejestracji zeruje liczniki i stan
+  `disabled`, nie zeruje blokady użytkownika (decyzja człowieka 2026-10-28, `activate` w `scripts/lib/totp.mjs`).
+ (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-093 | C12 | BFF: rejestracja Authenticatora ze step-up MFA Entra
 
@@ -2576,7 +2585,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** zaostrzenie walidacji, **major**; wchodzi do 3.0.0 razem z CC-091 ... CC-094 i CC-098.
 - **Wpływ na strumienie:** ws-06 (C4 `oauth/start`), ws-07 (login, `startConnectOAuth`), ws-08 (generowane ścieżki
   powrotu nie zaczynają się od zarezerwowanych prefiksów).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): wzorzec rozszerzony o segmenty `.` i `..` (przed `?`) i o `?` po prefiksie (`/api?x`), bo bez tego `/./api/...` i `/api?x` omijają prefiks; do potwierdzenia przez człowieka.
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): wzorzec rozszerzony o segmenty `.` i `..` (przed `?`), o `?` po prefiksie (`/api?x`) i o zakaz średnika (parametry ścieżki `/api;x`, `/..;/` serwery czytają jak `/api` i `/..`); rozszerzenie o `.` i `..` potwierdzone przez człowieka 2026-10-28, a zakaz `;` jest tego samego ducha (przegląd 3.0.0, L3).
 
 ## CC-100 | C4.1 | Porównanie tożsamości bez zmiany wielkości liter dla całego Unicode
 
@@ -2831,6 +2840,10 @@ G-15, G-16, G-18, G-22.
   - zdarzenie `authentication` z `reason: jwks_unavailable` i `errorCode: upstream_unavailable` zostaje (CC-120, schemat
     już wiąże oba).
   Odrzucenie sprawdzonego tokenu (10 powodów C1 z CC-120) zostaje `401` z `resource_metadata` i bez powodu.
+- **Kolejność decyzji (przegląd 3.0.0, L2):** najpierw kontrole niezależne od kluczy (brak tokenu, format, `alg`), więc
+  `missing_token`, `malformed`, `alg_not_allowed` to zawsze 401, także przy awarii IdP; potem wybór klucza. Nieznany `kid`
+  wyzwala najwyżej jedno pobranie na minimalny odstęp: po udanym pobraniu w tym odstępie 401 `unknown_kid` bez ponownego
+  pobrania, po nieudanym 503. Wektory decyzji `gateway-authentication-decision/` (13), referencja `keyDecision`.
 - **Pliki:** `README.md` (sekcja "Odpowiedzi gateway'a na odrzucone i niedostępne uwierzytelnienie"),
   `scripts/lib/gateway-authentication.mjs` (referencja), wektory `test-vectors/gateway-authentication/` (13: 10 powodów
   401, trasa `/v/`, 503 z `Retry-After` 10 i 30), test sprawdza ciało względem `tool-error.schema.json`, brak
@@ -2860,6 +2873,9 @@ G-15, G-16, G-18, G-22.
      negatywny (`invalid-authentication-replay-store-unavailable-gateway`), poprawne to
      `server-authentication-denied-replay-store-unavailable` i `broker-authentication-denied-replay-store-unavailable`;
   3. `jwks_unavailable` zostaje dla obu stron (JWKS IdP u gateway'a, JWKS gateway'a u odbiorców JWT).
+- **Ilość zdarzeń (przegląd 3.0.0, L9):** gateway może agregować lub próbkować `client_certificate_rejected` na porcie
+  administracyjnym (np. jedno zdarzenie na adres źródłowy na minutę albo licznik w metrykach), żeby skaner w sieci
+  wewnętrznej nie zalał SIEM; lista pól zdarzenia zostaje zamknięta.
 - **Pliki:** `schemas/audit-event.schema.json` (reguła `component` dla `replay_store_unavailable`, opis `reason`),
   wektory `gateway-authentication-denied-admin-client-certificate`, `gateway-authentication-denied-admin-bff-token`.
 - **SemVer:** zaostrzenie walidacji (wektor `gateway`/`replay_store_unavailable` przestaje być poprawny), major; wchodzi do
@@ -2896,6 +2912,12 @@ G-15, G-16, G-18, G-22.
   (ze świeżym MFA Entra, czyli czynnikiem, którego agent nie ma). Blokada użytkownika trwa niezależnie od rejestracji
   (może wystąpić `state: active` z `lockedUntil` albo, po usunięciu, `state: none` z `lockedUntil`), a nowa rejestracja
   jej nie kasuje.
+- **Skutek uboczny (przegląd 3.0.0, L1):** zmanipulowany agent może sam wyłączyć Authenticator ok. 20 błędnymi kodami
+  (5 błędów, 15 min blokady, cztery razy, ok. godziny), bez udziału człowieka. Skutek to odmowa usługi dla potwierdzeń
+  DESTRUCTIVE do ponownej rejestracji ze step-up MFA Entra (wcześniej DoS kończył się po 15 minutach). Zdarzenie
+  `authenticator_disabled` nadaje się na alert SIEM; powiadomienie użytkownika poza klientem AI nie jest częścią kontraktu.
+- **Atomowość:** licznik dzienny podlega tej samej regule atomowości co licznik 5/15 min (CC-092); wektor
+  `totp/concurrent-wrong-codes-hit-the-daily-limit-once`.
 - **Pliki:** `credential-broker.v1.yaml` (`AuthenticatorStatus`, `AuthenticatorVerifyResult`, opisy, przykłady),
   `portal-bff.v1.yaml` (przykład, opisy), `audit-event.schema.json` (opis `reason`), `tool-error.schema.json` (opis
   `registerUrl`), wektory `totp/daily-limit-*` (7) i `enrollment-replaces-disabled-registration`,
@@ -2928,6 +2950,20 @@ G-15, G-16, G-18, G-22.
     raz; unieważnienie starszej jest jawne i widoczne w audycie. Nie zapobiega podmianie: zmanipulowany agent może
     unieważnić operację A swoją B i dopiero B potwierdzić kodem wpisanym dla A. Podgląd pozostaje opcjonalny (ryzyko
     rezydualne przyjęte, opisane w README, "Potwierdzenia kodem TOTP", pkt 7).
+- **Uczciwy opis ograniczeń (przegląd 3.0.0, M1):** unieważnienie następuje przed wpisaniem kodu i zostawia ślad w
+  audycie, ale użytkownik nie dostaje sygnału: strona podglądu pokazuje stan z chwili otwarcia i się nie odświeża (frontend
+  powinien ją odpytywać i po `404` pokazać "link nieaktualny"); podmiana jest możliwa także po obejrzeniu podglądu; kod może
+  też potwierdzić jedno z oczekujących potwierdzeń o innym ryzyku (do 3, nie są unieważniane). Zmiana zasady (np. "pierwsza
+  wygrywa po podglądzie", jedno oczekujące potwierdzenie na wszystkie ryzyka) jest decyzją człowieka, nie wchodzi.
+- **Ślad (przegląd 3.0.0, M2):** ślad po unieważnionym wywołaniu nie jest oczekującym wywołaniem: ponowne wywołanie tej
+  samej operacji tworzy nowe oczekujące wywołanie (nowy `confirmationId`, nowy TTL), unieważnia bieżące DESTRUCTIVE i
+  zastępuje ślad pod tym samym kluczem; ślady nie liczą się do limitu. Wektory `first-call-after-superseded-same-operation`,
+  `first-call-tombstone-does-not-count-toward-limit`, `retry-after-reissue`.
+- **Atomowość (przegląd 3.0.0, H1):** utworzenie oczekującego DESTRUCTIVE i unieważnienie poprzedniego to jedna operacja
+  atomowa na `sub`; gateway rezerwuje próbę (dekrement `attemptsLeft`) przed pytaniem brokera i zwraca ją przy `locked`,
+  `disabled`, `not_registered` i błędzie brokera; zużycie oczekującego przy `ok` to compare-and-delete. Wektory
+  `first-calls-parallel-*` i `retries-parallel-*`.
+- **Limit innego ryzyka (L8):** `rate_limited` ma `retryAfterSeconds` równe czasowi do wygaśnięcia najstarszego z nich.
 - **Pliki:** `tool-error.schema.json` (`ConfirmationSuperseded`), `common.schema.json` (`ErrorCode`),
   `gateway-admin.v1.yaml` (404 podglądu), `audit-event.schema.json` (opis `reason`), `scripts/lib/confirmation.mjs`,
   wektory `confirmation-binding/first-call-*` (m.in. nowa operacja unieważnia starą, inne narzędzie, inne ryzyko),

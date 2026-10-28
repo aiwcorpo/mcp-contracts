@@ -55,7 +55,7 @@ export function inputSchemaViolations(root) {
       return;
     }
     const fixed = 'enum' in node || 'const' in node;
-    if (node.pattern !== undefined && !(typeof node.pattern === 'string' && node.pattern.startsWith('^') && node.pattern.endsWith('$'))) {
+    if (node.pattern !== undefined && !anchoredPattern(node.pattern)) {
       found.add('input-schema-bounded');
     }
     if (node.type === 'string' && !fixed && !isCount(node.maxLength)) found.add('input-schema-bounded');
@@ -74,4 +74,25 @@ export function inputSchemaViolations(root) {
   };
   if (root && typeof root === 'object' && root.type === 'object') walk(root);
   return [...found];
+}
+
+// A pattern is anchored when it starts with ^, ends with an unescaped $ and has no alternation outside every group, so
+// that "^a|b$" (which matches any string containing b) is not accepted (CC-123).
+export function anchoredPattern(pattern) {
+  if (typeof pattern !== 'string' || !pattern.startsWith('^') || !pattern.endsWith('$')) return false;
+  let backslashes = 0;
+  for (let i = pattern.length - 2; i >= 0 && pattern[i] === '\\'; i--) backslashes++;
+  if (backslashes % 2 === 1) return false;
+  let depth = 0;
+  let inClass = false;
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+    if (ch === '\\') { i++; continue; }
+    if (inClass) { if (ch === ']') inClass = false; continue; }
+    if (ch === '[') inClass = true;
+    else if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    else if (ch === '|' && depth === 0) return false;
+  }
+  return true;
 }

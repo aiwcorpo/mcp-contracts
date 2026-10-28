@@ -1,0 +1,12 @@
+{
+  "description": "No usable key set (never loaded or too old) and the fetch fails: 503.",
+  "input": {
+    "keyCache": "none",
+    "kid": "unknown",
+    "refresh": "failed"
+  },
+  "expected": {
+    "reason": "jwks_unavailable",
+    "status": 503
+  }
+}

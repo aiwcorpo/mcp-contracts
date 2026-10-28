@@ -1,0 +1,12 @@
+{
+  "description": "An unknown kid and a failed refresh: rotation cannot be told from forgery, so 503 jwks_unavailable.",
+  "input": {
+    "keyCache": "usable",
+    "kid": "unknown",
+    "refresh": "failed"
+  },
+  "expected": {
+    "reason": "jwks_unavailable",
+    "status": 503
+  }
+}

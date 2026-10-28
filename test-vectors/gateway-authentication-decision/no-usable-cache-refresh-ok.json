@@ -1,0 +1,12 @@
+{
+  "description": "No usable key set, the fetch succeeds and has the kid.",
+  "input": {
+    "keyCache": "none",
+    "kid": "unknown",
+    "refresh": "ok-kid-found"
+  },
+  "expected": {
+    "reason": null,
+    "status": null
+  }
+}

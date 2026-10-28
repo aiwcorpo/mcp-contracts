@@ -1,0 +1,7 @@
+{
+  "description": "A path parameter hides the prefix from a naive check: /api;x is /api for a servlet container.",
+  "value": "/api;x/v1/me",
+  "expected": {
+    "valid": false
+  }
+}

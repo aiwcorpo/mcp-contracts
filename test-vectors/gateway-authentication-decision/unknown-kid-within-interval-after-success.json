@@ -1,0 +1,12 @@
+{
+  "description": "An unknown kid within the minimum interval after a successful fetch causes no new fetch: 401 unknown_kid (no amplification towards the IdP).",
+  "input": {
+    "keyCache": "usable",
+    "kid": "unknown",
+    "refresh": "skipped-after-success"
+  },
+  "expected": {
+    "reason": "unknown_kid",
+    "status": 401
+  }
+}

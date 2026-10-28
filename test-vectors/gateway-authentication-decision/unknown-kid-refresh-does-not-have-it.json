@@ -1,0 +1,12 @@
+{
+  "description": "A forged kid: the refresh succeeds and the kid is still unknown: 401 unknown_kid.",
+  "input": {
+    "keyCache": "usable",
+    "kid": "unknown",
+    "refresh": "ok-kid-missing"
+  },
+  "expected": {
+    "reason": "unknown_kid",
+    "status": 401
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "description": "A tombstone is not a pending call (M2): issuing the superseded operation again creates a NEW pending call (new id, new TTL) and supersedes the current DESTRUCTIVE one.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_old0000000000001",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "supersededBy": "cnf_new0000000000002"
+    },
+    {
+      "confirmationId": "cnf_new0000000000002",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:b1cc0cf6ba43b5dbea6b2e3f2b4c618abb9f0b2b4e9ea5f42090b87d3c628bd8",
+      "createdAt": "2026-10-26T20:00:40Z"
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "arguments": {
+      "issueKey": "ABC-123"
+    }
+  },
+  "at": "2026-10-26T20:01:00Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": false,
+    "expiresAt": "2026-10-26T20:03:00Z",
+    "pendingCreated": true,
+    "supersededIds": [
+      "cnf_new0000000000002"
+    ]
+  }
+}

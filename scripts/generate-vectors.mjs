@@ -345,6 +345,12 @@ schemaCase('invalid-input-schema-integer-only-minimum', 'An integer with only mi
 schemaCase('invalid-input-schema-pattern-not-anchored', 'A pattern without ^ and $ matches a substring only (CC-123).', (i) => {
   i.properties.issueKey.pattern = '[A-Z]+-[0-9]+';
 }, 'input-schema-bounded');
+schemaCase('invalid-input-schema-pattern-alternation', 'A top-level alternation leaves one branch unanchored: ^[A-Z]+|.*$ matches almost anything.', (i) => {
+  i.properties.issueKey.pattern = '^[A-Z]+|.*$';
+}, 'input-schema-bounded');
+schemaCase('invalid-input-schema-pattern-escaped-dollar', 'A pattern ending in an escaped dollar is not anchored at the end.', (i) => {
+  i.properties.issueKey.pattern = '^[A-Z]+-1\\$';
+}, 'input-schema-bounded');
 schemaCase('invalid-input-schema-property-without-type', 'A property without type.', (i) => {
   i.properties.anything = { description: 'whatever' };
 }, 'input-schema-bounded');
@@ -375,6 +381,7 @@ for (const keyword of ['allOf', 'anyOf', 'oneOf', 'not', 'if']) {
     additionalProperties: false,
   };
   withHash(m);
+  manifest('valid-input-schema-grouped-alternation', 'Alternation inside a group is fine.', (() => { const g = jiraManifest(); g.tools[0].definition.inputSchema.properties.issueKey.pattern = '^(?:ABC|DEF)-[0-9]+$'; return withHash(g); })(), true);
   manifest('valid-input-schema-all-types', 'Every kind of node in its closed and bounded form: enum without maxLength, boolean, integer and number with a range, array with items and maxItems, prefixItems with items, nested closed object.', m, true);
 }
 {
@@ -415,7 +422,7 @@ audit('gateway-confirmation-user-confirmed', 'The retry with a valid code runs t
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE',
   resource: { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::ABC' }, decision: 'allow', reason: 'user_confirmed', outcome: 'ok',
 }, true);
-audit('gateway-confirmation-preview-not-viewed', 'Code accepted although the owner did not open the portal preview (CC-094).', {
+audit('gateway-confirmation-user-confirmed-no-preview', 'Code accepted although the owner did not open the portal preview (CC-094).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'allow', reason: 'user_confirmed_no_preview', outcome: 'ok',
 }, true);
@@ -630,6 +637,10 @@ returnPath('invalid-well-known', 'RFC 9728 metadata is served by the gateway.', 
 returnPath('invalid-dot-segment-to-api', 'A browser resolves /./api/... to /api/...; the dot segment would bypass the prefix check.', '/./api/v1/me', false);
 returnPath('invalid-dot-dot-segment-to-api', 'A browser resolves /catalog/../api/... to /api/....', '/catalog/../api/v1/me', false);
 returnPath('invalid-dot-dot-segment-at-end', 'A trailing .. segment.', '/catalog/..', false);
+returnPath('invalid-api-matrix-param', 'A path parameter hides the prefix from a naive check: /api;x is /api for a servlet container.', '/api;x/v1/me', false);
+returnPath('invalid-gateway-matrix-param', 'Same for the gateway route /s.', '/s;x/mcp-jira', false);
+returnPath('invalid-dot-dot-semicolon', '/..;/ is /../ for a servlet container.', '/foo/..;/api/v1/me', false);
+returnPath('invalid-semicolon-in-query', 'The semicolon is not allowed anywhere.', '/catalog?a=1;b=2', false);
 returnPath('valid-apiary', '/apiary only starts with the letters api; it is not the /api prefix.', '/apiary', true);
 returnPath('valid-settings', '/settings only starts with s.', '/settings', true);
 returnPath('valid-v1', '/v1 is not the /v/ prefix.', '/v1/guide', true);
@@ -816,7 +827,7 @@ firstCallVector('first-call-destructive-does-not-supersede-update', 'A new DESTR
 firstCallVector('first-call-pending-limit-other-risk', 'The limit of pending calls (default 3) applies to confirmations that are not DESTRUCTIVE: the fourth is rate_limited.',
   { pendingCalls: ['ABC-1', 'ABC-2', 'ABC-3'].map((key, i) => stored({ risk: 'UPDATE', tool: 'update_issue', confirmationId: `cnf_limit000000000${i}`, argsSha256: argsHash({ issueKey: key }) })),
     call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-4' } }, at: '2026-10-26T20:00:30Z' },
-  { outcome: 'rate_limited', pendingCreated: false });
+  { outcome: 'rate_limited', retryAfterSeconds: 90, pendingCreated: false });
 
 // ---------- gateway answers to rejected and unavailable authentication (C1, CC-124) ----------
 
@@ -912,6 +923,59 @@ activityRow('wrong-code-count-4', 'At most 3 attempts exist, so wrongCodeCount i
 activityRow('resource-extra-field', 'resource has only type, id and parent.', { ...rowBase, resource: { ...callRes, name: 'x' } }, false);
 activityRow('confirmation-id', 'The internal confirmationId never leaves the gateway.', { ...rowBase, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
 activityRow('tool-not-qualified', 'tool is the qualified name <system>__<tool>.', { ...rowBase, tool: 'get_issue' }, false);
+
+const TOMB = (extra = {}) => stored({ confirmationId: 'cnf_old0000000000001', createdAt: '2026-10-26T20:00:00Z', supersededBy: 'cnf_new0000000000002', ...extra });
+firstCallVector('first-call-after-superseded-same-operation', 'A tombstone is not a pending call (M2): issuing the superseded operation again creates a NEW pending call (new id, new TTL) and supersedes the current DESTRUCTIVE one.',
+  { pendingCalls: [TOMB(), stored({ confirmationId: 'cnf_new0000000000002', argsSha256: argsHash({ issueKey: 'ABC-124' }), tool: 'delete_issue', createdAt: '2026-10-26T20:00:40Z' })], at: '2026-10-26T20:01:00Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:03:00Z', pendingCreated: true, supersededIds: ['cnf_new0000000000002'] });
+firstCallVector('first-call-tombstone-does-not-count-toward-limit', 'Tombstones do not count toward the limit of pending calls of other risk.',
+  { pendingCalls: [TOMB({ risk: 'UPDATE', tool: 'update_issue' }), TOMB({ risk: 'UPDATE', tool: 'update_issue', confirmationId: 'cnf_old0000000000003' }), TOMB({ risk: 'UPDATE', tool: 'update_issue', confirmationId: 'cnf_old0000000000004' })],
+    call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-9', summary: 'y' } }, at: '2026-10-26T20:00:30Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: [] });
+retryVector('retry-after-reissue', 'After the operation was issued again the retry hits the NEW pending call (it replaced the tombstone under the same key): the code executes it.',
+  { pending: pendingCall({ confirmationId: 'cnf_reissued00000001', createdAt: '2026-10-26T20:01:00Z' }), attempt: { at: '2026-10-26T20:01:30Z' } },
+  { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed' });
+
+// Parallel requests (H1): the counters and the one-pending rule are atomic, so the outcome equals a sequential one.
+const parallelFirst = (name, description, { pendingCalls = [], calls }, expected) => write('confirmation-binding', `${name}.json`, {
+  description, kind: 'first-calls-parallel', authenticator: 'active', pendingCalls, pendingLimit: 3, at: '2026-10-26T20:00:00Z',
+  calls: calls.map((c) => ({ serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', ...c })), expected,
+});
+parallelFirst('first-calls-parallel-three-destructive', 'Three different DESTRUCTIVE operations arrive at the same time: creating a pending call and superseding the older one is one atomic step per user, so exactly one stays pending.',
+  { calls: [{ arguments: { issueKey: 'ABC-1' } }, { arguments: { issueKey: 'ABC-2' } }, { arguments: { issueKey: 'ABC-3' } }] },
+  { supersededIds: [[], ['new-0'], ['new-1']], pendingIds: ['new-2'] });
+parallelFirst('first-calls-parallel-same-operation', 'The same operation twice at the same time: one pending call, the second request gets the same record.',
+  { calls: [{ arguments: { issueKey: 'ABC-1' } }, { arguments: { issueKey: 'ABC-1' } }] },
+  { supersededIds: [[], []], pendingIds: ['new-0'] });
+const parallelRetry = (name, description, { pending = pendingCall(), attempts }, expected) => write('confirmation-binding', `${name}.json`, {
+  description, kind: 'retries-parallel', pending, at: '2026-10-26T20:01:00Z',
+  attempts: attempts.map((verification) => ({ attempt: { sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', arguments: { ...PENDING_ARGS, confirmation_code: '705202' } }, verification })),
+  expected,
+});
+parallelRetry('retries-parallel-wrong-codes', 'Ten parallel retries with wrong codes: the attempt is reserved before the broker is asked, so the broker is called exactly 3 times and the other 7 are confirmation_failed without a call.',
+  { attempts: Array.from({ length: 10 }, () => ({ result: 'invalid' })) },
+  { outcomes: ['confirmation_failed', 'confirmation_failed', 'confirmation_failed', ...Array(7).fill('confirmation_failed')], brokerCalls: 3, attemptsLeft: null });
+parallelRetry('retries-parallel-locked-returns-reservation', 'A reservation is returned when the broker answers locked: no attempt is lost.',
+  { attempts: [{ result: 'locked', retryAfterSeconds: 100 }, { result: 'locked', retryAfterSeconds: 100 }, { result: 'locked', retryAfterSeconds: 100 }, { result: 'locked', retryAfterSeconds: 100 }] },
+  { outcomes: ['rate_limited', 'rate_limited', 'rate_limited', 'rate_limited'], brokerCalls: 4, attemptsLeft: 3 });
+parallelRetry('retries-parallel-one-executes', 'A right code and wrong ones at the same time: the pending call is consumed once (compare and delete); later retries find nothing and do not reach the broker.',
+  { attempts: [{ result: 'invalid' }, { result: 'ok' }, { result: 'ok' }, { result: 'invalid' }] },
+  { outcomes: ['confirmation_failed', 'execute', 'confirmation_failed', 'confirmation_failed'], brokerCalls: 2, attemptsLeft: null });
+
+const keyVector = (name, description, input, expected) => write('gateway-authentication-decision', `${name}.json`, { description, input, expected });
+keyVector('independent-reason-wins-over-unavailable-jwks', 'A token without a valid format is 401 malformed even while the key set is down: no key is needed to reject it.',
+  { independentReason: 'malformed', keyCache: 'none', kid: 'unknown', refresh: 'failed' }, { reason: 'malformed', status: 401 });
+keyVector('missing-token-while-jwks-down', 'No token at all is 401 missing_token, never 503.', { independentReason: 'missing_token', keyCache: 'none', kid: 'unknown', refresh: 'failed' }, { reason: 'missing_token', status: 401 });
+keyVector('alg-not-allowed-while-jwks-down', 'alg none or HS256 is rejected before any key lookup.', { independentReason: 'alg_not_allowed', keyCache: 'none', kid: 'unknown', refresh: 'failed' }, { reason: 'alg_not_allowed', status: 401 });
+keyVector('known-kid-usable-cache', 'A kid in the usable key set goes on to the signature check without any fetch.', { keyCache: 'usable', kid: 'known', refresh: null }, { reason: null, status: null });
+keyVector('known-kid-while-idp-down', 'The IdP is down but the cache is usable and has the kid: the call is served.', { keyCache: 'usable', kid: 'known', refresh: 'failed' }, { reason: null, status: null });
+keyVector('unknown-kid-refresh-finds-it', 'Key rotation: unknown kid, the refresh succeeds and finds the new key.', { keyCache: 'usable', kid: 'unknown', refresh: 'ok-kid-found' }, { reason: null, status: null });
+keyVector('unknown-kid-refresh-does-not-have-it', 'A forged kid: the refresh succeeds and the kid is still unknown: 401 unknown_kid.', { keyCache: 'usable', kid: 'unknown', refresh: 'ok-kid-missing' }, { reason: 'unknown_kid', status: 401 });
+keyVector('unknown-kid-within-interval-after-success', 'An unknown kid within the minimum interval after a successful fetch causes no new fetch: 401 unknown_kid (no amplification towards the IdP).', { keyCache: 'usable', kid: 'unknown', refresh: 'skipped-after-success' }, { reason: 'unknown_kid', status: 401 });
+keyVector('unknown-kid-refresh-failed', 'An unknown kid and a failed refresh: rotation cannot be told from forgery, so 503 jwks_unavailable.', { keyCache: 'usable', kid: 'unknown', refresh: 'failed' }, { reason: 'jwks_unavailable', status: 503 });
+keyVector('unknown-kid-within-interval-after-failure', 'An unknown kid within the interval after a failed fetch: no new fetch, 503.', { keyCache: 'usable', kid: 'unknown', refresh: 'skipped-after-failure' }, { reason: 'jwks_unavailable', status: 503 });
+keyVector('no-usable-cache-refresh-failed', 'No usable key set (never loaded or too old) and the fetch fails: 503.', { keyCache: 'none', kid: 'unknown', refresh: 'failed' }, { reason: 'jwks_unavailable', status: 503 });
+keyVector('no-usable-cache-refresh-ok', 'No usable key set, the fetch succeeds and has the kid.', { keyCache: 'none', kid: 'unknown', refresh: 'ok-kid-found' }, { reason: null, status: null });
 
 // ---------- RFC 8785 numbers (CC-063) ----------
 {

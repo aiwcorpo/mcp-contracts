@@ -8,9 +8,9 @@ import { manifestEntryHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { untarGz } from '../scripts/lib/tar.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
-import { argumentsHash, firstCall, retry } from '../scripts/lib/confirmation.mjs';
+import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
-import { gatewayAuthenticationResponse } from '../scripts/lib/gateway-authentication.mjs';
+import { gatewayAuthenticationResponse, keyDecision } from '../scripts/lib/gateway-authentication.mjs';
 
 const ajv = createAjv();
 
@@ -125,7 +125,18 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
   const vectors = listJson('test-vectors', 'confirmation-binding');
   assert.ok(vectors.some((v) => v.data.kind === 'retry') && vectors.some((v) => v.data.kind === 'first-call'));
   for (const { name, data } of vectors) {
-    if (data.kind === 'first-call') {
+    if (data.kind === 'first-calls-parallel') {
+      const { results, pendingIds } = firstCallsInOrder({
+        authenticator: data.authenticator, pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt) })),
+        pendingLimit: data.pendingLimit, calls: data.calls, at: toSeconds(data.at),
+      });
+      assert.deepEqual(results.map((r) => r.supersededIds ?? []), data.expected.supersededIds, name);
+      assert.deepEqual(pendingIds, data.expected.pendingIds, name);
+      assert.ok(pendingIds.length <= 1, `${name}: at most one pending DESTRUCTIVE call`);
+    } else if (data.kind === 'retries-parallel') {
+      const actual = retriesInOrder({ pending: { ...data.pending, createdAt: toSeconds(data.pending.createdAt) }, attempts: data.attempts, at: toSeconds(data.at) });
+      assert.deepEqual(actual, data.expected, name);
+    } else if (data.kind === 'first-call') {
       const actual = firstCall({
         authenticator: data.authenticator,
         pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt) })),
@@ -275,4 +286,10 @@ test('activity-calls vectors: ActivityCall schema and aggregation of one call (C
       assert.equal(validate(data.value), data.expected.valid, `${name}: ${formatErrors(validate.errors)}`);
     }
   }
+});
+
+test('gateway key decision: which reason a token gets and whether it is 401 or 503 (CC-124)', () => {
+  const vectors = listJson('test-vectors', 'gateway-authentication-decision');
+  assert.ok(vectors.some((v) => v.data.expected.status === 503) && vectors.some((v) => v.data.expected.status === 401));
+  for (const { name, data } of vectors) assert.deepEqual(keyDecision(data.input), data.expected, name);
 });

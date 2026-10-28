@@ -1,0 +1,13 @@
+{
+  "description": "alg none or HS256 is rejected before any key lookup.",
+  "input": {
+    "independentReason": "alg_not_allowed",
+    "keyCache": "none",
+    "kid": "unknown",
+    "refresh": "failed"
+  },
+  "expected": {
+    "reason": "alg_not_allowed",
+    "status": 401
+  }
+}

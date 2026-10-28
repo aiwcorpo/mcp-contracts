@@ -1,0 +1,12 @@
+{
+  "description": "An unknown kid within the interval after a failed fetch: no new fetch, 503.",
+  "input": {
+    "keyCache": "usable",
+    "kid": "unknown",
+    "refresh": "skipped-after-failure"
+  },
+  "expected": {
+    "reason": "jwks_unavailable",
+    "status": 503
+  }
+}

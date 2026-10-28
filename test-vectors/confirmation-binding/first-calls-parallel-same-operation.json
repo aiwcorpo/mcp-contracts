@@ -1,0 +1,35 @@
+{
+  "description": "The same operation twice at the same time: one pending call, the second request gets the same record.",
+  "kind": "first-calls-parallel",
+  "authenticator": "active",
+  "pendingCalls": [],
+  "pendingLimit": 3,
+  "at": "2026-10-26T20:00:00Z",
+  "calls": [
+    {
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "arguments": {
+        "issueKey": "ABC-1"
+      }
+    },
+    {
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "arguments": {
+        "issueKey": "ABC-1"
+      }
+    }
+  ],
+  "expected": {
+    "supersededIds": [
+      [],
+      []
+    ],
+    "pendingIds": [
+      "new-0"
+    ]
+  }
+}

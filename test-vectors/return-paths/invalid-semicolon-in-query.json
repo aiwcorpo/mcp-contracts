@@ -1,0 +1,7 @@
+{
+  "description": "The semicolon is not allowed anywhere.",
+  "value": "/catalog?a=1;b=2",
+  "expected": {
+    "valid": false
+  }
+}

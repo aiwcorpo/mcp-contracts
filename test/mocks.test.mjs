@@ -184,3 +184,12 @@ test('MSW: activity calls list with the X-Next-Cursor header allowed and rows wi
   assert.ok(rows.some((r) => r.result === 'confirmed' && r.wrongCodeCount === 2));
   for (const row of rows) assert.equal(row.arguments, undefined);
 });
+
+test('WireMock stubs of C4 carry no-store on every response with a secret (review 3.0.0 L4)', () => {
+  for (const [file, statuses] of [['startAuthenticatorEnrollment', [201]], ['verifyAuthenticatorCode', [200]], ['resolveCredential', [200]]]) {
+    const stub = JSON.parse(readFileSync(path('mocks', 'wiremock', 'credential-broker', 'mappings', `${file}.json`), 'utf8'));
+    for (const mapping of stub.mappings.filter((m) => statuses.includes(m.response.status))) {
+      assert.equal(mapping.response.headers['Cache-Control'], 'no-store', `${file}: ${mapping.name}`);
+    }
+  }
+});

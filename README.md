@@ -314,17 +314,25 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    oczekujące wywołanie pod kluczem (`sub`, `serverId`, `tool`, SHA-256 kanonicznych argumentów bez
    `confirmation_code`), TTL 120 s, 3 próby, i odpowiada `confirmation_required` z `confirmationId`, `description`
    (opis liczony przez gateway), `previewUrl` i `expiresAt`. Powtórzone pierwsze wywołanie zwraca ten sam rekord bez
-   przedłużania TTL. **Użytkownik ma najwyżej jedną oczekującą operację `DESTRUCTIVE`** (CC-127): nowa, inna operacja
+   przedłużania TTL. Powstanie oczekującego wywołania `DESTRUCTIVE` i unieważnienie poprzedniego to **jedna operacja
+   atomowa na użytkownika** (warunkowy zapis albo blokada per `sub`); równoległe pierwsze wywołania dają najwyżej jedno
+   oczekujące (`first-calls-parallel-*`). **Użytkownik ma najwyżej jedną oczekującą operację `DESTRUCTIVE`** (CC-127): nowa, inna operacja
    `DESTRUCTIVE` (inne narzędzie albo argumenty) unieważnia poprzednią. Poprzednia dostaje w audycie powód
    `superseded` (zdarzenie `confirmation`), a jej ponowienie z kodem kończy się błędem C10 `confirmation_superseded`
    (bez pytania brokera i bez zużycia próby lub kroku TOTP; ślad po unieważnionym wywołaniu gateway trzyma do końca jego
-   pierwotnego TTL, potem to zwykłe `confirmation_failed`); podgląd unieważnionego wywołania to `404`. Limit oczekujących
+   pierwotnego TTL, potem to zwykłe `confirmation_failed`); podgląd unieważnionego wywołania to `404`. **Ślad nie jest
+   oczekującym wywołaniem:** ponowne wywołanie unieważnionej operacji tworzy nowe oczekujące wywołanie (nowe
+   `confirmationId`, nowy TTL, unieważnia bieżące `DESTRUCTIVE`) i zastępuje ślad pod tym samym kluczem, więc kolejne
+   ponowienie z kodem trafia w nowy rekord (`first-call-after-superseded-same-operation`, `retry-after-reissue`); ślady
+   nie liczą się do limitu. Limit oczekujących
    na `sub` (domyślnie 3) dotyczy już tylko potwierdzeń o innym ryzyku niż `DESTRUCTIVE` (wymaganych przez politykę) i
-   daje `rate_limited`.
+   daje `rate_limited` z `retryAfterSeconds` równym czasowi do wygaśnięcia najstarszego z nich.
 2. Podgląd (`previewUrl`, C12 `GET /api/v1/confirmations/{id}`) jest **opcjonalny**: tylko odczyt, tylko właściciel,
    sesja bez świeżego MFA, `no-store`; kod działa także bez jego otwarcia. Ryzyko rezydualne przyjęte przez człowieka
-   (2026-10-27): kod potwierdza obecność człowieka, nie operację, a opis operacji widziany w niezaufanym kliencie
-   może się różnić od oczekującej, jeśli podgląd nie zostanie otwarty. Audyt odróżnia oba przypadki
+   (2026-10-27): kod potwierdza obecność człowieka, nie operację. Podgląd pokazuje stan z chwili otwarcia i się nie
+   odświeża: nowa operacja `DESTRUCTIVE` może unieważnić oglądaną przed wpisaniem kodu, a strona dalej ją pokazuje (frontend
+   powinien ją odpytywać i po `404` pokazać "link nieaktualny"). Opis operacji w niezaufanym kliencie może się różnić od
+   oczekującej niezależnie od tego, czy podgląd był otwarty. Audyt odróżnia oba przypadki
    (`user_confirmed` i `user_confirmed_no_preview`).
 3. Ponowienie z tymi samymi argumentami i `confirmation_code` (wzorzec `^[0-9]{6}$`, pole dokładane do `inputSchema`
    poza `definitionHash`): kod o złym formacie to `invalid_argument` i nie zużywa próby. Gateway szuka oczekującego
@@ -333,6 +341,10 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    zużywa oczekujące wywołanie, `invalid`/`replayed` to `confirmation_failed` i -1 próba (przy 0 oczekujące
    wywołanie znika), `locked` to `rate_limited` z `retryAfterSeconds` bez zużycia próby, `not_registered` to
    `confirmation_required` z `registerUrl`, błąd brokera to `upstream_unavailable` (kod nie jest "oddawany").
+   **Atomowość (wymóg normatywny):** gateway rezerwuje próbę atomowo PRZED pytaniem brokera (dekrement `attemptsLeft`;
+   rezerwacja wraca przy `locked`, `disabled`, `not_registered` i błędzie brokera, zostaje przy `invalid` i `replayed`), więc
+   N równoległych ponowień daje najwyżej `attemptsLeft` pytań do brokera, a zużycie oczekującego wywołania przy `ok` to
+   compare-and-delete (wykonuje się jedno). Wektory: `retries-parallel-*`.
 4. Broker (RFC 6238: HMAC-SHA-1, 6 cyfr, krok 30 s, okno +-1 krok, każdy krok przyjęty raz): 5 błędnych kodów
    (`invalid` lub `replayed`) w 15 minut blokuje weryfikację użytkownika na 15 minut. Drugi, dzienny limit (CC-126):
    **20 błędnych kodów w 24 godziny** (okno kroczące; `invalid` lub `replayed`, nie liczą się odpowiedzi `locked` ani
@@ -342,24 +354,37 @@ kliencie AI (CC-091). Kod weryfikuje broker (C4 `verifyAuthenticatorCode`), gate
    pod `registerUrl` jak przy braku rejestracji. Wyłączenie dzienne **nie jest odblokowaniem** i nie zmienia zasady
    "blokada tylko czasem": blokady 5/15 min nikt nie zdejmuje, a wyłączony Authenticator nie wraca do życia, tylko
    zostaje zastąpiony nową rejestracją (jej aktywacja zeruje licznik dzienny i stan `disabled`, blokada użytkownika
-   zostaje). Portal pokazuje stan i baner, ale nie ma przycisku odblokowania. **Blokada zdejmuje się tylko
+   zostaje). Portal pokazuje stan i baner, ale nie ma przycisku odblokowania. **Atomowość (wymóg normatywny):** sprawdzenie "nie
+   zablokowany, nie wyłączony", liczniki 5/15 min i 20/24 h oraz blokada to jeden krok atomowy na `sub` (serializacja albo
+   rezerwacja próby jednym warunkowym zapisem przed obliczeniem TOTP); 50 równoległych błędnych kodów daje dokładnie 5
+   sprawdzeń i resztę `locked` (`totp/concurrent-*`). **Blokada jest własnością użytkownika, nie rejestracji** (decyzja
+   człowieka 2026-10-28): usunięcie, ponowna rejestracja i reset ją zostawiają, a aktywacja nowej rejestracji zeruje
+   liczniki (krótki i dzienny) oraz stan `disabled`, ale nie blokadę (`activate` w `scripts/lib/totp.mjs`). **Blokada zdejmuje się tylko
    upływem czasu** (decyzja człowieka 2026-10-28): w portalu nie ma odblokowania, usunięcie i ponowna rejestracja jej
    nie zdejmują, reset przez `mcp-offboarding` też nie. Rejestracja w toku ważna 10 minut, trzy błędne kody ją
    niszczą. Rejestrację zakłada się i usuwa po świeżym MFA Entra (BFF, CC-093); zgubiony telefon: usunięcie
    rejestracji po MFA Entra i założenie od nowa, a gdy utracony jest też czynnik Entra, helpdesk woła
    `POST /v1/admin/users/{sub}/authenticator/reset` (CN `mcp-offboarding`).
-5. Ziarno wychodzi z brokera raz, w `201` rejestracji do właściciela (`no-store`, wyjątek w niezmienniku 4 planu), nigdy
+5. Przechowywanie ziarna (wymóg normatywny, CC-092): ziarno aktywne i ziarno rejestracji w toku są szyfrowane wyłącznie
+   przez Transit (bez envelope, jak poświadczenia) pod ścieżką `mcp/authenticators/<sha256(sub)>`, rekord po odszyfrowaniu
+   zawiera `sub` porównywany z żądaniem, ziarno w toku żyje 10 minut i jest usuwane po aktywacji, po TTL i po trzecim
+   błędnym kodzie; baza trzyma tylko metadane, ziarna nigdy jawnie w Redis ani w bazie. Broker ufa BFF co do świeżości MFA
+   (mTLS CN `mcp-portal-bff`): świadome założenie. Ziarno wychodzi z brokera raz, w `201` rejestracji do właściciela (`no-store`, wyjątek w niezmienniku 4 planu), nigdy
    do logów, audytu ani sesji BFF. Kodu, ziarna i `otpauthUri` nie ma w C8 (pole `event: "authenticator"`, CC-094).
 6. Nie ma decyzji "odrzuć" ani endpointu decyzji: odmowa to niewpisanie kodu, a oczekujące wywołanie wygasa po
    120 s. Kod `confirmation_declined` zniknął z C10. SPI `ConfirmationCodeSender` jest bezprzedmiotowe.
 7. Ryzyko rezydualne i jego ograniczenia (niezmiennik 9 planu, decyzja człowieka 2026-10-27): kod TOTP nie jest
    związany z operacją, więc potwierdza obecność człowieka, a nie argumenty; zmanipulowany agent może pokazać opis
    operacji A, mając oczekującą B, i użyć kodu wpisanego dla B. Mechanizmy ograniczające, bez wymogu podglądu: jedna
-   oczekująca operacja `DESTRUCTIVE` na użytkownika (kod może potwierdzić najwyżej tę najnowszą i tylko raz, a starsza
-   jest unieważniana jawnie), TTL 120 s, 3 próby na wywołanie, blokada 5/15 min, wyłączenie po 20 błędach na dobę,
+   oczekująca operacja `DESTRUCTIVE` na użytkownika (unieważnienie starszej następuje przed wpisaniem kodu i zostawia ślad
+   w audycie; kod może potwierdzić najnowszą oczekującą `DESTRUCTIVE`, ale także jedno z oczekujących potwierdzeń o innym
+   ryzyku, których to nie obejmuje, i tylko raz), TTL 120 s, 3 próby na wywołanie, blokada 5/15 min, wyłączenie po 20 błędach na dobę,
    jednorazowość kroku TOTP, opcjonalny podgląd w zaufanym kanale i audyt, który odróżnia potwierdzenie z podglądem
-   (`user_confirmed`) od bez (`user_confirmed_no_preview`). Mechanizm "jedna operacja" nie zapobiega podmianie
-   (agent może unieważnić A własnym B i dopiero B potwierdzić kodem), tylko ją zawęża i zostawia ślad `superseded`.
+   (`user_confirmed`) od bez (`user_confirmed_no_preview`). Mechanizm "jedna operacja" nie zapobiega podmianie (agent może unieważnić A własnym B i dopiero B potwierdzić
+   kodem, także gdy człowiek widział podgląd A), tylko zawęża liczbę oczekujących i zostawia ślad `superseded`; w chwili
+   wpisywania kodu użytkownik nie dostaje żadnego sygnału. Konsekwencja limitu dziennego: agent może wyłączyć Authenticator
+   ok. 20 błędnymi kodami (ok. godziny), czyli odmowa usługi dla potwierdzeń do ponownej rejestracji ze step-up MFA Entra
+   (CC-126).
 8. Reguła `destructive-requires-fresh-mfa` (`cedar/examples/step-up.cedar`, wektory `gw-destructive-*-mfa`) zostaje w
    przykładach bez zmian, ale **nie wchodzi do paczki produkcyjnej** (ws-09): użytkownik nie ma mieć dwóch mechanizmów.
 
@@ -479,9 +504,8 @@ odświeżeniu): `503` z ciałem `upstream_unavailable` (C10), **bez** nagłówka
 `resource_metadata`: klient nie ma zaczynać logowania, które nie pomoże), z `Cache-Control: no-store`, bez `Set-Cookie`
 i z `Retry-After`. **`Retry-After`: tak**, liczba całkowita sekund równa konfigurowanemu odstępowi ponowienia pobrania
 kluczy (1..60, domyślnie 10): RFC 9110 dopuszcza go przy 503, a bez niego klienty i biblioteki ponawiają od razu i
-dobijają niedostępny IdP; koszt to jedna stała konfiguracji. Pozostaje fail-closed (żądanie nie jest wykonywane), a
-zdarzenie `authentication` z `reason: jwks_unavailable` i `errorCode: upstream_unavailable` zostaje. Wektory:
-`test-vectors/gateway-authentication/`.
+dobijają niedostępny IdP; koszt to jedna stała konfiguracji. Pozostaje fail-closed (żądanie nie jest wykonywane).
+Kolejność decyzji: najpierw kontrole niezależne od kluczy (brak tokenu, format, `alg`), więc `missing_token`, `malformed` i `alg_not_allowed` są zawsze `401`, także przy awarii IdP; dopiero potem wybór klucza. Nieznany `kid` powoduje najwyżej jedno pobranie kluczy na minimalny odstęp (po udanym pobraniu w tym odstępie to `401 unknown_kid` bez ponownego pobrania, po nieudanym `503`), żeby nie wzmacniać ruchu do IdP (`gateway-authentication-decision/`). Zdarzenie `authentication` z `reason: jwks_unavailable` i `errorCode: upstream_unavailable` zostaje. Wektory: `test-vectors/gateway-authentication/`.
 
 ## Treść z systemu w wynikach narzędzi (C10, C6)
 
@@ -648,21 +672,22 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | Katalog | Liczba | Co sprawdza |
 | --- | --- | --- |
 | `jwt/` | 55 | odbiorca C2: 21 poprawnych, 34 odrzucenia (podpis, `kid`, klucz testowy, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
-| `manifests/` | 49 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
+| `manifests/` | 52 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 69 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 26 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`) |
 | `bundles/` | 40 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
-| `return-paths/` | 27 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` (CC-099) |
+| `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
 | `entity-builder/` | 36 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
 | `policy-decisions/` | 69 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
 | `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
-| `confirmation-binding/` | 32 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
-| `totp/` | 39 | Authenticator brokera: RFC 6238, okno, jednorazowość kroku, blokada 5/15 min, limit dzienny, rejestracja, URI `otpauth` (CC-092, CC-126); ziarno z RFC 6238, NOT FOR PRODUCTION |
+| `confirmation-binding/` | 40 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
+| `totp/` | 41 | Authenticator brokera: RFC 6238, okno, jednorazowość kroku, blokada 5/15 min, limit dzienny, rejestracja, URI `otpauth` (CC-092, CC-126); ziarno z RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | zbiór zakazany w argumentach, identyfikatorach i filtrach wzmianek oraz zastępowanie w tekście z systemu (CC-121, CC-122) |
 | `activity-calls/` | 24 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
+| `gateway-authentication-decision/` | 12 | wybór powodu i statusu 401/503 ze stanu kopii kluczy, `kid` i odświeżenia (CC-124) |
 | `gateway-authentication/` | 13 | 401 z `resource_metadata` albo 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
 
@@ -707,7 +732,7 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
    `additionalProperties: false` (bez map otwartych, `patternProperties`, `unevaluatedProperties`); każdy węzeł ma
    `type`; każdy `string` ma `maxLength` (chyba że `enum`/`const`), każda tablica `maxItems` i `items` (także przy
    `prefixItems`), każdy `integer`/`number` `minimum` i `maximum` (chyba że `enum`/`const`), każdy `pattern` zaczyna się od
-   `^` i kończy na `$`; brak `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`. Przy naruszeniu schematu serwer
+   `^`, kończy na nieeskejpowanym `$` i nie ma alternacji poza grupą (`^a|b$` nie jest zakotwiczony); brak `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`. Przy naruszeniu schematu serwer
    odpowiada `invalid_argument` (C10): komunikat może wskazać argument zadeklarowany w schemacie i regułę, nigdy wartość
    ani niezadeklarowaną nazwę.
 

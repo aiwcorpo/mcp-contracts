@@ -28,3 +28,21 @@ export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourceP
     body: { error: 'unauthenticated', message: 'Authentication required.' },
   };
 }
+
+/**
+ * Which reason a token gets (CC-124). Checks that need no key come first: format, algorithm, claims that are readable
+ * without verification. Only then the key is looked up. `keyCache` is the state of the IdP key set: 'usable' (fresh or
+ * within the allowed staleness) or 'none' (never loaded or too old). `kid` is 'known' (in the usable key set) or
+ * 'unknown'. `refresh` is the result of a fetch that the gateway is allowed to make for an unknown kid or an empty cache:
+ * 'ok' (kid found: 'ok-kid-found', kid still unknown: 'ok-kid-missing'), 'failed', 'skipped-after-success' (the last
+ * fetch succeeded less than the minimum interval ago, no new fetch) or 'skipped-after-failure' (the last fetch failed
+ * less than the interval ago, no new fetch). An unknown kid never causes more than one fetch per interval.
+ * Returns the reason (null when the signature check may go on) and the HTTP status.
+ */
+export function keyDecision({ independentReason = null, keyCache, kid, refresh = null }) {
+  if (independentReason !== null) return { reason: independentReason, status: 401 };
+  if (keyCache === 'usable' && kid === 'known') return { reason: null, status: null };
+  if (refresh === 'ok-kid-found') return { reason: null, status: null };
+  if (refresh === 'ok-kid-missing' || refresh === 'skipped-after-success') return { reason: 'unknown_kid', status: 401 };
+  return { reason: 'jwks_unavailable', status: 503 };
+}

@@ -25,18 +25,19 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
    - `confirmation_required` (C10): wariant z oczekującym wywołaniem ma `confirmationId`, `description`, `previewUrl`,
      `expiresAt` (wszystkie wymagane); wariant bez rejestracji ma tylko `registerUrl`.
    - Nowe w C10: `confirmation_superseded`. Nowe w C8: `event: "authenticator"` (wymaga `outcome` i `reason`),
-     powody `user_confirmed_no_preview`, `attempts_exhausted`, `preview_not_viewed`, `authenticator_not_registered`,
+     powody `user_confirmed_no_preview`, `attempts_exhausted`, `authenticator_not_registered`,
      `authenticator_disabled`, `superseded`, `totp_*`.
    - Nowe w C4: grupa `/v1/authenticator` (status, usunięcie, `enrollment`, `enrollment/confirm`, `verify`) i
      `POST /v1/admin/users/{sub}/authenticator/reset` (CN `mcp-offboarding`); `purge` usuwa też rejestrację. Nowe w
      C12: `/api/v1/authenticator` (GET, DELETE) i `/enrollment`, `/enrollment/confirm`. Ziarno TOTP wychodzi tylko w `201`
      rejestracji (wyjątek w niezmienniku 4). `GET /api/v1/confirmations/{id}`: bez step-up, `ConfirmationView.resource`
      (CC-098); `401` to zwykłe `Unauthenticated`; unieważnione i wygasłe wywołanie to `404`.
+   - Atomowość (normatywna): liczniki 5/15 min i 20/24 h w brokerze, rezerwacja próby w gateway'u przed pytaniem brokera i jedna oczekująca DESTRUCTIVE to kroki atomowe na użytkownika; ślad po unieważnionym wywołaniu nie jest oczekującym (ponowne wywołanie tworzy nowe); ziarno TOTP tylko w Transit pod `mcp/authenticators/<sha256(sub)>`. Wektory współbieżności `totp/concurrent-*`, `confirmation-binding/*-parallel-*`.
    - `test-vectors/confirmation-binding/` przepisane (usunięte `issued.code`, nowy format `first-call`/`retry`);
      nowe `test-vectors/totp/`; wektor `tool-errors/confirmation-declined` zastąpiony negatywnym.
    - Reguła `destructive-requires-fresh-mfa` zostaje w `cedar/examples/`, ale nie wchodzi do paczki produkcyjnej.
 2. **`returnPath` bez zarezerwowanych prefiksów (CC-099):** `/api`, `/s`, `/v`, `/.well-known` jako całe segmenty, oraz
-   segmenty `.` i `..` (przed `?`) są odrzucane (`ReturnPath`, C4 `oauth/start`, C12 `login`, `startConnectOAuth`).
+   segmenty `.` i `..` (przed `?`) i średnik są odrzucane (`ReturnPath`, C4 `oauth/start`, C12 `login`, `startConnectOAuth`).
 3. **Usunięcia zapowiedziane w 2.x:** `identity_mismatch` z `PutSecretError`, `OAuthCompleteError` i `ConnectErrorCode`
    (CC-101); katalog `test-vectors/whoami-identity/`; wektory `connect-redirects/*identity-mismatch*` są teraz
    negatywne. Poza tym w 2.x nic więcej nie było oznaczone jako deprecated.

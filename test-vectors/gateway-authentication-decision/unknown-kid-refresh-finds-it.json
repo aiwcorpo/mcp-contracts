@@ -1,0 +1,12 @@
+{
+  "description": "Key rotation: unknown kid, the refresh succeeds and finds the new key.",
+  "input": {
+    "keyCache": "usable",
+    "kid": "unknown",
+    "refresh": "ok-kid-found"
+  },
+  "expected": {
+    "reason": null,
+    "status": null
+  }
+}

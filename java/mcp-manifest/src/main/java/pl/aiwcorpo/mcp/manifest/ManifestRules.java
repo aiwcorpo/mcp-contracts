@@ -144,7 +144,7 @@ public final class ManifestRules {
         boolean fixed = node.has("enum") || node.has("const");
         if (node.has("pattern")) {
             JsonNode pattern = node.get("pattern");
-            if (!pattern.isTextual() || !pattern.asText().startsWith("^") || !pattern.asText().endsWith("$")) {
+            if (!pattern.isTextual() || !anchoredPattern(pattern.asText())) {
                 found.add(INPUT_SCHEMA_BOUNDED);
             }
         }
@@ -176,5 +176,38 @@ public final class ManifestRules {
 
     private static boolean isCount(JsonNode value) {
         return value != null && value.isIntegralNumber() && value.asLong() >= 0;
+    }
+
+    /** Starts with ^, ends with an unescaped $ and has no alternation outside every group (CC-123). */
+    static boolean anchoredPattern(String pattern) {
+        if (!pattern.startsWith("^") || !pattern.endsWith("$")) {
+            return false;
+        }
+        int backslashes = 0;
+        for (int i = pattern.length() - 2; i >= 0 && pattern.charAt(i) == '\\'; i--) {
+            backslashes++;
+        }
+        if (backslashes % 2 == 1) {
+            return false;
+        }
+        int depth = 0;
+        boolean inClass = false;
+        for (int i = 0; i < pattern.length(); i++) {
+            char ch = pattern.charAt(i);
+            if (ch == '\\') {
+                i++;
+            } else if (inClass) {
+                inClass = ch != ']';
+            } else if (ch == '[') {
+                inClass = true;
+            } else if (ch == '(') {
+                depth++;
+            } else if (ch == ')') {
+                depth--;
+            } else if (ch == '|' && depth == 0) {
+                return false;
+            }
+        }
+        return true;
     }
 }

@@ -1,0 +1,13 @@
+{
+  "description": "A token without a valid format is 401 malformed even while the key set is down: no key is needed to reject it.",
+  "input": {
+    "independentReason": "malformed",
+    "keyCache": "none",
+    "kid": "unknown",
+    "refresh": "failed"
+  },
+  "expected": {
+    "reason": "malformed",
+    "status": 401
+  }
+}

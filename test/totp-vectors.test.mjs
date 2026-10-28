@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { listJson } from '../scripts/lib/contracts.mjs';
-import { base32Decode, base32Encode, confirmEnrollment, otpauthUri, stepOf, totpCode, verify } from '../scripts/lib/totp.mjs';
+import { activate, base32Decode, base32Encode, confirmEnrollment, otpauthUri, stepOf, totpCode, verify } from '../scripts/lib/totp.mjs';
 
 const epoch = (iso) => Date.parse(iso) / 1000;
 const vectors = listJson('test-vectors', 'totp');
@@ -31,8 +31,7 @@ function run(data) {
     if (step.op === 'confirm') {
       const out = confirmEnrollment(data.secret, pending, step.code, at);
       pending = out.pending;
-      // A new registration starts with clean counters and no disabled state; a lock belongs to the user and stays.
-      if (out.result === 'active') state = { lastAcceptedStep: out.lastAcceptedStep, failures: [], dailyFailures: [], lockedUntil: state.lockedUntil, disabled: false };
+      if (out.result === 'active') state = activate(state, out.lastAcceptedStep);
       trace.push({ step, actual: { result: out.result, ...(out.result === 'active' && { lastAcceptedStep: out.lastAcceptedStep }) } });
     } else {
       const out = verify(data.secret, state, step.code, at);
