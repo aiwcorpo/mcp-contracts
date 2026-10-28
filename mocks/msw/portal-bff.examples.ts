@@ -649,16 +649,6 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
-        "status": 422,
-        "name": "identity_mismatch",
-        "body": {
-          "error": "identity_mismatch"
-        },
-        "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
-        }
-      },
-      {
         "status": 503,
         "name": "upstream_unavailable",
         "body": {

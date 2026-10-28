@@ -1527,7 +1527,13 @@ G-15, G-16, G-18, G-22.
     `step_up_required` dla tej operacji, test "zapis sekretu bez świeżego MFA -> step_up_required" z briefu ws-07,
     ekran "Wymagane ponowne MFA przed zapisem" (makieta 05, stan "Powrót z MFA"), sprawdzanie `mfaFreshUntil` przed
     pokazaniem pola na token w ws-08.
-- **Ryzyko (jawnie):** kradzież sesji portalu (cookie `__Host-session` jest HttpOnly, więc w praktyce: przejęty
+- **Aktualizacja 2026-10-28 (CC-101):** ochrona `identity_mismatch` **zniknęła**: broker nie porównuje już tożsamości
+  z systemu z tożsamością SSO (ta sama osoba ma różne loginy w różnych systemach). Poniższa ocena ryzyka, oparta na
+  `identity_mismatch`, nie obowiązuje. Ryzyko rezydualne **świadomie przyjęte przez człowieka 2026-10-28**: przejęta
+  sesja portalu może podpiąć PAT lub konto OAuth atakującego; agent ofiary czyta i zapisuje wtedy w koncie atakującego
+  (w tym treści z prompt injection) i zapisuje tam dane ofiary. Zalecenia: audyt `connection_change` z `backendUser`
+  i widoczność konta w portalu ("Połączono jako <backendUser>" po zapisie i w Połączeniach), krótkie sesje.
+- **Ryzyko (jawnie, stan do 2.2.2):** kradzież sesji portalu (cookie `__Host-session` jest HttpOnly, więc w praktyce: przejęty
   komputer, rozszerzenie przeglądarki, XSS) pozwala atakującemu zapisać sekret. Ocena:
   - Atakujący musi mieć token **tego samego konta** w systemie docelowym. Token innego konta kończy się
     `identity_mismatch`, także przy OAuth (podrzucony link autoryzacji). Kto ma taki token, miał już dostęp do
@@ -2518,4 +2524,29 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** zaostrzenie reguły z 2.2.1, formalnie major. Jedynym konsumentem jest broker w trakcie M2; wydane
   jako 2.2.2 z wyjątkiem jak CC-085 (adnotacja w `CHANGELOG.md`).
 - **Wpływ na strumienie:** ws-06 (broker: nowa funkcja porównania, bez `toLowerCase` Unicode), ws-10 (testy z wektorów).
-- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.2)
+- **Status:** superseded przez CC-101 (decyzja: człowiek, 2026-10-28; reguła wydana w 2.2.2, wycofana w 2.2.3)
+
+## CC-101 | C4/C12 | Brak sprawdzania tożsamości w whoami: portal pokazuje konto
+
+- **Zgłasza:** człowiek (decyzja 2026-10-28)
+- **Kamień:** M2, wydanie 2.2.3
+- **Problem:** reguła C4.1 (CC-090, CC-100) odrzucałaby uczciwych użytkowników: ta sama osoba ma różne loginy w
+  systemach (`asmith` w Jirze, `alice.smith` w GitLabie, `smith8` w Confluence), a e-mail jest niepewny.
+- **Wariant (wybór człowieka):** brak sprawdzania tożsamości. Broker wywołuje whoami tylko dla ważności poświadczenia
+  (`422 secret_invalid`) i odczytu `backendUser`; nie porównuje z tożsamością użytkownika. `identity_mismatch` nie jest
+  zwracane; kod zostaje w enum (`PutSecretError`, `OAuthCompleteError`, `ConnectErrorCode`) jako deprecated z opisem,
+  usunięcie w 3.0.0 (żeby nie mnożyć wyjątków SemVer). Portal pokazuje "Połączono jako <backendUser>" po zapisie i w
+  Połączeniach. `backendUser` jest już wymagane w `Connection`, `PutSecretResponse` i odpowiedzi `oauth/complete`
+  (bez zmiany SemVer z tego powodu). Wektory `whoami-identity/` wycofane (pole `deprecated`, poza testami);
+  CC-100 `superseded`.
+- **Ryzyko rezydualne:** patrz CC-090 (aktualizacja 2026-10-28): świadomie przyjęte przez człowieka. Zalecenie: audyt
+  `connection_change` z `backendUser`, widoczność konta w portalu.
+- **Zmiany plików:** `credential-broker.v1.yaml` (opisy `putSecret`, `oauth/complete`, `backendUser`, enumy
+  deprecated, usunięte przykłady `identity_mismatch`), `portal-bff.v1.yaml` (opisy `putMySecret`, `oauthCallback`,
+  `ConnectErrorCode`, usunięty przykład), README (C4.1), wektory, mocki.
+- **SemVer:** formalnie zmiana zachowania (broker nie zwraca już udokumentowanego kodu), enum bez zmian; 2.2.3 jako
+  patch, wyjątek jak CC-085 (brak konsumentów zależnych od tego kodu). Usunięcie wartości z enum: 3.0.0.
+- **Wpływ na strumienie:** ws-06 (bez porównania; `secret_invalid` dla niepoprawnego poświadczenia), ws-07 (bez
+  mapowania `identity_mismatch`; zwraca `backendUser`), ws-08 (komunikat "Połączono jako <backendUser>", usunięcie
+  ekranów błędu `identity_mismatch`).
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.3)

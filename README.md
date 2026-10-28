@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.2**, tag `v2.2.2` (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.3**, tag `v2.2.3` (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -92,13 +92,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:2.2.2:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.2` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:2.2.2` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.2` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-2.2.2.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.2.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.3` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:2.2.3:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:2.2.3` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:2.2.3` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:2.2.3` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:2.2.3` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-2.2.3.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-2.2.3.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -107,8 +107,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.2/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.2.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.3/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-2.2.3.tgz
 ```
 
 ```xml
@@ -347,33 +347,27 @@ potem jego zawartość; wartość, która nie jest obiektem, to `400 invalid_req
 
 ## Zapis tokenu (CC-090)
 
-`PUT /api/v1/connections/{system}/secret` wymaga ważnej sesji i `X-XSRF-TOKEN`, bez step-up MFA. Ochroną zapisu jest
-`identity_mismatch` (C4.1). `expiresAt` jest opcjonalną informacją użytkownika (prawdziwy termin PAT ustawia się w systemie
+`PUT /api/v1/connections/{system}/secret` wymaga ważnej sesji i `X-XSRF-TOKEN`, bez step-up MFA. Od 2.2.3 zapis nie jest
+chroniony porównaniem tożsamości (CC-101); użytkownik widzi podpięte konto (`backendUser`). `expiresAt` jest opcjonalną informacją użytkownika (prawdziwy termin PAT ustawia się w systemie
 docelowym): broker przyjmuje każdą poprawną datę albo brak pola, a status `expiring` (< 7 dni) istnieje tylko przy podanej
 dacie (CC-084).
 
 ## Whoami (C4.1)
 
-Broker weryfikuje tożsamość po zapisie sekretu lub wymianie kodu OAuth wywołaniem systemu docelowego i porównuje
-ją z tożsamością SSO. To jest główna ochrona zapisu tokenu (CC-090), więc reguła jest częścią kontraktu:
+Od 2.2.3 (CC-101) broker wywołuje whoami systemu docelowego po zapisie sekretu lub wymianie kodu OAuth **tylko** po to,
+żeby sprawdzić ważność poświadczenia (`422 secret_invalid`) i odczytać `backendUser`. Nie porównuje go z tożsamością
+SSO: ta sama osoba ma różne loginy w różnych systemach (np. `asmith` w Jirze, `alice.smith` w GitLabie), a e-mail
+bywa niepewny. `identity_mismatch` nie jest już zwracane (kod zostaje w enum jako deprecated do 3.0.0). Portal pokazuje
+"Połączono jako <backendUser>" po zapisie i w Połączeniach. Reguły porównania z 2.2.1 i 2.2.2 (CC-090, CC-100) są
+wycofane; wektory `test-vectors/whoami-identity/` mają pole `deprecated` i nie są używane przez testy.
 
-- Pole SSO: domyślnie claim `preferred_username`; konfiguracja może wskazać `email`. E-mail liczy się **tylko** gdy
-  `email_verified` jest `true` (brak claimu = `false`).
-- Porównanie (CC-100): jeśli **obie** surowe wartości są w całości ASCII, porównanie bez rozróżniania wielkości liter
-  (zamiana tylko liter ASCII `A-Z` na małe). W przeciwnym razie dokładna równość po normalizacji Unicode NFC, bez
-  zmiany wielkości liter. Test ASCII dotyczy wartości przed NFC (NFC zamienia U+212A na ASCII `K`) (żadnego pełnego `toLowerCase` Unicode, który zlewa np. U+212A KELVIN SIGN z `k`, U+017F
-  z `s`, U+0130 z `i`). Bez przycinania spacji, bez dopasowania podciągu lub prefiksu, bez odcinania domeny z adresu
-  e-mail. Pusta wartość po którejkolwiek stronie nigdy nie pasuje.
-- Niezgodność: `422 identity_mismatch`, nic nie jest zapisane. Wektory: `test-vectors/whoami-identity/`.
-
-| System | Żądanie | Pole porównywane z tożsamością SSO |
+| System | Żądanie | Pole czytane jako `backendUser` |
 | --- | --- | --- |
 | Jira Data Center | `GET /rest/api/2/myself` | `name` |
 | Confluence Data Center | `GET /rest/api/user/current` (CC-073) | `username` |
 | GitLab | `GET /api/v4/user` | `username` |
 
-OpenSearch (`token-exchange`) i service desk (`service-account`) nie mają tokenu użytkownika do sprawdzenia; whoami
-tych adapterów, jeśli powstanie, stosuje tę samą regułę porównania.
+OpenSearch (`token-exchange`) i service desk (`service-account`) nie mają tokenu użytkownika do sprawdzenia.
 
 Odpowiedź 401 z systemu to `secret_invalid`.
 
@@ -504,7 +498,7 @@ type Catalog = components['schemas']['PortalCatalog'];
 Mocki odpowiadają przykładami z OpenAPI (każdy przykład przechodzi walidację schematem w `npm test`).
 Domyślnie zwracany jest pierwszy przykład sukcesu; inny wybiera się nagłówkiem
 `Prefer: example=<nazwa przykładu>` (nazwy jak w `examples` w YAML, np. `credential_required`,
-`identity_mismatch`, `hash_mismatch`, `step_up_required`).
+`flow_invalid`, `hash_mismatch`, `step_up_required`).
 
 ### WireMock (C4, C5)
 

@@ -1,4 +1,5 @@
 {
+  "deprecated": "CC-101: withdrawn in 2.2.3, the broker no longer compares identities; not used by any test",
   "description": "The system name only contains the SSO name.",
   "input": {
     "mapping": "preferred_username",

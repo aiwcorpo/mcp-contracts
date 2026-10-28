@@ -4,6 +4,22 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.2.3 - 2026-10-28
+
+CC-101 (decyzja człowieka 2026-10-28): brak sprawdzania tożsamości w whoami. `cedar/mcp.cedarschema` bez zmian.
+
+- Broker wywołuje whoami tylko dla ważności poświadczenia (`422 secret_invalid`) i odczytu `backendUser`; nie
+  porównuje z tożsamością SSO. `identity_mismatch` nie jest już zwracane; wartość zostaje w enum `PutSecretError`,
+  `OAuthCompleteError` i `ConnectErrorCode` jako deprecated, usunięcie w 3.0.0.
+- Przykłady `identity_mismatch` usunięte z C4 i C12 (mocki MSW i WireMock bez nich). `backendUser` już był wymagany
+  w `Connection`, `PutSecretResponse` i odpowiedzi `oauth/complete`, więc SemVer się nie zmienia z tego powodu.
+- Wektory `whoami-identity/` wycofane (`deprecated`), testy ich nie używają. CC-100 `superseded`; CC-090 uzupełnione o
+  ryzyko rezydualne świadomie przyjęte przez człowieka.
+- Wyjątek SemVer: zmiana udokumentowanego zachowania brokera (kod 422 nie jest zwracany) wydana jako patch; jedynym
+  konsumentem jest broker w trakcie M2. Wyjątek jak CC-085.
+- Wpływ: ws-06 (usunąć porównanie, zostawić `secret_invalid`), ws-07 (nie mapować `identity_mismatch`, przekazywać
+  `backendUser`), ws-08 (komunikat "Połączono jako <backendUser>", bez ekranu błędu `identity_mismatch`).
+
 ## 2.2.2 - 2026-10-28
 
 Poprawka reguły tożsamości z C4.1 po przeglądzie bezpieczeństwa brokera (CC-100). `cedar/mcp.cedarschema` bez zmian.
