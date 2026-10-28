@@ -4,10 +4,17 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
-## 3.1.1 - w przygotowaniu
+## 3.1.1 - 2026-10-28
+
+Doprecyzowania bez zmiany schematu Cedar (skrót SHA-256 jak w 3.1.0).
 
 - Doprecyzowanie: wyjątek SemVer w 3.1.0 wynika z błędu koordynatora, przyjęty przez człowieka; zmiana jest łamiąca dla paczek polityk 3.0.x.
   Człowiek zdecydował (2026-10-28), że 3.1.0 zostaje z wyjątkiem opisanym jak przy 2.1.0 (README, "Wersjonowanie").
+- **Klasyfikujemy projekty GitLaba, nie grupy (decyzja człowieka 2026-10-28):** GitLab API v4 nie ma `topics` dla grup, więc założenie z
+  3.1.0 ("topics samej grupy") było błędne. `classification` grupy jest zawsze pusty (brak źródła), a serwer podaje
+  `ancestorClassifications` ze ścieżki z pustymi listami; `inheritedClassification` zostaje w schemacie dla zgodności z 3.1.0 i w praktyce jest pusty.
+  Ochrona poddrzewa przez oznaczenie grupy nie działa, bo grupy nie da się oznaczyć; `restricted` działa na projekcie (`classification`).
+  Wektory `srv-gitlab-group-unclassified-allowed` i `srv-gitlab-project-topic-in-unclassified-group-denied`. Migracja: ws-04 nie czyta topics grup.
 
 ## 3.1.0 - 2026-10-28
 

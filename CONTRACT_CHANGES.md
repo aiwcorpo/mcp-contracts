@@ -3110,6 +3110,7 @@ G-15, G-16, G-18, G-22.
   `ancestorClassifications`, a paczki muszą zawierać nowy schemat. Według tabeli SemVer to zmiana major, łamiąca dla paczek polityk 3.0.x. Wydane jako 3.1.0 (minor) z powodu błędu koordynatora (nazwał zmianę addytywną); człowiek zdecydował (2026-10-28), że 3.1.0 zostaje z opisanym wyjątkiem SemVer, jak 2.1.0.
 - **Wpływ:** ws-04 (serwer GitLab: ścieżki grup i ich topics), ws-02/ws-05 (biblioteki 3.1.0), ws-09 (reguły `forbid` na `inheritedClassification`, przebudowa
   paczek), ws-10 (test: projekt trzy poziomy pod restricted).
+- **Dopisek (decyzja człowieka 2026-10-28, 3.1.1):** GitLab API v4 nie ma `topics` dla grup (tylko dla projektów), więc założenie "topics samej grupy" było błędne. Klasyfikujemy tylko projekty, grup nie: `classification` grupy jest zawsze pusty, a `ancestorClassifications` serwer podaje ze ścieżki z pustymi listami; `inheritedClassification` zostaje w schemacie dla zgodności z 3.1.0 i w praktyce jest pusty. Bez zmiany schematu. Wektory: `srv-gitlab-group-unclassified-allowed` i `srv-gitlab-project-topic-in-unclassified-group-denied`.
 - **Status:** accepted (decyzja: człowiek, 2026-10-28), wydanie 3.1.0
 
 ## CC-130 | C6 | `delete`/`admin` jako `DESTRUCTIVE` w manifeście (propozycja CC-E przeglądu polityk M3)

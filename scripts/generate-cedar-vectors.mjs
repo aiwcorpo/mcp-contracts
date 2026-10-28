@@ -556,6 +556,14 @@ decision('srv-gitlab-ancestor-topic-spelling-normalized', 'Server: the topic of 
   { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'legal/a/b/app' },
     resource: gitlabProjectWith('legal/a/b/app', 'legal/a/b', { legal: [' RESTRICTED '], 'legal/a': [], 'legal/a/b': [] }) },
   deny('gitlab-forbid-restricted-project'), { covers: ['restricted'] });
+decision('srv-gitlab-group-unclassified-allowed', 'Server: GitLab has no topics for groups, so a group has no classification; the group in scope is allowed (3.1.1, decision of 2026-10-28).', 'server',
+  { caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a/sub' },
+    resource: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': [] } } } },
+  allow('gitlab-update-group-in-scope'));
+decision('srv-gitlab-project-topic-in-unclassified-group-denied', 'Server: the project carries the topic restricted, its groups carry none: the project is denied, the group above it is not (3.1.1, projects are classified, groups are not).', 'server',
+  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/secret' },
+    resource: gitlabProjectWith('team-a/sub/secret', 'team-a/sub', { 'team-a': [], 'team-a/sub': [] }, { classification: ['Restricted'] }) },
+  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
 decision('srv-gitlab-ancestors-without-restricted-allowed', 'Server: ancestors with other topics do not forbid; the grant on team-a covers the project (CC-129 control case).', 'server',
   { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
     resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': ['backend'], 'team-a/sub': ['frontend'] }) },

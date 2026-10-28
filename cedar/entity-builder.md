@@ -114,8 +114,9 @@ Klasyfikacja (CC-057, CC-062, CC-067):
 | `Jira::Project` | `category` (napis, `""` gdy brak) | tak | kategoria projektu Jira |
 | `Confluence::Space` | `labels` (zbiór) | tak | etykiety przestrzeni |
 | `OpenSearch::Index` | `tags` (zbiór) | tak | tagi indeksu (konfiguracja serwera OpenSearch MCP) |
-| `GitLab::Group`, `GitLab::Project` | `classification` (zbiór) | nie | topics samej grupy / samego projektu |
-| `GitLab::Group`, `GitLab::Project` | `ancestorClassifications` (mapa ścieżka grupy -> topics; wejście) -> `inheritedClassification` (zbiór; atrybut encji) | tak | topics wszystkich grup-przodków, podane przez serwer (CC-129) |
+| `GitLab::Project` | `classification` (zbiór) | nie | topics projektu (GitLab API v4) |
+| `GitLab::Group` | `classification` (zbiór) | nie | zawsze pusty zbiór albo brak: GitLab API v4 nie ma topics dla grup (decyzja 2026-10-28, klasyfikujemy projekty, nie grupy) |
+| `GitLab::Group`, `GitLab::Project` | `ancestorClassifications` (mapa ścieżka grupy -> topics; wejście) -> `inheritedClassification` (zbiór; atrybut encji) | tak | topics grup-przodków, podane przez serwer ze ścieżki; w praktyce puste listy, bo grupy nie mają klasyfikacji (CC-129) |
 | `ServiceDesk::Queue` | `classification` (zbiór) | nie | kategoria kolejki w adapterze service desku |
 
 Zasób (także rodzic, np. projekt zgłoszenia) bez wymaganego atrybutu nie jest budowany (`internal_error`), więc
@@ -127,7 +128,7 @@ projekt GitLaba także klasyfikację grupy.
 **Klasyfikacja przodków w GitLabie (CC-129, 3.1.0).** Topics w GitLabie się nie dziedziczą, a oznaczenie grupy
 `restricted` ma chronić całe poddrzewo. Dlatego grupa i projekt GitLaba mają wymagany atrybut
 `inheritedClassification` (zbiór): suma znormalizowanych topics **wszystkich** grup-przodków (dla grupy: grupy nad nią; dla
-projektu: każda grupa na jego ścieżce, także rodzic; własne topics zostają w `classification`). Serwer podaje je w
+projektu: każda grupa na jego ścieżce, także rodzic; własne topics projektu zostają w `classification`; grupy GitLaba nie mają źródła klasyfikacji, więc `classification` grupy jest pusty, a `ancestorClassifications` serwer podaje ze ścieżki z pustymi listami. Atrybut zostaje w schemacie dla zgodności z 3.1.0). Serwer podaje je w
 wejściu zasobu jako `attrs.ancestorClassifications`, mapę `<ścieżka grupy> -> [topics]` dokładnie dla grup przodków (dla
 `hr/payroll/app`: klucze `hr` i `hr/payroll`; dla grupy najwyższego poziomu pusta mapa `{}`, podana jawnie). Builder
 normalizuje topics jak w CC-067, liczy sumę i zapisuje `inheritedClassification`; wejście `ancestorClassifications` nie trafia do encji.
