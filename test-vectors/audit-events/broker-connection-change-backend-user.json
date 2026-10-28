@@ -1,0 +1,19 @@
+{
+  "description": "Broker: user connected an account; backendUser is the only trace of which account (CC-117).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-28T10:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "broker",
+    "componentId": "mcp-credential-broker",
+    "event": "connection_change",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "server": "mcp-gitlab",
+    "credentialType": "user-secret",
+    "backendUser": "alice.smith",
+    "outcome": "ok"
+  }
+}

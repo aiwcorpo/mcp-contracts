@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 2.2.4
+  version: 2.2.5
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, confirmations).
   description: |
     Callers and their authentication:
@@ -188,7 +188,7 @@ paths:
                   value:
                     error: access_denied
         '409':
-          description: Slug already used.
+          description: Slug already used (slug_taken), or the user already has the maximum number of virtual servers (virtual_server_limit_reached; limit per user is gateway configuration, default 50) (CC-119).
           content:
             application/json:
               schema:
@@ -197,6 +197,9 @@ paths:
                 slug_taken:
                   value:
                     error: slug_taken
+                virtual_server_limit_reached:
+                  value:
+                    error: virtual_server_limit_reached
   /admin/v1/virtual-servers/{slug}:
     parameters:
       - $ref: '#/components/parameters/Slug'

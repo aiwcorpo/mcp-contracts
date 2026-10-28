@@ -1,0 +1,17 @@
+{
+  "description": "Gateway rejected the C1 token of an AI client: reason is the rejection code, no sub, client or token (CC-120).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-28T10:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "authentication",
+    "decision": "deny",
+    "reason": "expired",
+    "outcome": "denied",
+    "errorCode": "unauthenticated"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "The IdP keys could not be fetched: errorCode upstream_unavailable (CC-120).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-28T10:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "authentication",
+    "decision": "deny",
+    "reason": "jwks_unavailable",
+    "outcome": "denied",
+    "errorCode": "upstream_unavailable"
+  }
+}

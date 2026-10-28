@@ -97,7 +97,8 @@
       ],
       "properties": {
         "error": {
-          "const": "tool_disabled"
+          "const": "tool_disabled",
+          "description": "Only when an administrator disabled the tool or its server, or its definition waits for approval. A tool that is not in the tool list of the virtual server (link) used for the call is not_found_or_denied (CC-118)."
         },
         "message": {
           "$ref": "#/$defs/Message"
@@ -196,6 +197,7 @@
       ],
       "properties": {
         "error": {
+          "description": "Also the answer for a tool outside the tool list of the virtual server (link) used for the call, so that the link does not reveal tools it does not contain (CC-118, invariant 8).",
           "const": "not_found_or_denied"
         },
         "message": {

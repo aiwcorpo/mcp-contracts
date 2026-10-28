@@ -1,0 +1,17 @@
+{
+  "description": "backendUser has at most 255 characters.",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-28T10:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "broker",
+    "componentId": "mcp-credential-broker",
+    "event": "connection_change",
+    "sub": "x",
+    "server": "mcp-gitlab",
+    "backendUser": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "outcome": "ok"
+  }
+}

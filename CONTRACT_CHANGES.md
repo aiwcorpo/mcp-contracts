@@ -992,7 +992,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 ## CC-078 | C6/C10 | `inputSchema` zamknięty i walidowany przez serwer; treść `invalid_argument` przy naruszeniu schematu
 
 - **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
-- **Status:** open
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; rozszerzone w CC-123)
 - **Problem:** MCP SDK 2.0.x waliduje argumenty względem `inputSchema` przed audytem serwera i odpowiada tekstem
   spoza C10 (`Tool (x) input validation failed`), bez zdarzenia C8. Kontrakt nie wymaga ani zamkniętego schematu
   (`additionalProperties: false`), ani określonej treści `invalid_argument` przy naruszeniu schematu, więc
@@ -1012,7 +1012,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 ## CC-079 | C6 | Nazwy `$defs` w `common.schema.json` jako stabilne API dla serwerów
 
 - **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
-- **Status:** open
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
 - **Problem:** serwery kopiowały wzorce identyfikatorów (`JiraIssueKey`, `GitLabProjectPath`, ...) do własnych
   stałych. Starter publikuje teraz `@ArgumentLimits(contractPattern = "<nazwa $defs>")`, które czyta `pattern` i
   `maxLength` z `common.schema.json` jara kontraktów w chwili rejestracji narzędzia. Zmiana nazwy albo usunięcie
@@ -2673,3 +2673,60 @@ G-15, G-16, G-18, G-22.
 - **Zgłasza:** C4 (ws-07)
 - **Propozycja:** osobny `event` dla zmian wirtualnych serwerów zamiast `admin_change` (nowa wartość enum, major). Razem z CC-107 i listą narzędzi linku (grupa A).
 - **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M3/M4)
+
+## CC-117 | C8 | `backendUser` w zdarzeniu `connection_change`
+
+- **Zgłasza:** A1 (broker); grupa A pakietu M2 (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.5
+- **Problem:** po CC-101 broker nie porównuje tożsamości, więc zdarzenie audytu jest jedynym śladem, kto podpiął które konto.
+- **Zmiana:** opcjonalne `backendUser` (string, 1..255 znaków, te same wykluczone znaki sterujące co `resource.id`) w `audit-event.schema.json`; nigdy sekret. Zdarzenie `authentication` ma zamkniętą listę pól, więc pola nie przyjmuje. Wektory `broker-connection-change-backend-user`, `invalid-backend-user-control-char`, `invalid-backend-user-too-long`.
+- **Pliki:** `schemas/audit-event.schema.json`, wektory audytu.
+- **SemVer:** minor (nowe pole opcjonalne)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.5)
+
+## CC-118 | C10/C5 | Narzędzie spoza linku: `not_found_or_denied`
+
+- **Zgłasza:** A5 (gateway); grupa A pakietu M2 (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.5
+- **Problem:** gateway używał `tool_disabled` ("wyłączył administrator") dla narzędzia spoza linku, co jest mylące w audycie i ujawnia, że narzędzie istnieje (niezmiennik 8).
+- **Zmiana:** opis w C10: narzędzie spoza listy narzędzi linku to `not_found_or_denied`; `tool_disabled` tylko przy wyłączeniu przez administratora (lub definicji czekającej na zatwierdzenie). Żaden istniejący wektor nie zmienia oczekiwań (nie było wektora tego przypadku).
+- **Pliki:** `schemas/tool-error.schema.json` (opisy).
+- **SemVer:** minor (doprecyzowanie zachowania, bez zmiany schematu)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.5)
+
+## CC-119 | C5/C12 | `409 virtual_server_limit_reached`
+
+- **Zgłasza:** A6 (gateway); grupa A pakietu M2 (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.5
+- **Problem:** przekroczenie limitu linków dawało ogólne `400 invalid_request`; `409 slug_taken` kazałby kreatorowi szukać sluga w nieskończoność.
+- **Zmiana:** `409` z `error: virtual_server_limit_reached` w `POST /admin/v1/virtual-servers` i `POST /api/v1/virtual-servers`; limit na użytkownika konfigurowalny, domyślnie 50; kreator pokazuje "usuń nieużywany link". Przykłady i mocki.
+- **Pliki:** `gateway-admin.v1.yaml`, `portal-bff.v1.yaml`, mocki.
+- **SemVer:** minor (nowy kod w istniejącym `409`)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.5)
+
+## CC-120 | C8 | `authentication` na gateway'u dla tokenów C1 i nowe powody
+
+- **Zgłasza:** A7 (gateway, starter); grupa A pakietu M2 (`mcp-platform-plan/cc-pakiet-m2.md`)
+- **Kamień:** M2, wydanie 2.2.5
+- **Zmiana:** zdarzenie `authentication` emituje też gateway (`component: gateway`) dla odrzuconych tokenów klienta (C1); słownik `reason`: `missing_token`, `malformed`, `bad_signature`, `unknown_kid`, `alg_not_allowed`, `wrong_issuer`, `wrong_audience`, `expired`, `not_yet_valid`, `invalid_claims` oraz `client_certificate_rejected`, `jwks_unavailable`, `replay_store_unavailable`. Dla dwóch ostatnich `errorCode` musi być `upstream_unavailable` (reguła w schemacie), dla pozostałych `unauthenticated`. Lista pól zamknięta jak w CC-071: żadnych pól z niezweryfikowanego tokenu (`backendUser` też zabronione). Wektory `gateway-authentication-denied-*` (4), `server-authentication-denied-client-certificate`, odrzucane `invalid-authentication-jwks-unavailable-*` (2), `invalid-authentication-with-backend-user`.
+- **Pliki:** `schemas/audit-event.schema.json`, wektory.
+- **SemVer:** minor (nowe znane wartości `reason`, nowa reguła tylko dla nowych powodów; istniejące wektory bez zmian)
+- **Status:** accepted (decyzja: człowiek, 2026-10-28, wydanie 2.2.5)
+
+## CC-121 | C10/C8 | Wspólna higiena tekstu (`text-hygiene/`)
+
+- **Zgłasza:** A2 (starter, gateway); grupa A pakietu M2
+- **Propozycja:** wspólna definicja znaków zakazanych w argumentach i w tekście z systemu (C0/C1/DEL, U+2028/U+2029, niesparowane surogaty, nieznaki, `\p{Cf}` poza U+200C..U+200F; w wartości z `pattern` także `\n\r\t`), zastępowanie usuniętego ciągu znaków niewidocznych jedną spacją, znaki niewidoczne poza `\p{Cf}` (selektory wariantu poza pojedynczym U+FE0F po emoji, U+034F, U+115F, U+1160, U+3164, U+FFA0, U+2800); wektory `test-vectors/text-hygiene/`. Wydanie 3.0.0 (nie implementowane w 2.2.5).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-122 | C10/C8 | Znaki pełnej szerokości ASCII w filtrach wzmianek (bez NFKC)
+
+- **Zgłasza:** A3 (starter); grupa A pakietu M2
+- **Propozycja:** nie normalizować NFKC; odrzucać lub oznaczać znaki pełnej szerokości ASCII (U+FF01..U+FF5E) w filtrach wzmianek (`＠ａｌｌ`), wektory w `text-hygiene/`. Wydanie 3.0.0.
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-123 | C6/C10 | Zamknięty i ograniczony `inputSchema` (rozszerzenie CC-078)
+
+- **Zgłasza:** A4 (starter); grupa A pakietu M2
+- **Propozycja:** CC-078 rozszerzone o reguły startera: `additionalProperties: false`, tekst `maxLength`, lista `maxItems` i `items`, liczba `minimum`/`maximum`, wzorzec z kotwicami, bez `allOf/anyOf/oneOf/not/if`, bez map otwartych; reguła semantyczna w manifeście i wektory odrzuconych manifestów (mapa otwarta, lista bez `maxItems`, liczba bez zakresu, `prefixItems` bez `items`). Dla nowych manifestów; wydanie 3.0.0 razem z CC-078 i CC-079 (nazwy `$defs` jako stabilne API, A8).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)

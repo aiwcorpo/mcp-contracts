@@ -4,6 +4,20 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 2.2.5 - 2026-10-28
+
+Grupa A pakietu M2 (decyzje człowieka 2026-10-28): CC-117 ... CC-120 w tym wydaniu; CC-078, CC-079 i CC-121 ... CC-123
+(higiena tekstu, pełna szerokość, zamknięty `inputSchema`, stabilne `$defs`) `accepted-for-3.0.0`, nie implementowane.
+`cedar/mcp.cedarschema` bez zmian. Wszystkie zmiany minor; żaden istniejący wektor nie zmienił oczekiwania.
+
+- CC-117: opcjonalne `backendUser` w C8 (`connection_change`).
+- CC-118: narzędzie spoza linku to `not_found_or_denied`, `tool_disabled` tylko przy wyłączeniu przez administratora (opisy C10).
+- CC-119: `409 virtual_server_limit_reached` w C5 i C12 (limit konfigurowalny, domyślnie 50).
+- CC-120: zdarzenie `authentication` także z `component: gateway` dla tokenów C1; nowe powody `client_certificate_rejected`,
+  `jwks_unavailable`, `replay_store_unavailable` (dla dwóch ostatnich `errorCode: upstream_unavailable`).
+- Wpływ: ws-05 (kody, `authentication` na gateway'u, limit), ws-06 (`backendUser` w audycie), ws-07 (przekazanie 409 limitu),
+  ws-08 (komunikat "usuń nieużywany link"), starter (powody `authentication`).
+
 ## 2.2.4 - 2026-10-28
 
 Grupa B pakietu M2 (CC-102 ... CC-112, decyzja człowieka 2026-10-28): doprecyzowania, przykłady i wektory; schematy bez
