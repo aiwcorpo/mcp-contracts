@@ -1,5 +1,5 @@
 {
-  "description": "The owner opened the preview of A: a different DESTRUCTIVE operation B is refused with confirmation_pending until A ends; nothing is created, nothing is superseded.",
+  "description": "The owner opened the preview of A: a different DESTRUCTIVE operation B is refused with confirmation_blocked until the block ends; nothing is created, nothing is superseded.",
   "kind": "first-call",
   "authenticator": "active",
   "pendingCalls": [
@@ -10,7 +10,7 @@
       "risk": "DESTRUCTIVE",
       "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
       "createdAt": "2026-10-26T20:00:00Z",
-      "previewViewed": true
+      "previewViewedAt": "2026-10-26T20:00:10Z"
     }
   ],
   "pendingLimit": 3,
@@ -24,7 +24,7 @@
   },
   "at": "2026-10-26T20:00:30Z",
   "expected": {
-    "outcome": "confirmation_pending",
+    "outcome": "confirmation_blocked",
     "retryAfterSeconds": 90,
     "pendingCreated": false
   }

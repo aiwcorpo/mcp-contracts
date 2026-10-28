@@ -127,10 +127,11 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
   for (const { name, data } of vectors) {
     if (data.kind === 'first-calls-parallel') {
       const { results, pendingIds } = firstCallsInOrder({
-        authenticator: data.authenticator, pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt) })),
+        authenticator: data.authenticator, pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt), previewViewedAt: toSeconds(p.previewViewedAt), cancelledAt: toSeconds(p.cancelledAt) })),
         pendingLimit: data.pendingLimit, calls: data.calls, steps: data.steps, at: toSeconds(data.at),
       });
-      const calls = results.map((r) => (r.previewed === undefined ? r : null));
+      const calls = results.map((r) => (r.previewed === undefined && r.cancelled === undefined ? r : null));
+      if (data.expected.cancels) assert.deepEqual(results.map((r) => (r.cancelled === undefined ? null : (r.cancelled ? true : r.status))), data.expected.cancels, name);
       assert.deepEqual(calls.map((r) => (r === null ? [] : (r.supersededIds ?? []))), data.expected.supersededIds, name);
       if (data.expected.outcomes) assert.deepEqual(calls.map((r) => (r === null ? null : r.outcome)), data.expected.outcomes, name);
       if (data.expected.previews) assert.deepEqual(results.map((r) => (r.previewed === false ? r.status : null)), data.expected.previews, name);
@@ -142,7 +143,7 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
     } else if (data.kind === 'first-call') {
       const actual = firstCall({
         authenticator: data.authenticator,
-        pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt) })),
+        pendingCalls: data.pendingCalls.map((p) => ({ ...p, createdAt: toSeconds(p.createdAt), previewViewedAt: toSeconds(p.previewViewedAt), cancelledAt: toSeconds(p.cancelledAt) })),
         pendingLimit: data.pendingLimit, call: data.call, at: toSeconds(data.at),
       });
       const { expiresAt, ...rest } = actual;
@@ -153,7 +154,7 @@ test('confirmation vectors: first call and retry (CC-091)', () => {
       assert.equal(expiresAt, expectedExpires, `${name}: expiresAt`);
     } else {
       const actual = retry({
-        pending: data.pending === null ? null : { ...data.pending, createdAt: toSeconds(data.pending.createdAt) },
+        pending: data.pending === null ? null : { ...data.pending, createdAt: toSeconds(data.pending.createdAt), previewViewedAt: toSeconds(data.pending.previewViewedAt), cancelledAt: toSeconds(data.pending.cancelledAt) },
         attempt: data.attempt, verification: data.verification, at: toSeconds(data.attempt.at),
       });
       assert.deepEqual(actual, data.expected, name);
@@ -280,7 +281,7 @@ test('activity-calls vectors: ActivityCall schema and aggregation of one call (C
   assert.ok(vectors.length >= 15);
   for (const { name, data } of vectors) {
     if (data.events) {
-      const row = aggregateCall(data.events);
+      const row = aggregateCall(data.events, toSeconds(data.now));
       assert.deepEqual(row, data.expected, name);
       assert.ok(validate(row), `${name}: ${formatErrors(validate.errors)}`);
       const auditValidate = schemaValidator(ajv, 'audit-event.schema.json');

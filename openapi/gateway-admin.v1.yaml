@@ -624,7 +624,12 @@ paths:
         One row per call, computed by the gateway from its audit events and from its internal link between a first
         call and its retries with a code (the confirmationId never leaves the gateway, CC-095). The row carries the
         final result and the number of wrong codes; requestId and ts are those of the first request. `sub` is always
-        the `sub` of the BFF token. Newest first, at most 30 days back. Page with the `X-Next-Cursor` header.
+        the `sub` of the BFF token, the filters and the 30 day window always come from the current request, and only the
+        caller's own calls are ever returned, also for an administrator: there is no view of other users' calls in 3.0.0.
+        Newest first. Page with the `X-Next-Cursor` header: the cursor is opaque, carries only the position (`ts`,
+        `requestId`) and is authenticated by the gateway (for example an HMAC with a gateway key, bound to the `sub`); a
+        cursor that was changed, is foreign or has expired is `400`, and the gateway never takes `sub`, filters or the window
+        from it.
       security:
         - mtls: []
           bffUserToken: []
@@ -643,7 +648,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded and blocked-by-pending confirmations.
+          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -672,6 +677,8 @@ paths:
               required: false
               schema:
                 type: string
+                maxLength: 256
+              example: eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln
           content:
             application/json:
               schema:
@@ -719,13 +726,19 @@ paths:
                       result: superseded
                       wrongCodeCount: 0
                       errorCode: confirmation_superseded
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e85
+                      ts: '2026-10-26T19:27:00.000Z'
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      result: cancelled
+                      wrongCodeCount: 0
+                      errorCode: confirmation_cancelled
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84
                       ts: '2026-10-26T19:25:00.000Z'
                       tool: jira__delete_issue
                       risk: DESTRUCTIVE
                       result: blocked_by_pending
-                      wrongCodeCount: 0
-                      errorCode: confirmation_pending
+                      errorCode: confirmation_blocked
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83
                       ts: '2026-10-26T19:20:00.000Z'
                       tool: gitlab__get_project
@@ -746,11 +759,11 @@ paths:
       summary: Read-only preview of a pending confirmation; owner only, valid session, no fresh MFA.
       description: |
         The preview is optional: the code from the authenticator works without opening it (CC-091). The gateway
-        computes everything from its own record of the pending call, never from the client. A successful call
-        records that the owner viewed the preview (`previewViewedAt`, CC-091); this is the only side effect of a GET
-        in C5. Since the preview is opened, a different DESTRUCTIVE operation of the user does not supersede this one: it
-        is refused with `confirmation_pending` until this one is confirmed, expires or runs out of attempts (CC-127);
-        recording the view and that check are atomic with each other. There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
+        computes everything from its own record of the pending call, never from the client. A GET has no side effect:
+        the view is recorded only by the explicit `markConfirmationViewed` call (CC-127), so that a prerender or a
+        prefetch of the page cannot set it. Once the view is recorded, a different DESTRUCTIVE operation of the user does
+        not supersede this one: it is refused with `confirmation_blocked` until this one is confirmed or the block ends at
+        max(expiry, view + 90 s), also when its attempts ran out or it expired earlier (CC-127). There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
         refusing is not typing it (the call expires after 120 s).
       security:
         - mtls: []
@@ -788,6 +801,78 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           description: Unknown, expired, superseded by a newer DESTRUCTIVE operation of the user (CC-127; only when the preview had not been opened) or not owned by the caller; one answer for all of them (invariant 8).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found_or_denied:
+                  value:
+                    error: not_found_or_denied
+  /admin/v1/confirmations/{confirmationId}/viewed:
+    parameters:
+      - $ref: '#/components/parameters/ConfirmationId'
+    post:
+      tags: [confirmations]
+      operationId: markConfirmationViewed
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Record that the owner has the preview of a pending confirmation open and visible (CC-127).
+      description: |
+        Called by the portal after the preview page is rendered and visible, never by a GET and never for a prefetch or
+        prerender. Idempotent: the first call sets `previewViewedAt`, later calls change nothing. Owner only. Recording the
+        view and the check that a different DESTRUCTIVE operation makes against it are atomic with each other (one
+        operation per user), so a race ends with B refused (view first) or A superseded and this call answering 404 (B
+        first). The view blocks other DESTRUCTIVE operations as described in `getConfirmation`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '204':
+          description: Recorded (or it was recorded before).
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Unknown, expired, superseded or not owned by the caller (not_found_or_denied).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found_or_denied:
+                  value:
+                    error: not_found_or_denied
+  /admin/v1/confirmations/{confirmationId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/ConfirmationId'
+    post:
+      tags: [confirmations]
+      operationId: cancelConfirmation
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: The owner cancels a pending confirmation; nothing is approved (CC-128).
+      description: |
+        Owner only; a valid session is enough, no fresh MFA, because the call removes a pending operation and approves
+        nothing. This is not a decision endpoint: a confirmation is still given only by the TOTP code typed in the MCP
+        client. The gateway removes the pending call with a compare-and-delete that is ordered with the code check on the
+        same record, so a code typed in parallel after the cancel does not confirm the call (the check answers
+        `confirmation_cancelled`). The block of "first wins after the preview" (CC-127) ends with it. A later retry of the
+        cancelled call gets the C10 error `confirmation_cancelled` (the gateway keeps a tombstone until the original TTL
+        ends; no broker call, no attempt or TOTP step spent), the audit event is `confirmation` with
+        `reason: cancelled_by_owner`, and the call is `cancelled` in `activity/calls`. Idempotent while the tombstone lives
+        (a second cancel is `204`); `404 not_found_or_denied` for an unknown, expired, superseded, executed or foreign call.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '204':
+          description: Cancelled (or cancelled before).
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Unknown, expired, superseded, already executed or not owned by the caller (not_found_or_denied).
           content:
             application/json:
               schema:
@@ -1179,18 +1264,8 @@ components:
         risk:
           $ref: '../schemas/common.schema.json#/$defs/Risk'
         resource:
-          type: object
-          required: [type, id]
-          properties:
-            type:
-              $ref: '../schemas/common.schema.json#/$defs/ResourceType'
-            id:
-              type: string
-              maxLength: 512
-            parent:
-              type: string
-              maxLength: 600
-          additionalProperties: false
+          description: Same shape and limits as resource in the audit event (C8), including the exclusion of control and bidirectional characters in id (CC-031).
+          $ref: '../schemas/audit-event.schema.json#/properties/resource'
         result:
           type: string
           pattern: '^[a-z][a-z0-9_]*$'
@@ -1198,9 +1273,9 @@ components:
           description: |
             Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
-            expired, confirmation_failed, superseded, blocked_by_pending. A client must show an unknown value as a generic label.
+            expired, confirmation_failed, superseded, blocked_by_pending, cancelled. A client must show an unknown value as a generic label.
         wrongCodeCount:
-          description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
+          description: Number of wrong confirmation codes (answers invalid or replayed of the broker) given for this call; present only for calls that needed a confirmation and were not refused as blocked_by_pending. A retry that came too late or found no pending call is not a wrong code.
           type: integer
           minimum: 0
           maximum: 3
@@ -1233,19 +1308,8 @@ components:
           description: System the tool acts on; the portal shows it next to the tool (CC-077). Read by the gateway from its own record of the pending call, never from the client.
           $ref: '../schemas/common.schema.json#/$defs/SystemId'
         resource:
-          description: Main resource of the call from resourceRefs (type, id, parent), computed by the gateway, the same value that goes to the audit event (CC-098); absent when the tool takes no resource identifier.
-          type: object
-          required: [type, id]
-          properties:
-            type:
-              $ref: '../schemas/common.schema.json#/$defs/ResourceType'
-            id:
-              type: string
-              maxLength: 512
-            parent:
-              type: string
-              maxLength: 600
-          additionalProperties: false
+          description: Main resource of the call from resourceRefs (type, id, parent), computed by the gateway, the same value that goes to the audit event (CC-098); absent when the tool takes no resource identifier. Same limits as in C8, including the exclusion of control and bidirectional characters in id.
+          $ref: '../schemas/audit-event.schema.json#/properties/resource'
         arguments:
           description: Arguments sorted by name (fixed order), without confirmation_code.
           type: array

@@ -4,7 +4,7 @@
     "valid": false
   },
   "error": {
-    "error": "confirmation_pending",
+    "error": "confirmation_blocked",
     "message": "Waiting.",
     "retryAfterSeconds": 5,
     "confirmationId": "cnf_4k9Qe2LxW7tB3mZp"

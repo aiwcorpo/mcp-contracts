@@ -37,6 +37,7 @@
       "response": {
         "status": 200,
         "headers": {
+          "X-Next-Cursor": "eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln",
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": [
@@ -89,13 +90,21 @@
             "errorCode": "confirmation_superseded"
           },
           {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e85",
+            "ts": "2026-10-26T19:27:00.000Z",
+            "tool": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "result": "cancelled",
+            "wrongCodeCount": 0,
+            "errorCode": "confirmation_cancelled"
+          },
+          {
             "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84",
             "ts": "2026-10-26T19:25:00.000Z",
             "tool": "jira__delete_issue",
             "risk": "DESTRUCTIVE",
             "result": "blocked_by_pending",
-            "wrongCodeCount": 0,
-            "errorCode": "confirmation_pending"
+            "errorCode": "confirmation_blocked"
           },
           {
             "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83",

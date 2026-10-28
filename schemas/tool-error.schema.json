@@ -22,7 +22,10 @@
       "$ref": "#/$defs/ConfirmationSuperseded"
     },
     {
-      "$ref": "#/$defs/ConfirmationPending"
+      "$ref": "#/$defs/ConfirmationCancelled"
+    },
+    {
+      "$ref": "#/$defs/ConfirmationBlocked"
     },
     {
       "$ref": "#/$defs/CredentialRequired"
@@ -361,7 +364,7 @@
       },
       "additionalProperties": false
     },
-    "ConfirmationPending": {
+    "ConfirmationBlocked": {
       "type": "object",
       "required": [
         "error",
@@ -370,16 +373,33 @@
       ],
       "properties": {
         "error": {
-          "const": "confirmation_pending",
-          "description": "Another DESTRUCTIVE operation of this user is waiting for a code and its owner has opened the portal preview, so a different DESTRUCTIVE operation is refused until that one is confirmed, expires or runs out of attempts (first wins after the preview, CC-127). Not a rate limit: nothing was created. Without an opened preview the new operation supersedes the old one instead."
+          "const": "confirmation_blocked",
+          "description": "Another DESTRUCTIVE operation of this user is waiting for confirmation and its owner has opened the portal preview, so a different DESTRUCTIVE operation is refused until that one is confirmed or the block ends at max(its expiry, preview view + 90 s) (first wins after the preview, CC-127). Nothing was created: a code typed by the user would not confirm this call, so a client MUST NOT ask the user for a code for it; it should say that another operation awaits confirmation and retry later. Without an opened preview the new operation supersedes the old one instead."
         },
         "message": {
           "$ref": "#/$defs/Message"
         },
         "retryAfterSeconds": {
-          "description": "Seconds until the waiting operation expires at the latest.",
+          "description": "Seconds until the block ends.",
           "type": "integer",
           "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConfirmationCancelled": {
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "confirmation_cancelled",
+          "description": "The owner cancelled the pending call in the portal (CC-128). Answer to the retry of that call: the code is not checked, no attempt or TOTP step is spent, and a code typed in parallel after the cancel does not confirm it. The user starts the operation again if they still want it."
+        },
+        "message": {
+          "$ref": "#/$defs/Message"
         }
       },
       "additionalProperties": false

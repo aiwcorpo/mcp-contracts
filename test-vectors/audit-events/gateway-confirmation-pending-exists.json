@@ -16,6 +16,6 @@
     "decision": "deny",
     "reason": "pending_exists",
     "outcome": "denied",
-    "errorCode": "confirmation_pending"
+    "errorCode": "confirmation_blocked"
   }
 }

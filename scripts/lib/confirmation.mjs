@@ -7,6 +7,8 @@ import canonicalize from 'canonicalize';
 
 export const TTL_SECONDS = 120;
 export const MAX_ATTEMPTS = 3;
+// A code is valid for up to 90 s (30 s step, window of one step either way): a code typed after the preview stays usable that long.
+export const CODE_VALIDITY_SECONDS = 90;
 
 export function argumentsHash(args) {
   const { confirmation_code: _omitted, ...rest } = args;
@@ -18,7 +20,8 @@ export function argumentsHash(args) {
  * ('none', 'active', 'disabled' or 'unavailable'); `pendingCalls` are the user's pending calls
  * [{ tool, serverId, argsSha256, risk, createdAt, confirmationId }]; `pendingLimit` is the configured limit for
  * pending calls that are not DESTRUCTIVE (default 3). A user has at most one pending DESTRUCTIVE operation (CC-127):
- * a new one supersedes the older ones, whose ids are returned in `supersededIds`.
+ * a new one supersedes the older ones, whose ids are returned in `supersededIds`, unless the preview of an older one was
+ * opened (see below).
  */
 export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at }) {
   if (authenticator === 'unavailable') return { outcome: 'upstream_unavailable', pendingCreated: false };
@@ -26,16 +29,20 @@ export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at 
   const hash = argumentsHash(call.arguments);
   // A tombstone of a superseded call (`supersededBy`) is not a pending call: it neither matches a repeated first call nor
   // counts toward a limit, and a new pending call for the same operation replaces it (CC-127).
-  const live = pendingCalls.filter((p) => !p.supersededBy && at <= p.createdAt + TTL_SECONDS);
+  const live = pendingCalls.filter((p) => !p.supersededBy && !p.ended && p.cancelledAt === undefined && at <= p.createdAt + TTL_SECONDS);
   const same = live.find((p) => p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash);
   if (same) return { outcome: 'confirmation_required', register: false, confirmationId: same.confirmationId, expiresAt: same.createdAt + TTL_SECONDS, pendingCreated: false, supersededIds: [] };
   if (call.risk === 'DESTRUCTIVE') {
-    // First wins after the preview (CC-127): if the owner opened the preview of the pending DESTRUCTIVE call, a different
-    // DESTRUCTIVE operation does not replace it but is refused until that one is confirmed, expires or runs out of attempts.
-    const viewed = live.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewed);
-    if (viewed.length > 0) {
-      const retryAfterSeconds = Math.ceil(Math.max(...viewed.map((p) => p.createdAt + TTL_SECONDS)) - at);
-      return { outcome: 'confirmation_pending', retryAfterSeconds, pendingCreated: false };
+    // First wins after the preview (CC-127): once the owner has opened the preview of a DESTRUCTIVE call A (the viewed call
+    // sets previewViewedAt), a DIFFERENT DESTRUCTIVE operation B is refused until A is confirmed or the block ends at
+    // max(A.expiresAt, previewViewedAt + 90 s). Exhausting the attempts of A or letting it expire does not end the block
+    // earlier: the record stays as a blocking trace, otherwise the code typed for A could confirm B (review 3.0.0, N-H1).
+    const blockers = pendingCalls.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewedAt !== undefined && p.ended !== 'confirmed' && p.ended !== 'cancelled' && p.cancelledAt === undefined && !p.supersededBy
+      && !(p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash)
+      && at <= Math.max(p.createdAt + TTL_SECONDS, p.previewViewedAt + CODE_VALIDITY_SECONDS));
+    if (blockers.length > 0) {
+      const until = Math.max(...blockers.map((p) => Math.max(p.createdAt + TTL_SECONDS, p.previewViewedAt + CODE_VALIDITY_SECONDS)));
+      return { outcome: 'confirmation_blocked', retryAfterSeconds: Math.ceil(until - at), pendingCreated: false };
     }
     const supersededIds = live.filter((p) => p.risk === 'DESTRUCTIVE').map((p) => p.confirmationId);
     return { outcome: 'confirmation_required', register: false, expiresAt: at + TTL_SECONDS, pendingCreated: true, supersededIds };
@@ -64,11 +71,12 @@ export function retry({ pending, attempt, verification, at }) {
   if (!bound) return { outcome: 'confirmation_failed', verifyCalled: false };
   if (at > pending.createdAt + TTL_SECONDS) return { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'confirmation_expired' };
   if (pending.supersededBy) return { outcome: 'confirmation_superseded', verifyCalled: false, auditReason: 'superseded' };
+  if (pending.cancelledAt !== undefined) return { outcome: 'confirmation_cancelled', verifyCalled: false, auditReason: 'cancelled_by_owner' };
   if (pending.attemptsLeft <= 0) return { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'attempts_exhausted' };
   switch (verification.result) {
     case 'ok':
       return { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: pending.attemptsLeft,
-        auditReason: pending.previewViewed ? 'user_confirmed' : 'user_confirmed_no_preview' };
+        auditReason: pending.previewViewedAt !== undefined ? 'user_confirmed' : 'user_confirmed_no_preview' };
     case 'invalid':
     case 'replayed': {
       const attemptsLeft = pending.attemptsLeft - 1;
@@ -101,8 +109,14 @@ export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, c
   sequence.forEach((step, index) => {
     if (step.preview !== undefined) {
       const target = live.find((p) => p.confirmationId === step.preview && !p.supersededBy && at <= p.createdAt + TTL_SECONDS);
-      if (target) target.previewViewed = true;
+      if (target) target.previewViewedAt = at;
       results.push(target ? { previewed: true } : { previewed: false, status: 404 });
+      return;
+    }
+    if (step.cancel !== undefined) {
+      const target = live.find((p) => p.confirmationId === step.cancel && !p.supersededBy && at <= p.createdAt + TTL_SECONDS && p.ended !== 'confirmed');
+      if (target) target.ended = 'cancelled';
+      results.push(target ? { cancelled: true } : { cancelled: false, status: 404 });
       return;
     }
     const call = step.call;
@@ -113,7 +127,7 @@ export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, c
       live.push({ confirmationId: `new-${index}`, serverId: call.serverId, tool: call.tool, risk: call.risk, argsSha256: argumentsHash(call.arguments), createdAt: at });
     }
   });
-  return { results, pendingIds: live.filter((p) => !p.supersededBy).map((p) => p.confirmationId) };
+  return { results, pendingIds: live.filter((p) => !p.supersededBy && !p.ended).map((p) => p.confirmationId) };
 }
 
 /**
@@ -127,9 +141,23 @@ export function retriesInOrder({ pending, attempts, at }) {
   let current = pending === null ? null : { ...pending };
   let brokerCalls = 0;
   const outcomes = [];
-  for (const { attempt, verification } of attempts) {
+  for (const item of attempts) {
+    // The owner's cancel (CC-128) is a compare-and-delete on the same record as the code check, so it is ordered with
+    // the retries. Idempotent while the record lives; 404 once the call is gone (executed, exhausted, expired, superseded).
+    if (item.cancel) {
+      if (current !== null && at <= current.createdAt + TTL_SECONDS) {
+        current.cancelledAt = at;
+        outcomes.push('cancelled');
+      } else outcomes.push('not_found');
+      continue;
+    }
+    const { attempt, verification } = item;
     const hash = argumentsHash(attempt.arguments);
     const bound = current !== null && current.sub === attempt.sub && current.serverId === attempt.serverId && current.tool === attempt.tool && current.argsSha256 === hash;
+    if (bound && current.cancelledAt !== undefined) {
+      outcomes.push('confirmation_cancelled');
+      continue;
+    }
     if (!bound || at > current.createdAt + TTL_SECONDS || current.attemptsLeft <= 0) {
       outcomes.push('confirmation_failed');
       continue;
@@ -137,7 +165,11 @@ export function retriesInOrder({ pending, attempts, at }) {
     current.attemptsLeft -= 1;
     brokerCalls += 1;
     switch (verification.result) {
-      case 'ok': outcomes.push('execute'); current = null; break;
+      case 'ok':
+        // A cancel that arrived while the broker was checking wins: executing consumes the pending call atomically, and a
+        // cancelled record cannot be consumed. The step of the code is spent at the broker, which is acceptable.
+        if (item.cancelDuringVerification) { current.cancelledAt = at; outcomes.push('confirmation_cancelled'); } else { outcomes.push('execute'); current = null; }
+        break;
       case 'invalid': case 'replayed':
         outcomes.push('confirmation_failed');
         if (current.attemptsLeft === 0) current = null;
@@ -147,5 +179,5 @@ export function retriesInOrder({ pending, attempts, at }) {
       default: current.attemptsLeft += 1; outcomes.push('upstream_unavailable');
     }
   }
-  return { outcomes, brokerCalls, attemptsLeft: current === null ? null : current.attemptsLeft };
+  return { outcomes, brokerCalls, attemptsLeft: current === null || current.cancelledAt !== undefined ? null : current.attemptsLeft };
 }

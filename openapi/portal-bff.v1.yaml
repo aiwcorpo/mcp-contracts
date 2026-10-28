@@ -607,7 +607,8 @@ paths:
         Optional (CC-091): the code from the authenticator is accepted without opening this page. The page shows what
         the pending call really is, so a user who opens it sees the operation in a trusted channel and not only in the
         description given by the AI client. No buttons: the confirmation is the code typed in the client. A successful
-        call records at the gateway that the owner viewed the preview.
+        call has no side effect (a prefetch or prerender cannot mark the preview as viewed); the view is recorded by
+        `markMyConfirmationViewed`.
       security:
         - session: []
       responses:
@@ -848,6 +849,75 @@ paths:
                 enrollment_invalid:
                   value:
                     error: enrollment_invalid
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/confirmations/{id}/viewed:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
+        example: cnf_4k9Qe2LxW7tB3mZp
+    post:
+      tags: [confirmations]
+      operationId: markMyConfirmationViewed
+      summary: Record that the preview is open and visible (proxy to C5 markConfirmationViewed, CC-127).
+      description: |
+        The web app calls it once, only after the preview is rendered and visible (`document.prerendering` is false and
+        `document.visibilityState` is `visible`), never during prefetch or prerender, and the BFF forwards no view for a
+        request with `Sec-Purpose: prefetch`. Idempotent. Owner only. After it, a different DESTRUCTIVE operation of the
+        user is refused with `confirmation_blocked` instead of superseding this one (CC-127). A `404` (the call was
+        superseded or expired) is the cue to show "this link is out of date".
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Recorded (or recorded before).
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/confirmations/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '../schemas/common.schema.json#/$defs/ConfirmationId'
+        example: cnf_4k9Qe2LxW7tB3mZp
+    post:
+      tags: [confirmations]
+      operationId: cancelMyConfirmation
+      summary: Cancel a pending confirmation from the preview ("Anuluj"; proxy to C5 cancelConfirmation, CC-128).
+      description: |
+        A valid session and the CSRF header are enough, no fresh MFA: the call removes a pending operation and approves
+        nothing. It is not a decision endpoint (the confirmation is still only the TOTP code typed in the client). Ends the
+        "first wins after the preview" block and makes the next retry of the call fail with `confirmation_cancelled`.
+        Idempotent; `404 not_found_or_denied` for a foreign, unknown, expired or superseded call.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Cancelled (or cancelled before).
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CsrfInvalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/access-requests:
@@ -1154,7 +1224,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded and blocked-by-pending confirmations.
+          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -1182,6 +1252,8 @@ paths:
               required: false
               schema:
                 type: string
+                maxLength: 256
+              example: eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln
           description: Newest first; at most 30 days back. X-Next-Cursor is present when more rows exist.
           content:
             application/json:
@@ -1230,13 +1302,19 @@ paths:
                       result: superseded
                       wrongCodeCount: 0
                       errorCode: confirmation_superseded
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e85
+                      ts: '2026-10-26T19:27:00.000Z'
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      result: cancelled
+                      wrongCodeCount: 0
+                      errorCode: confirmation_cancelled
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84
                       ts: '2026-10-26T19:25:00.000Z'
                       tool: jira__delete_issue
                       risk: DESTRUCTIVE
                       result: blocked_by_pending
-                      wrongCodeCount: 0
-                      errorCode: confirmation_pending
+                      errorCode: confirmation_blocked
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83
                       ts: '2026-10-26T19:20:00.000Z'
                       tool: gitlab__get_project

@@ -1,0 +1,10 @@
+{
+  "description": "The retry of a call the owner cancelled in the portal (CC-128).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "confirmation_cancelled",
+    "message": "The user cancelled this operation. Start it again if it is still wanted."
+  }
+}

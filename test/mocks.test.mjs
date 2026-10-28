@@ -193,3 +193,19 @@ test('WireMock stubs of C4 carry no-store on every response with a secret (revie
     }
   }
 });
+
+test('MSW: the preview view is recorded by an explicit POST, never by the GET (CC-127)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
+  assert.equal((await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp/viewed`, { method: 'POST', headers })).status, 204);
+  assert.equal((await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp/viewed`, { method: 'POST' })).status, 403);
+  const next = await fetch(`${BASE}/api/v1/activity/calls`);
+  assert.ok((next.headers.get('x-next-cursor') ?? '').length > 0 && next.headers.get('x-next-cursor').length <= 256);
+});
+
+test('MSW: the owner can cancel a pending confirmation, nothing is approved (CC-128)', async () => {
+  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
+  assert.equal((await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp/cancel`, { method: 'POST', headers })).status, 204);
+  assert.equal((await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp/cancel`, { method: 'POST' })).status, 403);
+  const missing = await fetch(`${BASE}/api/v1/confirmations/cnf_4k9Qe2LxW7tB3mZp/cancel`, { method: 'POST', headers: { ...headers, Prefer: 'example=not_found_or_denied' } });
+  assert.equal(missing.status, 404);
+});

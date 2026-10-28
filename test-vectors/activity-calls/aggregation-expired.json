@@ -1,5 +1,6 @@
 {
   "description": "No valid code within 120 s: expired.",
+  "now": "2026-10-26T20:03:30.000Z",
   "events": [
     {
       "ts": "2026-10-26T20:00:00.000Z",
@@ -53,7 +54,7 @@
     },
     "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e13",
     "result": "expired",
-    "wrongCodeCount": 1,
+    "wrongCodeCount": 0,
     "errorCode": "confirmation_failed"
   }
 }

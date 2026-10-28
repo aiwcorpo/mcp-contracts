@@ -1,0 +1,16 @@
+{
+  "description": "resource.id keeps the C8 limits: no control character.",
+  "value": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e01",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "tool": "jira__get_issue",
+    "result": "ok",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1\nX"
+    }
+  },
+  "expected": {
+    "valid": false
+  }
+}

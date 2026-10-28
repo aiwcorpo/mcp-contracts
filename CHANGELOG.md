@@ -24,7 +24,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
      `confirmation_declined` (C10 i `ErrorCode`), powód audytu `user_declined` (nie jest emitowany).
    - `confirmation_required` (C10): wariant z oczekującym wywołaniem ma `confirmationId`, `description`, `previewUrl`,
      `expiresAt` (wszystkie wymagane); wariant bez rejestracji ma tylko `registerUrl`.
-   - Nowe w C10: `confirmation_superseded`, `confirmation_pending` (odrzucona operacja DESTRUCTIVE, gdy podgląd oczekującej jest otwarty). Nowe w C8: `event: "authenticator"` (wymaga `outcome` i `reason`),
+   - Nowe w C10: `confirmation_superseded`, `confirmation_cancelled` (właściciel anulował oczekującą operację, CC-128), `confirmation_blocked` (odrzucona operacja DESTRUCTIVE, gdy podgląd oczekującej jest otwarty; blokada do `max(wygaśnięcie, podgląd + 90 s)`). Nowe w C8: `event: "authenticator"` (wymaga `outcome` i `reason`),
      powody `pending_exists`, `user_confirmed_no_preview`, `attempts_exhausted`, `authenticator_not_registered`,
      `authenticator_disabled`, `superseded`, `totp_*`.
    - Nowe w C4: grupa `/v1/authenticator` (status, usunięcie, `enrollment`, `enrollment/confirm`, `verify`) i
@@ -32,7 +32,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
      C12: `/api/v1/authenticator` (GET, DELETE) i `/enrollment`, `/enrollment/confirm`. Ziarno TOTP wychodzi tylko w `201`
      rejestracji (wyjątek w niezmienniku 4). `GET /api/v1/confirmations/{id}`: bez step-up, `ConfirmationView.resource`
      (CC-098); `401` to zwykłe `Unauthenticated`; unieważnione i wygasłe wywołanie to `404`.
-   - Atomowość (normatywna): liczniki 5/15 min i 20/24 h w brokerze, rezerwacja próby w gateway'u przed pytaniem brokera i jedna oczekująca DESTRUCTIVE to kroki atomowe na użytkownika; ślad po unieważnionym wywołaniu nie jest oczekującym (ponowne wywołanie tworzy nowe); po otwarciu podglądu pierwsza operacja DESTRUCTIVE wygrywa, inna dostaje `confirmation_pending` z `retryAfterSeconds` (CC-127); ziarno TOTP tylko w Transit pod `mcp/authenticators/<sha256(sub)>`. Wektory współbieżności `totp/concurrent-*`, `confirmation-binding/*-parallel-*`.
+   - Atomowość (normatywna): liczniki 5/15 min i 20/24 h w brokerze, rezerwacja próby w gateway'u przed pytaniem brokera i jedna oczekująca DESTRUCTIVE to kroki atomowe na użytkownika; ślad po unieważnionym wywołaniu nie jest oczekującym (ponowne wywołanie tworzy nowe); po otwarciu podglądu pierwsza operacja DESTRUCTIVE wygrywa, inna dostaje `confirmation_blocked` z `retryAfterSeconds` (CC-127); ziarno TOTP tylko w Transit pod `mcp/authenticators/<sha256(sub)>`. Wektory współbieżności `totp/concurrent-*`, `confirmation-binding/*-parallel-*`.
    - `test-vectors/confirmation-binding/` przepisane (usunięte `issued.code`, nowy format `first-call`/`retry`);
      nowe `test-vectors/totp/`; wektor `tool-errors/confirmation-declined` zastąpiony negatywnym.
    - Reguła `destructive-requires-fresh-mfa` zostaje w `cedar/examples/`, ale nie wchodzi do paczki produkcyjnej.
@@ -57,16 +57,18 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - `$defs` używane przez serwery wymienione jako stabilne API (CC-079), test pilnuje listy.
 - `ConfirmationView.resource`, `AuthenticatorStatus.disabledAt`/`disabledReason`, wektory JWT dla wywołań
   `authenticator` brokera (z `tool`), przykłady `disabled` w C4 i C12.
-- CC-095: `GET /admin/v1/activity/calls` (C5) i `GET /api/v1/activity/calls` (C12), `ActivityCall` (jedno wywołanie = jeden wiersz, wynik końcowy, `wrongCodeCount`, filtry `from`, `to`, `result`, `q`, kursor `X-Next-Cursor`); wektory `activity-calls/` (24). Stary `/activity` bez zmian.
+- CC-095: `GET /admin/v1/activity/calls` (C5) i `GET /api/v1/activity/calls` (C12), `ActivityCall` (jedno wywołanie = jeden wiersz, wynik końcowy, `wrongCodeCount`, filtry `from`, `to`, `result`, `q`, kursor `X-Next-Cursor`); wektory `activity-calls/` (33). Stary `/activity` bez zmian.
 - Nie wchodzą do 3.0.0: CC-097 (przyjęte, kamień M4), CC-096, CC-113, CC-114.
 
 ### Migracja
 
 **gateway (ws-05)**
+- Rezerwacja próby przed pytaniem brokera i zwrot rezerwacji, compare-and-delete przy `ok`, atomowe "utwórz i unieważnij" per użytkownik, ślad unieważnionego wywołania nie jest oczekującym, blokada `confirmation_blocked` po zapisanym podglądzie do `max(wygaśnięcie, podgląd + 90 s)` (także po wyczerpaniu prób i wygaśnięciu), reason `pending_exists`; kursor `/activity/calls` uwierzytelniony (HMAC związany z `sub`, zmieniony -> 400), agregacja z bieżącym czasem.
+- `POST /admin/v1/confirmations/{id}/viewed` i `.../cancel` (anulowanie atomowo z weryfikacją kodu, ślad do końca TTL, `confirmation_cancelled`, audyt `cancelled_by_owner`); `GET` podglądu bez skutków ubocznych.
 - Zaimplementować `listActivityCalls` (agregacja wywołania i ponowień, licznik błędnych kodów, filtry, kursor, `sub` z tokenu BFF); wektory `activity-calls/`.
 - Usunąć ścieżkę decyzji (`decideConfirmation`) i wydawanie kodu. Wdrożyć oczekujące wywołanie: klucz (`sub`, `serverId`,
   `tool`, SHA-256 argumentów bez `confirmation_code`), TTL 120 s, 3 próby, jednorazowość; `description` liczony z
-  argumentów otrzymanych przez gateway; `previewViewedAt` jako skutek `GET` podglądu.
+  argumentów otrzymanych przez gateway; `previewViewedAt` zapisywany jawnym wywołaniem `markConfirmationViewed` (nie skutkiem `GET`).
 - Wołać brokera: `GET /v1/authenticator` (pierwsze wywołanie), `POST /v1/authenticator/verify` (ponowienie), oba z JWT
   użytkownika z `tool`; mapować wynik według README "Potwierdzenia kodem TOTP" (`ok`, `invalid`/`replayed`, `locked`,
   `disabled`, `not_registered`, błąd = `upstream_unavailable`). Jedna oczekująca operacja `DESTRUCTIVE` na użytkownika,
@@ -79,8 +81,9 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - Higiena tekstu argumentów i `returnPath` bez zarezerwowanych prefiksów (po stronie gateway'a przy walidacji linków).
 
 **broker (ws-06)**
+- Ziarno TOTP (aktywne i w toku) tylko w Transit pod `mcp/authenticators/<sha256(sub)>`, rekord z `sub`, ziarno w toku usuwane po aktywacji, TTL i trzecim błędzie, baza tylko metadane; liczniki 5/15 min i 20/24 h oraz blokada jako krok atomowy na `sub` (test: 50 równoległych błędów -> 5 sprawdzeń).
 - Zaimplementować `/v1/authenticator*` i reset (RFC 6238, SHA-1, 6 cyfr, 30 s, okno +-1, jednorazowość kroku warunkowym
-  zapisem, ziarno w `SecretStore`, metadane w bazie). Limity: 5 błędów / 15 min -> blokada 15 min (własność użytkownika,
+  zapisem, ziarno tylko w Transit, patrz niżej, metadane w bazie). Limity: 5 błędów / 15 min -> blokada 15 min (własność użytkownika,
   przeżywa usunięcie, zdejmuje ją tylko czas), 20 błędów / 24 h -> `state: disabled`, enrollment 10 min i 3 błędne kody.
   `enrollment` dozwolone ze stanu `disabled`, aktywacja zeruje licznik dzienny. `purge` usuwa też rejestrację.
 - Wykonać `test-vectors/totp/` (format kroków w `scripts/lib/totp.mjs`). Ziarna, kodu ani `otpauthUri` nie logować.
@@ -89,6 +92,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
   `oauth/start` bez zarezerwowanych prefiksów.
 
 **BFF (ws-07)**
+- `POST /api/v1/confirmations/{id}/viewed` i `/cancel` (CSRF, cancel bez MFA; viewed bez przekazywania żądań `Sec-Purpose: prefetch`); kursor `X-Next-Cursor` przekazywany bez zmian.
 - Proxy `GET /api/v1/activity/calls` z nagłówkiem `X-Next-Cursor`.
 - Usunąć `decideMyConfirmation`; `getMyConfirmation` z samą sesją, `resource` w odpowiedzi.
 - Dodać proxy `/api/v1/authenticator` (GET, DELETE), `/enrollment` (POST), `/enrollment/confirm`: step-up MFA Entra przy
@@ -98,6 +102,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
 - `ConnectErrorCode` bez `identity_mismatch`; zdarzenie `authenticator` (`authenticator_removed`, rejestracja).
 
 **web (ws-08)**
+- Przycisk "Anuluj" w podglądzie (`cancel`, bez MFA) i etykieta "Anulowane". Podgląd wywołuje `viewed` raz, po wyrenderowaniu i gdy `document.prerendering` jest false i `document.visibilityState` to `visible`; odpytuje podgląd (np. co 5 s i po powrocie na kartę) i po `404` pokazuje "link nieaktualny"; etykieta `blocked_by_pending`; przy `confirmation_blocked` (po stronie klienta MCP) nie prosić o kod.
 - Ekran logów na `listMyActivityCalls`: filtry, etykiety `result`, szczegół z liczbą błędnych kodów, nieznana wartość jako etykieta ogólna.
 - Klient i mock MSW z 3.0.0: usunąć wywołania `POST /api/v1/confirmations/{id}` i ekran decyzji; podgląd tylko do
   odczytu z `resource`; stany "Czas minął" i "Ten link jest nieaktualny" (także dla unieważnionego).
@@ -120,6 +125,7 @@ mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma w
   zmian, paczki 2.x działają. Zależność `mcp-contracts` 3.0.0 w testach decyzji.
 
 **e2e (ws-10) i środowisko (ws-01)**
+- Dodatkowo: 50 równoległych błędów -> 5 wywołań `verify`, N równoległych ponowień -> najwyżej `attemptsLeft` pytań do brokera, wyścig podglądu z drugą operacją, obejścia blokady po wyczerpaniu prób i po TTL A, brak ziarna w Redis i w bazie brokera.
 - Testy: powtórzenie kodu (`replayed`), blokada 5/15 min i brak odblokowania, 20 błędów na dobę -> `disabled` i ponowna
   rejestracja, druga operacja `DESTRUCTIVE` unieważnia pierwszą, brak rejestracji (`registerUrl`), podgląd opcjonalny, brak
   ziarna i kodu w logach i audycie (jeden `requestId` w BFF, brokerze i gateway'u), rejestracja bez świeżego MFA odrzucona,

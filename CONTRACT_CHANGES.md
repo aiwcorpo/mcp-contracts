@@ -1085,7 +1085,8 @@ opisuje CC-091.
 | CC-124 | 503 `upstream_unavailable` przy niedostępnym JWKS (C1) | gateway, propozycja 9 | 3.0.0 | zmiana zachowania |
 | CC-125 | Audyt odrzuceń mTLS i tokenów BFF na porcie C5; `replay_store_unavailable` tylko u odbiorców JWT | gateway, propozycja 8 | 3.0.0 | major (zaostrzenie) |
 | CC-126 | Dzienny limit błędnych kodów TOTP: stan `disabled` | przegląd bezpieczeństwa | 3.0.0 | major (nowa wartość enum) |
-| CC-127 | Jedna oczekująca operacja DESTRUCTIVE, `confirmation_superseded` | przegląd bezpieczeństwa | 3.0.0 | major (nowa wartość enum) |
+| CC-127 | Jedna oczekująca operacja DESTRUCTIVE, `confirmation_superseded`, `confirmation_blocked` | przegląd bezpieczeństwa | 3.0.0 | major (nowa wartość enum) |
+| CC-128 | Anulowanie oczekującej operacji przez właściciela, `confirmation_cancelled` | N-M1 przeglądu delty | 3.0.0 | major (nowa wartość enum) |
 
 Podział wydań (rekomendacja ws-00): **2.2.0** dla M2 = CC-080 ... CC-090 (CC-085 z udokumentowanym wyjątkiem, jak
 w 2.1.0), bo ws-08 startuje na MSW od 2.2.0; **3.0.0** przed startem M3 = pakiet pivotu CC-091 ... CC-094 razem z
@@ -1593,7 +1594,7 @@ G-15, G-16, G-18, G-22.
      Authenticator i ponów wywołanie z `confirmation_code`").
   5. **Podgląd (opcjonalny):** człowiek otwiera `previewUrl`. Portal pokazuje system, narzędzie i argumenty z
      gateway'a (`GET /api/v1/confirmations/{id}`): tylko odczyt, tylko właściciel, sesja bez świeżego MFA,
-     `Cache-Control: no-store`, bez przycisków decyzji. Gateway zapisuje `previewViewedAt` (skutek uboczny `GET`
+     `Cache-Control: no-store`, bez przycisków decyzji. Gateway zapisuje `previewViewedAt` (w 3.0.0 jawnym wywołaniem `viewed`, nie skutkiem `GET`; patrz CC-127
      opisany w kontrakcie).
   6. Człowiek wpisuje bieżący kod z aplikacji w kliencie; agent ponawia wywołanie z tymi samymi argumentami i
      `confirmation_code` (kształt jak dotąd: 6 cyfr, pole dokładane do `inputSchema` w `tools/list` poza
@@ -2139,7 +2140,7 @@ G-15, G-16, G-18, G-22.
   rejestracji i usunięciu: świadome założenie, broker nie sprawdza `auth_time`/`acr` sam (możliwa druga kontrola, jeśli
   IdP przeniesie claimy przez token exchange; nie wprowadzona); (4) aktywacja nowej rejestracji zeruje liczniki i stan
   `disabled`, nie zeruje blokady użytkownika (decyzja człowieka 2026-10-28, `activate` w `scripts/lib/totp.mjs`).
- (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-093 | C12 | BFF: rejestracja Authenticatora ze step-up MFA Entra
 
@@ -2265,6 +2266,7 @@ G-15, G-16, G-18, G-22.
 | Wygasło | `expired` | `confirmation` |
 | Błędny kod | `confirmation_failed` | `confirmation` |
 | Zastąpione nowszą operacją (CC-127) | `superseded` | `confirmation` |
+| Anulowane (CC-128) | `cancelled` | `confirmation` |
 | Odrzucone, bo oczekuje inna operacja z otwartym podglądem (CC-127) | `blocked_by_pending` | `confirmation` |
 | Błąd | `error` (z `errorCode`) | `error` |
 
@@ -2273,8 +2275,15 @@ G-15, G-16, G-18, G-22.
   nieznaną wartość jako etykietę ogólną). Reguły wyniku końcowego wywołania z potwierdzeniem: wykonane po poprawnym
   kodzie to `confirmed` (nie `ok`; `wrongCodeCount` mówi, ile błędnych kodów było wcześniej); trzy błędne kody to
   `confirmation_failed`; brak poprawnego kodu przez 120 s to `expired`; unieważnienie przez nowszą operację to
-  `superseded`; do rozstrzygnięcia to `confirmation_pending`. `wrongCodeCount` liczy kody `invalid` i `replayed`
-  tego wywołania (0..3), nie liczy odpowiedzi `locked`.
+  `superseded`; do rozstrzygnięcia to `confirmation_pending`. `wrongCodeCount` liczy odpowiedzi brokera `invalid` i `replayed`
+  tego wywołania (0..3); nie liczy `locked`, ponowienia po upływie TTL (`confirmation_expired`), ponowień po wyczerpaniu prób
+  ani wywołania odrzuconego jako `blocked_by_pending` (tam pola nie ma). Agregacja dostaje bieżący czas: wywołanie bez
+  ponowienia, starsze niż 120 s, to `expired` (gateway nie emituje zdarzenia przy upływie TTL); zdarzenia po pierwszym
+  końcowym (np. dalsze ponowienia po `attempts_exhausted`) nie zmieniają wiersza.
+  Kursor `X-Next-Cursor` jest nieprzezroczysty, niesie tylko pozycję i jest uwierzytelniony przez gateway (np. HMAC
+  związany z `sub`); zmieniony, cudzy lub przeterminowany kursor to `400`, a `sub`, filtry i okno 30 dni zawsze pochodzą z
+  bieżącego żądania. Widok to tylko własne wywołania, także dla administratora (widoku cudzych wywołań w 3.0.0 nie ma).
+  `resource` w wierszu ma te same ograniczenia co C8 (bez znaków sterujących i bidi w `id`).
 - **Zmiany plików:** `openapi/portal-bff.v1.yaml` i `openapi/gateway-admin.v1.yaml`:
 
 ```yaml
@@ -2389,7 +2398,7 @@ G-15, G-16, G-18, G-22.
           description: |
             Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
-            expired, confirmation_failed, superseded, blocked_by_pending. A client must show an unknown value as a generic label.
+            expired, confirmation_failed, superseded, blocked_by_pending, cancelled. A client must show an unknown value as a generic label.
         wrongCodeCount:
           description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
           type: integer
@@ -2433,7 +2442,7 @@ G-15, G-16, G-18, G-22.
      `denied`, `error`, `confirmation`.
   5. `q` dopasowuje tylko nazwę narzędzia i `resource.id`; stary `GET /api/v1/activity` zostaje.
   6. Dodana wartość `superseded` wynika z CC-127 (jedna oczekująca operacja DESTRUCTIVE).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; tekst przyjęty). Wdrożone w 3.0.0 (wersja robocza): `listActivityCalls` (C5) i `listMyActivityCalls` (C12), schemat `ActivityCall` w C5 (C12 odwołuje się do niego), 24 wektory `activity-calls/` (w tym agregacja zdarzeń jednego wywołania, `scripts/lib/activity-calls.mjs`), mocki WireMock i MSW.
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; tekst przyjęty). Wdrożone w 3.0.0 (wersja robocza): `listActivityCalls` (C5) i `listMyActivityCalls` (C12), schemat `ActivityCall` w C5 (C12 odwołuje się do niego), 33 wektorów `activity-calls/` (w tym agregacja zdarzeń jednego wywołania, `scripts/lib/activity-calls.mjs`), mocki WireMock i MSW.
 
 ## CC-096 | C12 | Odpowiedzi błędów wniosków o dostęp
 
@@ -2846,7 +2855,7 @@ G-15, G-16, G-18, G-22.
 - **Kolejność decyzji (przegląd 3.0.0, L2):** najpierw kontrole niezależne od kluczy (brak tokenu, format, `alg`), więc
   `missing_token`, `malformed`, `alg_not_allowed` to zawsze 401, także przy awarii IdP; potem wybór klucza. Nieznany `kid`
   wyzwala najwyżej jedno pobranie na minimalny odstęp: po udanym pobraniu w tym odstępie 401 `unknown_kid` bez ponownego
-  pobrania, po nieudanym 503. Wektory decyzji `gateway-authentication-decision/` (13), referencja `keyDecision`.
+  pobrania, po nieudanym 503. Wektory decyzji `gateway-authentication-decision/` (12), referencja `keyDecision`.
 - **Pliki:** `README.md` (sekcja "Odpowiedzi gateway'a na odrzucone i niedostępne uwierzytelnienie"),
   `scripts/lib/gateway-authentication.mjs` (referencja), wektory `test-vectors/gateway-authentication/` (13: 10 powodów
   401, trasa `/v/`, 503 z `Retry-After` 10 i 30), test sprawdza ciało względem `tool-error.schema.json`, brak
@@ -2957,17 +2966,28 @@ G-15, G-16, G-18, G-22.
     rezydualne przyjęte, opisane w README, "Potwierdzenia kodem TOTP", pkt 7).
 - **ZMIANA po decyzji człowieka 2026-10-28 (przegląd M1): "pierwsza wygrywa po otwarciu podglądu".** Jeśli właściciel
   otworzył podgląd oczekującej operacji `DESTRUCTIVE` A (`previewViewedAt` ustawione), nowa, inna operacja `DESTRUCTIVE` B
-  **nie** unieważnia A: B dostaje błąd C10 `confirmation_pending` (nowy kod: `{error, message, retryAfterSeconds}`, bez
-  `confirmationId`; `retryAfterSeconds` = czas do wygaśnięcia A) do czasu potwierdzenia, wygaśnięcia albo wyczerpania prób
-  A; nic nie powstaje i nic nie jest unieważniane. Bez otwartego podglądu działa jak wyżej (nowa unieważnia starą). To samo
-  wywołanie co A zwraca rekord A. Zapis `previewViewedAt` (skutek `GET` podglądu) i sprawdzenie go przy B są atomowe
-  względem siebie (jedna operacja na użytkownika, jak w H1); wyścig "podgląd kontra B" kończy się albo odrzuceniem B (podgląd
-  pierwszy), albo unieważnieniem A i `404` podglądu (B pierwsze). Dotyczy tylko `DESTRUCTIVE`. Audyt: `event: confirmation`
-  dla B z `decision: deny`, `reason: pending_exists`, `errorCode: confirmation_pending`. W `/activity/calls` wynik
-  `blocked_by_pending` (grupa `confirmation`). Wektory: `confirmation-binding/first-call-preview-viewed-*`,
-  `first-calls-race-*`, `tool-errors/confirmation-pending*`, `audit-events/gateway-confirmation-pending-exists`,
-  `activity-calls/*blocked-by-pending`. Nazwa kodu: `confirmation_pending` (propozycja koordynatora; w audycie
-  `confirmation_pending` jest też wartością pola `decision`, to inne pole).
+  **nie** unieważnia A: B dostaje błąd C10 **`confirmation_blocked`** (nowy kod, wybór koordynatora: nie koliduje z
+  `decision`/`result` `confirmation_pending`; `{error, message, retryAfterSeconds}`, bez `confirmationId`, `message` mówi
+  klientowi, że ma NIE prosić użytkownika o kod dla tego wywołania). Blokada trwa **do potwierdzenia A albo do
+  `max(A.expiresAt, previewViewedAt + 90 s)`**, niezależnie od wyczerpania prób A i jego wygaśnięcia (przegląd delty, N-H1:
+  inaczej agent obchodził zasadę, wyczerpując próby A trzema błędnymi kodami albo czekając do końca TTL, i potwierdzał B
+  kodem wpisanym dla A; 90 s to najdłuższa ważność kodu przy kroku 30 s i oknie +-1). Wyczerpany lub wygasły A z
+  `previewViewedAt` zostaje jako ślad blokujący; potwierdzony A blokady nie daje. `retryAfterSeconds` = czas do końca
+  blokady. Ta sama operacja co A nie jest "inna": dostaje rekord A, a po jego wyczerpaniu nowe oczekujące wywołanie. Bez
+  zapisanego podglądu działa jak wyżej (nowa unieważnia starą). Dotyczy tylko `DESTRUCTIVE`.
+  **`previewViewedAt` ustawia jawne wywołanie** z wyrenderowanej, widocznej strony (C12 `POST
+  /api/v1/confirmations/{id}/viewed` z XSRF, SPA po załadowaniu i przy `document.visibilityState = visible`, nie w
+  prerenderze; C5 `markConfirmationViewed`), **nie sam GET** (prerender lub prefetch nie może zablokować operacji;
+  przegląd delty, N-L5); `GET` podglądu nie ma skutków ubocznych. Zapis widoku i sprawdzenie go przy B są atomowe względem
+  siebie (jedna operacja na użytkownika, jak w H1): wyścig kończy się odrzuceniem B (widok pierwszy) albo unieważnieniem
+  A i `404` na wywołanie widoku (B pierwsze). Audyt: `event: confirmation` dla B z `decision: deny`, `reason:
+  pending_exists`, `errorCode: confirmation_blocked`. W `/activity/calls` wynik `blocked_by_pending` (grupa
+  `confirmation`; `result` liczy się z `reason`, nigdy z `errorCode`, bo `confirmation_pending` jako `decision` znaczy
+  "czeka"). Wektory: `confirmation-binding/first-call-preview-viewed-*` (w tym `exhausted-still-blocks`,
+  `late-expired-still-blocks`, `block-ends-after-code-validity`, `confirmed-does-not-block`), `first-calls-race-*`,
+  `tool-errors/confirmation-blocked*`, `audit-events/gateway-confirmation-pending-exists`, `activity-calls/*blocked-by-pending`.
+- **N-M1 rozstrzygnięte decyzją człowieka 2026-10-28:** obejrzaną i niechcianą operację A właściciel może anulować w
+  podglądzie (CC-128), co zdejmuje blokadę.
 - **Limit 3 oczekujących potwierdzeń o ryzyku innym niż DESTRUCTIVE: potwierdzone przez człowieka 2026-10-28.**
 - **Uczciwy opis ograniczeń (przegląd 3.0.0, M1):** unieważnienie następuje przed wpisaniem kodu i zostawia ślad w
   audycie, ale użytkownik nie dostaje sygnału: strona podglądu pokazuje stan z chwili otwarcia i się nie odświeża (frontend
@@ -2990,4 +3010,35 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** nowa wartość enum (`ErrorCode`), major; wchodzi do 3.0.0.
 - **Wpływ:** ws-05 (jedna oczekująca DESTRUCTIVE, ślad do końca TTL, mapowanie), ws-08 (stan podglądu "nieaktualny"),
   ws-10 (test: druga operacja unieważnia pierwszą), klienty (obsługa `confirmation_superseded`: wywołać operację od nowa).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-128 | C5/C12/C10/C8 | Anulowanie oczekującej operacji przez właściciela
+
+- **Zgłasza:** przegląd delty 3.0.0 (N-M1); decyzja człowieka 2026-10-28
+- **Kamień:** wydanie 3.0.0 (część pivotu, uzupełnia CC-127)
+- **Problem:** po CC-127 obejrzana, a potem niechciana operacja A blokuje inną operację B do końca blokady, a człowiek nie ma jak
+  jej odrzucić (odmowa to niewpisanie kodu).
+- **Zmiana:** właściciel może anulować oczekującą operację z podglądu:
+  - C12 `POST /api/v1/confirmations/{id}/cancel` (`cancelMyConfirmation`: sesja i XSRF, **bez MFA**, bo niczego nie
+    zatwierdza) -> C5 `POST /admin/v1/confirmations/{confirmationId}/cancel` (`cancelConfirmation`), `204`; idempotentne,
+    dopóki żyje ślad (drugie anulowanie to `204`); `404 not_found_or_denied` dla cudzego, nieistniejącego, wygasłego,
+    unieważnionego i już wykonanego;
+  - skutek: oczekujące wywołanie usunięte compare-and-delete **uporządkowanym z weryfikacją kodu na tym samym rekordzie**
+    (kod sprawdzany równolegle z anulowaniem nie wykonuje wywołania: odpowiedź `confirmation_cancelled`; krok TOTP w brokerze
+    jest zużyty, co jest akceptowalne), blokada "pierwsza wygrywa" zdjęta, ślad po anulowanym wywołaniu do końca jego TTL
+    (potem `confirmation_failed`), ponowne wywołanie tej samej operacji tworzy nowe oczekujące;
+  - C10: nowy kod **`confirmation_cancelled`** (`{error, message}`) dla ponowienia anulowanego wywołania, bez pytania
+    brokera i bez zużycia próby;
+  - C8: `event: confirmation`, `decision: deny`, `reason: cancelled_by_owner`, `errorCode: confirmation_cancelled`
+    (przy przyjęciu anulowania i przy ponowieniu); `/activity/calls`: wynik `cancelled` (etykieta "Anulowane", grupa
+    `confirmation`).
+  - To **nie** przywraca `confirmation_declined`: w portalu nie ma decyzji pozytywnej, potwierdzenie nadal tylko kodem TOTP.
+- **Pliki:** `gateway-admin.v1.yaml` (`cancelConfirmation`), `portal-bff.v1.yaml` (`cancelMyConfirmation`),
+  `tool-error.schema.json`, `common.schema.json` (`ErrorCode`), `audit-event.schema.json` (opis `reason`), przykłady i mocki
+  (WireMock, MSW), wektory `confirmation-binding/` (`retry-cancelled*`, `first-call-cancelled-*`,
+  `first-calls-race-view-cancel-*`, `retries-parallel-cancel-*`, `retries-parallel-code-typed-after-cancel-*`),
+  `tool-errors/confirmation-cancelled*`, `audit-events/gateway-confirmation-cancelled-by-owner`, `activity-calls/*cancelled*`.
+- **SemVer:** nowa wartość enum (`ErrorCode`) i nowe endpointy: major (3.0.0).
+- **Wpływ:** ws-05 (anulowanie atomowo z weryfikacją, ślad, audyt), ws-07 (proxy), ws-08 (przycisk "Anuluj" w podglądzie, etykieta
+  "Anulowane"), ws-10 (test wyścigu anulowania z kodem), klienty MCP (obsługa `confirmation_cancelled`).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)

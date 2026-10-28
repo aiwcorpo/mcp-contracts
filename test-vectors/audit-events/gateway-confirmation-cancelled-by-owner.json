@@ -1,0 +1,21 @@
+{
+  "description": "The owner cancelled the pending call in the portal (CC-128).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "confirmation",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "server": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "decision": "deny",
+    "reason": "cancelled_by_owner",
+    "outcome": "denied",
+    "errorCode": "confirmation_cancelled"
+  }
+}

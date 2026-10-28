@@ -1,0 +1,43 @@
+{
+  "description": "Cancel after the call was executed: the pending call is gone, 404 not_found_or_denied.",
+  "kind": "retries-parallel",
+  "pending": {
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+    "createdAt": "2026-10-26T20:00:00Z",
+    "attemptsLeft": 3,
+    "previewViewedAt": "2026-10-26T20:00:10Z"
+  },
+  "at": "2026-10-26T20:01:00Z",
+  "attempts": [
+    {
+      "attempt": {
+        "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+        "serverId": "mcp-jira",
+        "tool": "delete_issue",
+        "arguments": {
+          "issueKey": "ABC-123",
+          "confirmation_code": "705202"
+        }
+      },
+      "verification": {
+        "result": "ok"
+      }
+    },
+    {
+      "cancel": true
+    }
+  ],
+  "expected": {
+    "outcomes": [
+      "execute",
+      "not_found"
+    ],
+    "brokerCalls": 1,
+    "attemptsLeft": null
+  }
+}

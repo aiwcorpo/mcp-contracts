@@ -486,7 +486,11 @@ audit('gateway-confirmation-superseded', 'The pending DESTRUCTIVE call was repla
 }, true);
 audit('gateway-confirmation-pending-exists', 'A new DESTRUCTIVE call was refused because the preview of the pending one is open (CC-127).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
-  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_pending',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_blocked',
+}, true);
+audit('gateway-confirmation-cancelled-by-owner', 'The owner cancelled the pending call in the portal (CC-128).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'cancelled_by_owner', outcome: 'denied', errorCode: 'confirmation_cancelled',
 }, true);
 audit('gateway-confirmation-authenticator-disabled', 'The code could not be used because the authenticator is disabled; the user is sent to register again (CC-126).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
@@ -736,7 +740,7 @@ const argsHash = (args) => {
 const PENDING_ARGS = { issueKey: 'ABC-123' };
 const pendingCall = (extra = {}) => ({
   confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', argsSha256: argsHash(PENDING_ARGS),
-  createdAt: '2026-10-26T20:00:00Z', attemptsLeft: 3, previewViewed: true, ...extra,
+  createdAt: '2026-10-26T20:00:00Z', attemptsLeft: 3, previewViewedAt: '2026-10-26T20:00:10Z', ...extra,
 });
 // Vectors of the retry with confirmation_code. `verification` is the answer of the broker (C4 verifyAuthenticatorCode),
 // an input here: whether the code is a valid TOTP is specified by test-vectors/totp/.
@@ -751,7 +755,7 @@ const unbound = { outcome: 'confirmation_failed', verifyCalled: false };
 retryVector('retry-valid-code', 'Same arguments plus confirmation_code and the broker accepts the code: the call runs, the pending call is spent.', {},
   { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed' });
 retryVector('retry-valid-code-preview-not-viewed', 'The code is accepted although the owner never opened the preview: allowed (the preview is optional), audited as user_confirmed_no_preview.',
-  { pending: pendingCall({ previewViewed: false }) },
+  { pending: pendingCall({ previewViewedAt: undefined }) },
   { outcome: 'execute', verifyCalled: true, pendingConsumed: true, attemptsLeft: 3, auditReason: 'user_confirmed_no_preview' });
 retryVector('retry-key-order-irrelevant', 'Arguments are hashed in RFC 8785 canonical form, so key order does not matter.',
   { pending: pendingCall({ tool: 'update_issue', argsSha256: argsHash({ issueKey: 'ABC-123', summary: 'x' }) }),
@@ -867,7 +871,7 @@ const gw = (n, ts, e) => ({ ts, requestId: RID(n), component: 'gateway', compone
 const callRes = { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::ABC' };
 const deleteBase = { server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', resource: callRes };
 const callRow = { ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__delete_issue', risk: 'DESTRUCTIVE', resource: callRes };
-const aggregation = (name, description, events, expected) => write('activity-calls', `aggregation-${name}.json`, { description, events, expected });
+const aggregation = (name, description, events, expected, now = '2026-10-26T20:00:30.000Z') => write('activity-calls', `aggregation-${name}.json`, { description, now, events, expected });
 const activityRow = (name, description, value, valid) => write('activity-calls', `${valid ? 'valid' : 'invalid'}-${name}.json`, { description, value, expected: { valid } });
 
 aggregation('ok', 'A read call without confirmation: one tool_call event, result ok.',
@@ -897,14 +901,35 @@ aggregation('pending', 'Waiting for a code: confirmation_pending.', [
 aggregation('expired', 'No valid code within 120 s: expired.', [
   gw(13, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(14, '2026-10-26T20:03:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'confirmation_expired', outcome: 'denied', errorCode: 'confirmation_failed' }),
-], { ...callRow, requestId: RID(13), result: 'expired', wrongCodeCount: 1, errorCode: 'confirmation_failed' });
+], { ...callRow, requestId: RID(13), result: 'expired', wrongCodeCount: 0, errorCode: 'confirmation_failed' }, '2026-10-26T20:03:30.000Z');
+aggregation('pending-past-ttl', 'No retry and the 120 s ran out: the gateway emits no event, so the aggregation (given the current time) says expired, not "waiting" forever.', [
+  gw(21, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+], { ...callRow, requestId: RID(21), result: 'expired', wrongCodeCount: 0, errorCode: null }, '2026-10-26T20:05:00.000Z');
+aggregation('retry-after-exhausted', 'Retries after the three wrong codes (attempts_exhausted) are not wrong codes and do not change the row.', [
+  gw(22, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(23, '2026-10-26T20:00:10.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(24, '2026-10-26T20:00:20.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(25, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'attempts_exhausted', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(26, '2026-10-26T20:00:40.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'attempts_exhausted', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(22), result: 'confirmation_failed', wrongCodeCount: 3, errorCode: 'confirmation_failed' });
+aggregation('late-retry-is-not-a-wrong-code', 'A retry after the TTL (reason confirmation_expired) ends the call as expired and is not counted as a wrong code; the earlier wrong code is.', [
+  gw(27, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(28, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(29, '2026-10-26T20:02:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'confirmation_expired', outcome: 'denied', errorCode: 'confirmation_failed' }),
+], { ...callRow, requestId: RID(27), result: 'expired', wrongCodeCount: 1, errorCode: 'confirmation_failed' }, '2026-10-26T20:03:00.000Z');
 aggregation('superseded', 'Replaced by a newer DESTRUCTIVE operation (CC-127).', [
   gw(15, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(16, '2026-10-26T20:00:40.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'superseded', outcome: 'denied', errorCode: 'confirmation_superseded' }),
 ], { ...callRow, requestId: RID(15), result: 'superseded', wrongCodeCount: 0, errorCode: 'confirmation_superseded' });
+aggregation('cancelled', 'The owner cancelled after one wrong code: result cancelled, wrongCodeCount 1; a later retry (also cancelled_by_owner) does not change the row.', [
+  gw(30, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
+  gw(31, '2026-10-26T20:00:10.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
+  gw(32, '2026-10-26T20:00:20.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'cancelled_by_owner', outcome: 'denied', errorCode: 'confirmation_cancelled' }),
+  gw(33, '2026-10-26T20:00:25.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'cancelled_by_owner', outcome: 'denied', errorCode: 'confirmation_cancelled' }),
+], { ...callRow, requestId: RID(30), result: 'cancelled', wrongCodeCount: 1, errorCode: 'confirmation_cancelled' });
 aggregation('blocked-by-pending', 'Refused because the preview of another pending DESTRUCTIVE call is open (CC-127): result blocked_by_pending.', [
-  gw(20, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_pending' }),
-], { ...callRow, ts: '2026-10-26T20:00:30.000Z', requestId: RID(20), result: 'blocked_by_pending', wrongCodeCount: 0, errorCode: 'confirmation_pending' });
+  gw(20, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_blocked' }),
+], { ...callRow, ts: '2026-10-26T20:00:30.000Z', requestId: RID(20), result: 'blocked_by_pending', errorCode: 'confirmation_blocked' });
 aggregation('denied-link-scope', 'Tool outside the link: denied_link_scope, no confirmation fields.', [
   gw(17, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-gitlab', tool: 'get_project', risk: 'READ_ONLY', virtualServer: 'team-a-dev', decision: 'deny', reason: 'link_scope', outcome: 'denied', errorCode: 'not_found_or_denied' }),
 ], { requestId: RID(17), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', virtualServer: 'team-a-dev', tool: 'gitlab__get_project', risk: 'READ_ONLY', result: 'denied_link_scope', errorCode: 'not_found_or_denied' });
@@ -921,7 +946,8 @@ activityRow('confirmed-with-wrong-codes', 'Confirmed after wrong codes.', { ...c
 activityRow('confirmation-pending', 'Waiting for a code.', { ...callRow, requestId: RID(3), result: 'confirmation_pending', wrongCodeCount: 0 }, true);
 activityRow('expired', 'Expired.', { ...callRow, requestId: RID(4), result: 'expired', errorCode: 'confirmation_failed' }, true);
 activityRow('superseded', 'Superseded (CC-127).', { ...callRow, requestId: RID(5), result: 'superseded', errorCode: 'confirmation_superseded' }, true);
-activityRow('blocked-by-pending', 'A refused DESTRUCTIVE call (CC-127).', { ...callRow, requestId: RID(6), result: 'blocked_by_pending', errorCode: 'confirmation_pending' }, true);
+activityRow('blocked-by-pending', 'A refused DESTRUCTIVE call (CC-127).', { ...callRow, requestId: RID(6), result: 'blocked_by_pending', errorCode: 'confirmation_blocked' }, true);
+activityRow('cancelled', 'Cancelled by the owner (CC-128).', { ...callRow, requestId: RID(7), result: 'cancelled', wrongCodeCount: 0, errorCode: 'confirmation_cancelled' }, true);
 activityRow('unknown-result', 'An unknown result value is allowed (open string); clients show a generic label.', { ...rowBase, result: 'quota_exceeded' }, true);
 activityRow('no-resource', 'A tool without a resource identifier has no resource.', rowBase, true);
 activityRow('result-uppercase', 'result is snake_case.', { ...rowBase, result: 'OK' }, false);
@@ -929,6 +955,8 @@ activityRow('contains-arguments', 'Arguments are never part of a row.', { ...row
 activityRow('contains-code', 'A confirmation code is never part of a row.', { ...rowBase, confirmation_code: '705202' }, false);
 activityRow('wrong-code-count-4', 'At most 3 attempts exist, so wrongCodeCount is at most 3.', { ...callRow, result: 'confirmation_failed', wrongCodeCount: 4 }, false);
 activityRow('resource-extra-field', 'resource has only type, id and parent.', { ...rowBase, resource: { ...callRes, name: 'x' } }, false);
+activityRow('resource-id-bidi', 'resource.id keeps the C8 limits: no bidirectional override (CC-031).', { ...rowBase, resource: { type: 'Jira::Issue', id: 'ABC-1\u202Ecod.exe' } }, false);
+activityRow('resource-id-control', 'resource.id keeps the C8 limits: no control character.', { ...rowBase, resource: { type: 'Jira::Issue', id: 'ABC-1\nX' } }, false);
 activityRow('confirmation-id', 'The internal confirmationId never leaves the gateway.', { ...rowBase, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
 activityRow('tool-not-qualified', 'tool is the qualified name <system>__<tool>.', { ...rowBase, tool: 'get_issue' }, false);
 
@@ -951,15 +979,15 @@ const parallelFirst = (name, description, { pendingCalls = [], calls, steps }, e
 });
 // First wins after the preview (CC-127): once the owner opened the preview of the pending DESTRUCTIVE call, a different
 // DESTRUCTIVE operation does not replace it.
-const viewedA = stored({ previewViewed: true });
-firstCallVector('first-call-preview-viewed-blocks-new-destructive', 'The owner opened the preview of A: a different DESTRUCTIVE operation B is refused with confirmation_pending until A ends; nothing is created, nothing is superseded.',
+const viewedA = stored({ previewViewedAt: '2026-10-26T20:00:10Z' });
+firstCallVector('first-call-preview-viewed-blocks-new-destructive', 'The owner opened the preview of A: a different DESTRUCTIVE operation B is refused with confirmation_blocked until the block ends; nothing is created, nothing is superseded.',
   { pendingCalls: [viewedA], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:30Z' },
-  { outcome: 'confirmation_pending', retryAfterSeconds: 90, pendingCreated: false });
+  { outcome: 'confirmation_blocked', retryAfterSeconds: 90, pendingCreated: false });
 firstCallVector('first-call-preview-viewed-same-operation-returns-record', 'The same operation as the viewed one is not "another": it gets the same record.',
   { pendingCalls: [viewedA], at: '2026-10-26T20:00:30Z' },
   { outcome: 'confirmation_required', register: false, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp', expiresAt: '2026-10-26T20:02:00Z', pendingCreated: false, supersededIds: [] });
 firstCallVector('first-call-preview-not-viewed-supersedes', 'Preview not opened: as before, the new operation supersedes the old one.',
-  { pendingCalls: [stored({ previewViewed: false })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:30Z' },
+  { pendingCalls: [stored()], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:30Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
 firstCallVector('first-call-preview-viewed-but-expired-does-not-block', 'A viewed pending call that has expired blocks nothing.',
   { pendingCalls: [viewedA], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:00Z' },
@@ -967,12 +995,47 @@ firstCallVector('first-call-preview-viewed-but-expired-does-not-block', 'A viewe
 firstCallVector('first-call-preview-viewed-other-risk-not-blocked', 'The rule concerns DESTRUCTIVE operations only: a confirmation of another risk is created.',
   { pendingCalls: [viewedA], call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-5', summary: 'z' } }, at: '2026-10-26T20:00:30Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-preview-viewed-exhausted-still-blocks', 'The attempts of the viewed A ran out (3 wrong codes): the block stays until max(expiry of A, view + 90 s), otherwise the code typed for A could confirm B (review 3.0.0, N-H1).',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'exhausted' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:40Z' },
+  { outcome: 'confirmation_blocked', retryAfterSeconds: 80, pendingCreated: false });
+firstCallVector('first-call-preview-viewed-late-expired-still-blocks', 'The preview was opened late (100 s into A): after A expires the block lasts until the view + 90 s, because a code typed then is still valid.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:01:40Z' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:02:01Z' },
+  { outcome: 'confirmation_blocked', retryAfterSeconds: 69, pendingCreated: false });
+firstCallVector('first-call-preview-viewed-block-ends-after-code-validity', 'One second after the block ended (view + 90 s) B is created.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:01:40Z' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:03:11Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:05:11Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-preview-viewed-confirmed-does-not-block', 'A was confirmed: the block ends with it.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'confirmed' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:40Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-preview-viewed-same-operation-after-exhaustion', 'The same operation A issued again after its attempts ran out is not "another" operation: a new pending call.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'exhausted' })], at: '2026-10-26T20:00:40Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
 parallelFirst('first-calls-race-preview-then-new-destructive', 'Race: the preview of A is opened, then B arrives. Checking the preview and creating B are one atomic operation, so B is refused and A stays.',
   { pendingCalls: [stored()], steps: [{ preview: 'cnf_4k9Qe2LxW7tB3mZp' }, { call: { arguments: { issueKey: 'ABC-999' } } }] },
-  { supersededIds: [[], []], outcomes: [null, 'confirmation_pending'], pendingIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
+  { supersededIds: [[], []], outcomes: [null, 'confirmation_blocked'], pendingIds: ['cnf_4k9Qe2LxW7tB3mZp'] });
 parallelFirst('first-calls-race-new-destructive-then-preview', 'Race: B arrives first and supersedes A, then the preview of A is requested: it is 404 ("link nieaktualny") and B is the only pending call.',
   { pendingCalls: [stored()], steps: [{ call: { arguments: { issueKey: 'ABC-999' } } }, { preview: 'cnf_4k9Qe2LxW7tB3mZp' }] },
   { supersededIds: [['cnf_4k9Qe2LxW7tB3mZp'], []], outcomes: ['confirmation_required', null], previews: [null, 404], pendingIds: ['new-0'] });
+
+// Cancel by the owner (CC-128): removes the pending call, ends the block, the retry gets confirmation_cancelled.
+retryVector('retry-cancelled', 'The owner cancelled the call in the portal: the retry gets confirmation_cancelled, the broker is not asked, no attempt or TOTP step is spent (CC-128).',
+  { pending: pendingCall({ cancelledAt: '2026-10-26T20:00:40Z' }) },
+  { outcome: 'confirmation_cancelled', verifyCalled: false, auditReason: 'cancelled_by_owner' });
+retryVector('retry-cancelled-after-ttl', 'After the original TTL the tombstone of a cancelled call is gone: plain confirmation_failed.',
+  { pending: pendingCall({ cancelledAt: '2026-10-26T20:00:40Z' }), attempt: { at: '2026-10-26T20:03:00Z' } },
+  { outcome: 'confirmation_failed', verifyCalled: false, auditReason: 'confirmation_expired' });
+firstCallVector('first-call-cancelled-ended-does-not-block', 'A was viewed and then cancelled by the owner: the block of "first wins after the preview" ends, B is created.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', ended: 'cancelled' })], call: { arguments: { issueKey: 'ABC-999' } }, at: '2026-10-26T20:00:40Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
+firstCallVector('first-call-same-operation-after-cancel-is-new-pending', 'The tombstone of a cancelled call is not a pending call: the same operation issued again creates a new one.',
+  { pendingCalls: [stored({ previewViewedAt: '2026-10-26T20:00:10Z', cancelledAt: '2026-10-26T20:00:30Z' })], at: '2026-10-26T20:00:40Z' },
+  { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:40Z', pendingCreated: true, supersededIds: [] });
+parallelFirst('first-calls-race-view-cancel-then-new-destructive', 'The preview is opened, the owner cancels, then B arrives: cancel ends the block, B is created; the cancelled call is gone (a second cancel is idempotent only while the tombstone lives, and B did not supersede it: it is already ended).',
+  { pendingCalls: [stored()], steps: [{ preview: 'cnf_4k9Qe2LxW7tB3mZp' }, { cancel: 'cnf_4k9Qe2LxW7tB3mZp' }, { call: { arguments: { issueKey: 'ABC-999' } } }] },
+  { supersededIds: [[], [], []], outcomes: [null, null, 'confirmation_required'], pendingIds: ['new-2'], cancels: [null, true, null] });
+parallelFirst('first-calls-race-cancel-foreign-or-unknown', 'Cancel of an unknown id is 404 not_found_or_denied and changes nothing.',
+  { pendingCalls: [stored()], steps: [{ cancel: 'cnf_unknown000000001' }] },
+  { supersededIds: [[]], outcomes: [null], pendingIds: ['cnf_4k9Qe2LxW7tB3mZp'], cancels: [404] });
 
 // Parallel requests (H1): the counters and the one-pending rule are atomic, so the outcome equals a sequential one.
 parallelFirst('first-calls-parallel-three-destructive', 'Three different DESTRUCTIVE operations arrive at the same time: creating a pending call and superseding the older one is one atomic step per user, so exactly one stays pending.',
@@ -986,6 +1049,21 @@ const parallelRetry = (name, description, { pending = pendingCall(), attempts },
   attempts: attempts.map((verification) => ({ attempt: { sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', arguments: { ...PENDING_ARGS, confirmation_code: '705202' } }, verification })),
   expected,
 });
+const parallelRetryItems = (name, description, { pending = pendingCall(), items }, expected) => write('confirmation-binding', `${name}.json`, {
+  description, kind: 'retries-parallel', pending, at: '2026-10-26T20:01:00Z',
+  attempts: items.map((i) => (i.cancel ? i : { attempt: { sub: SUB1, serverId: 'mcp-jira', tool: 'delete_issue', arguments: { ...PENDING_ARGS, confirmation_code: '705202' } }, ...i })),
+  expected,
+});
+parallelRetryItems('retries-parallel-cancel-wins-over-code-in-flight', 'The right code is being checked at the broker when the owner cancels: the cancel is a compare-and-delete on the same record, so the call is NOT executed and the answer is confirmation_cancelled (the TOTP step is spent, acceptable).',
+  { items: [{ verification: { result: 'ok' }, cancelDuringVerification: true }, { verification: { result: 'ok' } }] },
+  { outcomes: ['confirmation_cancelled', 'confirmation_cancelled'], brokerCalls: 1, attemptsLeft: null });
+parallelRetryItems('retries-parallel-code-typed-after-cancel-does-not-confirm', 'A code typed after the cancel does not confirm: confirmation_cancelled without a broker call; a second cancel is idempotent.',
+  { items: [{ cancel: true }, { verification: { result: 'ok' } }, { cancel: true }] },
+  { outcomes: ['cancelled', 'confirmation_cancelled', 'cancelled'], brokerCalls: 0, attemptsLeft: null });
+parallelRetryItems('retries-parallel-cancel-after-execute-is-404', 'Cancel after the call was executed: the pending call is gone, 404 not_found_or_denied.',
+  { items: [{ verification: { result: 'ok' } }, { cancel: true }] },
+  { outcomes: ['execute', 'not_found'], brokerCalls: 1, attemptsLeft: null });
+
 parallelRetry('retries-parallel-wrong-codes', 'Ten parallel retries with wrong codes: the attempt is reserved before the broker is asked, so the broker is called exactly 3 times and the other 7 are confirmation_failed without a call.',
   { attempts: Array.from({ length: 10 }, () => ({ result: 'invalid' })) },
   { outcomes: ['confirmation_failed', 'confirmation_failed', 'confirmation_failed', ...Array(7).fill('confirmation_failed')], brokerCalls: 3, attemptsLeft: null });
@@ -1070,9 +1148,11 @@ toolError('confirmation-required-register-disabled', 'Authenticator disabled by 
   error: 'confirmation_required', ...safe('The authenticator was switched off after too many wrong codes. Register it again in the portal.'),
   registerUrl: 'https://mcp.aiwcorpo.pl/authenticator',
 }, true);
-toolError('confirmation-pending', 'A different DESTRUCTIVE operation is refused while the preview of the waiting one is open (CC-127).', { error: 'confirmation_pending', ...safe('Another destructive operation is waiting for its code. Confirm it, or try again later.'), retryAfterSeconds: 90 }, true);
-toolError('invalid-confirmation-pending-without-retry-after', 'retryAfterSeconds is required.', { error: 'confirmation_pending', ...safe('Waiting.') }, false);
-toolError('invalid-confirmation-pending-with-id', 'No confirmationId: nothing was created for the refused operation.', { error: 'confirmation_pending', ...safe('Waiting.'), retryAfterSeconds: 5, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
+toolError('confirmation-blocked', 'A different DESTRUCTIVE operation is refused while the preview of the waiting one is open (CC-127).', { error: 'confirmation_blocked', ...safe('Another destructive operation of this user is waiting for confirmation. Do not ask the user for a code for this call; tell them that another operation awaits confirmation and try again later.'), retryAfterSeconds: 90 }, true);
+toolError('invalid-confirmation-blocked-without-retry-after', 'retryAfterSeconds is required.', { error: 'confirmation_blocked', ...safe('Waiting.') }, false);
+toolError('invalid-confirmation-blocked-with-id', 'No confirmationId: nothing was created for the refused operation.', { error: 'confirmation_blocked', ...safe('Waiting.'), retryAfterSeconds: 5, confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
+toolError('confirmation-cancelled', 'The retry of a call the owner cancelled in the portal (CC-128).', { error: 'confirmation_cancelled', ...safe('The user cancelled this operation. Start it again if it is still wanted.') }, true);
+toolError('invalid-confirmation-cancelled-with-id', 'confirmation_cancelled carries no confirmationId.', { error: 'confirmation_cancelled', ...safe('Cancelled.'), confirmationId: 'cnf_4k9Qe2LxW7tB3mZp' }, false);
 toolError('credential-required', 'No connected account.', {
   error: 'credential_required', ...safe('Connect your Jira account in the portal.'), system: 'jira',
   connectUrl: 'https://mcp-portal.internal/connections?system=jira',

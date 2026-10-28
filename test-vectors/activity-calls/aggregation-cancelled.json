@@ -1,0 +1,101 @@
+{
+  "description": "The owner cancelled after one wrong code: result cancelled, wrongCodeCount 1; a later retry (also cancelled_by_owner) does not change the row.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e30",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "confirmation_pending"
+    },
+    {
+      "ts": "2026-10-26T20:00:10.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e31",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "deny",
+      "outcome": "denied",
+      "errorCode": "confirmation_failed"
+    },
+    {
+      "ts": "2026-10-26T20:00:20.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e32",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "deny",
+      "reason": "cancelled_by_owner",
+      "outcome": "denied",
+      "errorCode": "confirmation_cancelled"
+    },
+    {
+      "ts": "2026-10-26T20:00:25.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e33",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "server": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "event": "confirmation",
+      "decision": "deny",
+      "reason": "cancelled_by_owner",
+      "outcome": "denied",
+      "errorCode": "confirmation_cancelled"
+    }
+  ],
+  "expected": {
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "jira__delete_issue",
+    "risk": "DESTRUCTIVE",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e30",
+    "result": "cancelled",
+    "wrongCodeCount": 1,
+    "errorCode": "confirmation_cancelled"
+  }
+}

@@ -1067,6 +1067,116 @@ export const portalBffExamples: OperationExamples[] = [
     ]
   },
   {
+    "operationId": "markMyConfirmationViewed",
+    "method": "POST",
+    "route": "/api/v1/confirmations/{id}/viewed",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "csrf_invalid",
+        "body": {
+          "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "cancelMyConfirmation",
+    "method": "POST",
+    "route": "/api/v1/confirmations/{id}/cancel",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "csrf_invalid",
+        "body": {
+          "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
     "operationId": "listAccessRequests",
     "method": "GET",
     "route": "/api/v1/access-requests",
@@ -1492,13 +1602,21 @@ export const portalBffExamples: OperationExamples[] = [
             "errorCode": "confirmation_superseded"
           },
           {
+            "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e85",
+            "ts": "2026-10-26T19:27:00.000Z",
+            "tool": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "result": "cancelled",
+            "wrongCodeCount": 0,
+            "errorCode": "confirmation_cancelled"
+          },
+          {
             "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84",
             "ts": "2026-10-26T19:25:00.000Z",
             "tool": "jira__delete_issue",
             "risk": "DESTRUCTIVE",
             "result": "blocked_by_pending",
-            "wrongCodeCount": 0,
-            "errorCode": "confirmation_pending"
+            "errorCode": "confirmation_blocked"
           },
           {
             "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83",
@@ -1510,7 +1628,8 @@ export const portalBffExamples: OperationExamples[] = [
           }
         ],
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "X-Next-Cursor": "eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln"
         }
       },
       {

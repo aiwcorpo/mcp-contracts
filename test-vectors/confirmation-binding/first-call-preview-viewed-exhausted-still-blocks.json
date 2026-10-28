@@ -1,0 +1,32 @@
+{
+  "description": "The attempts of the viewed A ran out (3 wrong codes): the block stays until max(expiry of A, view + 90 s), otherwise the code typed for A could confirm B (review 3.0.0, N-H1).",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "previewViewedAt": "2026-10-26T20:00:10Z",
+      "ended": "exhausted"
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "arguments": {
+      "issueKey": "ABC-999"
+    }
+  },
+  "at": "2026-10-26T20:00:40Z",
+  "expected": {
+    "outcome": "confirmation_blocked",
+    "retryAfterSeconds": 80,
+    "pendingCreated": false
+  }
+}

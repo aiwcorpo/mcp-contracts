@@ -1,5 +1,6 @@
 {
   "description": "Third wrong code: result confirmation_failed with wrongCodeCount 3.",
+  "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {
       "ts": "2026-10-26T20:00:00.000Z",

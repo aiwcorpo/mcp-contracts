@@ -1,6 +1,18 @@
 // Reference aggregation of CC-095: the gateway audit events of ONE call (the first request and its retries with a
 // code, linked by the gateway's internal confirmationId that is not part of C8) become one ActivityCall row.
-export function aggregateCall(events) {
+// `now` (epoch seconds) matters for a call that waits for a code: the gateway emits no event when the 120 s run out, so a
+// pending call older than the TTL is `expired` (CC-095). `result` is computed from the reason of the last event of the
+// call, never from its errorCode: confirmation_pending as a decision means "waits", as an errorCode of a refused call it
+// means something else and its row is blocked_by_pending.
+const TTL_SECONDS = 120;
+const TERMINAL = new Set(['user_confirmed', 'user_confirmed_no_preview', 'attempts_exhausted', 'superseded', 'pending_exists', 'confirmation_expired', 'cancelled_by_owner']);
+
+export function aggregateCall(allEvents, now) {
+  // Events after the first terminal one (for example more retries after the attempts ran out) do not change the row.
+  const cut = allEvents.findIndex((e) => e.event === 'confirmation' && TERMINAL.has(e.reason));
+  let events = cut < 0 ? allEvents : allEvents.slice(0, cut + 1);
+  const toolCall = allEvents.find((e, i) => e.event === 'tool_call' && cut >= 0 && i > cut);
+  if (toolCall && ['user_confirmed', 'user_confirmed_no_preview'].includes(allEvents[cut].reason)) events = allEvents.slice(0, allEvents.indexOf(toolCall) + 1);
   const first = events[0];
   const row = { requestId: first.requestId, ts: first.ts };
   if (first.client) row.client = first.client;
@@ -13,18 +25,22 @@ export function aggregateCall(events) {
   if (resource) row.resource = resource;
 
   const confirmations = events.filter((e) => e.event === 'confirmation');
-  const wrongCodes = confirmations.filter((e) => e.errorCode === 'confirmation_failed').length;
-  if (confirmations.length > 0) row.wrongCodeCount = wrongCodes;
-
   const last = events[events.length - 1];
+  const blocked = last.event === 'confirmation' && last.reason === 'pending_exists';
+  // Wrong codes are the answers of the broker (invalid or replayed): a retry that is only too late (confirmation_expired)
+  // or that finds nothing is not one.
+  const wrongCodes = confirmations.filter((e) => e.errorCode === 'confirmation_failed' && (e.reason === undefined || e.reason === 'attempts_exhausted')).length;
+  if (confirmations.length > 0 && !blocked) row.wrongCodeCount = wrongCodes;
+
   let result;
   let errorCode = null;
   if (last.event === 'confirmation') {
-    result = {
-      confirmation_pending: 'confirmation_pending', superseded: 'superseded', confirmation_expired: 'expired',
-      attempts_exhausted: 'confirmation_failed', pending_exists: 'blocked_by_pending',
-    }[last.reason ?? (last.decision === 'confirmation_pending' ? 'confirmation_pending' : 'confirmation_failed')] ?? 'confirmation_failed';
+    const reason = last.reason ?? (last.decision === 'confirmation_pending' ? 'waiting' : 'confirmation_failed');
+    result = { waiting: 'confirmation_pending', superseded: 'superseded', confirmation_expired: 'expired', attempts_exhausted: 'confirmation_failed', pending_exists: 'blocked_by_pending', cancelled_by_owner: 'cancelled' }[reason] ?? 'confirmation_failed';
     errorCode = last.errorCode ?? null;
+    if (result === 'confirmation_pending') {
+      if (now !== undefined && now - Date.parse(last.ts) / 1000 > TTL_SECONDS) { result = 'expired'; errorCode = null; }
+    }
   } else if (last.event === 'tool_call') {
     const confirmed = confirmations.some((e) => e.reason === 'user_confirmed' || e.reason === 'user_confirmed_no_preview');
     if (last.outcome === 'ok') result = confirmed ? 'confirmed' : 'ok';

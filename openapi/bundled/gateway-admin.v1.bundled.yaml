@@ -653,7 +653,12 @@ paths:
         One row per call, computed by the gateway from its audit events and from its internal link between a first
         call and its retries with a code (the confirmationId never leaves the gateway, CC-095). The row carries the
         final result and the number of wrong codes; requestId and ts are those of the first request. `sub` is always
-        the `sub` of the BFF token. Newest first, at most 30 days back. Page with the `X-Next-Cursor` header.
+        the `sub` of the BFF token, the filters and the 30 day window always come from the current request, and only the
+        caller's own calls are ever returned, also for an administrator: there is no view of other users' calls in 3.0.0.
+        Newest first. Page with the `X-Next-Cursor` header: the cursor is opaque, carries only the position (`ts`,
+        `requestId`) and is authenticated by the gateway (for example an HMAC with a gateway key, bound to the `sub`); a
+        cursor that was changed, is foreign or has expired is `400`, and the gateway never takes `sub`, filters or the window
+        from it.
       security:
         - mtls: []
           bffUserToken: []
@@ -672,7 +677,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded and blocked-by-pending confirmations.
+          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum:
@@ -703,6 +708,8 @@ paths:
               required: false
               schema:
                 type: string
+                maxLength: 256
+              example: eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln
           content:
             application/json:
               schema:
@@ -750,13 +757,19 @@ paths:
                       result: superseded
                       wrongCodeCount: 0
                       errorCode: confirmation_superseded
+                    - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e85
+                      ts: 2026-10-26T19:27:00.000Z
+                      tool: jira__delete_issue
+                      risk: DESTRUCTIVE
+                      result: cancelled
+                      wrongCodeCount: 0
+                      errorCode: confirmation_cancelled
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84
                       ts: 2026-10-26T19:25:00.000Z
                       tool: jira__delete_issue
                       risk: DESTRUCTIVE
                       result: blocked_by_pending
-                      wrongCodeCount: 0
-                      errorCode: confirmation_pending
+                      errorCode: confirmation_blocked
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83
                       ts: 2026-10-26T19:20:00.000Z
                       tool: gitlab__get_project
@@ -781,11 +794,11 @@ paths:
       summary: Read-only preview of a pending confirmation; owner only, valid session, no fresh MFA.
       description: |
         The preview is optional: the code from the authenticator works without opening it (CC-091). The gateway
-        computes everything from its own record of the pending call, never from the client. A successful call
-        records that the owner viewed the preview (`previewViewedAt`, CC-091); this is the only side effect of a GET
-        in C5. Since the preview is opened, a different DESTRUCTIVE operation of the user does not supersede this one: it
-        is refused with `confirmation_pending` until this one is confirmed, expires or runs out of attempts (CC-127);
-        recording the view and that check are atomic with each other. There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
+        computes everything from its own record of the pending call, never from the client. A GET has no side effect:
+        the view is recorded only by the explicit `markConfirmationViewed` call (CC-127), so that a prerender or a
+        prefetch of the page cannot set it. Once the view is recorded, a different DESTRUCTIVE operation of the user does
+        not supersede this one: it is refused with `confirmation_blocked` until this one is confirmed or the block ends at
+        max(expiry, view + 90 s), also when its attempts ran out or it expired earlier (CC-127). There is no decision endpoint: a confirmation is given by typing the TOTP code in the MCP client, and
         refusing is not typing it (the call expires after 120 s).
       security:
         - mtls: []
@@ -823,6 +836,82 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           description: Unknown, expired, superseded by a newer DESTRUCTIVE operation of the user (CC-127; only when the preview had not been opened) or not owned by the caller; one answer for all of them (invariant 8).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                not_found_or_denied:
+                  value:
+                    error: not_found_or_denied
+  /admin/v1/confirmations/{confirmationId}/viewed:
+    parameters:
+      - $ref: "#/components/parameters/ConfirmationId"
+    post:
+      tags:
+        - confirmations
+      operationId: markConfirmationViewed
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Record that the owner has the preview of a pending confirmation open and visible (CC-127).
+      description: |
+        Called by the portal after the preview page is rendered and visible, never by a GET and never for a prefetch or
+        prerender. Idempotent: the first call sets `previewViewedAt`, later calls change nothing. Owner only. Recording the
+        view and the check that a different DESTRUCTIVE operation makes against it are atomic with each other (one
+        operation per user), so a race ends with B refused (view first) or A superseded and this call answering 404 (B
+        first). The view blocks other DESTRUCTIVE operations as described in `getConfirmation`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: Recorded (or it was recorded before).
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Unknown, expired, superseded or not owned by the caller (not_found_or_denied).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                not_found_or_denied:
+                  value:
+                    error: not_found_or_denied
+  /admin/v1/confirmations/{confirmationId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/ConfirmationId"
+    post:
+      tags:
+        - confirmations
+      operationId: cancelConfirmation
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: The owner cancels a pending confirmation; nothing is approved (CC-128).
+      description: |
+        Owner only; a valid session is enough, no fresh MFA, because the call removes a pending operation and approves
+        nothing. This is not a decision endpoint: a confirmation is still given only by the TOTP code typed in the MCP
+        client. The gateway removes the pending call with a compare-and-delete that is ordered with the code check on the
+        same record, so a code typed in parallel after the cancel does not confirm the call (the check answers
+        `confirmation_cancelled`). The block of "first wins after the preview" (CC-127) ends with it. A later retry of the
+        cancelled call gets the C10 error `confirmation_cancelled` (the gateway keeps a tombstone until the original TTL
+        ends; no broker call, no attempt or TOTP step spent), the audit event is `confirmation` with
+        `reason: cancelled_by_owner`, and the call is `cancelled` in `activity/calls`. Idempotent while the tombstone lives
+        (a second cancel is `204`); `404 not_found_or_denied` for an unknown, expired, superseded, executed or foreign call.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: Cancelled (or cancelled before).
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Unknown, expired, superseded, already executed or not owned by the caller (not_found_or_denied).
           content:
             application/json:
               schema:
@@ -1254,20 +1343,8 @@ components:
         risk:
           $ref: "#/components/schemas/Risk"
         resource:
-          type: object
-          required:
-            - type
-            - id
-          properties:
-            type:
-              $ref: "#/components/schemas/ResourceType"
-            id:
-              type: string
-              maxLength: 512
-            parent:
-              type: string
-              maxLength: 600
-          additionalProperties: false
+          description: Same shape and limits as resource in the audit event (C8), including the exclusion of control and bidirectional characters in id (CC-031).
+          $ref: "#/components/schemas/resource"
         result:
           type: string
           pattern: ^[a-z][a-z0-9_]*$
@@ -1275,9 +1352,9 @@ components:
           description: |
             Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
-            expired, confirmation_failed, superseded, blocked_by_pending. A client must show an unknown value as a generic label.
+            expired, confirmation_failed, superseded, blocked_by_pending, cancelled. A client must show an unknown value as a generic label.
         wrongCodeCount:
-          description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
+          description: Number of wrong confirmation codes (answers invalid or replayed of the broker) given for this call; present only for calls that needed a confirmation and were not refused as blocked_by_pending. A retry that came too late or found no pending call is not a wrong code.
           type: integer
           minimum: 0
           maximum: 3
@@ -1318,21 +1395,8 @@ components:
           description: System the tool acts on; the portal shows it next to the tool (CC-077). Read by the gateway from its own record of the pending call, never from the client.
           $ref: "#/components/schemas/SystemId"
         resource:
-          description: Main resource of the call from resourceRefs (type, id, parent), computed by the gateway, the same value that goes to the audit event (CC-098); absent when the tool takes no resource identifier.
-          type: object
-          required:
-            - type
-            - id
-          properties:
-            type:
-              $ref: "#/components/schemas/ResourceType"
-            id:
-              type: string
-              maxLength: 512
-            parent:
-              type: string
-              maxLength: 600
-          additionalProperties: false
+          description: Main resource of the call from resourceRefs (type, id, parent), computed by the gateway, the same value that goes to the audit event (CC-098); absent when the tool takes no resource identifier. Same limits as in C8, including the exclusion of control and bidirectional characters in id.
+          $ref: "#/components/schemas/resource"
         arguments:
           description: Arguments sorted by name (fixed order), without confirmation_code.
           type: array
@@ -1578,7 +1642,8 @@ components:
         - confirmation_required
         - confirmation_failed
         - confirmation_superseded
-        - confirmation_pending
+        - confirmation_cancelled
+        - confirmation_blocked
         - credential_required
         - not_found_or_denied
         - invalid_argument
@@ -1586,6 +1651,24 @@ components:
         - step_up_required
         - upstream_unavailable
         - internal_error
+    resource:
+      type: object
+      required:
+        - type
+        - id
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        id:
+          description: Resource id as the system knows it (Jira key, GitLab path, index name, page id). Free-form because ids of the five systems use different alphabets (slashes, dots, spaces in some service desks), but C0 and C1 control characters, DEL, U+2028, U+2029 and the bidirectional controls U+202A..U+202E and U+2066..U+2069 are excluded so the line-oriented SIEM format and log viewers cannot be misled (CC-031). The length limit counts UTF-16 code units (JSON Schema validators in Java and JavaScript); producers should keep ids below 512 characters. Independently of this, the audit JSON serializer must escape every control character and U+2028/U+2029.
+          type: string
+          pattern: ^[^\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]{1,512}$
+        parent:
+          description: Parent as <Namespace>::<Type>::<id>, e.g. Jira::Project::ABC (C8 example format).
+          type: string
+          pattern: ^[A-Za-z]+::[A-Za-z]+::.+$
+          maxLength: 600
+      additionalProperties: false
     ConfirmationId:
       description: Opaque, unguessable id of a pending confirmation (C11); used in URL paths and as the key of the portal preview.
       type: string
@@ -1827,7 +1910,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, credential_required, step_up_required, rate_limited. For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_pending, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_not_registered (these carry tool, client and virtualServer from the internal JWT). For event virtual_server_change (gateway, CC-116; before 3.0.0 these were admin_change, CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied (the list of tools of a link is not a field of this schema). event admin_change is left for the other administrative changes of the gateway (registry approvals) and has no list of reasons in the contract; the vs_* reasons are not emitted with admin_change since 3.0.0. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited. For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_not_registered (these carry tool, client and virtualServer from the internal JWT). For event virtual_server_change (gateway, CC-116; before 3.0.0 these were admin_change, CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied (the list of tools of a link is not a field of this schema). event admin_change is left for the other administrative changes of the gateway (registry approvals) and has no list of reasons in the contract; the vs_* reasons are not emitted with admin_change since 3.0.0. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64

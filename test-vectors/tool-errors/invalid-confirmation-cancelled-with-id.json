@@ -1,0 +1,11 @@
+{
+  "description": "confirmation_cancelled carries no confirmationId.",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "confirmation_cancelled",
+    "message": "Cancelled.",
+    "confirmationId": "cnf_4k9Qe2LxW7tB3mZp"
+  }
+}
