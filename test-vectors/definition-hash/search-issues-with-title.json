@@ -11,12 +11,15 @@
           "projectKeys": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10
             },
-            "minItems": 1
+            "minItems": 1,
+            "maxItems": 50
           },
           "text": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 256
           },
           "maxResults": {
             "type": "integer",
@@ -65,6 +68,6 @@
       }
     }
   },
-  "canonical": "{\"action\":\"read\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Searches issues in the given projects.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"maxResults\":{\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"projectKeys\":{\"items\":{\"type\":\"string\"},\"minItems\":1,\"type\":\"array\"},\"text\":{\"type\":\"string\"}},\"required\":[\"projectKeys\"],\"type\":\"object\"},\"name\":\"search_issues\",\"outputSchema\":{\"properties\":{\"issues\":{\"items\":{\"type\":\"object\"},\"type\":\"array\"}},\"type\":\"object\"},\"resourceRefs\":[{\"argument\":\"projectKeys\",\"type\":\"Jira::Project\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\",\"title\":\"Search issues\"}",
-  "expected": "sha256:474d6c74726ca829218d2bf5788f808b48ff2ac166b94245725a724b8d19afc8"
+  "canonical": "{\"action\":\"read\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Searches issues in the given projects.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"maxResults\":{\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"projectKeys\":{\"items\":{\"maxLength\":10,\"type\":\"string\"},\"maxItems\":50,\"minItems\":1,\"type\":\"array\"},\"text\":{\"maxLength\":256,\"type\":\"string\"}},\"required\":[\"projectKeys\"],\"type\":\"object\"},\"name\":\"search_issues\",\"outputSchema\":{\"properties\":{\"issues\":{\"items\":{\"type\":\"object\"},\"type\":\"array\"}},\"type\":\"object\"},\"resourceRefs\":[{\"argument\":\"projectKeys\",\"type\":\"Jira::Project\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\",\"title\":\"Search issues\"}",
+  "expected": "sha256:a321ad820add3e638f86c5d2d1af23e5cc480caca4ad4e94f4b52394f6a82a09"
 }

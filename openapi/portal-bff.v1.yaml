@@ -1149,6 +1149,7 @@ paths:
                               type: Jira::Issue
                           definition:
                             name: update_issue
+                            title: Update issue
                             description: Updates the summary of an issue.
                             inputSchema:
                               type: object
@@ -1157,6 +1158,7 @@ paths:
                                   type: string
                                   description: Issue key, e.g. ABC-123
                                   pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                  maxLength: 32
                                 summary:
                                   type: string
                                   maxLength: 255
@@ -1167,7 +1169,7 @@ paths:
                             annotations:
                               readOnlyHint: false
                               destructiveHint: false
-                          definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                          definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
                 opensearch_disabled:
                   value:
@@ -1215,6 +1217,7 @@ paths:
                           type: Jira::Issue
                       definition:
                         name: update_issue
+                        title: Update issue
                         description: Updates the summary of an issue.
                         inputSchema:
                           type: object
@@ -1223,6 +1226,7 @@ paths:
                               type: string
                               description: Issue key, e.g. ABC-123
                               pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              maxLength: 32
                             summary:
                               type: string
                               maxLength: 255
@@ -1233,8 +1237,8 @@ paths:
                         annotations:
                           readOnlyHint: false
                           destructiveHint: false
-                      definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
-                    pendingHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                      definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                    pendingHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1263,7 +1267,7 @@ paths:
             examples:
               approve:
                 value:
-                  definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
       responses:
         '204':
           headers:

@@ -46,6 +46,7 @@
         ],
         "definition": {
           "name": "get_issue",
+          "title": "Get issue",
           "description": "Returns one Jira issue by key.",
           "inputSchema": {
             "type": "object",
@@ -53,7 +54,8 @@
               "issueKey": {
                 "type": "string",
                 "description": "Issue key, e.g. ABC-123",
-                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
               },
               "filter": {
                 "type": "object",
@@ -73,7 +75,7 @@
             "readOnlyHint": true
           }
         },
-        "definitionHash": "sha256:f89bae0ee26aa99cda087ba33cb84d118e3c4c102057ee620627c19858aab1e8"
+        "definitionHash": "sha256:f9e08451d3f6a1882b4963dc68f9c5891f1120e08d03d26d9e7813cc1b98462b"
       },
       {
         "name": "search_issues",
@@ -95,12 +97,15 @@
               "projectKeys": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 10
                 },
-                "minItems": 1
+                "minItems": 1,
+                "maxItems": 50
               },
               "text": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 256
               },
               "maxResults": {
                 "type": "integer",
@@ -128,7 +133,7 @@
             "readOnlyHint": true
           }
         },
-        "definitionHash": "sha256:474d6c74726ca829218d2bf5788f808b48ff2ac166b94245725a724b8d19afc8"
+        "definitionHash": "sha256:a321ad820add3e638f86c5d2d1af23e5cc480caca4ad4e94f4b52394f6a82a09"
       },
       {
         "name": "create_issue",
@@ -142,12 +147,14 @@
         ],
         "definition": {
           "name": "create_issue",
+          "title": "Create issue",
           "description": "Creates an issue in a project.",
           "inputSchema": {
             "type": "object",
             "properties": {
               "projectKey": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 10
               },
               "summary": {
                 "type": "string",
@@ -165,7 +172,7 @@
             "destructiveHint": false
           }
         },
-        "definitionHash": "sha256:56cf3cd3a01d70b716818e48112ac3442ff9c289ddc106472567e18208db8781"
+        "definitionHash": "sha256:892df6f94688c13bcd86b92f27e2fde4e3593d7b3650e730285cf35b5039a0fd"
       },
       {
         "name": "update_issue",
@@ -179,6 +186,7 @@
         ],
         "definition": {
           "name": "update_issue",
+          "title": "Update issue",
           "description": "Updates the summary of an issue.",
           "inputSchema": {
             "type": "object",
@@ -186,7 +194,8 @@
               "issueKey": {
                 "type": "string",
                 "description": "Issue key, e.g. ABC-123",
-                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
               },
               "summary": {
                 "type": "string",
@@ -204,7 +213,7 @@
             "destructiveHint": false
           }
         },
-        "definitionHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
+        "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb"
       },
       {
         "name": "delete_issue",
@@ -218,6 +227,7 @@
         ],
         "definition": {
           "name": "delete_issue",
+          "title": "Delete issue",
           "description": "Deletes an issue permanently.",
           "inputSchema": {
             "type": "object",
@@ -225,7 +235,8 @@
               "issueKey": {
                 "type": "string",
                 "description": "Issue key, e.g. ABC-123",
-                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
               }
             },
             "required": [
@@ -238,7 +249,7 @@
             "destructiveHint": true
           }
         },
-        "definitionHash": "sha256:3a85bd7c0c422bbb1d7488a80b903520701ecd37b03748e8323f6ff179dc1564"
+        "definitionHash": "sha256:f9d65d1c0b4435aecb607f0bbec7ea18853e5968cef77a5c2181ce44ac36e0f0"
       }
     ]
   }

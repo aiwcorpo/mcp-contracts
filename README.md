@@ -616,6 +616,16 @@ Formaty:
 - **Pozostałe:** `description`, dane wejściowe i `expected`; opis w `cedar/entity-builder.md` (Cedar) i
   w testach `test/*.test.mjs`, które są też referencyjnymi weryfikatorami.
 
+## Definicje `common.schema.json` jako stabilne API (CC-079)
+
+Serwery czytają te definicje z jara kontraktów w chwili rejestracji narzędzia (starter: `@ArgumentLimits(contractPattern
+= "<nazwa>")` bierze `pattern` i `maxLength`): `JiraProjectKey`, `JiraIssueKey`, `ConfluenceSpaceKey`,
+`ConfluencePageId`, `GitLabGroupPath`, `GitLabProjectPath`, `OpenSearchIndexName`, `OpenSearchIndexPrefix`,
+`ServiceDeskQueueId`, `ServiceDeskTicketId`. Zmiana nazwy albo usunięcie definicji z tej listy to **major**; zmiana
+`pattern` lub `maxLength` podlega zwykłej tabeli SemVer (zaostrzenie to major, poluzowanie minor). Wzorce tych definicji
+są te same, których używa `ResourceIds` w `mcp-cedar-entities` (wektory `resource-ids/` sprawdzają oba, CC-056,
+CC-074). Test `test/schemas.test.mjs` pilnuje, żeby lista była kompletna względem `ResourceIdPatterns`.
+
 ## Reguły semantyczne manifestu
 
 Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez gateway przy rejestracji:
@@ -629,6 +639,15 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
    `credential` (`scripts/lib/definition-hash.mjs`, CC-004) równa się zadeklarowanemu.
 6. Każdy `resourceRefs[].argument` istnieje w `definition.inputSchema.properties` i ma typ `string`, `integer`
    albo `array` z `items` typu `string`/`integer` (CC-043).
+7. `definition.title` jest wymagane (schemat, CC-115).
+8. `inputSchema` jest zamknięty i ograniczony (CC-078, CC-123), reguły `input-schema-closed`,
+   `input-schema-bounded`, `input-schema-no-combinators`: korzeń ma `type: object`, każdy obiekt ma
+   `additionalProperties: false` (bez map otwartych, `patternProperties`, `unevaluatedProperties`); każdy węzeł ma
+   `type`; każdy `string` ma `maxLength` (chyba że `enum`/`const`), każda tablica `maxItems` i `items` (także przy
+   `prefixItems`), każdy `integer`/`number` `minimum` i `maximum` (chyba że `enum`/`const`), każdy `pattern` zaczyna się od
+   `^` i kończy na `$`; brak `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`. Przy naruszeniu schematu serwer
+   odpowiada `invalid_argument` (C10): komunikat może wskazać argument zadeklarowany w schemacie i regułę, nigdy wartość
+   ani niezadeklarowaną nazwę.
 
 ## Wymagania dla odbiorców i paczek polityk
 

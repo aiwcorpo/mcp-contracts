@@ -3,6 +3,7 @@
   "input": {
     "tool": {
       "name": "update_issue",
+      "title": "Update issue",
       "description": "Updates the summary of an issue.",
       "inputSchema": {
         "type": "object",
@@ -10,7 +11,8 @@
           "issueKey": {
             "type": "string",
             "description": "Issue key, e.g. ABC-123",
-            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+            "maxLength": 32
           },
           "summary": {
             "type": "string",
@@ -49,7 +51,7 @@
       }
     }
   },
-  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Updates the summary of an issue.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"issueKey\",\"summary\"],\"type\":\"object\"},\"name\":\"update_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\"}",
-  "expected": "sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe",
+  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Updates the summary of an issue.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"maxLength\":32,\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"issueKey\",\"summary\"],\"type\":\"object\"},\"name\":\"update_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\",\"title\":\"Update issue\"}",
+  "expected": "sha256:a54246cd697847b72aebc9c8bb91e44e3f13b6ef84b5f0f868fe1eaa78d5045c",
   "differsFrom": "update-issue.json"
 }

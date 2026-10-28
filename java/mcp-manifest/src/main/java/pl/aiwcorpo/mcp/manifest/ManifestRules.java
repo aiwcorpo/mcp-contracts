@@ -28,11 +28,19 @@ public final class ManifestRules {
     public static final String DEFINITION_NAME_MATCHES = "definition-name-matches";
     /** definition.inputSchema does not declare confirmation_code. */
     public static final String NO_CONFIRMATION_CODE = "no-confirmation-code";
+    /** inputSchema is an object schema and every object in it is closed: additionalProperties false, no open maps (CC-078, CC-123). */
+    public static final String INPUT_SCHEMA_CLOSED = "input-schema-closed";
+    /** Every node of inputSchema is typed and bounded: maxLength, maxItems with items, minimum and maximum, anchored pattern (CC-123). */
+    public static final String INPUT_SCHEMA_BOUNDED = "input-schema-bounded";
+    /** inputSchema uses none of allOf, anyOf, oneOf, not, if, then, else (CC-123). */
+    public static final String INPUT_SCHEMA_NO_COMBINATORS = "input-schema-no-combinators";
     /** Recomputed definitionHash equals the declared one. */
     public static final String DEFINITION_HASH_MATCHES = "definition-hash-matches";
 
     private static final ObjectMapper JSON = StrictJson.MAPPER;
     private static final Set<String> ID_TYPES = Set.of("string", "integer");
+    private static final List<String> COMBINATORS = List.of("allOf", "anyOf", "oneOf", "not", "if", "then", "else");
+    private static final Set<String> SCHEMA_TYPES = Set.of("string", "integer", "number", "boolean", "array", "object");
 
     private ManifestRules() {
     }
@@ -88,6 +96,7 @@ public final class ManifestRules {
             if (properties.has("confirmation_code")) {
                 violations.add(NO_CONFIRMATION_CODE);
             }
+            violations.addAll(inputSchemaViolations(definition.path("inputSchema")));
             if (!DefinitionHash.hashOf(manifest, tool).equals(tool.path("definitionHash").asText())) {
                 violations.add(DEFINITION_HASH_MATCHES);
             }
@@ -104,5 +113,68 @@ public final class ManifestRules {
             return true;
         }
         return "array".equals(type) && ID_TYPES.contains(property.path("items").path("type").asText());
+    }
+
+    private static Set<String> inputSchemaViolations(JsonNode root) {
+        Set<String> found = new LinkedHashSet<>();
+        if (!root.isObject() || !"object".equals(root.path("type").asText())) {
+            found.add(INPUT_SCHEMA_CLOSED);
+            return found;
+        }
+        walk(root, found);
+        return found;
+    }
+
+    private static void walk(JsonNode node, Set<String> found) {
+        if (!node.isObject()) {
+            found.add(INPUT_SCHEMA_BOUNDED);
+            return;
+        }
+        for (String keyword : COMBINATORS) {
+            if (node.has(keyword)) {
+                found.add(INPUT_SCHEMA_NO_COMBINATORS);
+            }
+        }
+        JsonNode typeNode = node.get("type");
+        if (typeNode == null || !typeNode.isTextual() || !SCHEMA_TYPES.contains(typeNode.asText())) {
+            found.add(INPUT_SCHEMA_BOUNDED);
+            return;
+        }
+        String type = typeNode.asText();
+        boolean fixed = node.has("enum") || node.has("const");
+        if (node.has("pattern")) {
+            JsonNode pattern = node.get("pattern");
+            if (!pattern.isTextual() || !pattern.asText().startsWith("^") || !pattern.asText().endsWith("$")) {
+                found.add(INPUT_SCHEMA_BOUNDED);
+            }
+        }
+        if ("string".equals(type) && !fixed && !isCount(node.get("maxLength"))) {
+            found.add(INPUT_SCHEMA_BOUNDED);
+        }
+        if (("integer".equals(type) || "number".equals(type)) && !fixed
+                && !(node.path("minimum").isNumber() && node.path("maximum").isNumber())) {
+            found.add(INPUT_SCHEMA_BOUNDED);
+        }
+        if ("array".equals(type)) {
+            if (!isCount(node.get("maxItems")) || !node.has("items")) {
+                found.add(INPUT_SCHEMA_BOUNDED);
+            }
+            if (node.has("items")) {
+                walk(node.get("items"), found);
+            }
+            node.path("prefixItems").forEach(item -> walk(item, found));
+        }
+        if ("object".equals(type)) {
+            if (!node.has("additionalProperties") || !node.get("additionalProperties").isBoolean()
+                    || node.get("additionalProperties").asBoolean()
+                    || node.has("patternProperties") || node.has("unevaluatedProperties")) {
+                found.add(INPUT_SCHEMA_CLOSED);
+            }
+            node.path("properties").forEach(property -> walk(property, found));
+        }
+    }
+
+    private static boolean isCount(JsonNode value) {
+        return value != null && value.isIntegralNumber() && value.asLong() >= 0;
     }
 }

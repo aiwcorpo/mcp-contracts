@@ -3,12 +3,14 @@
   "input": {
     "tool": {
       "name": "create_issue",
+      "title": "Create issue",
       "description": "Creates an issue in a project.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "projectKey": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 10
           },
           "summary": {
             "type": "string",
@@ -47,6 +49,6 @@
       }
     }
   },
-  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Creates an issue in a project.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"projectKey\":{\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"projectKey\",\"summary\"],\"type\":\"object\"},\"name\":\"create_issue\",\"resourceRefs\":[{\"argument\":\"projectKey\",\"type\":\"Jira::Project\"}],\"risk\":\"UPDATE\",\"system\":\"jira\"}",
-  "expected": "sha256:56cf3cd3a01d70b716818e48112ac3442ff9c289ddc106472567e18208db8781"
+  "canonical": "{\"action\":\"update\",\"annotations\":{\"destructiveHint\":false,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Creates an issue in a project.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"projectKey\":{\"maxLength\":10,\"type\":\"string\"},\"summary\":{\"maxLength\":255,\"type\":\"string\"}},\"required\":[\"projectKey\",\"summary\"],\"type\":\"object\"},\"name\":\"create_issue\",\"resourceRefs\":[{\"argument\":\"projectKey\",\"type\":\"Jira::Project\"}],\"risk\":\"UPDATE\",\"system\":\"jira\",\"title\":\"Create issue\"}",
+  "expected": "sha256:892df6f94688c13bcd86b92f27e2fde4e3593d7b3650e730285cf35b5039a0fd"
 }

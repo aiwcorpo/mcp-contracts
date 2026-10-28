@@ -20,6 +20,7 @@ export function manifestRuleViolations(manifest) {
     }
     if (tool.definition.name !== tool.name) violations.push('definition-name-matches');
     if (tool.definition.inputSchema?.properties?.confirmation_code !== undefined) violations.push('no-confirmation-code');
+    violations.push(...inputSchemaViolations(tool.definition.inputSchema));
     if (manifestEntryHash(manifest, tool) !== tool.definitionHash) violations.push('definition-hash-matches');
   }
   return [...new Set(violations)];
@@ -32,4 +33,45 @@ function idArgument(property) {
   if (!property || typeof property !== 'object') return false;
   if (ID_TYPES.has(property.type)) return true;
   return property.type === 'array' && ID_TYPES.has(property.items?.type);
+}
+
+// CC-078, CC-123: inputSchema is closed and bounded, so that the gateway and the server agree on what a valid
+// argument is and no argument can be unbounded. Applies to every tool of a manifest.
+const COMBINATORS = ['allOf', 'anyOf', 'oneOf', 'not', 'if', 'then', 'else'];
+const TYPES = new Set(['string', 'integer', 'number', 'boolean', 'array', 'object']);
+const isCount = (value) => Number.isInteger(value) && value >= 0;
+
+export function inputSchemaViolations(root) {
+  const found = new Set();
+  if (!root || typeof root !== 'object' || root.type !== 'object') found.add('input-schema-closed');
+  const walk = (node) => {
+    if (!node || typeof node !== 'object' || Array.isArray(node)) {
+      found.add('input-schema-bounded');
+      return;
+    }
+    if (COMBINATORS.some((keyword) => keyword in node)) found.add('input-schema-no-combinators');
+    if (typeof node.type !== 'string' || !TYPES.has(node.type)) {
+      found.add('input-schema-bounded');
+      return;
+    }
+    const fixed = 'enum' in node || 'const' in node;
+    if (node.pattern !== undefined && !(typeof node.pattern === 'string' && node.pattern.startsWith('^') && node.pattern.endsWith('$'))) {
+      found.add('input-schema-bounded');
+    }
+    if (node.type === 'string' && !fixed && !isCount(node.maxLength)) found.add('input-schema-bounded');
+    if ((node.type === 'integer' || node.type === 'number') && !fixed && !(typeof node.minimum === 'number' && typeof node.maximum === 'number')) {
+      found.add('input-schema-bounded');
+    }
+    if (node.type === 'array') {
+      if (!isCount(node.maxItems) || node.items === undefined) found.add('input-schema-bounded');
+      if (node.items !== undefined) walk(node.items);
+      for (const item of node.prefixItems ?? []) walk(item);
+    }
+    if (node.type === 'object') {
+      if (node.additionalProperties !== false || 'patternProperties' in node || 'unevaluatedProperties' in node) found.add('input-schema-closed');
+      for (const property of Object.values(node.properties ?? {})) walk(property);
+    }
+  };
+  if (root && typeof root === 'object' && root.type === 'object') walk(root);
+  return [...found];
 }

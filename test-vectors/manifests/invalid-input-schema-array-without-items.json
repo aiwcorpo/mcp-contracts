@@ -1,0 +1,252 @@
+{
+  "description": "An array without items.",
+  "expected": {
+    "valid": false,
+    "rule": "input-schema-bounded"
+  },
+  "manifest": {
+    "serverId": "mcp-jira",
+    "version": "1.4.0",
+    "system": "jira",
+    "internalUrl": "https://mcp-jira.internal:8443/mcp/jira",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth",
+        "user-secret"
+      ]
+    },
+    "resourceTypes": [
+      {
+        "type": "Jira::Project",
+        "attributes": [
+          "key",
+          "category"
+        ]
+      },
+      {
+        "type": "Jira::Issue",
+        "attributes": [
+          "key",
+          "project"
+        ],
+        "parent": "Jira::Project"
+      }
+    ],
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ],
+        "definition": {
+          "name": "get_issue",
+          "title": "Get issue",
+          "description": "Returns one Jira issue by key.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string",
+                "description": "Issue key, e.g. ABC-123",
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
+              },
+              "keys": {
+                "type": "array",
+                "maxItems": 5
+              }
+            },
+            "required": [
+              "issueKey"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true
+          }
+        },
+        "definitionHash": "sha256:3e86c05031b9b21882f64ef20270814b597b9948f6ba3714dfe3fe4fd5de5e53"
+      },
+      {
+        "name": "search_issues",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "projectKeys",
+            "type": "Jira::Project"
+          }
+        ],
+        "definition": {
+          "name": "search_issues",
+          "title": "Search issues",
+          "description": "Searches issues in the given projects.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectKeys": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 10
+                },
+                "minItems": 1,
+                "maxItems": 50
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "maxResults": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "projectKeys"
+            ],
+            "additionalProperties": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "annotations": {
+            "readOnlyHint": true
+          }
+        },
+        "definitionHash": "sha256:a321ad820add3e638f86c5d2d1af23e5cc480caca4ad4e94f4b52394f6a82a09"
+      },
+      {
+        "name": "create_issue",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "projectKey",
+            "type": "Jira::Project"
+          }
+        ],
+        "definition": {
+          "name": "create_issue",
+          "title": "Create issue",
+          "description": "Creates an issue in a project.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "projectKey": {
+                "type": "string",
+                "maxLength": 10
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 255
+              }
+            },
+            "required": [
+              "projectKey",
+              "summary"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false
+          }
+        },
+        "definitionHash": "sha256:892df6f94688c13bcd86b92f27e2fde4e3593d7b3650e730285cf35b5039a0fd"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ],
+        "definition": {
+          "name": "update_issue",
+          "title": "Update issue",
+          "description": "Updates the summary of an issue.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string",
+                "description": "Issue key, e.g. ABC-123",
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 255
+              }
+            },
+            "required": [
+              "issueKey",
+              "summary"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false
+          }
+        },
+        "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb"
+      },
+      {
+        "name": "delete_issue",
+        "risk": "DESTRUCTIVE",
+        "action": "delete",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ],
+        "definition": {
+          "name": "delete_issue",
+          "title": "Delete issue",
+          "description": "Deletes an issue permanently.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string",
+                "description": "Issue key, e.g. ABC-123",
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
+              }
+            },
+            "required": [
+              "issueKey"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true
+          }
+        },
+        "definitionHash": "sha256:f9d65d1c0b4435aecb607f0bbec7ea18853e5968cef77a5c2181ce44ac36e0f0"
+      }
+    ]
+  }
+}

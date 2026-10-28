@@ -272,6 +272,7 @@ paths:
                               type: Jira::Issue
                           definition:
                             name: get_issue
+                            title: Get issue
                             description: Returns one Jira issue by key.
                             inputSchema:
                               type: object
@@ -280,12 +281,13 @@ paths:
                                   type: string
                                   description: Issue key, e.g. ABC-123
                                   pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                  maxLength: 32
                               required:
                                 - issueKey
                               additionalProperties: false
                             annotations:
                               readOnlyHint: true
-                          definitionHash: sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696
+                          definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
                           status: approved
                         - name: update_issue
                           risk: UPDATE
@@ -295,6 +297,7 @@ paths:
                               type: Jira::Issue
                           definition:
                             name: update_issue
+                            title: Update issue
                             description: Updates the summary of an issue.
                             inputSchema:
                               type: object
@@ -303,6 +306,7 @@ paths:
                                   type: string
                                   description: Issue key, e.g. ABC-123
                                   pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                  maxLength: 32
                                 summary:
                                   type: string
                                   maxLength: 255
@@ -313,7 +317,7 @@ paths:
                             annotations:
                               readOnlyHint: false
                               destructiveHint: false
-                          definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                          definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
                 opensearch_disabled:
                   value:
@@ -382,6 +386,7 @@ paths:
                           type: Jira::Issue
                       definition:
                         name: get_issue
+                        title: Get issue
                         description: Returns one Jira issue by key.
                         inputSchema:
                           type: object
@@ -390,12 +395,13 @@ paths:
                               type: string
                               description: Issue key, e.g. ABC-123
                               pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              maxLength: 32
                           required:
                             - issueKey
                           additionalProperties: false
                         annotations:
                           readOnlyHint: true
-                      definitionHash: sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696
+                      definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
       responses:
         "200":
           description: Stored; the body shows the resulting status of every tool.
@@ -418,6 +424,7 @@ paths:
                             type: Jira::Issue
                         definition:
                           name: get_issue
+                          title: Get issue
                           description: Returns one Jira issue by key.
                           inputSchema:
                             type: object
@@ -426,12 +433,13 @@ paths:
                                 type: string
                                 description: Issue key, e.g. ABC-123
                                 pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                maxLength: 32
                             required:
                               - issueKey
                             additionalProperties: false
                           annotations:
                             readOnlyHint: true
-                        definitionHash: sha256:67f4aeb0e52108806ed59d9261298781754e08e00bdc552d8f6be7a3055d1696
+                        definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
                         status: pending_approval
         "400":
           $ref: "#/components/responses/BadRequest"
@@ -482,6 +490,7 @@ paths:
                           type: Jira::Issue
                       definition:
                         name: update_issue
+                        title: Update issue
                         description: Updates the summary of an issue.
                         inputSchema:
                           type: object
@@ -490,6 +499,7 @@ paths:
                               type: string
                               description: Issue key, e.g. ABC-123
                               pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              maxLength: 32
                             summary:
                               type: string
                               maxLength: 255
@@ -500,7 +510,7 @@ paths:
                         annotations:
                           readOnlyHint: false
                           destructiveHint: false
-                      definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                      definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                     pendingEntry:
                       name: update_issue
                       risk: READ_ONLY
@@ -510,6 +520,7 @@ paths:
                           type: Jira::Issue
                       definition:
                         name: update_issue
+                        title: Update issue
                         description: Updates the summary of an issue.
                         inputSchema:
                           type: object
@@ -518,6 +529,7 @@ paths:
                               type: string
                               description: Issue key, e.g. ABC-123
                               pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              maxLength: 32
                             summary:
                               type: string
                               maxLength: 255
@@ -1257,10 +1269,11 @@ components:
           $ref: "#/components/schemas/ResourceType"
       additionalProperties: false
     McpToolDefinition:
-      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
+      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is required (CC-115) and hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
       type: object
       required:
         - name
+        - title
         - description
         - inputSchema
       properties:
@@ -1269,13 +1282,13 @@ components:
         title:
           type: string
           minLength: 1
-          description: Display name shown by MCP clients; part of definitionHash (CC-042).
+          description: Display name shown by MCP clients; required since 3.0.0 (CC-115) and part of definitionHash (CC-042).
         description:
           type: string
           minLength: 1
         inputSchema:
           type: object
-          description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11).
+          description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11). Closed and bounded (CC-078, CC-123); checked by the semantic rules, because JSON Schema cannot express them for arbitrary nesting.
         outputSchema:
           type: object
         annotations:
@@ -1382,7 +1395,7 @@ components:
       pattern: ^[A-Za-z0-9_-]{16,128}$
     ServerManifest:
       title: MCP server manifest (C6)
-      description: "Generated by the starter at build time (target/mcp-manifest.json), served at GET /mcp-manifest (requires C2) and registered with PUT /admin/v1/registry/servers/{serverId} (C5). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique; definition.name == name; definition.inputSchema has no confirmation_code; definitionHash recomputed from definition and the entry equals the declared one (CC-005)."
+      description: "Generated by the starter at build time (target/mcp-manifest.json), served at GET /mcp-manifest (requires C2) and registered with PUT /admin/v1/registry/servers/{serverId} (C5). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique; definition.name == name; definition.inputSchema has no confirmation_code and is closed and bounded (CC-078, CC-123: type object and additionalProperties false at every object level, no open maps, every string with maxLength unless an enum or const, every array with maxItems and items, every number with minimum and maximum, patterns anchored with ^ and $, every node typed, no allOf/anyOf/oneOf/not/if/then/else); definitionHash recomputed from definition and the entry equals the declared one (CC-005)."
       type: object
       required:
         - serverId
@@ -1505,10 +1518,11 @@ components:
               description: sha256 over the canonical JSON of definition + risk, action, resourceRefs + system, credential (CC-004, CC-005). Receivers recompute it.
               $ref: "#/components/schemas/DefinitionHash"
         McpToolDefinition:
-          description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
+          description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is required (CC-115) and hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
           type: object
           required:
             - name
+            - title
             - description
             - inputSchema
           properties:
@@ -1517,13 +1531,13 @@ components:
             title:
               type: string
               minLength: 1
-              description: Display name shown by MCP clients; part of definitionHash (CC-042).
+              description: Display name shown by MCP clients; required since 3.0.0 (CC-115) and part of definitionHash (CC-042).
             description:
               type: string
               minLength: 1
             inputSchema:
               type: object
-              description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11).
+              description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11). Closed and bounded (CC-078, CC-123); checked by the semantic rules, because JSON Schema cannot express them for arbitrary nesting.
             outputSchema:
               type: object
             annotations:

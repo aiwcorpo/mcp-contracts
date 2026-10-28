@@ -254,7 +254,8 @@
       ],
       "properties": {
         "error": {
-          "const": "invalid_argument"
+          "const": "invalid_argument",
+          "description": "Error of the caller. On a violation of the tool's inputSchema (wrong type, missing or unknown argument, a value outside a bound) the server answers invalid_argument; the message may name an argument declared in the schema and the broken rule, never the value of the argument and never a name that the schema does not declare (CC-078). Text rejected by the text hygiene rules (README, CC-121, CC-122) is invalid_argument too. The text never comes from a backend response."
         },
         "message": {
           "$ref": "#/$defs/Message"

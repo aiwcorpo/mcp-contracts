@@ -1224,6 +1224,7 @@ paths:
                               type: Jira::Issue
                           definition:
                             name: update_issue
+                            title: Update issue
                             description: Updates the summary of an issue.
                             inputSchema:
                               type: object
@@ -1232,6 +1233,7 @@ paths:
                                   type: string
                                   description: Issue key, e.g. ABC-123
                                   pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                  maxLength: 32
                                 summary:
                                   type: string
                                   maxLength: 255
@@ -1242,7 +1244,7 @@ paths:
                             annotations:
                               readOnlyHint: false
                               destructiveHint: false
-                          definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                          definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
                 opensearch_disabled:
                   value:
@@ -1291,6 +1293,7 @@ paths:
                           type: Jira::Issue
                       definition:
                         name: update_issue
+                        title: Update issue
                         description: Updates the summary of an issue.
                         inputSchema:
                           type: object
@@ -1299,6 +1302,7 @@ paths:
                               type: string
                               description: Issue key, e.g. ABC-123
                               pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              maxLength: 32
                             summary:
                               type: string
                               maxLength: 255
@@ -1309,8 +1313,8 @@ paths:
                         annotations:
                           readOnlyHint: false
                           destructiveHint: false
-                      definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
-                    pendingHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                      definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                    pendingHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1340,7 +1344,7 @@ paths:
             examples:
               approve:
                 value:
-                  definitionHash: sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
       responses:
         "204":
           headers:
@@ -2282,10 +2286,11 @@ components:
           $ref: "#/components/schemas/ResourceType"
       additionalProperties: false
     McpToolDefinition:
-      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
+      description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is required (CC-115) and hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
       type: object
       required:
         - name
+        - title
         - description
         - inputSchema
       properties:
@@ -2294,13 +2299,13 @@ components:
         title:
           type: string
           minLength: 1
-          description: Display name shown by MCP clients; part of definitionHash (CC-042).
+          description: Display name shown by MCP clients; required since 3.0.0 (CC-115) and part of definitionHash (CC-042).
         description:
           type: string
           minLength: 1
         inputSchema:
           type: object
-          description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11).
+          description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11). Closed and bounded (CC-078, CC-123); checked by the semantic rules, because JSON Schema cannot express them for arbitrary nesting.
         outputSchema:
           type: object
         annotations:

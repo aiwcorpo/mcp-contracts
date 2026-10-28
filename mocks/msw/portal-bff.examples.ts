@@ -1446,6 +1446,7 @@ export const portalBffExamples: OperationExamples[] = [
                 ],
                 "definition": {
                   "name": "update_issue",
+                  "title": "Update issue",
                   "description": "Updates the summary of an issue.",
                   "inputSchema": {
                     "type": "object",
@@ -1453,7 +1454,8 @@ export const portalBffExamples: OperationExamples[] = [
                       "issueKey": {
                         "type": "string",
                         "description": "Issue key, e.g. ABC-123",
-                        "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                        "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                        "maxLength": 32
                       },
                       "summary": {
                         "type": "string",
@@ -1471,7 +1473,7 @@ export const portalBffExamples: OperationExamples[] = [
                     "destructiveHint": false
                   }
                 },
-                "definitionHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49",
+                "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
                 "status": "pending_approval"
               }
             ]
@@ -1552,6 +1554,7 @@ export const portalBffExamples: OperationExamples[] = [
             ],
             "definition": {
               "name": "update_issue",
+              "title": "Update issue",
               "description": "Updates the summary of an issue.",
               "inputSchema": {
                 "type": "object",
@@ -1559,7 +1562,8 @@ export const portalBffExamples: OperationExamples[] = [
                   "issueKey": {
                     "type": "string",
                     "description": "Issue key, e.g. ABC-123",
-                    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+                    "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                    "maxLength": 32
                   },
                   "summary": {
                     "type": "string",
@@ -1577,9 +1581,9 @@ export const portalBffExamples: OperationExamples[] = [
                 "destructiveHint": false
               }
             },
-            "definitionHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
+            "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb"
           },
-          "pendingHash": "sha256:6e93bf7a90b607d4b54e073b0d46ee942aca6932a4b67a84bafa75f8213f4a49"
+          "pendingHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

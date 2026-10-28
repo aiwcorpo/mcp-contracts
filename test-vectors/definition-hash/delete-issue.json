@@ -3,6 +3,7 @@
   "input": {
     "tool": {
       "name": "delete_issue",
+      "title": "Delete issue",
       "description": "Deletes an issue permanently.",
       "inputSchema": {
         "type": "object",
@@ -10,7 +11,8 @@
           "issueKey": {
             "type": "string",
             "description": "Issue key, e.g. ABC-123",
-            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+            "maxLength": 32
           }
         },
         "required": [
@@ -44,6 +46,6 @@
       }
     }
   },
-  "canonical": "{\"action\":\"delete\",\"annotations\":{\"destructiveHint\":true,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Deletes an issue permanently.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"delete_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"DESTRUCTIVE\",\"system\":\"jira\"}",
-  "expected": "sha256:3a85bd7c0c422bbb1d7488a80b903520701ecd37b03748e8323f6ff179dc1564"
+  "canonical": "{\"action\":\"delete\",\"annotations\":{\"destructiveHint\":true,\"readOnlyHint\":false},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Deletes an issue permanently.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"maxLength\":32,\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"delete_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"DESTRUCTIVE\",\"system\":\"jira\",\"title\":\"Delete issue\"}",
+  "expected": "sha256:f9d65d1c0b4435aecb607f0bbec7ea18853e5968cef77a5c2181ce44ac36e0f0"
 }

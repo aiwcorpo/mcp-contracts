@@ -1,0 +1,51 @@
+{
+  "description": "Only title changed; the hash changes and the tool needs approval again (title is hashed, CC-042, required by CC-115).",
+  "input": {
+    "tool": {
+      "name": "get_issue",
+      "title": "Get any issue",
+      "description": "Returns one Jira issue by key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "issueKey"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    },
+    "manifestEntry": {
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"read\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Returns one Jira issue by key.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"maxLength\":32,\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"get_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\",\"title\":\"Get any issue\"}",
+  "expected": "sha256:f51d2d49bad7083dde632ccdfa3ebd1c5602416771143f33a2eee191bb9763e7",
+  "differsFrom": "get-issue.json"
+}
