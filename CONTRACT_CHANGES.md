@@ -992,7 +992,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 ## CC-078 | C6/C10 | `inputSchema` zamknięty i walidowany przez serwer; treść `invalid_argument` przy naruszeniu schematu
 
 - **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; rozszerzone w CC-123)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28; rozszerzone w CC-123). Wdrożone w 3.0.0 (wersja robocza): reguły `input-schema-closed`, `input-schema-bounded`, `input-schema-no-combinators`, zdanie o `invalid_argument` w C10, wektory manifestów.
 - **Problem:** MCP SDK 2.0.x waliduje argumenty względem `inputSchema` przed audytem serwera i odpowiada tekstem
   spoza C10 (`Tool (x) input validation failed`), bez zdarzenia C8. Kontrakt nie wymaga ani zamkniętego schematu
   (`additionalProperties: false`), ani określonej treści `invalid_argument` przy naruszeniu schematu, więc
@@ -1012,7 +1012,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 ## CC-079 | C6 | Nazwy `$defs` w `common.schema.json` jako stabilne API dla serwerów
 
 - **Zgłasza:** ws-02 (mcp-starter-lib 3.0.0-alpha-6)
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): lista w README, test pilnujący kompletności; wzorce `pattern` zgodne z `ResourceIds` (wektory `resource-ids/`).
 - **Problem:** serwery kopiowały wzorce identyfikatorów (`JiraIssueKey`, `GitLabProjectPath`, ...) do własnych
   stałych. Starter publikuje teraz `@ArgumentLimits(contractPattern = "<nazwa $defs>")`, które czyta `pattern` i
   `maxLength` z `common.schema.json` jara kontraktów w chwili rejestracji narzędzia. Zmiana nazwy albo usunięcie
@@ -1082,6 +1082,10 @@ opisuje CC-091.
 | CC-096 | Odpowiedzi błędów wniosków o dostęp | G-19 | M4 | minor |
 | CC-097 | `change` i wersje w rejestrze (przed/po) | G-23 | M4 | minor |
 | CC-098 | `resource` w `ConfirmationView` | G-17 | M3 | minor |
+| CC-124 | 503 `upstream_unavailable` przy niedostępnym JWKS (C1) | gateway, propozycja 9 | 3.0.0 | zmiana zachowania |
+| CC-125 | Audyt odrzuceń mTLS i tokenów BFF na porcie C5; `replay_store_unavailable` tylko u odbiorców JWT | gateway, propozycja 8 | 3.0.0 | major (zaostrzenie) |
+| CC-126 | Dzienny limit błędnych kodów TOTP: stan `disabled` | przegląd bezpieczeństwa | 3.0.0 | major (nowa wartość enum) |
+| CC-127 | Jedna oczekująca operacja DESTRUCTIVE, `confirmation_superseded` | przegląd bezpieczeństwa | 3.0.0 | major (nowa wartość enum) |
 
 Podział wydań (rekomendacja ws-00): **2.2.0** dla M2 = CC-080 ... CC-090 (CC-085 z udokumentowanym wyjątkiem, jak
 w 2.1.0), bo ws-08 startuje na MSW od 2.2.0; **3.0.0** przed startem M3 = pakiet pivotu CC-091 ... CC-094 razem z
@@ -1747,7 +1751,16 @@ G-15, G-16, G-18, G-22.
   gateway'a, czy ma wejść do kontraktu (rekomendacja: konfiguracja); (3) czy reguła
   `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (rekomendacja: tak, żeby użytkownik nie miał dwóch
   mechanizmów); (4) czy `confirmation_declined` ma zniknąć ze schematu (rekomendacja: tak).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Aktualizacja przy wdrożeniu w 3.0.0:** (1) ciało `confirmation_required` ma dwie wykluczające się gałęzie, a pierwsza
+  dodatkowo zabrania `registerUrl` (bez tego zestaw pending + `registerUrl` przechodziłby przez `oneOf`); (2) kod o złym
+  formacie to `invalid_argument` na gateway'u, bez pytania brokera i bez zużycia próby (broker odpowiada `400`);
+  (3) limit oczekujących na `sub` (domyślnie 3) dotyczy odtąd tylko potwierdzeń o ryzyku innym niż `DESTRUCTIVE`:
+  operacji `DESTRUCTIVE` może czekać jedna, nowa unieważnia starą (CC-127, `confirmation_superseded`); (4) po
+  rozstrzygnięciu człowieka (podgląd opcjonalny) wiersz tabeli "podgląd wymagany (konfiguracja)" nie obowiązuje, a
+  audyt rozróżnia `user_confirmed` i `user_confirmed_no_preview`; (5) dzienny limit błędnych kodów wyłącza
+  Authenticator (CC-126); (6) blokada 5/15 min zdejmuje się wyłącznie upływem czasu, w portalu nie ma odblokowania
+  (decyzja człowieka 2026-10-28), opis w CC-092; (7) wektory: `confirmation-binding/` (32), `totp/` (39).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-092 | C4 | Broker: rejestracja i weryfikacja Authenticatora (TOTP)
 
@@ -2110,7 +2123,14 @@ G-15, G-16, G-18, G-22.
 - **Pytania do człowieka:** (1) kto może resetować cudzą rejestrację: ten sam CN `mcp-offboarding` co `purge`
   (rekomendacja: tak, jeden kanał helpdesk/IGA, osobny CN dopiero gdy pojawi się inny proces); (2) czy limity
   (5 błędnych, 15 min) i TTL rejestracji (10 min) są akceptowalne jako wartości domyślne.
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Aktualizacja przy wdrożeniu w 3.0.0:** blokada jest własnością użytkownika, nie rejestracji: usunięcie, ponowna
+  rejestracja i reset (`mcp-offboarding`) jej nie zdejmują, zdejmuje ją tylko upływ 15 minut (decyzja człowieka
+  2026-10-28), więc `state: none` może mieć `lockedUntil`. Okno weryfikacji i jednorazowość kroku jak w szkicu;
+  `verify` z kodem o złym formacie to `400`, bez wpływu na liczniki. Wektory TOTP mają format sekwencji kroków
+  (`initial`, `steps`) i referencję w `scripts/lib/totp.mjs`; test Javy z szkicu nie powstał (broker wykonuje wektory
+  we własnym teście). Pytanie otwarte człowieka (zgłoszenie z przeglądu): czy reset przez CN `mcp-offboarding` zostaje;
+  w tym wydaniu bez zmian (jak w rozstrzygnięciu CC-091).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-093 | C12 | BFF: rejestracja Authenticatora ze step-up MFA Entra
 
@@ -2159,7 +2179,7 @@ G-15, G-16, G-18, G-22.
 - **Wpływ na strumienie:** ws-07 (proxy, step-up przez istniejący mechanizm, `enrollmentId` w sesji, bez logowania
   ciał), ws-08 (nowa strona rejestracji Authenticatora z kreatorem QR / klucz ręczny / pierwszy kod, stan i usunięcie rejestracji, baner o braku rejestracji przy narzędziach z `requiresConfirmation`, strona podglądu tylko do odczytu; lista pełna w raporcie koordynatora), ws-06 (CC-092), ws-10 (test: żadne logi BFF ani brokera nie zawierają
   ziarna ani `otpauthUri`; rejestracja bez świeżego MFA odrzucona).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-094 | C8 | Zdarzenia audytu dla Authenticatora i potwierdzeń kodem
 
@@ -2198,30 +2218,53 @@ G-15, G-16, G-18, G-22.
   Wariant A: minor (nowe znane wartości `reason`). Rekomendacja ws-00: B przy 3.0.0, A przy wyjątku w 2.2.0.
 - **Wpływ na strumienie:** ws-06, ws-05, ws-07 (emisja), ws-10 (test: ani kod, ani ziarno nie występują w logach i
   audycie; jeden `requestId` obejmuje BFF, broker i gateway), operator SIEM (nowa wartość `event`).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-095 | C5/C12 | `GET /api/v1/activity/calls` i rzut `ActivityCall`
 
-- **Zgłasza:** analiza luk G-11, G-12, G-13; kierunek zatwierdzony przez człowieka 2026-10-27
+- **Zgłasza:** analiza luk G-11, G-12, G-13; kierunek zatwierdzony przez człowieka 2026-10-27; jedno wywołanie = jeden
+  wiersz z wynikiem końcowym i liczbą błędnych kodów (decyzja człowieka 2026-10-28)
 - **Kamień:** M3 (ekran logów od M2 jako lista na starym `GET /activity`; filtry i stany od M3), wydanie z kamieniem M3
 - **Problem:** `GET /api/v1/activity` zwraca surowe zdarzenia C8 z samym `limit`. (G-11) Brak filtrów
   (szukaj, okres, wynik) i stronicowania; filtrowanie w przeglądarce na 200 rekordach daje niepełny obraz bez
   ostrzeżenia, a gateway trzyma 30 dni. (G-12) Jedno wywołanie to kilka zdarzeń (`policy_decision`,
-  `confirmation`, `tool_call`); przy kanale kodu pierwsze wywołanie i ponowienie mają różne `requestId`, a C8 nie
-  ma `confirmationId`, więc tylko gateway powiąże "czeka na potwierdzenie" z rozstrzygnięciem. (G-13) Kolumna
-  "Zasób" i pełna nazwa narzędzia (`<system>__<tool>`) powinny być liczone w jednym miejscu.
-- **Wariant (zatwierdzony kierunek):** nowy endpoint `GET /api/v1/activity/calls` (proxy do C5 `GET
-  /admin/v1/activity/calls`), jedna pozycja = jedno wywołanie, rzut `ActivityCall` liczony w gateway'u z jego
-  zdarzeń i wewnętrznego powiązania z `confirmationId` (które nie wychodzi poza gateway: ani do C8, ani do
-  przeglądarki). Filtry `from`, `to`, `result` (grupa), `q`, kursor w nagłówku `X-Next-Cursor`. Stary
-  `GET /api/v1/activity` zostaje bez zmian (odpowiedź tablicą zdarzeń C8). `sub` zawsze z tokenu BFF, nigdy z
-  parametru; `q` dopasowuje tylko nazwę narzędzia i `resource.id` (argumentów nie ma w danych), długość ograniczona,
-  zapytanie parametryzowane. Ograniczenie: gateway widzi tylko swoje zdarzenia (`component: gateway`); odmowa
-  serwera MCP na zasobie (`not_found_or_denied`) jest widoczna tylko jako `result: error`, `errorCode:
-  not_found_or_denied` w wywołaniu, które przeszło przez gateway.
-- **Adnotacja pivotu (CC-091):** po zmianie kanału potwierdzeń stan "Odrzucone przez Ciebie" (`declined`) nie
-  powstaje (brak decyzji w portalu); "Potwierdzone kodem" = `confirmed` zostaje (kod z aplikacji), a niewpisany kod
-  kończy się `expired`, wyczerpane próby `confirmation_failed`.
+  `confirmation`, `tool_call`), a pierwsze wywołanie i ponowienia z kodem mają różne `requestId`; C8 nie ma
+  `confirmationId`, więc tylko gateway powiąże "czeka na potwierdzenie" z rozstrzygnięciem i policzy błędne kody.
+  (G-13) Kolumna "Zasób" i pełna nazwa narzędzia (`<system>__<tool>`) powinny być liczone w jednym miejscu.
+- **Wariant:** nowy endpoint `GET /api/v1/activity/calls` (proxy do C5 `GET /admin/v1/activity/calls`).
+  **Jedno wywołanie narzędzia to jeden wiersz** `ActivityCall`, liczony w gateway'u ze zdarzeń wywołania i jego
+  ponowień oraz z wewnętrznego powiązania z `confirmationId` (które nie wychodzi poza gateway: ani do C8, ani do
+  przeglądarki). Wiersz niesie **wynik końcowy** (`result`) i **liczbę błędnych kodów** (`wrongCodeCount`, szczegół
+  wiersza). `requestId` i `ts` wiersza to `requestId` i czas pierwszego żądania (tego, które utworzyło oczekujące
+  wywołanie); ponowienia z kodem nie tworzą własnych wierszy. Filtry `from`, `to`, `result` (grupa), `q`, kursor w
+  nagłówku `X-Next-Cursor`. Stary `GET /api/v1/activity` zostaje bez zmian (odpowiedź tablicą zdarzeń C8). `sub`
+  zawsze z tokenu BFF, nigdy z parametru; `q` dopasowuje tylko nazwę narzędzia i `resource.id` (argumentów nie ma w
+  danych), długość ograniczona, zapytanie parametryzowane. Ograniczenie: gateway widzi tylko swoje zdarzenia
+  (`component: gateway`); odmowa serwera MCP na zasobie (`not_found_or_denied`) jest widoczna tylko jako `result: error`,
+  `errorCode: not_found_or_denied` w wywołaniu, które przeszło przez gateway.
+- **Wyniki** (lista z `design/ekrany-authenticator-i-poprawki.txt`; "Odrzucone przez Ciebie" usunięte, bo po pivocie
+  nie ma decyzji w portalu, a odmowa to niewpisanie kodu):
+
+| Etykieta w portalu | `result` | Grupa filtra `result` |
+| --- | --- | --- |
+| Wykonano | `ok` | `ok` |
+| Odmowa (brak uprawnienia) | `denied_not_granted` | `denied` |
+| Odmowa (poza zakresem linku) | `denied_link_scope` | `denied` |
+| Odmowa (polityka) | `denied_policy` | `denied` |
+| Czeka na potwierdzenie | `confirmation_pending` | `confirmation` |
+| Potwierdzone kodem | `confirmed` | `confirmation` |
+| Wygasło | `expired` | `confirmation` |
+| Błędny kod | `confirmation_failed` | `confirmation` |
+| Zastąpione nowszą operacją (CC-127) | `superseded` | `confirmation` |
+| Błąd | `error` (z `errorCode`) | `error` |
+
+  Wyniki pomocnicze spoza listy etykiet makiet, które gateway już zna z C10: `tool_disabled`, `credential_required`,
+  `rate_limited`, `step_up_required` (grupa `denied` dla pierwszych trzech i `error` dla ostatniego; frontend pokazuje
+  nieznaną wartość jako etykietę ogólną). Reguły wyniku końcowego wywołania z potwierdzeniem: wykonane po poprawnym
+  kodzie to `confirmed` (nie `ok`; `wrongCodeCount` mówi, ile błędnych kodów było wcześniej); trzy błędne kody to
+  `confirmation_failed`; brak poprawnego kodu przez 120 s to `expired`; unieważnienie przez nowszą operację to
+  `superseded`; do rozstrzygnięcia to `confirmation_pending`. `wrongCodeCount` liczy kody `invalid` i `replayed`
+  tego wywołania (0..3), nie liczy odpowiedzi `locked`.
 - **Zmiany plików:** `openapi/portal-bff.v1.yaml` i `openapi/gateway-admin.v1.yaml`:
 
 ```yaml
@@ -2254,7 +2297,7 @@ G-15, G-16, G-18, G-22.
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired and failed confirmations.
+          description: Result group. confirmation covers pending, confirmed, expired, failed and superseded confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -2301,8 +2344,10 @@ G-15, G-16, G-18, G-22.
       required: [requestId, ts, tool, result]
       properties:
         requestId:
+          description: requestId of the first request of the call (the one that created a pending confirmation, if any).
           $ref: '../schemas/common.schema.json#/$defs/RequestId'
         ts:
+          description: Time of that first request.
           $ref: '../schemas/common.schema.json#/$defs/Timestamp'
         client:
           type: string
@@ -2334,7 +2379,12 @@ G-15, G-16, G-18, G-22.
           description: |
             Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
-            expired, confirmation_failed. A client must show an unknown value as a generic label.
+            expired, confirmation_failed, superseded. A client must show an unknown value as a generic label.
+        wrongCodeCount:
+          description: Number of wrong confirmation codes (invalid or replayed) given for this call; only for calls that needed a confirmation.
+          type: integer
+          minimum: 0
+          maximum: 3
         errorCode:
           oneOf:
             - $ref: '../schemas/common.schema.json#/$defs/ErrorCode'
@@ -2346,22 +2396,36 @@ G-15, G-16, G-18, G-22.
   major przy każdej nowej wartości. Odpowiednik C5 z `x-allowed-client-cn: [mcp-portal-bff]`. Stronicowanie
   nagłówkiem zamiast `{items, next}` utrzymuje odpowiedź tablicą. Do opisu `reason` w `audit-event.schema.json`
   dopisana znana wartość `link_scope` (odmowa przez regułę zawężenia linku; patch, bo `reason` ma wzorzec).
-  Mapowanie makiety: "Czeka na potwierdzenie" = `confirmation_pending` (po 120 s `expired`), "Potwierdzone kodem" =
-  `confirmed`, "Odmowa: poza zakresem linku" = `denied_link_scope`, "Odmowa: brak uprawnienia" =
-  `denied_not_granted`. Poprawić dane makiet: `logs-app-*` (gwiazdka zabroniona w `OpenSearchIndexName`) na prefiks
-  `logs-app`, `payments/api !412` (MR nie jest typem zasobu) na `payments/api`, `GitLab: payments/*` na `payments`
-  z dopiskiem "z podgrupami"; kolejność argumentów w makietach potwierdzenia wg nazwy (`pageId`, `spaceKey`, ...).
-- **Wektory / testy:** `test-vectors/activity-calls/`: przykłady `ActivityCall` (`valid-ok`,
-  `valid-confirmation-pending`, `valid-unknown-result`, `valid-no-resource`), odrzucane (`invalid-result-uppercase`,
-  `invalid-contains-arguments`, `invalid-contains-code`, `invalid-resource-extra-field`) oraz
-  `aggregation-*.json` (wejście: zdarzenia C8 jednego wywołania i ponowienia, wraz z mapowaniem na wiersz;
-  oczekiwanie: jeden `ActivityCall`), z referencyjną kontrolą w teście Node, żeby gateway i mock liczyły tak
-  samo. Wektory są nowe, istniejące oczekiwania się nie zmieniają.
+  Poprawić dane makiet: `logs-app-*` (gwiazdka zabroniona w `OpenSearchIndexName`) na prefiks `logs-app`,
+  `payments/api !412` (MR nie jest typem zasobu) na `payments/api`, `GitLab: payments/*` na `payments` z dopiskiem
+  "z podgrupami"; kolejność argumentów w makietach potwierdzenia wg nazwy (`pageId`, `spaceKey`, ...); na planszy 06
+  scalić wiersze pierwszego wywołania i ponowień (R-5).
+- **Wektory / testy:** `test-vectors/activity-calls/`: przykłady `ActivityCall` (`valid-ok`, `valid-confirmed-with-wrong-codes`,
+  `valid-confirmation-pending`, `valid-expired`, `valid-superseded`, `valid-unknown-result`, `valid-no-resource`),
+  odrzucane (`invalid-result-uppercase`, `invalid-contains-arguments`, `invalid-contains-code`,
+  `invalid-wrong-code-count-4`, `invalid-resource-extra-field`) oraz `aggregation-*.json` (wejście: zdarzenia C8
+  pierwszego wywołania i ponowień jednego wywołania; oczekiwanie: jeden `ActivityCall`, m.in. 2 błędne kody i
+  potwierdzenie, 3 błędne kody, wygaśnięcie, unieważnienie, odmowa bez potwierdzenia), z referencyjną kontrolą w teście
+  Node, żeby gateway i mock liczyły tak samo. Wektory są nowe, istniejące oczekiwania się nie zmieniają.
 - **SemVer:** minor (nowy endpoint, nowe schematy, nowe wektory).
-- **Wpływ na strumienie:** ws-05 (agregacja, indeksy po `sub` i `ts`, zapytanie parametryzowane, limit 30 dni), ws-07
-  (proxy), ws-08 (filtry, słownik etykiet `result`, obsługa nieznanej wartości), ws-10 (test: filtr `q` nie
-  dopasowuje argumentów; `sub` z parametru ignorowany).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Wpływ na strumienie:** ws-05 (agregacja wywołania i ponowień, licznik błędnych kodów, indeksy po `sub` i `ts`,
+  zapytanie parametryzowane, limit 30 dni), ws-07 (proxy), ws-08 (filtry, słownik etykiet `result`, szczegół z liczbą
+  błędnych kodów, obsługa nieznanej wartości), ws-10 (test: filtr `q` nie dopasowuje argumentów; `sub` z parametru
+  ignorowany).
+- **Do akceptacji człowieka (3-6 punktów):**
+  1. Jedno wywołanie = jeden wiersz; `requestId` i `ts` pochodzą z pierwszego żądania, ponowienia z kodem nie mają
+     własnych wierszy.
+  2. Wiersz ma wynik końcowy (`ok`, `denied_*`, `confirmation_pending`, `confirmed`, `expired`, `confirmation_failed`,
+     `superseded`, `error`) i `wrongCodeCount` 0..3 w szczegółach.
+  3. Wyniki według listy z `design/ekrany-authenticator-i-poprawki.txt`; stanu "Odrzucone przez Ciebie" nie ma (po
+     pivocie nie ma decyzji w portalu).
+  4. `result` to otwarty ciąg ze znanymi wartościami (nowa wartość nie wymaga major); filtr `result` ma 4 grupy: `ok`,
+     `denied`, `error`, `confirmation`.
+  5. `q` dopasowuje tylko nazwę narzędzia i `resource.id`; stary `GET /api/v1/activity` zostaje.
+  6. Dodana wartość `superseded` wynika z CC-127 (jedna oczekująca operacja DESTRUCTIVE).
+- **Status:** proposed - kierunek zatwierdzony (decyzje człowieka 2026-10-27 i 2026-10-28), tekst gotowy do akceptacji
+  człowieka (nie zaimplementowane w OpenAPI 3.0.0-SNAPSHOT; po akceptacji wdrożenie jest mechaniczne i nie zmienia
+  innych kontraktów)
 
 ## CC-096 | C12 | Odpowiedzi błędów wniosków o dostęp
 
@@ -2405,14 +2469,16 @@ G-15, G-16, G-18, G-22.
 - **Kamień:** M4 (przypinanie definicji i widok administracji), wydanie z kamieniem M4
 - **Problem:** `RegistryTool.status` to `approved` albo `pending_approval`; makieta 07 rozróżnia "nowe" i "zmienione"
   (bez N+1 wywołań `/pending`) i pokazuje wersje serwera "Przed (1.4.2) / Po (1.5.0)". `PendingTool` nie ma wersji.
-- **Wariant:** `RegistryTool.change` (`new` | `changed`, tylko przy `pending_approval`),
-  `RegistryTool.approvedInVersion` (SemVer albo `null`), `PendingTool.approvedInVersion` i `pendingVersion`.
-  Pola informacyjne; decyzja nadal wiąże `definitionHash`. Przycisk "Odrzuć" (G-24) jest usunięty z makiety i
-  **nie ma endpointu** (brak zatwierdzenia = narzędzie zostaje `pending_approval` i ukryte, fail-closed);
-  "Zatwierdź zmiany" na poziomie serwera to seria `approve` w frontendzie z raportem, które się nie udały.
-  Frontend pokazuje pełny diff `ToolEntry` z wyróżnieniem `risk`, `action`, `resourceRefs`, `annotations` (N-7).
+- **Wariant:** `RegistryTool.change` (`new` | `changed`, tylko przy `pending_approval`), `RegistryTool.approvedInVersion`
+  (wersja manifestu serwera, przy której zatwierdzono obowiązujący wpis, albo `null` dla nowego narzędzia),
+  `PendingTool.approvedInVersion` i `pendingVersion` (wersja manifestu, w którym pojawił się oczekujący wpis). Pola
+  informacyjne; decyzja nadal wiąże `definitionHash`. Gateway zapisuje wersję manifestu przy rejestracji i przy
+  zatwierdzeniu. Przycisk "Odrzuć" (G-24) jest usunięty z makiety i **nie ma endpointu** (brak zatwierdzenia = narzędzie
+  zostaje `pending_approval` i ukryte, fail-closed); "Zatwierdź zmiany" na poziomie serwera to seria `approve` w
+  frontendzie z raportem, które się nie udały. Frontend pokazuje pełny diff `ToolEntry` (od CC-115 z `title`) z
+  wyróżnieniem `risk`, `action`, `resourceRefs`, `annotations` (N-7).
 - **Alternatywa:** liczyć "nowe/zmienione" jednym `/pending` na narzędzie oczekujące i pominąć wersje.
-- **Zmiany plików:** `openapi/gateway-admin.v1.yaml`:
+- **Zmiany plików:** `openapi/gateway-admin.v1.yaml` (typy `RegistryTool` i `PendingTool`):
 
 ```yaml
     RegistryTool:
@@ -2420,9 +2486,9 @@ G-15, G-16, G-18, G-22.
         change:
           type: string
           enum: [new, changed]
-          description: Present when status is pending_approval. new = no approved entry exists; changed = an approved entry exists and differs.
+          description: Present exactly when status is pending_approval. new = no approved entry exists; changed = an approved entry exists and differs.
         approvedInVersion:
-          description: Server version (manifest version) at which the approved entry was approved; null for a new tool.
+          description: Server version (manifest version) at which the approved entry was approved; null for a new tool. Absent only for an approved tool whose version was not recorded before this field existed.
           oneOf:
             - $ref: '../schemas/common.schema.json#/$defs/SemVer'
             - type: 'null'
@@ -2437,13 +2503,27 @@ G-15, G-16, G-18, G-22.
 ```
 
   `RegistryTool` ma `unevaluatedProperties: false` i składa się z `ToolEntryFields`; nowe pola dopisać w `properties`
-  obok `status`. Przykłady `listRegistryServers`, `getPendingTool` i mocki z nowymi polami.
-- **Wektory / testy:** test przykładów; reguła spójności w teście: `change` obecne wtedy i tylko wtedy, gdy
-  `status: pending_approval`.
-- **SemVer:** minor.
+  obok `status`. `PendingTool` ma `additionalProperties: false` i `required: [approvedEntry, pendingEntry,
+  pendingHash]`; `pendingVersion` dopisać do `required` (gateway zawsze zna wersję oczekującego manifestu), a
+  `approvedInVersion` zostaje opcjonalne. Przykłady `listRegistryServers`, `getPendingTool` i mocki z nowymi polami
+  (`pending_approval` z `change: new` i z `change: changed`).
+- **Wektory / testy:** test przykładów; reguła spójności w teście Node: `change` obecne wtedy i tylko wtedy, gdy
+  `status: pending_approval`; `change: new` wymaga `approvedInVersion: null` (albo braku), `change: changed` wymaga
+  semantycznej wersji; w `PendingTool` `approvedEntry: null` wymaga `approvedInVersion: null`.
+- **SemVer:** minor (nowe pola opcjonalne; `pendingVersion` w `required` odpowiedzi to dodatek po stronie producenta, nie
+  zmiana żądania).
 - **Wpływ na strumienie:** ws-05 (rejestr zapisuje wersję manifestu przy rejestracji i zatwierdzeniu), ws-07
   (przezroczyste), ws-08 (widok diffu).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Do akceptacji człowieka (3-6 punktów):**
+  1. `RegistryTool.change` (`new` | `changed`) tylko przy `pending_approval`, bez dodatkowych wywołań `/pending`.
+  2. `approvedInVersion` (wersja manifestu przy zatwierdzeniu, `null` dla nowego) w `RegistryTool` i `PendingTool`,
+     `pendingVersion` w `PendingTool`: pola informacyjne, decyzja nadal wiąże `definitionHash`.
+  3. Brak endpointu "odrzuć": brak zatwierdzenia to narzędzie ukryte (`pending_approval`, fail-closed);
+     "Zatwierdź zmiany" serwera to seria `approve` po stronie frontendu.
+  4. Pełny diff pokazuje frontend z istniejących `approvedEntry` i `pendingEntry` (od CC-115 także `title`).
+  5. Kamień M4, wydanie z kamieniem (nie 3.0.0).
+- **Status:** proposed - kierunek zatwierdzony (decyzja człowieka 2026-10-27), tekst gotowy do akceptacji człowieka (nie
+  zaimplementowane w OpenAPI 3.0.0-SNAPSHOT)
 
 ## CC-098 | C5/C12 | `resource` w `ConfirmationView`
 
@@ -2481,7 +2561,7 @@ G-15, G-16, G-18, G-22.
 - **Wektory / testy:** test przykładów (`delete_issue` z `resource: {type: Jira::Issue, id: ABC-123, parent: Jira::Project::ABC}`).
 - **SemVer:** minor. Jeśli pivot wychodzi w 3.0.0, wchodzi razem z nim.
 - **Wpływ na strumienie:** ws-05 (wyliczenie), ws-07 (przezroczyste), ws-08 (wiersz zasobu na podglądzie).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-27; wydanie 3.0.0 przed M3, nie w 2.2.0). Wdrożone w 3.0.0 (wersja robocza 3.0.0-SNAPSHOT, bez tagu). Dodatkowe decyzje człowieka 2026-10-28: blokada zdejmuje się tylko po 15 minutach, w portalu nie ma odblokowania; dzienny limit błędnych kodów (CC-126); jedna oczekująca operacja DESTRUCTIVE (CC-127). Rozstrzygnięcia: podgląd OPCJONALNY, bez `previewRequired`; ryzyko rezydualne (opis operacji widziany tylko w niezaufanym kliencie, gdy człowiek nie otworzy podglądu) jest świadomie przyjęte przez człowieka; step-up Entra tylko przy rejestracji i usunięciu; weryfikuje broker; limity 5 błędnych / 15 min, blokada 15 min, 3 próby na wywołanie, rejestracja 10 min; reguła `destructive-requires-fresh-mfa` wypada z paczki produkcyjnej (przykład zostaje); `confirmation_declined` usunięte; reset cudzej rejestracji przez CN `mcp-offboarding`; CC-094 wariant B (nowy `event: "authenticator"`); wyjątek w niezmienniku 4 na jednorazowy pokaz ziarna TOTP (`no-store`, tylko właściciel po MFA Entra, nigdy w logach ani audycie)
 
 ## CC-099 | C4/C12 | `ReturnPath` bez zarezerwowanych prefiksów
 
@@ -2499,7 +2579,7 @@ G-15, G-16, G-18, G-22.
 - **SemVer:** zaostrzenie walidacji, **major**; wchodzi do 3.0.0 razem z CC-091 ... CC-094 i CC-098.
 - **Wpływ na strumienie:** ws-06 (C4 `oauth/start`), ws-07 (login, `startConnectOAuth`), ws-08 (generowane ścieżki
   powrotu nie zaczynają się od zarezerwowanych prefiksów).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): wzorzec rozszerzony o segmenty `.` i `..` (przed `?`) i o `?` po prefiksie (`/api?x`), bo bez tego `/./api/...` i `/api?x` omijają prefiks; do potwierdzenia przez człowieka.
 
 ## CC-100 | C4.1 | Porównanie tożsamości bez zmiany wielkości liter dla całego Unicode
 
@@ -2666,13 +2746,13 @@ G-15, G-16, G-18, G-22.
 
 - **Zgłasza:** C3 (ws-08)
 - **Propozycja:** wymagać `title` (zaostrzenie manifestu, major). Razem z rejestrem definicji.
-- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M3)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28, przyjęte do 3.0.0; wcześniej deferred, grupa C pakietu M2). Wdrożone w 3.0.0 (wersja robocza): `title` w `required` definicji narzędzia, wektory `invalid-missing-title`, `invalid-empty-title`; hashe wektorów `definition-hash/` i przykładów OpenAPI przeliczone.
 
 ## CC-116 | C8 | Osobna wartość `event` dla zmian linków
 
 - **Zgłasza:** C4 (ws-07)
 - **Propozycja:** osobny `event` dla zmian wirtualnych serwerów zamiast `admin_change` (nowa wartość enum, major). Razem z CC-107 i listą narzędzi linku (grupa A).
-- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M3/M4)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28, przyjęte do 3.0.0; wcześniej deferred, grupa C pakietu M2). Wdrożone w 3.0.0 (wersja robocza): nowa wartość `event: "virtual_server_change"` (powody z CC-107: `vs_created`, `vs_deleted`, `slug_taken`, `not_granted`, `invalid_request`, `virtual_server_limit`, `not_found_or_denied`), wymagane `outcome` i `reason`; `admin_change` zostaje dla pozostałych zmian administracyjnych. Lista narzędzi linku w zdarzeniu nie weszła (poza zakresem).
 
 ## CC-117 | C8 | `backendUser` w zdarzeniu `connection_change`
 
@@ -2717,16 +2797,145 @@ G-15, G-16, G-18, G-22.
 
 - **Zgłasza:** A2 (starter, gateway); grupa A pakietu M2
 - **Propozycja:** wspólna definicja znaków zakazanych w argumentach i w tekście z systemu (C0/C1/DEL, U+2028/U+2029, niesparowane surogaty, nieznaki, `\p{Cf}` poza U+200C..U+200F; w wartości z `pattern` także `\n\r\t`), zastępowanie usuniętego ciągu znaków niewidocznych jedną spacją, znaki niewidoczne poza `\p{Cf}` (selektory wariantu poza pojedynczym U+FE0F po emoji, U+034F, U+115F, U+1160, U+3164, U+FFA0, U+2800); wektory `test-vectors/text-hygiene/`. Wydanie 3.0.0 (nie implementowane w 2.2.5).
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): README "Higiena tekstu", `scripts/lib/text-hygiene.mjs`, 79 wektorów `text-hygiene/`.
 
 ## CC-122 | C10/C8 | Znaki pełnej szerokości ASCII w filtrach wzmianek (bez NFKC)
 
 - **Zgłasza:** A3 (starter); grupa A pakietu M2
 - **Propozycja:** nie normalizować NFKC; odrzucać lub oznaczać znaki pełnej szerokości ASCII (U+FF01..U+FF5E) w filtrach wzmianek (`＠ａｌｌ`), wektory w `text-hygiene/`. Wydanie 3.0.0.
-- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza): tryb `argument-mention-filtered`, brak NFKC.
 
 ## CC-123 | C6/C10 | Zamknięty i ograniczony `inputSchema` (rozszerzenie CC-078)
 
 - **Zgłasza:** A4 (starter); grupa A pakietu M2
 - **Propozycja:** CC-078 rozszerzone o reguły startera: `additionalProperties: false`, tekst `maxLength`, lista `maxItems` i `items`, liczba `minimum`/`maximum`, wzorzec z kotwicami, bez `allOf/anyOf/oneOf/not/if`, bez map otwartych; reguła semantyczna w manifeście i wektory odrzuconych manifestów (mapa otwarta, lista bez `maxItems`, liczba bez zakresu, `prefixItems` bez `items`). Dla nowych manifestów; wydanie 3.0.0 razem z CC-078 i CC-079 (nazwy `$defs` jako stabilne API, A8).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28). Wdrożone w 3.0.0 (wersja robocza) razem z CC-078.
+
+## CC-124 | C1 | Gateway odpowiada 503 `upstream_unavailable`, gdy JWKS IdP jest niedostępny
+
+- **Zgłasza:** gateway (propozycja 9 w `mcp-gateway/STATUS.md`); decyzja człowieka 2026-10-28
+- **Kamień:** wydanie 3.0.0
+- **Problem:** gdy gateway nie może pobrać kluczy IdP (JWKS), odpowiadał `401` z `WWW-Authenticate: Bearer
+  resource_metadata=...`, jak przy każdym odrzuconym tokenie. Klient OAuth czyta takie `401` jako "zaloguj się ponownie" i
+  uruchamia nowy przepływ logowania, który przy awarii IdP nie pomoże, a zalogowanemu użytkownikowi psuje sesję.
+- **Zmiana:** gdy decyzja o tokenie zależy od zestawu kluczy, którego gateway nie ma (JWKS niedostępny i brak użytecznej
+  kopii; także token z nieznanym `kid` przy nieudanym odświeżeniu, bo nie da się odróżnić rotacji od podróbki):
+  - status `503`, ciało `upstream_unavailable` (kształt C10, `tool-error.schema.json#/$defs/UpstreamUnavailable`),
+    `Content-Type: application/json; charset=utf-8`;
+  - **bez** nagłówka `WWW-Authenticate` (ani z `error="invalid_token"`, ani z samym `resource_metadata`): klient nie ma
+    zaczynać logowania;
+  - `Cache-Control: no-store`, bez `Set-Cookie`;
+  - **`Retry-After`: tak.** Liczba całkowita sekund (RFC 9110, dozwolone przy 503), równa konfigurowanemu odstępowi
+    ponowienia pobrania kluczy, zakres 1..60, domyślnie 10. Za: klienty i biblioteki HTTP dostają standardowy sygnał
+    "poczekaj" i nie dobijają niedostępnego IdP pętlą ponowień; koszt: jedna wartość konfiguracji. Przeciw: klient, który
+    ignoruje nagłówek, i tak ponowi, więc sama obecność nie wystarcza jako ochrona IdP (limit po stronie gateway'a
+    zostaje w jego konfiguracji);
+  - fail-closed bez zmian: żądanie nie jest wykonywane, token nie jest akceptowany z cache po wygaśnięciu kopii;
+  - zdarzenie `authentication` z `reason: jwks_unavailable` i `errorCode: upstream_unavailable` zostaje (CC-120, schemat
+    już wiąże oba).
+  Odrzucenie sprawdzonego tokenu (10 powodów C1 z CC-120) zostaje `401` z `resource_metadata` i bez powodu.
+- **Pliki:** `README.md` (sekcja "Odpowiedzi gateway'a na odrzucone i niedostępne uwierzytelnienie"),
+  `scripts/lib/gateway-authentication.mjs` (referencja), wektory `test-vectors/gateway-authentication/` (13: 10 powodów
+  401, trasa `/v/`, 503 z `Retry-After` 10 i 30), test sprawdza ciało względem `tool-error.schema.json`, brak
+  `WWW-Authenticate` przy 503 i spójność z audytem.
+- **SemVer:** zmiana zachowania gateway'a dla klientów (status 401 -> 503) w obszarze nieopisanym w OpenAPI; według
+  README zmiana oczekiwanego zachowania, wydana z 3.0.0.
+- **Wpływ:** ws-05 (obsługa błędu JWKS, `Retry-After`, konfiguracja odstępu), ws-10 (test: awaria IdP daje 503 bez
+  `WWW-Authenticate`), klienty MCP (nie logują się ponownie przy 503).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-125 | C8 | Audyt odrzuceń mTLS i tokenów BFF na porcie C5; `replay_store_unavailable` tylko u odbiorców JWT
+
+- **Zgłasza:** gateway (propozycja 8 w `mcp-gateway/STATUS.md`); decyzja człowieka 2026-10-28
+- **Kamień:** wydanie 3.0.0
+- **Problem:** CC-120 opisało `client_certificate_rejected` jako powód zdarzenia `authentication`, ale gateway nie
+  audytował odrzuceń na własnym porcie administracyjnym (`/admin/v1`, `/actuator/prometheus`), a wektor
+  `gateway-authentication-denied-replay-store-unavailable` miał `component: gateway`, choć gateway nie ma magazynu
+  `jti` dla tokenów klienta.
+- **Zmiana:**
+  1. gateway emituje `authentication` (`component: gateway`, `componentId: mcp-gateway`) dla odrzuceń na porcie C5:
+     `client_certificate_rejected` (brak certyfikatu, certyfikat spoza CA wewnętrznego, bez celu `clientAuth`, CN spoza
+     `x-allowed-client-cn` operacji) oraz powody tokenu (`missing_token`, `malformed`, `bad_signature`, `unknown_kid`,
+     `wrong_issuer`, `wrong_audience` dla `aud` != `mcp-gateway-admin`, `expired`, ...) dla odrzuconego tokenu BFF;
+     lista pól zdarzenia zostaje zamknięta (bez `tool`, `sub`, ścieżki ani CN; patrz pytanie w raporcie);
+  2. `replay_store_unavailable` emitują **tylko odbiorcy wewnętrznego JWT**: serwery MCP (przez starter) i broker.
+     Schemat wymusza: dla tego powodu `component` jest `server` albo `broker`. Wektor z `component: gateway` jest teraz
+     negatywny (`invalid-authentication-replay-store-unavailable-gateway`), poprawne to
+     `server-authentication-denied-replay-store-unavailable` i `broker-authentication-denied-replay-store-unavailable`;
+  3. `jwks_unavailable` zostaje dla obu stron (JWKS IdP u gateway'a, JWKS gateway'a u odbiorców JWT).
+- **Pliki:** `schemas/audit-event.schema.json` (reguła `component` dla `replay_store_unavailable`, opis `reason`),
+  wektory `gateway-authentication-denied-admin-client-certificate`, `gateway-authentication-denied-admin-bff-token`.
+- **SemVer:** zaostrzenie walidacji (wektor `gateway`/`replay_store_unavailable` przestaje być poprawny), major; wchodzi do
+  3.0.0.
+- **Wpływ:** ws-05 (emisja na porcie C5), ws-02 i ws-06 (`replay_store_unavailable` z `component` serwera/brokera).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-126 | C4/C11/C12/C8 | Dzienny limit błędnych kodów TOTP wyłącza Authenticator
+
+- **Zgłasza:** automatyczny przegląd bezpieczeństwa commitów 3.0.0; decyzja człowieka 2026-10-28
+- **Kamień:** wydanie 3.0.0 (część pivotu, CC-091 ... CC-094)
+- **Problem:** blokada 5 błędów / 15 min (CC-092) ogranicza tempo zgadywania kodu do ok. 480 prób na dobę (5 na 15 min
+  bez końca), a kod ma 6 cyfr i okno 3 kroków; agent próbujący bez przerwy nie napotyka górnej granicy.
+- **Zmiana:**
+  - **20 błędnych kodów (`invalid` lub `replayed`) w oknie kroczącym 24 h wyłącza Authenticator użytkownika do ponownej
+    rejestracji.** Nie liczą się: odpowiedzi `locked`, `malformed` (400), błędne kody przy potwierdzaniu rejestracji
+    (mają własne 3 próby). Sukces **nie** zeruje licznika dziennego (zeruje tylko licznik 5/15 min). Limit konfigurowalny,
+    domyślnie 20 / 24 h.
+  - Broker: `AuthenticatorStatus.state` ma nową wartość `disabled` z `disabledAt` i `disabledReason`
+    (`daily_failure_limit`), wymagane razem; `AuthenticatorVerifyResult.result` ma `disabled` (broker nie sprawdza kodu).
+    `POST /v1/authenticator/enrollment` jest dozwolone ze stanu `disabled` (nie `409`); aktywacja nowej rejestracji
+    zeruje licznik dzienny i stan `disabled`. `DELETE` i reset (`mcp-offboarding`) usuwają także rejestrację `disabled`.
+  - Gateway (C11): `disabled` z `GET /v1/authenticator` przy pierwszym wywołaniu i `disabled` z `verify` przy ponowieniu
+    dają `confirmation_required` z samym `registerUrl` (jak brak rejestracji), pending nie jest tworzone, a przy ponowieniu
+    zostaje nietknięte i nie zużywa próby.
+  - Portal (C12): `GET /api/v1/authenticator` zwraca `disabled` (przykład dla MSW); portal pokazuje baner z powodem i
+    jedną akcję "Zarejestruj ponownie" (step-up MFA Entra jak zwykle). Brak akcji odblokowania.
+  - Audyt (C8, `event: "authenticator"`): `authenticator_disabled` (broker, `outcome: denied`, w chwili wyłączenia),
+    `totp_disabled` (próba weryfikacji przy wyłączonym); zdarzenie `confirmation` gateway'a z powodem
+    `authenticator_disabled`.
+- **Relacja z decyzją "blokada tylko czasem, bez odblokowania w portalu" (2026-10-28):** nic się nie zmienia w blokadzie
+  5/15 min: zdejmuje ją tylko upływ 15 minut, żaden endpoint, usunięcie, rejestracja ani reset jej nie skraca. Wyłączenie
+  dzienne **nie jest odblokowaniem**: nie cofa żadnego ograniczenia, tylko unieważnia samą rejestrację i wymusza nową
+  (ze świeżym MFA Entra, czyli czynnikiem, którego agent nie ma). Blokada użytkownika trwa niezależnie od rejestracji
+  (może wystąpić `state: active` z `lockedUntil` albo, po usunięciu, `state: none` z `lockedUntil`), a nowa rejestracja
+  jej nie kasuje.
+- **Pliki:** `credential-broker.v1.yaml` (`AuthenticatorStatus`, `AuthenticatorVerifyResult`, opisy, przykłady),
+  `portal-bff.v1.yaml` (przykład, opisy), `audit-event.schema.json` (opis `reason`), `tool-error.schema.json` (opis
+  `registerUrl`), wektory `totp/daily-limit-*` (7) i `enrollment-replaces-disabled-registration`,
+  `confirmation-binding/first-call-authenticator-disabled`, `retry-authenticator-disabled`, wektory audytu i błędów.
+- **SemVer:** nowa wartość enum (`state`, `result`) to major; wchodzi do 3.0.0 razem z pivotem.
+- **Wpływ:** ws-06 (licznik dzienny, stan `disabled`, enrollment ze stanu `disabled`), ws-05 (mapowanie `disabled`),
+  ws-07 (przezroczyste), ws-08 (baner i akcja ponownej rejestracji, brak odblokowania), ws-10 (test 20 błędów).
+- **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)
+
+## CC-127 | C11/C10/C8 | Najwyżej jedna oczekująca operacja DESTRUCTIVE na użytkownika
+
+- **Zgłasza:** automatyczny przegląd bezpieczeństwa commitów 3.0.0; decyzja człowieka 2026-10-28
+- **Kamień:** wydanie 3.0.0 (część pivotu)
+- **Problem:** kod TOTP nie jest związany z operacją (CC-091, ryzyko rezydualne przyjęte przez człowieka). Przy kilku
+  jednocześnie oczekujących operacjach `DESTRUCTIVE` wpisany kod mógłby potwierdzić dowolną z nich.
+- **Zmiana:** nowe żądanie `DESTRUCTIVE`, które jest **inną operacją** (inne narzędzie, serwer albo argumenty) niż
+  oczekująca, unieważnia poprzednią oczekującą `DESTRUCTIVE` tego użytkownika. Powtórzone pierwsze wywołanie tej samej
+  operacji zwraca ten sam rekord (TTL bez przedłużenia) i niczego nie unieważnia. Oczekujące potwierdzenia o innym
+  ryzyku (wymagane przez politykę) nie są ani unieważniane, ani liczone; dla nich zostaje limit oczekujących na `sub`
+  (domyślnie 3, `rate_limited`).
+  - **Kod błędu C10:** `confirmation_superseded` (nowy kod; ciało `{error, message}`, bez `confirmationId`). Dostaje go
+    ponowienie z kodem dla unieważnionego wywołania: bez pytania brokera, bez zużycia próby i kroku TOTP. Gateway trzyma
+    ślad po unieważnionym wywołaniu do końca jego pierwotnego TTL (120 s); potem odpowiedź to zwykłe
+    `confirmation_failed`. Podgląd unieważnionego wywołania (`GET /admin/v1/confirmations/{id}`, C12) to `404`
+    `not_found_or_denied` ("ten link jest nieaktualny").
+  - **Audyt:** zdarzenie `confirmation` starego wywołania z `decision: deny`, `outcome: denied`, `reason: superseded`,
+    `errorCode: confirmation_superseded`, emitowane w chwili utworzenia nowego pending (i ponownie przy ponowieniu
+    starego). W `GET /api/v1/activity/calls` (CC-095, tekst do akceptacji) wynik końcowy `superseded`.
+  - **Co to daje i czego nie daje:** kod może potwierdzić najwyżej najnowszą oczekującą operację `DESTRUCTIVE` i tylko
+    raz; unieważnienie starszej jest jawne i widoczne w audycie. Nie zapobiega podmianie: zmanipulowany agent może
+    unieważnić operację A swoją B i dopiero B potwierdzić kodem wpisanym dla A. Podgląd pozostaje opcjonalny (ryzyko
+    rezydualne przyjęte, opisane w README, "Potwierdzenia kodem TOTP", pkt 7).
+- **Pliki:** `tool-error.schema.json` (`ConfirmationSuperseded`), `common.schema.json` (`ErrorCode`),
+  `gateway-admin.v1.yaml` (404 podglądu), `audit-event.schema.json` (opis `reason`), `scripts/lib/confirmation.mjs`,
+  wektory `confirmation-binding/first-call-*` (m.in. nowa operacja unieważnia starą, inne narzędzie, inne ryzyko),
+  `retry-superseded*`, `tool-errors/confirmation-superseded` i negatywny, audyt `gateway-confirmation-superseded`.
+- **SemVer:** nowa wartość enum (`ErrorCode`), major; wchodzi do 3.0.0.
+- **Wpływ:** ws-05 (jedna oczekująca DESTRUCTIVE, ślad do końca TTL, mapowanie), ws-08 (stan podglądu "nieaktualny"),
+  ws-10 (test: druga operacja unieważnia pierwszą), klienty (obsługa `confirmation_superseded`: wywołać operację od nowa).
 - **Status:** accepted-for-3.0.0 (decyzja: człowiek, 2026-10-28)

@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **2.2.5**, tag `v2.2.5` (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Ostatnie wydanie **2.2.5**, tag `v2.2.5`; wersja robocza **3.0.0-SNAPSHOT** (bez tagu, zakres w `CHANGELOG.md`) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).

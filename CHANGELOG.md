@@ -4,6 +4,123 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 3.0.0 - w przygotowaniu (wersja robocza 3.0.0-SNAPSHOT, bez tagu)
+
+Wydanie major, ścisły SemVer. Wersja robocza w pomach i `package.json` to `3.0.0-SNAPSHOT` (Maven: artefakt mutowalny, nie
+koliduje z niezmiennymi wydaniami w `~/.m2`; ten sam numer w `package.json` i `info.version` OpenAPI, bo jar, npm i tag
+mają jeden numer). Repo nie używało dotąd przyrostków `-rc`, a starter ma własną konwencję `-alpha-N`. Tag `v3.0.0`,
+`release/aiwcorpo-mcp-contracts-3.0.0.tgz` i `./mvnw install` powstaną dopiero po przeglądzie i zgodzie koordynatora.
+`cedar/mcp.cedarschema` bez zmian (skrót SHA-256 jak w 2.0.0), więc istniejące paczki polityk działają.
+
+### Zmiany niezgodne z 2.2.5
+
+1. **Potwierdzenia kodem TOTP (CC-091, CC-092, CC-093, CC-094, CC-098, CC-126, CC-127).**
+   - C11: kod z Authenticatora (RFC 6238) wpisuje człowiek w kliencie; weryfikuje broker. Kod nie jest wydawany przez
+     platformę. Podgląd opcjonalny. Limity: 5 błędnych / 15 min -> blokada 15 min (zdejmuje ją tylko czas), 20
+     błędnych / 24 h -> Authenticator wyłączony do ponownej rejestracji (`state: disabled`), 3 próby na wywołanie,
+     rejestracja ważna 10 min, TTL 120 s, jedna oczekująca operacja `DESTRUCTIVE` na użytkownika.
+   - Usunięte: `POST /admin/v1/confirmations/{id}` i `POST /api/v1/confirmations/{id}`, schematy `ConfirmationDecision` i
+     `ConfirmationOutcome`, `StepUpRequired`/`StepUpOrUnauthenticated` w C5, pole `confirmUrl`, kod błędu
+     `confirmation_declined` (C10 i `ErrorCode`), powód audytu `user_declined` (nie jest emitowany).
+   - `confirmation_required` (C10): wariant z oczekującym wywołaniem ma `confirmationId`, `description`, `previewUrl`,
+     `expiresAt` (wszystkie wymagane); wariant bez rejestracji ma tylko `registerUrl`.
+   - Nowe w C10: `confirmation_superseded`. Nowe w C8: `event: "authenticator"` (wymaga `outcome` i `reason`),
+     powody `user_confirmed_no_preview`, `attempts_exhausted`, `preview_not_viewed`, `authenticator_not_registered`,
+     `authenticator_disabled`, `superseded`, `totp_*`.
+   - Nowe w C4: grupa `/v1/authenticator` (status, usunięcie, `enrollment`, `enrollment/confirm`, `verify`) i
+     `POST /v1/admin/users/{sub}/authenticator/reset` (CN `mcp-offboarding`); `purge` usuwa też rejestrację. Nowe w
+     C12: `/api/v1/authenticator` (GET, DELETE) i `/enrollment`, `/enrollment/confirm`. Ziarno TOTP wychodzi tylko w `201`
+     rejestracji (wyjątek w niezmienniku 4). `GET /api/v1/confirmations/{id}`: bez step-up, `ConfirmationView.resource`
+     (CC-098); `401` to zwykłe `Unauthenticated`; unieważnione i wygasłe wywołanie to `404`.
+   - `test-vectors/confirmation-binding/` przepisane (usunięte `issued.code`, nowy format `first-call`/`retry`);
+     nowe `test-vectors/totp/`; wektor `tool-errors/confirmation-declined` zastąpiony negatywnym.
+   - Reguła `destructive-requires-fresh-mfa` zostaje w `cedar/examples/`, ale nie wchodzi do paczki produkcyjnej.
+2. **`returnPath` bez zarezerwowanych prefiksów (CC-099):** `/api`, `/s`, `/v`, `/.well-known` jako całe segmenty, oraz
+   segmenty `.` i `..` (przed `?`) są odrzucane (`ReturnPath`, C4 `oauth/start`, C12 `login`, `startConnectOAuth`).
+3. **Usunięcia zapowiedziane w 2.x:** `identity_mismatch` z `PutSecretError`, `OAuthCompleteError` i `ConnectErrorCode`
+   (CC-101); katalog `test-vectors/whoami-identity/`; wektory `connect-redirects/*identity-mismatch*` są teraz
+   negatywne. Poza tym w 2.x nic więcej nie było oznaczone jako deprecated.
+4. **Manifest C6:** `definition.title` wymagane (CC-115); `inputSchema` zamknięty i ograniczony (CC-078, CC-123), nowe
+   reguły semantyczne `input-schema-closed`, `input-schema-bounded`, `input-schema-no-combinators` (Node i Java).
+   Hashe wektorów `definition-hash/` i przykładów rejestru zmieniły się (dodany `title`, `maxLength`, `maxItems`).
+5. **Higiena tekstu (CC-121, CC-122):** wspólny zbiór znaków zakazanych, zastępowanie ciągu jedną spacją w tekście z
+   systemu, odrzucanie pełnej szerokości ASCII w filtrach wzmianek, brak NFKC; wektory `text-hygiene/` (79).
+6. **Audyt C8 (CC-116, CC-125):** nowa wartość `event: "virtual_server_change"` dla zmian linków (powody z CC-107,
+   wymagane `outcome` i `reason`); `replay_store_unavailable` tylko z `component` `server` albo `broker`
+   (wektor z `gateway` jest teraz negatywny); gateway audytuje odrzucenia na porcie C5.
+7. **Gateway przy niedostępnym JWKS IdP (CC-124):** `503 upstream_unavailable` zamiast `401`, bez `WWW-Authenticate`, z
+   `Retry-After` (domyślnie 10 s) i `Cache-Control: no-store`; wektory `gateway-authentication/`.
+
+### Zmiany zgodne (minor)
+
+- `$defs` używane przez serwery wymienione jako stabilne API (CC-079), test pilnuje listy.
+- `ConfirmationView.resource`, `AuthenticatorStatus.disabledAt`/`disabledReason`, wektory JWT dla wywołań
+  `authenticator` brokera (z `tool`), przykłady `disabled` w C4 i C12.
+- Nie wchodzą do 3.0.0: CC-095 i CC-097 (tekst gotowy do akceptacji człowieka, `proposed`), CC-096, CC-113, CC-114.
+
+### Migracja
+
+**gateway (ws-05)**
+- Usunąć ścieżkę decyzji (`decideConfirmation`) i wydawanie kodu. Wdrożyć oczekujące wywołanie: klucz (`sub`, `serverId`,
+  `tool`, SHA-256 argumentów bez `confirmation_code`), TTL 120 s, 3 próby, jednorazowość; `description` liczony z
+  argumentów otrzymanych przez gateway; `previewViewedAt` jako skutek `GET` podglądu.
+- Wołać brokera: `GET /v1/authenticator` (pierwsze wywołanie), `POST /v1/authenticator/verify` (ponowienie), oba z JWT
+  użytkownika z `tool`; mapować wynik według README "Potwierdzenia kodem TOTP" (`ok`, `invalid`/`replayed`, `locked`,
+  `disabled`, `not_registered`, błąd = `upstream_unavailable`). Jedna oczekująca operacja `DESTRUCTIVE` na użytkownika,
+  ślad unieważnionego do końca TTL, `confirmation_superseded`; limit 3 tylko dla innego ryzyka.
+- `ConfirmationView.resource`; `getConfirmation` bez step-up, `404` dla wygasłego i unieważnionego.
+- Audyt: `event: confirmation` z nowymi powodami, `virtual_server_change` zamiast `admin_change` dla linków,
+  `authentication` na porcie C5, `replay_store_unavailable` nie z gateway'a.
+- JWKS IdP niedostępny: `503` bez `WWW-Authenticate`, `Retry-After` (konfiguracja 1..60 s).
+- Manifest: wymagać `title` i zamkniętego, ograniczonego `inputSchema` (reguły semantyczne z `mcp-manifest` 3.0.0).
+- Higiena tekstu argumentów i `returnPath` bez zarezerwowanych prefiksów (po stronie gateway'a przy walidacji linków).
+
+**broker (ws-06)**
+- Zaimplementować `/v1/authenticator*` i reset (RFC 6238, SHA-1, 6 cyfr, 30 s, okno +-1, jednorazowość kroku warunkowym
+  zapisem, ziarno w `SecretStore`, metadane w bazie). Limity: 5 błędów / 15 min -> blokada 15 min (własność użytkownika,
+  przeżywa usunięcie, zdejmuje ją tylko czas), 20 błędów / 24 h -> `state: disabled`, enrollment 10 min i 3 błędne kody.
+  `enrollment` dozwolone ze stanu `disabled`, aktywacja zeruje licznik dzienny. `purge` usuwa też rejestrację.
+- Wykonać `test-vectors/totp/` (format kroków w `scripts/lib/totp.mjs`). Ziarna, kodu ani `otpauthUri` nie logować.
+- Zdarzenia `event: "authenticator"`; `replay_store_unavailable` z `component: broker`.
+- Usunąć `identity_mismatch` z odpowiedzi 422 (enum ma już tylko `secret_invalid` i `flow_invalid`). `ReturnPath` w
+  `oauth/start` bez zarezerwowanych prefiksów.
+
+**BFF (ws-07)**
+- Usunąć `decideMyConfirmation`; `getMyConfirmation` z samą sesją, `resource` w odpowiedzi.
+- Dodać proxy `/api/v1/authenticator` (GET, DELETE), `/enrollment` (POST), `/enrollment/confirm`: step-up MFA Entra przy
+  starcie rejestracji i usunięciu, `enrollmentId` tylko w sesji, ciało `201` tylko z `no-store`, bez logowania ciał;
+  przekazać `disabled`. Przy starcie ze stanu `disabled` nie wołać najpierw `DELETE`.
+- `ReturnPath` w `login` i `startConnectOAuth` odrzuca `/api`, `/s`, `/v`, `/.well-known` i segmenty `.`/`..`.
+- `ConnectErrorCode` bez `identity_mismatch`; zdarzenie `authenticator` (`authenticator_removed`, rejestracja).
+
+**web (ws-08)**
+- Klient i mock MSW z 3.0.0: usunąć wywołania `POST /api/v1/confirmations/{id}` i ekran decyzji; podgląd tylko do
+  odczytu z `resource`; stany "Czas minął" i "Ten link jest nieaktualny" (także dla unieważnionego).
+- Nowe ekrany: rejestracja Authenticatora (QR rysowany lokalnie z `otpauthUri`, klucz tylko w pamięci komponentu),
+  status z `lockedUntil` bez odblokowania, baner z powodem i akcją "Zarejestruj ponownie" dla `disabled`, usunięcie
+  rejestracji, baner o braku rejestracji przy narzędziach `requiresConfirmation`.
+- Kod `identity_mismatch` nie istnieje; ścieżki powrotu nie zaczynają się od zarezerwowanych prefiksów.
+
+**starter i serwery (ws-02, ws-03, ws-04)**
+- Manifest: `title` w każdym narzędziu, `inputSchema` zamknięty i ograniczony (startery generujące schemat z adnotacji
+  dodają `maxLength`, `maxItems`, `minimum`/`maximum`, kotwice wzorców); przeliczyć `definitionHash` z `mcp-manifest`.
+- Higiena tekstu: odrzucać argumenty ze zbioru zakazanego (`invalid_argument`), w wynikach zamieniać ciągi znaków
+  zakazanych jedną spacją, nie stosować NFKC; filtr wzmianek odrzuca U+FF01..U+FF5E.
+- `invalid_argument` przy naruszeniu schematu nazywa tylko zadeklarowany argument i regułę. `replay_store_unavailable` z
+  `component: server`. `confirmation_declined` usunięte z `ErrorCode`; zależność `mcp-contracts` 3.0.0 (jar), nazwy `$defs`
+  z listy w README.
+
+**polityki (ws-09)**
+- Z paczki produkcyjnej usunąć regułę `destructive-requires-fresh-mfa` (zostaje w przykładach kontraktu); schemat Cedar bez
+  zmian, paczki 2.x działają. Zależność `mcp-contracts` 3.0.0 w testach decyzji.
+
+**e2e (ws-10) i środowisko (ws-01)**
+- Testy: powtórzenie kodu (`replayed`), blokada 5/15 min i brak odblokowania, 20 błędów na dobę -> `disabled` i ponowna
+  rejestracja, druga operacja `DESTRUCTIVE` unieważnia pierwszą, brak rejestracji (`registerUrl`), podgląd opcjonalny, brak
+  ziarna i kodu w logach i audycie (jeden `requestId` w BFF, brokerze i gateway'u), rejestracja bez świeżego MFA odrzucona,
+  JWKS niedostępny daje 503 bez `WWW-Authenticate`. Generator kodów TOTP dla dev (`make totp`) z `scripts/lib/totp.mjs`
+  jako referencją.
+
 ## 2.2.5 - 2026-10-28
 
 Grupa A pakietu M2 (decyzje człowieka 2026-10-28): CC-117 ... CC-120 w tym wydaniu; CC-078, CC-079 i CC-121 ... CC-123

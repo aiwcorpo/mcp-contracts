@@ -1,11 +1,21 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+**Praca nad 3.0.0 (wersja robocza `3.0.0-SNAPSHOT`, bez tagu i bez artefaktów wydania; czeka na przegląd i zgodę koordynatora).** Ostatnie wydanie: **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 102 testów Node; `./mvnw verify`: 391 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
+
+## 3.0.0 (w przygotowaniu)
+
+- Zakres i migracja per komponent: `CHANGELOG.md` ("3.0.0"). Nowe CC: CC-124 (503 przy niedostępnym JWKS), CC-125
+  (audyt C5, `replay_store_unavailable` u odbiorców), CC-126 (dzienny limit błędnych kodów), CC-127 (jedna oczekująca
+  operacja DESTRUCTIVE).
+- CC-095 i CC-097: tekst gotowy do akceptacji człowieka, `proposed`, nie wdrożone w OpenAPI.
+- Wersja robocza `3.0.0-SNAPSHOT` (poms, `package.json`, `info.version`); nic nie zainstalowane w `~/.m2`, brak
+  `release/aiwcorpo-mcp-contracts-3.0.0.tgz` i tagu `v3.0.0`.
+- Pytania do człowieka: raport koordynatora (`CONTRACT_CHANGES.md`, statusy CC-099 i CC-116).
 
 ## Artefakty 2.2.5
 
@@ -53,7 +63,7 @@ w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 42 mcp-manifest).
 
 ## Otwarte pytania
 
-- `CONTRACT_CHANGES.md`: otwarte CC-078 (zamknięty `inputSchema`, treść `invalid_argument`) i CC-079 (nazwy `$defs` jako stabilne API), do decyzji człowieka.
+- CC-078 i CC-079 zamknięte w 3.0.0 (wdrożone w wersji roboczej).
 - Czy lista kolejek z konfiguracji serwera service desku zostaje po M3 jako dodatkowe zawężenie, czy znika na rzecz
   paczki (CC-076, do planowania M3). Strumienie danych OpenSearch jako zasób: decyzja w M2 (CC-074).
 - Przegląd 2.0.0, kategoria (b), czeka na decyzję człowieka przy planowaniu M2: H1(b) lista znanych skrótów
