@@ -3080,3 +3080,10 @@ G-15, G-16, G-18, G-22.
   tworzenia DESTRUCTIVE, po niepewnej ciągłości stanu przez 210 s `invalidate-codes` przed utworzeniem. (4) G-L2: wynik `burned`
   (nie `replayed`) w tekście CC-128 i migracji. (5) G-L3: `invalidate-codes` wołane przy anulowaniu (`tool` = anulowana operacja)
   i przy tworzeniu DESTRUCTIVE B po obejrzanym śladzie A (`tool` = B).
+- **Poprawka bezpieczeństwa 3.0.1 (wydanie 3.0.0 miało tę lukę):** wyjątek "ta sama operacja" w warunku spalania obowiązuje tylko dla A,
+  które nie zostało wykonane. Po potwierdzonym, obejrzanym A agent wywołujący ponownie tę samą operację (A') nie mógł być
+  powstrzymany: człowiek wpisywał drugi kod "dla A" i potwierdzał A' bez spalenia. Teraz tworzenie nowej oczekującej DESTRUCTIVE
+  po potwierdzonym, obejrzanym A (do `A.expiresAt + 90 s`) zawsze woła najpierw `invalidate-codes`, także dla tej samej
+  operacji. Wektor `first-call-preview-viewed-confirmed-same-operation-burns`. Razem z doprecyzowaniami tekstowymi z planu 3.0.1
+  (G-L4 `GET`/`viewed`/`cancel` przy wyczerpanym A, G-L5 anulowanie do `expiresAt`, G-L6 zegary, G-L7 wymagania ws-08, G-L9
+  agregacja `authenticator_disabled`/`authenticator_not_registered`, G-L10 kursor, wektor "broker niedostępny przy anulowaniu").

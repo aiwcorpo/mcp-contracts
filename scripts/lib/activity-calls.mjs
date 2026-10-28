@@ -39,7 +39,7 @@ export function aggregateCall(allEvents, now) {
     const startedAt = Date.parse((events.find((e) => e.decision === 'confirmation_pending') ?? first).ts) / 1000;
     const timedOut = now !== undefined && now - startedAt > TTL_SECONDS;
     // A wrong code (or a burned one) with attempts left decides nothing: the call still waits, and after the TTL it expired.
-    const waiting = last.decision === 'confirmation_pending' || (last.reason === undefined || last.reason === 'code_burned');
+    const waiting = last.decision === 'confirmation_pending' || (last.reason === undefined || ['code_burned', 'authenticator_disabled', 'authenticator_not_registered'].includes(last.reason));
     if (last.reason === 'confirmation_expired') { result = 'expired'; }
     else if (waiting) { result = timedOut ? 'expired' : 'confirmation_pending'; }
     else {

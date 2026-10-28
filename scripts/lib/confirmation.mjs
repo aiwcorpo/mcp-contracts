@@ -51,7 +51,10 @@ export function firstCall({ authenticator, pendingCalls, pendingLimit, call, at,
     // operation, nor for A that was cancelled (a cancel burned already). The trace of a viewed A is kept at least until
     // A.expiresAt + 90 s, whatever its state and whatever the end of the block (G-M1).
     const toBurn = pendingCalls.filter((p) => p.risk === 'DESTRUCTIVE' && p.previewViewedAt !== undefined && p.ended !== 'cancelled'
-      && p.cancelledAt === undefined && !p.supersededBy && !p.burned && !(p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash)
+      && p.cancelledAt === undefined && !p.supersededBy && !p.burned
+      // The same operation is exempt only while A was not executed: after a CONFIRMED A, a second code typed "for A" could
+      // confirm the repeated operation A' (3.0.1), so the codes are burned before A' is created too.
+      && !(p.ended !== 'confirmed' && p.serverId === call.serverId && p.tool === call.tool && p.argsSha256 === hash)
       && at <= p.createdAt + TTL_SECONDS + CODE_VALIDITY_SECONDS);
     if (toBurn.length > 0 && burn === 'failed') return { outcome: 'upstream_unavailable', pendingCreated: false };
     const supersededIds = live.filter((p) => p.risk === 'DESTRUCTIVE').map((p) => p.confirmationId);
@@ -122,13 +125,20 @@ export function firstCallsInOrder({ authenticator, pendingCalls, pendingLimit, c
   const sequence = steps ?? calls.map((call) => ({ call }));
   sequence.forEach((step, index) => {
     if (step.preview !== undefined) {
-      const target = live.find((p) => p.confirmationId === step.preview && !p.supersededBy && at <= p.createdAt + TTL_SECONDS);
+      // GET and viewed of a call whose attempts ran out: 404 when it was never viewed, idempotent when it was (3.0.1, G-L4).
+      const target = live.find((p) => p.confirmationId === step.preview && !p.supersededBy && at <= p.createdAt + TTL_SECONDS
+        && p.ended !== 'confirmed' && p.ended !== 'cancelled' && p.cancelledAt === undefined && (!p.ended || p.previewViewedAt !== undefined));
       if (target) target.previewViewedAt = at;
       results.push(target ? { previewed: true } : { previewed: false, status: 404 });
       return;
     }
     if (step.cancel !== undefined) {
       const target = live.find((p) => p.confirmationId === step.cancel && !p.supersededBy && at <= p.createdAt + TTL_SECONDS && p.ended !== 'confirmed');
+      // The broker burn comes first; if it fails nothing is cancelled (503).
+      if (step.burn === 'failed' && live.some((p) => p.confirmationId === step.cancel && p.ended !== 'cancelled')) {
+        results.push({ cancelled: false, status: 503 });
+        return;
+      }
       // Only the cancel that changes the state burns the codes; repeating it is a plain 204 (review 3.0.0, F-L8).
       const first = target && target.ended !== 'cancelled';
       if (target) target.ended = 'cancelled';

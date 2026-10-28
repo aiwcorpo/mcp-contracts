@@ -1,0 +1,35 @@
+{
+  "description": "3.0.1: A viewed and confirmed, the agent repeats the SAME operation (A') inside the code validity: a second code the user typed for A could confirm A', so the codes are burned first.",
+  "kind": "first-call",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "previewViewedAt": "2026-10-26T20:00:05Z",
+      "ended": "confirmed"
+    }
+  ],
+  "pendingLimit": 3,
+  "call": {
+    "serverId": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "arguments": {
+      "issueKey": "ABC-123"
+    }
+  },
+  "at": "2026-10-26T20:00:42Z",
+  "expected": {
+    "outcome": "confirmation_required",
+    "register": false,
+    "expiresAt": "2026-10-26T20:02:42Z",
+    "pendingCreated": true,
+    "supersededIds": [],
+    "invalidatedCodes": true
+  }
+}

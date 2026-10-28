@@ -1,22 +1,18 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **3.0.0**, tag `v3.0.0` (po wydaniu praca na `3.0.1-SNAPSHOT`); wcześniej **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **3.0.1**, tag `v3.0.1` (poprawka bezpieczeństwa 3.0.0; praca dalej na `3.0.2-SNAPSHOT`); wcześniej **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja 3.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 253 testy Node; `./mvnw verify`: 418 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
 
-## Plan 3.0.1 (z przeglądu końcowego e154309, LOW)
+## Plan 3.0.2 (zostało z przeglądu końcowego)
 
-- G-L4: jedna reguła dla `GET`, `viewed` i `cancel` przy wyczerpanym A (obejrzane/nieobejrzane) i wektor.
-- G-L5: czy anulowanie ma działać na ślad blokujący po TTL A przy późnym podglądzie (dziś 404 po `expiresAt`).
-- G-L6: zdanie o zegarach gateway'a i brokera (NTP, rozjazd do 5 s, margines 90 s).
-- G-L7: wymagania ws-08 (po `expiresAt` lub 404 strona nie pokazuje operacji jako oczekującej; błąd `viewed` widoczny), `503` w `markConfirmationViewed` (C5).
-- G-L8: potwierdzenie przyjęcia eskalacji z potwierdzeń o innym ryzyku do DESTRUCTIVE albo spalanie także po obejrzanym potwierdzeniu innego ryzyka.
-- G-L9: agregacja `/activity/calls` dla `authenticator_disabled` i `authenticator_not_registered` (jak `waiting`, po TTL `expired`) i wektor.
-- G-L10: usunąć "for example" z opisu kursora w C5.
-- Wektor i wejście "błąd brokera" dla kroku `cancel` w referencji (anulowanie przy niedostępnym brokerze to 503).
+- G-L7 (część): odpowiedź `503` w `markConfirmationViewed` (C5), dodatek do opisu operacji.
+- G-L8: decyzja człowieka o eskalacji z potwierdzeń o innym ryzyku do DESTRUCTIVE (przyjąć wprost albo spalać kody także po
+  obejrzanym potwierdzeniu innego ryzyka).
+- Pozostałe LOW z kolejnych przeglądów, jeśli się pojawią.
 
 ## 3.0.0 (wydane 2026-10-28)
 

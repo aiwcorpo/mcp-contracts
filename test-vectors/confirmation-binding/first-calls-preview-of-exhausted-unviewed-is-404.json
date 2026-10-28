@@ -1,0 +1,50 @@
+{
+  "description": "G-L4: GET and viewed of a call whose attempts ran out are 404 when the call was never viewed (so it blocks nothing and B is simply created).",
+  "kind": "first-calls-parallel",
+  "authenticator": "active",
+  "pendingCalls": [
+    {
+      "confirmationId": "cnf_4k9Qe2LxW7tB3mZp",
+      "serverId": "mcp-jira",
+      "tool": "delete_issue",
+      "risk": "DESTRUCTIVE",
+      "argsSha256": "sha256:c0957f341a81aed2650219898a603eaf1ea46a1fd013436a55e788ec98d84385",
+      "createdAt": "2026-10-26T20:00:00Z",
+      "ended": "exhausted"
+    }
+  ],
+  "pendingLimit": 3,
+  "at": "2026-10-26T20:00:00Z",
+  "steps": [
+    {
+      "preview": "cnf_4k9Qe2LxW7tB3mZp"
+    },
+    {
+      "call": {
+        "serverId": "mcp-jira",
+        "tool": "delete_issue",
+        "risk": "DESTRUCTIVE",
+        "arguments": {
+          "issueKey": "ABC-999"
+        }
+      }
+    }
+  ],
+  "expected": {
+    "supersededIds": [
+      [],
+      []
+    ],
+    "outcomes": [
+      null,
+      "confirmation_required"
+    ],
+    "previews": [
+      404,
+      null
+    ],
+    "pendingIds": [
+      "new-1"
+    ]
+  }
+}

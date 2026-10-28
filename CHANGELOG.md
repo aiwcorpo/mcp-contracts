@@ -4,6 +4,20 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 3.0.1 - 2026-10-28
+
+Poprawka bezpieczeństwa wydania 3.0.0 (komponenty M3 startują od 3.0.1). Schematy i OpenAPI bez zmian kształtu; zmienia się reguła
+gateway'a i wektory.
+
+- **Luka w 3.0.0 (CC-127, G-H1):** po potwierdzonym, obejrzanym A powtórzenie tej samej operacji (A') nie wołało `invalidate-codes`, więc drugi kod
+  wpisany przez człowieka "dla A" potwierdzał A'. Od 3.0.1 tworzenie nowej oczekującej DESTRUCTIVE po potwierdzonym, obejrzanym A (do
+  `A.expiresAt + 90 s`) zawsze najpierw spala kody, także dla tej samej operacji (wyjątek tej samej operacji tylko dla A niewykonanego).
+  Wektor `first-call-preview-viewed-confirmed-same-operation-burns`. Gateway z 3.0.0 powinien przejść na 3.0.1.
+- Doprecyzowania: `GET`/`viewed` dla wyczerpanego, nieoglądanego A to `404` (oglądane: idempotentne), anulowanie do `expiresAt`, zegary
+  (NTP, rozjazd do 5 s), wymagania strony podglądu, agregacja `authenticator_disabled`/`authenticator_not_registered` jako oczekujące
+  (po TTL `expired`), kursor bez "for example", wektory "przy anulowaniu broker niedostępny: 503" i podglądu wyczerpanego A.
+- Zostaje w planie: 503 w `markConfirmationViewed` (C5), decyzja o eskalacji z potwierdzeń o innym ryzyku (G-L8).
+
 ## 3.0.0 - 2026-10-28
 
 Wydanie major, ścisły SemVer. Wersja robocza przed wydaniem miała numer `3.0.0-SNAPSHOT` (Maven: artefakt mutowalny, nie
