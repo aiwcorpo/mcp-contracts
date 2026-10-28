@@ -4,6 +4,27 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 3.0.2 - 2026-10-28
+
+Poprawka wydania i zaostrzenie walidacji audytu (patch jako poprawka bezpieczeństwa; komponenty zależą od 3.0.2).
+
+- **Usterka wydania 3.0.0 i 3.0.1:** jary zostały zbudowane z niewyczyszczonego `target/`. `mcp-contracts-3.0.0-test-vectors.jar` i
+  `mcp-contracts-3.0.1-test-vectors.jar` zawierają po 49 plików usuniętych w 3.0.0 (m.in. cały `whoami-identity/` w 2.2.x, wektor
+  `audit-events/gateway-authentication-denied-replay-store-unavailable.json` sprzeczny ze schematem, stare `confirmation-binding/`), a
+  `mcp-contracts-3.0.0.jar` i `-3.0.1.jar` stary stub `mocks/wiremock/gateway-admin/mappings/decideConfirmation.json`. Wcześniejsze jary:
+  `test-vectors` 1.1.0 (2 nadmiarowe pliki) i 2.2.1 ... 2.2.5 (5 plików `secret-expiry/`); pozostałe zgodne z drzewem tagu. Tarballe npm
+  3.0.0 i 3.0.1 są zgodne z drzewem. Wydane wersje są niezmienne, więc poprawką jest 3.0.2.
+- **Proces wydania:** `verify-all.sh` robi `./mvnw clean verify`, a `scripts/check-jar-contents.mjs` porównuje zawartość jarów
+  (`mcp-contracts` i `-test-vectors`) z drzewem źródeł i kończy się błędem przy każdej różnicy.
+- **Zaostrzenie C8:** wzorzec dla `resource.id`, `resource.parent` (część id) i `backendUser` wyklucza teraz wszystkie znaki `\p{Cf}`
+  (zero-width U+200B..U+200F, U+2060, U+FEFF, kontrolki dwukierunkowości, U+061C, znaki tagów U+E0000..U+E007F), `\p{Cc}`, surogaty,
+  nieznaki, U+2028/2029, U+034F, U+115F, U+1160, U+3164, U+FFA0, U+2800 i selektory wariantów U+FE00..U+FE0F, spójnie ze wspólną definicją
+  higieny tekstu (CC-121; dla pól logu surowiej: także ZWJ/ZWNJ i LRM/RLM). Wektory `invalid-resource-id-*`, `invalid-resource-parent-*`,
+  `invalid-backend-user-zero-width`. Wzorzec używa `\p{..}` (JSON Schema w trybie Unicode); Spectral nie ma trybu Unicode, więc jego
+  walidację przykładów zastępuje test Node z ajv (`test/openapi-examples.test.mjs`).
+- `markConfirmationViewed` (C5): odpowiedź `503` (stan gateway'a niedostępny; strona podglądu pokazuje, że ochrona "pierwsza wygrywa"
+  nie jest aktywna).
+
 ## 3.0.1 - 2026-10-28
 
 Poprawka bezpieczeństwa wydania 3.0.0 (komponenty M3 startują od 3.0.1). Schematy i OpenAPI bez zmian kształtu; zmienia się reguła

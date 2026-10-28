@@ -11,7 +11,7 @@
     "event": "policy_decision",
     "resource": {
       "type": "Jira::Issue",
-      "id": "ABC-1 X"
+      "id": "ABC-1\u2029X"
     }
   }
 }

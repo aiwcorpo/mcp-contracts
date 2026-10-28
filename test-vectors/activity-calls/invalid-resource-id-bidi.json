@@ -7,7 +7,7 @@
     "result": "ok",
     "resource": {
       "type": "Jira::Issue",
-      "id": "ABC-1‮cod.exe"
+      "id": "ABC-1\u202ecod.exe"
     }
   },
   "expected": {

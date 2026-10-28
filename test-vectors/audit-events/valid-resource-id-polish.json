@@ -1,0 +1,18 @@
+{
+  "description": "Polish letters and a space are ordinary characters (3.0.2).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "server",
+    "componentId": "mcp-confluence",
+    "event": "policy_decision",
+    "resource": {
+      "type": "Confluence::Page",
+      "id": "48213",
+      "parent": "Confluence::Space::Zażółć gęślą"
+    }
+  }
+}

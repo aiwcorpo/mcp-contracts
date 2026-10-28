@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **3.0.1**, tag `v3.0.1` (poprawka bezpieczeństwa 3.0.0; poprzednie wydanie 3.0.0) (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **3.0.2**, tag `v3.0.2` (poprawka wydania 3.0.0 i 3.0.1; poprzednie wydanie 3.0.1) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -93,13 +93,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:3.0.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:3.0.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:3.0.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:3.0.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:3.0.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:3.0.1` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-3.0.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-3.0.1.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:3.0.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:3.0.2:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:3.0.2` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:3.0.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:3.0.2` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:3.0.2` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-3.0.2.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-3.0.2.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -109,7 +109,7 @@ Instalacja lokalna:
 
 ```bash
 ./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.5/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-3.0.1.tgz
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-3.0.2.tgz
 ```
 
 ```xml
@@ -703,7 +703,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 57 | odbiorca C2: 22 poprawne, 35 odrzuceń (podpis, `kid`, klucz testowy, `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 52 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 78 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 96 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 31 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `bundles/` | 41 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
@@ -779,6 +779,13 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 - Serwery z narzędziami wyszukiwania i list ograniczają zapytanie i filtrują wyniki (CC-036,
   `cedar/entity-builder.md` sekcja 8).
 - Odbiorca paczek: `mcp-policy-bundle` (CC-045).
+
+## Wydanie (proces)
+
+1. Wersja dokładnie `X.Y.Z` w pomach, `package.json` i `info.version` OpenAPI; `./scripts/verify-all.sh` zielony (robi `./mvnw clean verify`
+   i `scripts/check-jar-contents.mjs`: jary muszą zawierać dokładnie pliki drzewa źródeł).
+2. Sprawdzić, że w `~/.m2` nie ma jeszcze `X.Y.Z` (wydane wersje są niezmienne), commit `Release X.Y.Z`, tag `vX.Y.Z`.
+3. `npm run pack`, `./mvnw clean install`, commit tarballa, potem wersja `X.Y.(Z+1)-SNAPSHOT`.
 
 ## Walidacja lokalna i CI
 

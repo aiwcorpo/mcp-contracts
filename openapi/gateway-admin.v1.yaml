@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 3.0.2-SNAPSHOT
+  version: 3.0.2
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, read-only confirmation preview).
   description: |
     Callers and their authentication:
@@ -843,6 +843,16 @@ paths:
                 not_found_or_denied:
                   value:
                     error: not_found_or_denied
+        '503':
+          description: The gateway cannot record the view because its state store is unavailable (fail-closed). The portal then shows that the protection "first wins after the preview" is not active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                upstream_unavailable:
+                  value:
+                    error: upstream_unavailable
   /admin/v1/confirmations/{confirmationId}/cancel:
     parameters:
       - $ref: '#/components/parameters/ConfirmationId'

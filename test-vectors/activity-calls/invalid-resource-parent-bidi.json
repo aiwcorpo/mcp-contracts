@@ -8,7 +8,7 @@
     "resource": {
       "type": "Jira::Issue",
       "id": "ABC-1",
-      "parent": "Jira::Project::AB‮C"
+      "parent": "Jira::Project::AB\u202eC"
     }
   },
   "expected": {

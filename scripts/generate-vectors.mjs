@@ -7,9 +7,11 @@ import { definitionHash, manifestEntryHash } from './lib/definition-hash.mjs';
 import { path } from './lib/contracts.mjs';
 import { tarGz } from './lib/tar.mjs';
 
+// Invisible and format characters are written as \uXXXX escapes, so that they stay visible in review and in diffs.
+const escapeInvisible = (json) => json.replace(/[\u007f-\u00a0\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff9-\ufffb]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
 const write = (dir, name, value) => {
   mkdirSync(path('test-vectors', dir), { recursive: true });
-  writeFileSync(path('test-vectors', dir, name), JSON.stringify(value, null, 2) + '\n');
+  writeFileSync(path('test-vectors', dir, name), escapeInvisible(JSON.stringify(value, null, 2)) + '\n');
 };
 
 // ---------- definition-hash (C6, CC-004) ----------
@@ -640,6 +642,60 @@ audit('invalid-resource-id-paragraph-separator', 'resource.id with U+2029.', {
 audit('invalid-resource-id-bidi-override', 'resource.id with U+202E (right-to-left override) that would disguise the id in log viewers.', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u202Ecod.exe' },
 }, false);
+audit('invalid-resource-id-zero-width-space', 'resource.id with ZWSP: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u200bX' },
+}, false);
+audit('invalid-resource-id-zero-width-joiner', 'resource.id with ZWJ: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u200dX' },
+}, false);
+audit('invalid-resource-id-left-to-right-mark', 'resource.id with LRM: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u200eX' },
+}, false);
+audit('invalid-resource-id-right-to-left-mark', 'resource.id with RLM: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u200fX' },
+}, false);
+audit('invalid-resource-id-arabic-letter-mark', 'resource.id with ALM: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u061cX' },
+}, false);
+audit('invalid-resource-id-word-joiner', 'resource.id with word joiner: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u2060X' },
+}, false);
+audit('invalid-resource-id-bom', 'resource.id with BOM: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\ufeffX' },
+}, false);
+audit('invalid-resource-id-soft-hyphen', 'resource.id with soft hyphen: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u00adX' },
+}, false);
+audit('invalid-resource-id-tag-character', 'resource.id with TAG LATIN CAPITAL LETTER A: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\udb40\udc41X' },
+}, false);
+audit('invalid-resource-id-variation-selector', 'resource.id with variation selector 16: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\ufe0fX' },
+}, false);
+audit('invalid-resource-id-braille-blank', 'resource.id with braille blank: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u2800X' },
+}, false);
+audit('invalid-resource-id-hangul-filler', 'resource.id with hangul filler: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\u3164X' },
+}, false);
+audit('invalid-resource-id-noncharacter', 'resource.id with noncharacter U+FFFE: invisible, so not allowed (3.0.2, CC-031, CC-121).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision', resource: { type: 'Jira::Issue', id: 'ABC-1\ufffeX' },
+}, false);
+audit('invalid-resource-parent-zero-width-space', 'resource.parent with ZWSP (3.0.2).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::AB\u200bC' },
+}, false);
+audit('invalid-resource-parent-tag-character', 'resource.parent with a tag character (3.0.2).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::AB\udb40\udc41C' },
+}, false);
+audit('invalid-resource-parent-direction-mark', 'resource.parent with LRM (3.0.2).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', resource: { type: 'Jira::Issue', id: 'ABC-1', parent: 'Jira::Project::AB\u200eC' },
+}, false);
+audit('invalid-backend-user-zero-width', 'backendUser with a zero-width space (3.0.2).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'connection_change', sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', credentialType: 'user-secret', outcome: 'ok', backendUser: 'jkowalski\u200b',
+}, false);
+audit('valid-resource-id-polish', 'Polish letters and a space are ordinary characters (3.0.2).', {
+  ...auditBase, component: 'server', componentId: 'mcp-confluence', event: 'policy_decision', resource: { type: 'Confluence::Page', id: '48213', parent: 'Confluence::Space::Zażółć gęślą' },
+}, true);
 audit('valid-resource-id-with-slash-and-space', 'resource.id keeps the system alphabet: GitLab path, space allowed.', {
   ...auditBase, component: 'server', componentId: 'mcp-gitlab', event: 'policy_decision', resource: { type: 'GitLab::Project', id: 'team-a/my app' },
 }, true);

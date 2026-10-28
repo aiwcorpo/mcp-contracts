@@ -1,15 +1,14 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **3.0.1**, tag `v3.0.1` (poprawka bezpieczeństwa 3.0.0; praca dalej na `3.0.2-SNAPSHOT`); wcześniej **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **3.0.2**, tag `v3.0.2` (poprawka wydania 3.0.0/3.0.1; praca dalej na `3.0.3-SNAPSHOT`); wcześniej **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja 3.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 253 testy Node; `./mvnw verify`: 418 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
 
-## Plan 3.0.2 (zostało z przeglądu końcowego)
+## Plan 3.0.3 (zostało)
 
-- G-L7 (część): odpowiedź `503` w `markConfirmationViewed` (C5), dodatek do opisu operacji.
 - G-L8: decyzja człowieka o eskalacji z potwierdzeń o innym ryzyku do DESTRUCTIVE (przyjąć wprost albo spalać kody także po
   obejrzanym potwierdzeniu innego ryzyka).
 - Pozostałe LOW z kolejnych przeglądów, jeśli się pojawią.

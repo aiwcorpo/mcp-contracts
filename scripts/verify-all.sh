@@ -11,7 +11,9 @@ if [ "$(java_major 2>/dev/null || echo 0)" -lt 25 ] 2>/dev/null && [ -d /opt/hom
 fi
 [ -d node_modules ] || npm ci
 npm test
-./mvnw -B verify
+# clean: a jar built from a target/ that kept files deleted since the last build ships them (3.0.0 and 3.0.1 did).
+./mvnw -B clean verify
+node scripts/check-jar-contents.mjs
 if [ "${SMOKE_WIREMOCK:-0}" = "1" ]; then
   ./scripts/smoke-wiremock.sh
 fi
