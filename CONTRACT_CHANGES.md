@@ -3107,7 +3107,7 @@ G-15, G-16, G-18, G-22.
   (4 nowe: dwa poziomy pod restricted, podgrupa restricted, normalizacja pisowni, kontrola pozytywna), `result-filter/gitlab-projects-in-restricted-subtree`;
   istniejące wektory GitLaba dostały `ancestorClassifications`; paczki testowe przebudowane.
 - **SemVer:** nowy wymagany atrybut encji i nowe wejście buildera: addytywne dla polityk, ale serwer GitLaba musi podawać
-  `ancestorClassifications`, a paczki muszą zawierać nowy schemat. Wydane jako 3.1.0 (minor) decyzją człowieka.
+  `ancestorClassifications`, a paczki muszą zawierać nowy schemat. Według tabeli SemVer to zmiana major, łamiąca dla paczek polityk 3.0.x. Wydane jako 3.1.0 (minor) z powodu błędu koordynatora (nazwał zmianę addytywną); człowiek zdecydował (2026-10-28), że 3.1.0 zostaje z opisanym wyjątkiem SemVer, jak 2.1.0.
 - **Wpływ:** ws-04 (serwer GitLab: ścieżki grup i ich topics), ws-02/ws-05 (biblioteki 3.1.0), ws-09 (reguły `forbid` na `inheritedClassification`, przebudowa
   paczek), ws-10 (test: projekt trzy poziomy pod restricted).
 - **Status:** accepted (decyzja: człowiek, 2026-10-28), wydanie 3.1.0

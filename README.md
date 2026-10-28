@@ -77,8 +77,9 @@ walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1
 expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
 
 Wyjątek: w 3.1.0 CC-129 (nowy wymagany atrybut encji GitLaba i nowe wymagane wejście buildera, nowe bajty schematu Cedar) jest według tej
-tabeli zmianą major (serwer GitLaba musi podać `ancestorClassifications`, paczki trzeba przebudować); wydane jako minor na wyraźną
-decyzję człowieka z 2026-10-28.
+tabeli zmianą major i **jest łamiąca dla paczek polityk 3.0.x** (serwer GitLaba musi podać `ancestorClassifications`, paczki trzeba
+przebudować). Wydanie jako 3.1.0 (minor) wynikło z błędu koordynatora, który nazwał zmianę addytywną; człowiek zdecydował (2026-10-28),
+że 3.1.0 zostaje z tym wyjątkiem SemVer, jak 2.1.0.
 
 Wyjątek: w 2.1.0 CC-071 (nowa wartość enum `event: "authentication"`) i CC-074 (zawężenie wzorców indeksów
 OpenSearch) są według tej tabeli zmianami major, a wydane jako minor na wyraźną decyzję człowieka z 2026-10-27;

@@ -4,6 +4,11 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 3.1.1 - w przygotowaniu
+
+- Doprecyzowanie: wyjątek SemVer w 3.1.0 wynika z błędu koordynatora, przyjęty przez człowieka; zmiana jest łamiąca dla paczek polityk 3.0.x.
+  Człowiek zdecydował (2026-10-28), że 3.1.0 zostaje z wyjątkiem opisanym jak przy 2.1.0 (README, "Wersjonowanie").
+
 ## 3.1.0 - 2026-10-28
 
 Wydanie minor (CC-129), ale ze zmianą bajtów `cedar/mcp.cedarschema` (skrót SHA-256 `cf79068b...`): biblioteki i paczki polityk muszą przejść razem.
@@ -13,7 +18,7 @@ Wydanie minor (CC-129), ale ze zmianą bajtów `cedar/mcp.cedarschema` (skrót S
   w `ResolvedResource` `attrs.ancestorClassifications` (mapa ścieżka grupy -> topics, dokładnie dla grup przodków, `{}` dla grupy
   najwyższego poziomu); builder liczy atrybut, a brak lub niezgodność danych to `internal_error` (fail-closed).
   Przykładowa reguła `forbid` sprawdza atrybut.
-- **Wyjątek SemVer:** według tabeli w README to zmiana major (nowy wymagany atrybut encji i nowe wymagane wejście buildera); wydana jako minor decyzją człowieka z 2026-10-28.
+- **Wyjątek SemVer:** według tabeli w README to zmiana major (nowy wymagany atrybut encji i nowe wymagane wejście buildera), łamiąca dla paczek polityk 3.0.x; wydana jako 3.1.0 (minor), patrz 3.1.1.
 - **Migracja:** ws-04 (serwer GitLab) pobiera topics każdej grupy-przodka i podaje `ancestorClassifications`; ws-02/ws-05 używają bibliotek 3.1.0;
   ws-09 przebudowuje paczki na schemacie 3.1.0 i dodaje do `classification.cedar` `forbid ... resource.inheritedClassification.contains("restricted")`;
   ws-10 testuje projekt trzy poziomy pod grupą `restricted`. Paczki zbudowane na schemacie 3.0.x przestaną przechodzić (`schema_mismatch`).
