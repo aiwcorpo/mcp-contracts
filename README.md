@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **4.0.0** (major, pakiet kontraktowy M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **4.0.1** (po 4.0.0, majorze z pakietem kontraktowym M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -105,13 +105,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:4.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:4.0.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:4.0.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:4.0.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:4.0.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:4.0.0` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-4.0.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-4.0.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:4.0.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:4.0.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:4.0.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:4.0.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:4.0.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:4.0.1` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-4.0.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-4.0.1.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -120,8 +120,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/4.0.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-4.0.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/4.0.1/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-4.0.1.tgz
 ```
 
 ```xml

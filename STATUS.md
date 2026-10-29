@@ -1,11 +1,16 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **4.0.0**, tag `v4.0.0` (pakiet M4; praca dalej na `4.0.1-SNAPSHOT`); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **4.0.1**, tag `v4.0.1` (naprawa sprzeczności 4.0.0, CC-163 i CC-164; praca dalej na `4.0.2-SNAPSHOT`); wcześniej **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja 3.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 253 testy Node; `./mvnw verify`: 418 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
+
+## 4.0.1 (wydane 2026-10-29)
+
+- CC-163 i CC-164 (kolejki konta serwisowego tylko z paczki, lista dozwolona typów poświadczeń); wyjątek SemVer w README; migracja w `CHANGELOG.md` ("4.0.1").
+- Wydane: artefakty `pl.aiwcorpo.mcp:*:4.0.1` w `~/.m2`, `release/aiwcorpo-mcp-contracts-4.0.1.tgz`, tag `v4.0.1`.
 
 ## 4.0.0 (wydane 2026-10-29)
 
