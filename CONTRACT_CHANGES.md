@@ -3331,3 +3331,18 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 - **Decyzja:** warunek z listą dozwoloną `["user-oauth", "user-secret", "token-exchange"].contains(...)`; brak albo nieznany typ daje odmowę poza grantem. Wektory `policy-decisions/srv-servicedesk-unknown-credential-type-ticket-outside-scope-denied` (żądanie z `api-key`; builder odrzuca taką wartość, więc wektor zapisuje wejście z odrzuconą wartością i test Java sprawdza odrzucenie przez builder) oraz dotychczasowe.
 - **Pliki:** `cedar/examples/credential-type.cedar`, `PolicyDecisionVectorTest`, `scripts/generate-cedar-vectors.mjs`, README.
 - **SemVer:** zaostrzenie reguły przykładowej: nie zmienia schematu ani bajtów `mcp.cedarschema`; paczki zbudowane na przykładzie 4.0.0 trzeba przebudować; wydane jako patch 4.0.1 na decyzję człowieka (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.0.1 (wyjątek SemVer opisany w README, decyzja człowieka 2026-10-29)
+
+## CC-165 | C8/C5/C12 | Powody audytu rate limit, definicji i wymiany tokenu jako odmowa w aktywności
+
+- **Zmiana:** `rate_limited_user|client|tool` dają wynik wiersza `rate_limited`, `definition_changed` i `tool_not_served` wynik `tool_disabled`, `exchange_denied` wynik `denied_not_granted`; wszystkie w grupie filtra `denied`. Referencja `scripts/lib/activity-calls.mjs`, po jednym wektorze `activity-calls/aggregation-denied-*` na powód.
+- **SemVer:** minor (nowe znane powody mapowane na istniejące wartości). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+
+## CC-166 | C3/C8/C10 | Typ poświadczenia: nagłówek `X-MCP-Credential-Type` a konfiguracja serwera
+
+- **Zmiana:** gateway wysyła typ poświadczenia w `X-MCP-Credential-Type` obok `X-MCP-Credential`; serwer porównuje go z typem z własnej konfiguracji. Rozjazd, brak nagłówka albo wartość spoza czterech typów to odmowa: C10 `internal_error` bez szczegółów, audyt `policy_decision`/`tool_call` z powodem `credential_type_mismatch` (`decision: deny`, `outcome: error`). Referencja `scripts/lib/credential-type-check.mjs`, wektory `credential-type-header/` (6) i `audit-events/server-credential-type-mismatch`.
+- **SemVer:** minor (nowy nagłówek żądania i nowy powód; serwery bez sprawdzenia dalej działają, ale tracą ochronę). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+
+## CC-167 | README | Limity przy niedostępnym Redisie, podłoga ryzyka, `credentialType` przy dwóch typach
+
+- **Zmiana (opis):** limity w gateway'u przy niedostępnym Redisie odmawiają (`upstream_unavailable` w wyniku narzędzia, HTTP `503` dla innych żądań), fail-closed; podłoga ryzyka to najwyższe ryzyko kiedykolwiek zgłoszone dla narzędzia (także oczekujące), każde niższe zgłoszenie to `422 risk_lowered`; `context.credentialType` dla systemu z dwoma typami to typ z konfiguracji systemu w gateway'u.
+- **SemVer:** patch (opis); podłoga ryzyka doprecyzowuje CC-133 (`422 risk_lowered`). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0

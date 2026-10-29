@@ -7,6 +7,15 @@
 const TTL_SECONDS = 120;
 const TERMINAL = new Set(['user_confirmed', 'user_confirmed_no_preview', 'attempts_exhausted', 'superseded', 'pending_exists', 'confirmation_expired', 'cancelled_by_owner']);
 
+// Result of a row from the reason of its last event (CC-165). The reasons of the limits, of a changed or missing definition and of a refused
+// token exchange are refusals: they land in the group denied.
+const REASON_RESULT = {
+  not_granted: 'denied_not_granted', link_scope: 'denied_link_scope', policy_forbid: 'denied_policy', tool_disabled: 'tool_disabled',
+  credential_required: 'credential_required', rate_limited: 'rate_limited', step_up_required: 'step_up_required',
+  rate_limited_user: 'rate_limited', rate_limited_client: 'rate_limited', rate_limited_tool: 'rate_limited',
+  definition_changed: 'tool_disabled', tool_not_served: 'tool_disabled', exchange_denied: 'denied_not_granted',
+};
+
 // Filter group of the result query parameter of GET /activity/calls (CC-142).
 export function resultGroup(result) {
   if (result === 'ok') return 'ok';
@@ -58,14 +67,11 @@ export function aggregateCall(allEvents, now) {
   } else if (last.event === 'tool_call') {
     const confirmed = confirmations.some((e) => e.reason === 'user_confirmed' || e.reason === 'user_confirmed_no_preview');
     // The credential or the limit stopped the call after the gateway had allowed it: the row says so instead of a plain error (CC-142).
-    const stopped = { credential_required: 'credential_required', rate_limited: 'rate_limited' }[last.reason];
+    const stopped = REASON_RESULT[last.reason];
     if (last.outcome === 'ok') result = confirmed ? 'confirmed' : 'ok';
     else { result = stopped ?? 'error'; errorCode = last.errorCode ?? null; }
   } else {
-    result = {
-      not_granted: 'denied_not_granted', link_scope: 'denied_link_scope', policy_forbid: 'denied_policy', tool_disabled: 'tool_disabled',
-      credential_required: 'credential_required', rate_limited: 'rate_limited', step_up_required: 'step_up_required',
-    }[last.reason] ?? 'error';
+    result = REASON_RESULT[last.reason] ?? 'error';
     errorCode = last.errorCode ?? null;
   }
   row.result = result;

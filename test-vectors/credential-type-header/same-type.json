@@ -1,0 +1,10 @@
+{
+  "description": "The header and the configuration agree: the call goes on.",
+  "input": {
+    "header": "service-account",
+    "configured": "service-account"
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

@@ -18,7 +18,7 @@ Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037,
 | `caller.sub`, `usr`, `grp`, `azp`, `vs?`, `vsc?`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u; `vs` i `vsc` zawsze razem (CC-027) |
 | `tool.serverId`, `system`, `name`, `risk`, `action`, `resourceRefs` | zatwierdzony wpis rejestru (C5/C6) | gateway: z rejestru; starter: z własnego manifestu |
 | `arguments` | `params.arguments` z `tools/call` | bez `confirmation_code` (C11) |
-| `credentialType?` | gateway: z własnej konfiguracji systemu (tej samej, której używa CC-159), podawane zawsze przed decyzją Cedar; serwer: z własnej konfiguracji, kontrakt nie dodaje nagłówka | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
+| `credentialType?` | gateway: z własnej konfiguracji systemu (tej samej, której używa CC-159), podawane zawsze przed decyzją Cedar; serwer: z własnej konfiguracji, porównanej z nagłówkiem `X-MCP-Credential-Type` od gateway'a (rozjazd, brak albo nieznana wartość = odmowa `internal_error`, CC-166) | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
 | mapowanie zakresów | `entities/static.json` załadowanej paczki głównej | `ScopeMapping.fromStaticEntities`, CC-037 |
 | `resource` | resolver serwera (`@ResourceRef`) albo element wyniku wyszukiwania | tylko ocena na serwerze |
 

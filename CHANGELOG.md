@@ -4,6 +4,20 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 4.1.0 - 2026-10-29
+
+Wydanie minor: nowe znane wartości i nagłówek żądania, bez zmian łamiących i bez zmiany bajtów `mcp.cedarschema` (SHA-256 jak w 4.0.0). Nowe CC: CC-165 ... CC-167.
+
+- **Aktywność (CC-165):** powody `rate_limited_user|client|tool`, `definition_changed`, `tool_not_served` i `exchange_denied` są odmową w `ActivityCall.result` i w grupie filtra `denied`
+  (wyniki `rate_limited`, `tool_disabled`, `denied_not_granted`); wektory `activity-calls/aggregation-denied-*`.
+- **Typ poświadczenia (CC-166):** nagłówek `X-MCP-Credential-Type` od gateway'a; serwer odmawia przy rozjeździe z konfiguracją, braku nagłówka lub nieznanej wartości
+  (C10 `internal_error`, audyt `credential_type_mismatch`); wektory `credential-type-header/`.
+- **Opisy (CC-167):** limity przy niedostępnym Redisie fail-closed, podłoga ryzyka (najwyższe zgłoszone, także oczekujące), `context.credentialType` z konfiguracji systemu.
+
+Migracja: **ws-05 gateway:** wysyła `X-MCP-Credential-Type`, mapuje powody na wyniki aktywności, limity fail-closed przy Redisie, podłoga ryzyka, typ z konfiguracji systemu.
+**ws-02 starter / ws-04 serwery:** porównują nagłówek z konfiguracją i odmawiają (`internal_error`, `credential_type_mismatch`). **ws-08:** bez zmian poza etykietami wyników, które już istnieją.
+**ws-10:** scenariusze rozjazdu typu i Redisa niedostępnego.
+
 ## 4.0.1 - 2026-10-29
 
 Naprawa sprzeczności wydania 4.0.0 (zgłoszenia ws-09 CC-I i CC-J). Formalnie zmiany łamiące według tabeli SemVer (usunięty tryb, zmieniony wektor, zaostrzona reguła

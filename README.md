@@ -45,6 +45,7 @@ mcp-contracts/
 │   ├── totp/  text-hygiene/  gateway-authentication/  # CC-092, CC-126 / CC-121, CC-122 / CC-124
 │   ├── connect-redirects/  catalog-actions/  return-paths/  # CC-086, CC-083, CC-032, CC-099
 │   ├── servicedesk-service-account/  # reguła kolejek konta serwisowego (CC-076)
+│   ├── credential-type-header/  # typ poświadczenia: nagłówek a konfiguracja serwera (CC-166)
 │   ├── query-rendering/     # zapytania serwera ze struktury (CC-160)
 │   ├── entity-builder/      # wejście buildera -> encje i kontekst Cedar
 │   └── policy-decisions/    # żądanie Cedar -> decyzja i polityki rozstrzygające
@@ -617,7 +618,8 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
    `approve` ze starym hashem to `409`); znika, gdy serwer znów podaje zatwierdzoną definicję; `PUT` go zastępuje: gdy niesie inną definicję, powstaje wpis `ci`,
    a gdy niesie definicję równą zatwierdzonej, wpis `server` jest usuwany (serwer dalej podający inną definicję powstaje od nowa przy następnym odczycie). Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
 4. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
-   usuniętego i dodanego ponownie.
+   usuniętego i dodanego ponownie. Podłoga ryzyka to najwyższe ryzyko, jakie kiedykolwiek zgłoszono dla narzędzia (także we wpisie oczekującym i w wpisach usuniętych);
+   każde niższe zgłoszenie jest odrzucane (CC-167). Podłoga nie spada przy `approve`, usunięciu ani ponownym dodaniu.
 5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
    i nowe narzędzie `READ_ONLY` w tym samym manifeście) przechodzi bez `approve`: gateway nie wiąże ich ze sobą. Chronią przegląd commitu
    i reguły startera dla `risk` i `action`.
@@ -658,6 +660,8 @@ Wartości limitów to konfiguracja komponentu, nie kontrakt. Kontrakt mówi tylk
 - **Audyt:** `tool_call` (dla `tools/call`) albo `policy_decision` z `decision: deny`, `outcome: denied`, `errorCode: rate_limited`
   i powodem `rate_limited_user`, `rate_limited_client` albo `rate_limited_tool` (klient nie dowiaduje się, który limit, administrator tak).
   Gateway może agregować nadmiar jak przy CC-125. W `activity/calls` wiersz ma wynik `rate_limited` (grupa filtra `denied`).
+- **Redis niedostępny:** limity w gateway'u fail-closed. Gdy licznik nie odpowiada, `tools/call` daje C10 `upstream_unavailable`, a inne żądania MCP HTTP `503` z ciałem
+  `upstream_unavailable` (CC-167); gateway nie przepuszcza ruchu bez liczenia.
 - **Broker i BFF:** start i zakończenie przepływu OAuth w brokerze (na `sub`), zapis tokenu i operacje Authenticatora w BFF (na sesję):
   `429 rate_limited` z `Retry-After`. Rejestracja Authenticatora: domyślnie 10 startów na godzinę na `sub` (CC-151).
 
@@ -674,6 +678,10 @@ Opisy w `resolveCredential` (C4):
   (też `Basic`), `expiresAt` zgodne z rotacją albo `null`. Użytkownik nie ma połączenia, więc `GET /v1/connections` go nie zwraca.
 - **System bez konfiguracji w brokerze:** `422 system_not_configured` zamiast `400`; gateway odpowiada klientowi C10 `internal_error`, ale loguje
   odrębną przyczynę, a audyt `credential_resolve` ma powód `system_not_configured` (outcome `error`).
+- **`context.credentialType` przy systemie z dwoma typami** (np. `user-oauth` i `user-secret`): gateway podaje typ z konfiguracji systemu (domyślny typ systemu), nie zgadywany
+  z odpowiedzi brokera ani z połączenia użytkownika (CC-167). Serwer bierze typ ze swojej konfiguracji i porównuje go z nagłówkiem `X-MCP-Credential-Type`, który gateway wysyła obok
+  `X-MCP-Credential` (C3): rozjazd, brak nagłówka albo wartość spoza czterech typów to odmowa, klient dostaje C10 `internal_error` bez szczegółów, a audyt `policy_decision`/`tool_call`
+  z powodem `credential_type_mismatch` (CC-166); wektory `credential-type-header/`.
 - **Manifest a konfiguracja gateway'a:** przy rejestracji i przy starcie gateway sprawdza, że typ poświadczenia, o który poprosi broker dla systemu,
   jest w `credential.acceptedTypes` manifestu; inaczej `422 manifest_rejected` z powodem `credential_type_mismatch`. Trzymany manifest, który
   nie przechodzi sprawdzenia przy starcie, nie jest zastępowany ani usuwany: serwer ma `enabled: false`, jego narzędzia dają `tool_disabled`, a gateway
@@ -873,7 +881,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 60 | odbiorca C2: 23 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 55 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 109 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 110 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `bundles/` | 43 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
@@ -885,12 +893,13 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `confirmation-binding/` | 77 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | Authenticator brokera: RFC 6238, okno, jednorazowość kroku, blokada 5/15 min, limit dzienny, rejestracja, URI `otpauth` (CC-092, CC-126); ziarno z RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | zbiór zakazany w argumentach, identyfikatorach i filtrach wzmianek oraz zastępowanie w tekście z systemu (CC-121, CC-122) |
-| `activity-calls/` | 42 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
+| `activity-calls/` | 48 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
 | `gateway-authentication-decision/` | 12 | wybór powodu i statusu 401/503 ze stanu kopii kluczy, `kid` i odświeżenia (CC-124) |
 | `activity-cursor/` | 9 | kursor `/activity/calls`: HMAC, związanie z `sub`, ważność 15 min (CC-095); klucz testowy, NOT FOR PRODUCTION |
 | `gateway-authentication/` | 15 | 401 z `resource_metadata`, 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | akcje katalogu portalu per status, w tym `request_access` bez `requiredEntitlements` i `view_request` przy oczekującym wniosku (CC-083, CC-113) |
 | `query-rendering/` | 26 | zapytania serwera ze struktury: JQL i CQL z wrogimi wartościami, wzorzec i rozwiązanie nazw indeksów OpenSearch (CC-160) |
+| `credential-type-header/` | 6 | nagłówek `X-MCP-Credential-Type` a konfiguracja serwera: zgodność, rozjazd, brak, nieznana wartość (CC-166) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
 
 Formaty:

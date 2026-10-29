@@ -1,0 +1,12 @@
+{
+  "description": "A value outside the four types: refused.",
+  "input": {
+    "header": "api-key",
+    "configured": "user-oauth"
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "internal_error",
+    "auditReason": "credential_type_mismatch"
+  }
+}

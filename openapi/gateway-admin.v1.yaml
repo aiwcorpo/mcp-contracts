@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 4.0.2-SNAPSHOT
+  version: 4.1.0-SNAPSHOT
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, read-only confirmation preview).
   description: |
     Callers and their authentication:
@@ -389,7 +389,7 @@ paths:
         **Rejections (422 manifest_rejected, with reason).** The gateway recomputes every definitionHash from the entry's
         definition (CC-004, CC-005) and rejects the manifest when one differs or when a semantic manifest rule of the README
         fails. A tool that lowers risk (for example DESTRUCTIVE to READ_ONLY) is always rejected (risk_lowered), also for a
-        tool that was removed and added again; a manifest with environment dev on a gateway in production mode (the
+        tool that was removed and added again: the floor is the highest risk ever reported for the tool, a pending entry included (CC-167); a manifest with environment dev on a gateway in production mode (the
         default) is rejected (environment_mismatch, CC-138); so is a manifest whose `credential.acceptedTypes` does not
         contain the credential type that the broker is asked for in this system (credential_type_mismatch, CC-159). At
         start the gateway makes the same checks for the manifests it holds; a held manifest that fails them is not

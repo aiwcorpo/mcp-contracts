@@ -323,3 +323,10 @@ test('query rendering vectors: quoting, scope in parentheses, resolved index nam
     assert.deepEqual(actual, data.expected, name);
   }
 });
+
+test('credential type header vectors: a difference refuses the call (CC-166)', async () => {
+  const { credentialTypeCheck } = await import('../scripts/lib/credential-type-check.mjs');
+  const vectors = listJson('test-vectors', 'credential-type-header');
+  assert.ok(vectors.some((v) => v.data.expected.decision === 'continue') && vectors.some((v) => v.data.expected.decision === 'deny'));
+  for (const { name, data } of vectors) assert.deepEqual(credentialTypeCheck(data.input), data.expected, name);
+});

@@ -6,6 +6,7 @@ import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash } from './lib/definition-hash.mjs';
 import { path } from './lib/contracts.mjs';
 import { tarGz } from './lib/tar.mjs';
+import { credentialTypeCheck } from './lib/credential-type-check.mjs';
 import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } from './lib/query-rendering.mjs';
 
 // Invisible and format characters are written as \uXXXX escapes, so that they stay visible in review and in diffs.
@@ -462,6 +463,11 @@ audit('gateway-tool-not-served', 'An approved tool that the server no longer ser
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
   tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'tool_not_served', policyRevision: '20261026120000-a1b2c3d',
   outcome: 'denied', errorCode: 'tool_disabled', argsLength: 64,
+}, true);
+audit('server-credential-type-mismatch', 'The type in X-MCP-Credential-Type differs from the type configured in the server: the call is refused (CC-166).', {
+  ...auditBase, component: 'server', componentId: 'mcp-servicedesk', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-servicedesk',
+  tool: 'get_ticket', risk: 'READ_ONLY', decision: 'deny', reason: 'credential_type_mismatch', outcome: 'error', errorCode: 'internal_error', argsLength: 20,
 }, true);
 audit('gateway-link-scope', 'Tool outside the virtual server link: policy_decision with reason link_scope (CC-142).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
@@ -1073,6 +1079,16 @@ argumentVector('data-stream', 'A data stream: not_found_or_denied.', 'logs-team-
 argumentVector('outside-grant', 'An index of another team: not_found_or_denied.', 'logs-team-b-1');
 argumentVector('unknown', 'A name the system does not know looks the same: not_found_or_denied.', 'logs-team-a-9999');
 
+// ---------- credential type header (C3, CC-166) ----------
+
+const typeVector = (name, description, input) => write('credential-type-header', `${name}.json`, { description, input, expected: credentialTypeCheck(input) });
+typeVector('same-type', 'The header and the configuration agree: the call goes on.', { header: 'service-account', configured: 'service-account' });
+typeVector('user-vs-service-account', 'The gateway says user-secret, the server is configured for service-account: refused, internal_error, reason credential_type_mismatch.', { header: 'user-secret', configured: 'service-account' });
+typeVector('service-account-vs-user', 'The gateway says service-account, the server is configured for user-secret: refused.', { header: 'service-account', configured: 'user-secret' });
+typeVector('header-missing', 'No header: refused (fail-closed), the server does not guess the type.', { header: null, configured: 'user-oauth' });
+typeVector('header-unknown-value', 'A value outside the four types: refused.', { header: 'api-key', configured: 'user-oauth' });
+typeVector('header-case-differs', 'The comparison is exact, case included.', { header: 'User-OAuth', configured: 'user-oauth' });
+
 // ---------- activity calls (C5, C12, CC-095) ----------
 
 const SUBJ = '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11';
@@ -1087,6 +1103,14 @@ const activityRow = (name, description, value, valid) => write('activity-calls',
 aggregation('ok', 'A read call without confirmation: one tool_call event, result ok.',
   [gw(1, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', outcome: 'ok', errorCode: null })],
   { requestId: RID(1), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'ok', errorCode: null });
+for (const [n, reason, errorCode, result] of [
+  [82, 'rate_limited_user', 'rate_limited', 'rate_limited'], [83, 'rate_limited_client', 'rate_limited', 'rate_limited'], [84, 'rate_limited_tool', 'rate_limited', 'rate_limited'],
+  [85, 'definition_changed', 'tool_disabled', 'tool_disabled'], [86, 'tool_not_served', 'tool_disabled', 'tool_disabled'], [87, 'exchange_denied', 'access_denied', 'denied_not_granted'],
+]) {
+  aggregation(`denied-${reason.replace(/_/g, '-')}`, `A refusal with reason ${reason} is the row result ${result}, in the filter group denied (CC-165).`,
+    [gw(n, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'deny', reason, outcome: 'denied', errorCode })],
+    { requestId: RID(n), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result, errorCode });
+}
 aggregation('credential-required-tool-call', 'The gateway allowed the call, the broker had no credential: a tool_call event with reason credential_required is a credential_required row, not a plain error (CC-142).',
   [gw(80, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', reason: 'credential_required', outcome: 'error', errorCode: 'credential_required' })],
   { requestId: RID(80), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'credential_required', errorCode: 'credential_required' });
