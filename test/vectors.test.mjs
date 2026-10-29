@@ -280,7 +280,7 @@ test('activity-calls vectors: ActivityCall schema and aggregation of one call (C
   const spec = await dereferenceOpenApi('gateway-admin.v1.yaml');
   const validate = ajv.compile(structuredClone(spec.components.schemas.ActivityCall));
   const vectors = listJson('test-vectors', 'activity-calls');
-  assert.ok(vectors.length >= 15);
+  assert.ok(vectors.length >= 25);
   for (const { name, data } of vectors) {
     if (data.events) {
       const row = aggregateCall(data.events, toSeconds(data.now));
@@ -311,14 +311,15 @@ test('activity cursor vectors: authenticated, bound to sub, 15 minutes (CC-095)'
 });
 
 test('query rendering vectors: quoting, scope in parentheses, resolved index names (CC-160)', async () => {
-  const { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexNames } = await import('../scripts/lib/query-rendering.mjs');
+  const { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } = await import('../scripts/lib/query-rendering.mjs');
   const render = { jql: renderJql, cql: renderCql, 'opensearch-pattern': ({ granted }) => openSearchPattern(granted),
-    'opensearch-resolve': ({ granted, resolved }) => resolveIndexNames(granted, resolved) };
+    'opensearch-resolve': ({ granted, resolved }) => resolveIndexNames(granted, resolved),
+    'opensearch-argument': ({ granted, argument, resolved }) => resolveIndexArgument(argument, granted, resolved) };
   const vectors = listJson('test-vectors', 'query-rendering');
   assert.ok(vectors.length >= 15);
   for (const { name, data } of vectors) {
     let actual;
-    try { actual = { query: render[data.kind](data.input) }; } catch (e) { if (!(e instanceof QueryError)) throw e; actual = { error: 'nothing_to_query_or_not_allowed' }; }
+    try { const out = render[data.kind](data.input); actual = data.kind === 'opensearch-argument' ? out : { query: out }; } catch (e) { if (!(e instanceof QueryError)) throw e; actual = { error: 'nothing_to_query_or_not_allowed' }; }
     assert.deepEqual(actual, data.expected, name);
   }
 });

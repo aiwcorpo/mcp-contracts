@@ -95,7 +95,7 @@ public final class EntityBuilder {
      * @throws EntityBuilderException for any other value
      */
     public EntityBuilder withCredentialType(String type) {
-        if (!CREDENTIAL_TYPES.contains(type)) {
+        if (type == null || !CREDENTIAL_TYPES.contains(type)) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown credentialType " + type);
         }
         return new EntityBuilder(scopeMapping, type);

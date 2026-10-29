@@ -1,12 +1,12 @@
 // Generates the deterministic vectors: definition-hash, manifests, audit-events, tool-errors, bundles.
 // JWT vectors have their own generator (randomized signatures). Tests verify the committed files.
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { createHash, createPrivateKey, sign } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash } from './lib/definition-hash.mjs';
 import { path } from './lib/contracts.mjs';
 import { tarGz } from './lib/tar.mjs';
-import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexNames } from './lib/query-rendering.mjs';
+import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } from './lib/query-rendering.mjs';
 
 // Invisible and format characters are written as \uXXXX escapes, so that they stay visible in review and in diffs.
 const escapeInvisible = (json) => json.replace(/[\u007f-\u00a0\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff9-\ufffb]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
@@ -432,6 +432,20 @@ audit('gateway-registry-definition-approved', 'An administrator approved a pendi
 audit('gateway-registry-tool-removed', 'A tool left the registered manifest (CC-133).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'delete_issue',
   reason: 'tool_removed', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
+}, true);
+audit('gateway-registry-definition-submitted', 'The pipeline registered an UPDATE tool: it waits for an administrator (CC-133).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'update_issue',
+  reason: 'definition_submitted', definitionHash: 'sha256:'+'c3'.repeat(32), outcome: 'ok',
+}, true);
+audit('gateway-user-purged-summary', 'One summary event per purge call, also when nothing was removed (CC-155).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', reason: 'user_purged', outcome: 'ok',
+}, true);
+audit('broker-user-purged-summary', 'The broker purge leaves the same summary event (CC-155).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'admin_change', sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', reason: 'user_purged', outcome: 'ok',
+}, true);
+audit('broker-resolve-subject-token-invalid', 'The subject token does not belong to the user of the internal JWT (CC-157).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'credential_resolve', sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-opensearch', credentialType: 'token-exchange',
+  reason: 'subject_token_invalid', outcome: 'denied',
 }, true);
 audit('invalid-definition-hash-format', 'definitionHash must be sha256:<64 hex> (CC-133).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'create_issue',
@@ -1037,6 +1051,21 @@ queryVector('aliases-and-lookalikes', 'The answer of the system lists an alias n
     aliases: [{ name: 'logs-team-a-all', indices: ['logs-team-b-1'] }],
     data_streams: [{ name: 'logs-team-a-stream', backing_indices: ['.ds-logs-team-a-stream-000001'] }] } },
   ({ granted, resolved }) => resolveIndexNames(granted, resolved));
+
+const argumentVector = (name, description, argument) => write('query-rendering', `opensearch-argument-${name}.json`, { description, kind: 'opensearch-argument',
+  input: { granted: ['logs-team-a'], argument, resolved: ARG_RESOLVED }, expected: resolveIndexArgument(argument, ['logs-team-a'], ARG_RESOLVED) });
+const ARG_RESOLVED = { indices: [{ name: 'logs-team-a-2026.10' }, { name: 'logs-team-b-1', aliases: ['logs-team-a-all'] }],
+  aliases: [{ name: 'logs-team-a-all', indices: ['logs-team-b-1'] }], data_streams: [{ name: 'logs-team-a-stream', backing_indices: ['.ds-logs-team-a-stream-000001'] }] };
+argumentVector('concrete-index', 'A concrete index inside the grant is queried by that name.', 'logs-team-a-2026.10');
+argumentVector('wildcard', 'A wildcard is never a resource id: invalid_argument before any call.', 'logs-team-a-*');
+argumentVector('star', 'The bare wildcard.', '*');
+argumentVector('all', '_all is refused by the id pattern.', '_all');
+argumentVector('comma-list', 'A list that mixes an index of the grant with another one.', 'logs-team-a-2026.10,hr-payroll');
+argumentVector('leading-dot', 'A hidden or system index (CC-074).', '.security');
+argumentVector('alias', 'An alias named by the model, even one named like a granted prefix: not_found_or_denied, because it can reach other teams.', 'logs-team-a-all');
+argumentVector('data-stream', 'A data stream: not_found_or_denied.', 'logs-team-a-stream');
+argumentVector('outside-grant', 'An index of another team: not_found_or_denied.', 'logs-team-b-1');
+argumentVector('unknown', 'A name the system does not know looks the same: not_found_or_denied.', 'logs-team-a-9999');
 
 // ---------- activity calls (C5, C12, CC-095) ----------
 
@@ -1655,10 +1684,17 @@ mainCase(13, 'tar-total-size-limit', 'Five entries of 3.5 MiB each: every entry 
     publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
 }
 {
+  // A key of a dev stack: not one of the published test keys (its SPKI is not in security/published-test-keys.json), so only the dev- rule can
+  // refuse it (CC-137). It comes from a fixed seed so that the vectors are stable; no other file of the repository uses it.
+  const devKey = createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHash('sha256').update('mcp-contracts dev bundle key').digest()]), format: 'der', type: 'pkcs8' });
+  writeFileSync(path('test-vectors', 'keys', 'dev-policy-bundle.pub.pem'), createPublicKey(devKey).export({ type: 'spki', format: 'pem' }));
   const revision = R(11);
-  bundleCase('dev-key-id-rejected-by-default', 'Key id starting with dev- (a key of a dev stack): refused without allowTestKeys like test-, whatever the key is (CC-137).', {
-    publicKeyId: 'dev-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
-    publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
+  writeFileSync(path(...bundleDir, `policies-${revision}.tar.gz.sig-by-dev-key`), sign(null, archives[revision], devKey));
+  const devCase = (name, description, allowTestKeys, expected) => bundleCase(name, description, {
+    publicKeyId: 'dev-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`,
+    signature: `files/policies-${revision}.tar.gz.sig-by-dev-key`, publicKey: 'keys/dev-policy-bundle.pub.pem', loadedRevision: R2, allowTestKeys, expected });
+  devCase('dev-key-id-rejected-by-default', 'Valid bundle signed with a dev-stack key that is not a published test key and configured under the id dev-policy-main: refused without allowTestKeys by the dev- prefix alone (CC-137).', false, { accept: false, reason: 'test_key_not_allowed' });
+  devCase('dev-key-accepted-in-dev-mode', 'The same bundle and key in dev mode (allowTestKeys true): accepted (CC-137).', true, { accept: true });
 }
 const overridesCase = (n, name, description, policies, reason) => {
   const revision = `2026102616${String(n).padStart(2, '0')}00-${createHash('sha1').update('o' + n).digest('hex').slice(0, 7)}`;

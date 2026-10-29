@@ -1,0 +1,16 @@
+{
+  "description": "One summary event per purge call, also when nothing was removed (CC-155).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "admin_change",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "reason": "user_purged",
+    "outcome": "ok"
+  }
+}

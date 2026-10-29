@@ -1,0 +1,42 @@
+{
+  "description": "A data stream: not_found_or_denied.",
+  "kind": "opensearch-argument",
+  "input": {
+    "granted": [
+      "logs-team-a"
+    ],
+    "argument": "logs-team-a-stream",
+    "resolved": {
+      "indices": [
+        {
+          "name": "logs-team-a-2026.10"
+        },
+        {
+          "name": "logs-team-b-1",
+          "aliases": [
+            "logs-team-a-all"
+          ]
+        }
+      ],
+      "aliases": [
+        {
+          "name": "logs-team-a-all",
+          "indices": [
+            "logs-team-b-1"
+          ]
+        }
+      ],
+      "data_streams": [
+        {
+          "name": "logs-team-a-stream",
+          "backing_indices": [
+            ".ds-logs-team-a-stream-000001"
+          ]
+        }
+      ]
+    }
+  },
+  "expected": {
+    "error": "not_found_or_denied"
+  }
+}

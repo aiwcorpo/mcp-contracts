@@ -16,8 +16,11 @@ Służą wyłącznie do podpisywania i weryfikacji wektorów testowych. Konfigur
 
 Formaty: `*.private.jwk.json` / `*.public.jwk.json` (JWK), `*.private.pem` (PKCS#8), `*.public.pem` (SPKI).
 `test-gateway-jwks.json` to JWKS gateway'a (klucze A i B) do podstawienia pod
-`https://<gateway-internal>/.well-known/jwks.json` w testach; `test-idp-jwks.json` to JWKS testowego IdP; `dev-gateway-jwks.json` to klucz A pod `kid` `dev-gw-2026-10-a` (wektory
-odrzucenia `kid` z prefiksem `dev-`, CC-137: to nie jest osobny klucz, tylko ten sam klucz publiczny pod innym `kid`).
+`https://<gateway-internal>/.well-known/jwks.json` w testach; `test-idp-jwks.json` to JWKS testowego IdP.
+
+`dev-gateway-jwks.json` (klucz publiczny pod `kid` `dev-gw-2026-10-a`; klucz prywatny został po wygenerowaniu wektorów odrzucony) i `dev-policy-bundle.pub.pem`
+(klucz Ed25519 z ustalonego ziarna w generatorze) modelują klucze stosu dev (CC-137). Nie są opublikowanymi kluczami testowymi: ich
+SPKI nie ma w `security/published-test-keys.json`, więc wektory `dev-*` odrzuca wyłącznie reguła prefiksu `dev-`.
 
 Klucze wygenerował `scripts/generate-test-keys.mjs`. Ponowne wygenerowanie unieważnia wszystkie podpisane
 wektory (`jwt/`, `bundles/`), więc skrypt odmawia nadpisania istniejących plików.

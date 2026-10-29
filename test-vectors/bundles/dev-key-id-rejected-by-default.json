@@ -1,5 +1,5 @@
 {
-  "description": "Key id starting with dev- (a key of a dev stack): refused without allowTestKeys like test-, whatever the key is (CC-137).",
+  "description": "Valid bundle signed with a dev-stack key that is not a published test key and configured under the id dev-policy-main: refused without allowTestKeys by the dev- prefix alone (CC-137).",
   "publicKeyId": "dev-policy-main",
   "channel": "main",
   "latest": {
@@ -8,8 +8,8 @@
     "sigUrl": "policies-20261026151100-17ba079.tar.gz.sig"
   },
   "bundle": "files/policies-20261026151100-17ba079.tar.gz",
-  "signature": "files/policies-20261026151100-17ba079.tar.gz.sig",
-  "publicKey": "keys/test-policy-bundle.public.pem",
+  "signature": "files/policies-20261026151100-17ba079.tar.gz.sig-by-dev-key",
+  "publicKey": "keys/dev-policy-bundle.pub.pem",
   "loadedRevision": "20261026130000-b2c3d4e",
   "allowTestKeys": false,
   "expected": {

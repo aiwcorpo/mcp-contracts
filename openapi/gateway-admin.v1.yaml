@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 3.2.0-SNAPSHOT
+  version: 4.0.0-SNAPSHOT
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, read-only confirmation preview).
   description: |
     Callers and their authentication:
@@ -358,22 +358,33 @@ paths:
       summary: Register or update a server manifest (CI).
       description: |
         Body is the C6 manifest (schemas/server-manifest.schema.json); `serverId` in the body must equal the path.
-        This call is the deployment of a server by the pipeline (CN mcp-registry-ci), and the pipeline's review is
-        the approval: every new tool and every tool whose definitionHash changed is approved by this call (status
-        approved, approvedInVersion set to the version of the manifest), and a tool missing from the manifest is
-        removed (CC-133). Each definition and each removal is audited as admin_change (definition_registered,
-        tool_removed, with definitionHash). A definition that differs from the approved one without a deployment,
-        that is, one that the server presents at tools/list or tools/call, becomes pending_approval instead and is
-        approved only by the approve operation below. The gateway recomputes
-        every definitionHash from the entry's definition (CC-004, CC-005) and rejects the manifest with 422
-        when one differs or when any semantic manifest rule of the README fails. A tool that lowers risk (for
-        example DESTRUCTIVE to READ_ONLY) is always rejected with 422 manifest_rejected, also for a tool that was
-        removed and added again, and so is a manifest with environment dev on a gateway in production mode
-        (reason environment_mismatch, CC-138), and so is a manifest whose `credential.acceptedTypes` does not contain
-        the credential type that the broker is asked for in this system (reason credential_type_mismatch, CC-159); the gateway
-        checks the same at start for the manifests it holds. The binding
-        serverId -> system/internalUrl comes only from gateway configuration; a manifest that disagrees is
-        rejected with 422 and nothing is stored.
+
+        **Origin of the body (CC-133).** The body is the manifest built from the reviewed commit (the artifact of the
+        build stage, `target/mcp-manifest.json`), never one fetched from a running server, and the job that calls this
+        operation (CN mcp-registry-ci) runs only for the protected branch. Outside the devstack profile the gateway does
+        not take a manifest from a server by itself and never approves one: a manifest fetched from a server (the
+        bootstrap of the dev stack) exists only in dev mode (README, "Tryb produkcyjny i tryb dev").
+
+        **What the call approves.** The review of the commit is the approval of the tools that cannot change data: a new or
+        changed READ_ONLY tool is approved by this call (status approved, approvedInVersion set to the version of the
+        manifest), and an entry whose definitionHash did not change stays as it is. A new or changed UPDATE or
+        DESTRUCTIVE tool becomes pending_approval (change new or changed, pendingVersion = the version of the manifest) and
+        is approved only by the approve operation below, by an administrator. A tool missing from the manifest is
+        removed. Audit as admin_change with definitionHash: definition_registered (approved by this call),
+        definition_submitted (left pending) and tool_removed. A definition that differs from the approved one without a
+        deployment is handled by the gateway as described in the README ("Rejestr i przypinanie definicji") and is also
+        pending_approval.
+
+        **Rejections (422 manifest_rejected, with reason).** The gateway recomputes every definitionHash from the entry's
+        definition (CC-004, CC-005) and rejects the manifest when one differs or when a semantic manifest rule of the README
+        fails. A tool that lowers risk (for example DESTRUCTIVE to READ_ONLY) is always rejected (risk_lowered), also for a
+        tool that was removed and added again; a manifest with environment dev on a gateway in production mode (the
+        default) is rejected (environment_mismatch, CC-138); so is a manifest whose `credential.acceptedTypes` does not
+        contain the credential type that the broker is asked for in this system (credential_type_mismatch, CC-159). At
+        start the gateway makes the same checks for the manifests it holds; a held manifest that fails them is not
+        replaced: the server is reported with enabled false and its tools are refused as tool_disabled until a manifest
+        that passes is registered. The binding serverId -> system/internalUrl comes only from gateway configuration; a
+        manifest that disagrees is rejected with 422 and nothing is stored.
       security:
         - mtls: []
       requestBody:
@@ -469,6 +480,38 @@ paths:
                         definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
                         status: approved
                         approvedInVersion: 1.4.0
+                      - name: update_issue
+                        risk: UPDATE
+                        action: update
+                        resourceRefs:
+                          - argument: issueKey
+                            type: Jira::Issue
+                        definition:
+                          name: update_issue
+                          title: Update issue
+                          description: Updates the summary of an issue.
+                          inputSchema:
+                            type: object
+                            properties:
+                              issueKey:
+                                type: string
+                                description: Issue key, e.g. ABC-123
+                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                maxLength: 32
+                              summary:
+                                type: string
+                                maxLength: 255
+                            required:
+                              - issueKey
+                              - summary
+                            additionalProperties: false
+                          annotations:
+                            readOnlyHint: false
+                            destructiveHint: false
+                        definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                        status: pending_approval
+                        change: new
+                        approvedInVersion: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '403':
@@ -603,9 +646,9 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Approve the pending definition of a tool (group mcp-platform-admin).
       description: |
-        definitionHash must equal the current pendingHash, otherwise 409 and nothing changes. Approval is the manual
-        way to accept a definition that changed outside a deployment (CC-133); a deployment through PUT approves by
-        itself. An entry that lowers risk (the approved risk is higher than the pending one) cannot be approved: 422
+        definitionHash must equal the current pendingHash, otherwise 409 and nothing changes. Approval is the way to accept
+        what a deployment through PUT left pending (a new or changed UPDATE or DESTRUCTIVE tool) and a definition that changed
+        outside a deployment (CC-133). An entry that lowers risk (the approved risk is higher than the pending one) cannot be approved: 422
         manifest_rejected. The approval is audited as admin_change with reason definition_approved, the administrator
         as sub and the approved hash as definitionHash.
       security:
@@ -998,12 +1041,18 @@ paths:
         Caller: IGA/HR webhook with mTLS CN=mcp-offboarding, no bearer token. Idempotent. Removes the virtual servers
         (links) of the user, the pending confirmations and their tombstones, the MCP sessions in Redis and the cached
         credentials of the user. The activity records (`/admin/v1/activity`, `activity/calls`) are not removed: they stay
-        until the end of their retention, 30 days by default, as evidence (CC-134). Audit: virtual_server_change with
-        reason user_purged, outcome ok, sub of the user, one event per removed link. Sessions of the portal are ended
-        by the back-channel logout of the IdP, and the token of an MCP client expires within 60 minutes (C1); neither is
-        done here. The full offboarding is three independent idempotent calls, in any order (recommended: the IdP
-        first, so that tokens stop being renewed): the IdP or IGA removes the groups, the broker purges
-        (`POST /v1/admin/users/{sub}/purge` of C4) and the gateway purges.
+        until the end of their retention, 30 days by default, as evidence (CC-134). Audit: one admin_change event with
+        reason user_purged and outcome ok for every call, also when there was nothing to remove and also for a `sub`
+        the gateway does not know (the answer is `204` either way), plus one virtual_server_change event with reason
+        user_purged for every removed link (CC-155). The event carries the `sub` of the purged user and no counts.
+
+        **Accepted window (decision 2026-10-29).** The gateway does not block the `sub` after a purge: a token of an MCP client
+        issued before it stays valid until it expires (at most 60 minutes, C1). Within that window a calling user can still use
+        a system that needs no connection of the user, such as the service account of Service Desk. Sessions of the portal are
+        ended by the back-channel logout of the IdP, and a `purge` repeated after that logout is safe and recommended (a
+        flow that was still open can create a connection after the first one). The full offboarding is three independent
+        idempotent calls, in any order (recommended: the IdP first, so that tokens stop being renewed): the IdP or IGA
+        removes the groups, the broker purges (`POST /v1/admin/users/{sub}/purge` of C4) and the gateway purges.
       security:
         - mtls: []
       parameters:
@@ -1392,7 +1441,7 @@ components:
         enabled:
           type: boolean
           default: true
-          description: False when the server is disabled in gateway configuration or by an overrides policy. All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only; the portal has no switch.
+          description: False when the server is disabled in gateway configuration or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only; the portal has no switch.
         tools:
           type: array
           items:

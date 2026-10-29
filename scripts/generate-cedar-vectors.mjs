@@ -444,7 +444,7 @@ decision('srv-servicedesk-read-allowed', 'Server: ticket in queue 42.', 'server'
   { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-read'));
 decision('srv-vs-narrows-servicedesk-ticket', 'Server: ticket in queue 7 through a link limited to queue 42.', 'server',
   { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.getTicket, arguments: { ticketId: 777 },
-    resource: ticket('777', '7') },
+    resource: ticket('777', '7'), credentialType: 'user-secret' },
   deny('vs-narrow-servicedesk-ticket'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
 decision('srv-vs-narrows-gitlab-project', 'Server: project of team-b through a link limited to group team-a.', 'server',
   { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: { projectPath: 'team-b/app' },
@@ -484,22 +484,27 @@ decision('srv-confluence-update-space-outside-scope', 'Server: update on a space
 decision('srv-servicedesk-add-note-in-scope', 'Server: add_note on a ticket of queue 42.', 'server',
   { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-update-ticket-in-scope'));
 decision('srv-servicedesk-add-note-outside-scope', 'Server: add_note on a ticket of queue 7.', 'server',
-  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 777 }, resource: ticket('777', '7') }, deny());
+  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 777 }, resource: ticket('777', '7'), credentialType: 'user-secret' }, deny());
 decision('srv-opensearch-update-index-in-scope', 'Server: update on an index below the granted prefix.', 'server',
   { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-a-2026.10' },
     resource: { type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } } }, allow('opensearch-update-index-in-scope'));
 decision('srv-opensearch-update-index-outside-scope', 'Server: update on an index of another team.', 'server',
   { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-b-2026.10' },
     resource: { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } } }, deny());
-// context.credentialType (CC-136): a rule may read it; without the value the rule does not apply.
-decision('gw-destructive-with-service-account-denied', 'DESTRUCTIVE call whose credential is a service account: forbidden by the credential-type example.', 'gateway',
-  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, credentialType: 'service-account' },
-  deny('destructive-not-with-service-account'), { covers: ['forbid_overrides_permit'] });
-decision('gw-destructive-with-user-credential-allowed', 'The same call with a user credential is allowed.', 'gateway',
-  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, credentialType: 'user-oauth' },
-  allow('jira-call-destructive'));
-decision('gw-destructive-without-credential-type-allowed', 'The builder caller did not give a credential type: the attribute is absent and the guarded rule does not apply.', 'gateway',
-  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, allow('jira-call-destructive'));
+// context.credentialType (CC-136): reading a service desk queue outside the grant with the service account is forbidden, also without the type.
+const sdRead = (credentialType, queueId, extra = {}) => ({
+  caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 900 }, resource: ticket('900', queueId), ...(credentialType && { credentialType }), ...extra });
+decision('srv-servicedesk-service-account-ticket-outside-scope-denied', 'Ticket of queue 7, the user has queue 42, the credential is the service account: forbidden.', 'server',
+  sdRead('service-account', '7'), deny('servicedesk-service-account-ticket-outside-scope'), { covers: ['forbid_overrides_permit'] });
+decision('srv-servicedesk-without-credential-type-ticket-outside-scope-denied', 'The same without a credential type: the rule is fail-closed and still forbids.', 'server',
+  sdRead(null, '7'), deny('servicedesk-service-account-ticket-outside-scope'), { covers: ['forbid_overrides_permit'] });
+decision('srv-servicedesk-service-account-ticket-in-scope-allowed', 'Ticket of queue 42 with the service account: inside the grant, allowed.', 'server',
+  sdRead('service-account', '42'), allow('servicedesk-read'));
+decision('srv-servicedesk-user-credential-ticket-outside-scope-allowed', 'A user credential is not touched by the rule: the system applies the rights of the user.', 'server',
+  sdRead('user-secret', '7'), allow('servicedesk-read'));
+decision('srv-servicedesk-service-account-queue-outside-scope-denied', 'Queue 7 with the service account and no grant: forbidden.', 'server',
+  { caller: users.sdReader(), tool: tools.listQueueTickets, arguments: { queueId: 7 }, resource: { type: 'ServiceDesk::Queue', id: '7', attrs: { id: '7' } }, credentialType: 'service-account' },
+  deny('servicedesk-service-account-queue-outside-scope'), { covers: ['forbid_overrides_permit'] });
 
 console.log(`policy decisions: ${decisionCount}`);
 

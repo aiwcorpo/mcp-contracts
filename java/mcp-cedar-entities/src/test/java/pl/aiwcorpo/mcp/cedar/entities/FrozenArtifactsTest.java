@@ -23,7 +23,7 @@ class FrozenArtifactsTest {
      * Bundles carry the schema byte for byte (CC-059), so every 2.x component must ship the same file; any change,
      * even to the header comment or line endings, makes bundles of other 2.x components fail with schema_mismatch.
      */
-    private static final String MCP_CEDARSCHEMA_SHA256 = "741b441cb5b70f6099204a8d0a30d49047e6f3f512a964865b653f64ce7d6fac";
+    private static final String MCP_CEDARSCHEMA_SHA256 = "902b254090cc7bd5b8f4ff3fa26b76850f516e9d07da0f9faed1729deb1412f7";
 
     @Test
     void cedarSchemaIsFrozenForTheWhole2xLine() throws Exception {

@@ -1,4 +1,4 @@
-// Cedar model of the MCP platform (contract C7), mcp-contracts 3.2.0 (context.credentialType; 3.1.0 added
+// Cedar model of the MCP platform (contract C7), mcp-contracts 4.0.0 (context.credentialType; 3.1.0 added
 // inheritedClassification on GitLab::Group and GitLab::Project; otherwise as 2.0.0).
 //
 // Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
@@ -55,9 +55,10 @@ type Refs = {
 };
 
 // credentialType (CC-136): the type of the credential used for the call (user-oauth, user-secret, token-exchange or
-// service-account), given by the caller of the builder (the gateway knows it from the broker's resolve answer). Optional,
-// so policies guard it with `has`; a policy can then treat a service account (which sees everything in the system)
-// more strictly than a user credential.
+// service-account). The gateway takes it from its own configuration of the system and always gives it before the decision;
+// a server takes it from its configuration too. It is optional in the model so that a caller of the builder that does not
+// know it can still build a request, and policies guard it with `has`; a rule that protects something should be fail-closed
+// when it is missing (cedar/examples/credential-type.cedar).
 type RequestContext = {
   client: String,
   virtualServer?: String,

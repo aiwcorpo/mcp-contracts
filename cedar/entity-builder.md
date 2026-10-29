@@ -18,7 +18,7 @@ Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037,
 | `caller.sub`, `usr`, `grp`, `azp`, `vs?`, `vsc?`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u; `vs` i `vsc` zawsze razem (CC-027) |
 | `tool.serverId`, `system`, `name`, `risk`, `action`, `resourceRefs` | zatwierdzony wpis rejestru (C5/C6) | gateway: z rejestru; starter: z własnego manifestu |
 | `arguments` | `params.arguments` z `tools/call` | bez `confirmation_code` (C11) |
-| `credentialType?` | gateway: odpowiedź brokera na `resolve`; serwer: z własnej konfiguracji, kontrakt nie dodaje nagłówka | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
+| `credentialType?` | gateway: z własnej konfiguracji systemu (tej samej, której używa CC-159), podawane zawsze przed decyzją Cedar; serwer: z własnej konfiguracji, kontrakt nie dodaje nagłówka | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
 | mapowanie zakresów | `entities/static.json` załadowanej paczki głównej | `ScopeMapping.fromStaticEntities`, CC-037 |
 | `resource` | resolver serwera (`@ResourceRef`) albo element wyniku wyszukiwania | tylko ocena na serwerze |
 
@@ -245,7 +245,9 @@ Zapytanie buduje serwer ze struktury i rozwiązuje wzorce do nazw (CC-160):
   odrzucone), warunki użytkownika stoją w jednym nawiasie, a warunek zakresu dochodzi po nim przez `AND`, więc `OR`
   w wartości nie poszerza zakresu. `ORDER BY` przyjmuje tylko pole z listy i `ASC`/`DESC`. Pusty zakres to brak zapytania
   (patrz wyżej), nigdy zapytanie bez filtra. Wzorzec: `scripts/lib/query-rendering.mjs`, wektory
-  `test-vectors/query-rendering/` (JQL i CQL z wrogimi wartościami, nawias, `ORDER BY`).
+  `test-vectors/query-rendering/` (JQL i CQL z wrogimi wartościami, nawias, `ORDER BY`, argumenty indeksu OpenSearch: `*`, `_all`, lista po przecinku, kropka
+  na początku, alias, strumień danych). **Listy pól warunków, operatorów (`=`, `~`, `!=`) i pól `ORDER BY` w `scripts/lib/query-rendering.mjs` są
+  normatywne:** serwer może dopuścić mniej, nigdy więcej; nowe pole wymaga zmiany kontraktu.
 - OpenSearch: serwer nigdy nie wysyła do klucza wzorca typu `logs-team-a*`, bo wzorzec może objąć alias o takiej nazwie,
   który wskazuje indeksy innych zespołów (zliczenia i `hits.total` policzyłyby wtedy dane spoza zakresu). Najpierw
   rozwiązuje wzorzec `p,p-*` (`GET _resolve/index/<wzorzec>`) do konkretnych nazw indeksów, **pomijając aliasy i strumienie
@@ -253,6 +255,8 @@ Zapytanie buduje serwer ze struktury i rozwiązuje wzorce do nazw (CC-160):
   wtedy pyta po liście nazw. Alias lub strumień podany jako argument to `not_found_or_denied`. Dzięki temu agregaty
   i liczniki są policzone tylko na indeksach zakresu, a reguła wyłączająca `aggregate_logs` w paczce polityk może zniknąć
   dopiero po wdrożeniu tego w serwerze OpenSearch (ws-09 zdejmuje ją wtedy, nie wcześniej).
+  Między rozwiązaniem a zapytaniem jest krótkie okno (indeks usunięty i alias o tej samej nazwie utworzony); wymaga uprawnień administracyjnych
+  w OpenSearch, więc jest ryzykiem znanym, nie zamykanym kontraktem.
 
 Ograniczenie zapytania nie zastępuje filtrowania: filtrowanie jest kontrolą, zapytanie tylko oszczędza
 ruch i nie ujawnia liczby elementów spoza zakresu.

@@ -1,6 +1,8 @@
 // Reference rendering of the queries a server sends to its system (entity-builder.md, section 8, CC-160). The server
 // composes the query from structured fields, never from raw JQL or CQL given by the model, quotes every value and puts the
 // user's conditions in parentheses before it adds the scope condition, so that an OR in a value cannot widen the scope.
+// The lists of fields, operators and ORDER BY fields below are normative (CC-160): a server may allow fewer, never more, and a
+// new field needs a change of the contract. The server, not the model, chooses what is queried.
 export const ORDER_FIELDS = { jql: ['created', 'updated', 'priority', 'key'], cql: ['created', 'lastmodified', 'title'] };
 const CONDITION_FIELDS = { jql: ['text', 'status', 'assignee', 'summary'], cql: ['text', 'title', 'label'] };
 const OPERATORS = ['=', '~', '!='];
@@ -47,4 +49,15 @@ export function openSearchPattern(granted) {
 export function resolveIndexNames(granted, resolved) {
   const covered = (name) => granted.some((p) => name === p || name.startsWith(`${p}-`));
   return (resolved.indices ?? []).map((i) => i.name).filter(covered).sort();
+}
+
+const INDEX_NAME = /^[a-z0-9][a-z0-9._-]{0,254}$/;
+
+// An index named by the model as an argument (a resource id, CC-056): one concrete name. Anything that is a pattern, a list or a name
+// that the pattern of an index refuses (`*`, `_all`, a comma, a leading dot) is invalid_argument before any call to the system. After the
+// resolution an alias, a data stream, an index outside the grant and a name the system does not know are all not_found_or_denied.
+export function resolveIndexArgument(argument, granted, resolved) {
+  if (typeof argument !== 'string' || !INDEX_NAME.test(argument)) return { error: 'invalid_argument' };
+  const names = resolveIndexNames(granted, resolved);
+  return names.includes(argument) ? { names: [argument] } : { error: 'not_found_or_denied' };
 }

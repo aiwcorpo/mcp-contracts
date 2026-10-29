@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **3.2.0** (pakiet kontraktowy M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **4.0.0** (major, pakiet kontraktowy M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -99,13 +99,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:3.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:3.2.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:3.2.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:3.2.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:3.2.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:3.2.0` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-3.2.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-3.2.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:4.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:4.0.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:4.0.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:4.0.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:4.0.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:4.0.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-4.0.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-4.0.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -114,8 +114,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/2.2.5/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-3.2.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/4.0.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-4.0.0.tgz
 ```
 
 ```xml
@@ -278,10 +278,10 @@ konwersji końców linii (`.gitattributes` wymusza LF). Schemat był taki sam w 
 przebudować (wejście `schemaVersion` paczki i bajty schematu), a komponenty gateway, starter i serwery muszą używać bibliotek 3.1.0.
 Skrót SHA-256 schematu 3.1.0: `cf79068bc845d392a12a96c88431564afc4eb5afc1697cda083180717b7e4d8a`.
 
-**3.2.0 dodaje opcjonalny atrybut kontekstu `credentialType` (CC-136)** i zmienia komentarz nagłówka, więc bajty pliku są inne
-(SHA-256 `741b441cb5b70f6099204a8d0a30d49047e6f3f512a964865b653f64ce7d6fac`). Atrybut jest opcjonalny: paczka zbudowana na
-schemacie 3.1.x nie przechodzi na schemacie 3.2.0 (bajty), ale polityki bez `credentialType` działają bez zmian; polityka czytająca
-go musi chronić odczyt przez `has`. Biblioteki, paczki polityk i serwery przechodzą na 3.2.0 razem (wejście `schemaVersion` paczki
+**4.0.0 dodaje opcjonalny atrybut kontekstu `credentialType` (CC-136)** i zmienia komentarz nagłówka, więc bajty pliku są inne
+(SHA-256 `902b254090cc7bd5b8f4ff3fa26b76850f516e9d07da0f9faed1729deb1412f7`). Atrybut jest opcjonalny w modelu: paczka zbudowana na
+schemacie 3.1.x nie przechodzi na schemacie 4.0.0 (bajty), ale polityki bez `credentialType` działają bez zmian; polityka czytająca
+go musi chronić odczyt przez `has` (gateway i starter 4.0.0 podają go zawsze). Biblioteki, paczki polityk i serwery przechodzą na 4.0.0 razem (wejście `schemaVersion` paczki
 i bajty schematu).
 
 ## Identyfikatory zasobów
@@ -563,29 +563,43 @@ do `definitionHash` (C6, CC-004). Gateway, klienci i testy ws-10 sprawdzają jed
 Dla poświadczenia `service-account` serwer ocenia każdy zasób `ServiceDesk::*` względem kolejki zwróconej przez
 system w chwili wywołania (zgłoszenie przeniesione do innej kolejki ma nową kolejkę, argument się nie liczy); brak
 grantu kolejki w paczce i w konfiguracji serwera oznacza odmowę (niezmiennik 6, CC-076). Reguła działa przed
-Cedar i zostaje; wektory w `test-vectors/servicedesk-service-account/`, a nie w `policy-decisions/`. Od 3.2.0 model Cedar
-niesie opcjonalne `context.credentialType` (CC-136), więc paczka polityk może dodać drugą linię obrony (przykład:
-`cedar/examples/credential-type.cedar`), ale reguła serwera nie zależy od niej.
+Cedar i zostaje; wektory w `test-vectors/servicedesk-service-account/`, a nie w `policy-decisions/`. Od 4.0.0 model Cedar
+niesie opcjonalne `context.credentialType` (CC-136) jako drugą linię obrony: gateway bierze typ z własnej konfiguracji systemu (tej samej,
+której używa CC-159) i podaje go zawsze przed decyzją Cedar, serwer z własnej konfiguracji. Przykład `cedar/examples/credential-type.cedar`
+jest fail-closed (brak atrybutu też daje odmowę) i zabrania odczytu kolejki lub zgłoszenia poza przyznanym zakresem przy koncie serwisowym;
+reguła serwera z CC-076 zostaje i nie zależy od niego.
 
 ## Rejestr i przypinanie definicji (CC-097, CC-133)
 
 Gateway trzyma dla każdego narzędzia zatwierdzoną definicję (jej odcisk to `definitionHash`) i nie pokazuje ani nie wykonuje
 narzędzia, którego aktualna definicja jest inna. Reguły:
 
-1. **Wdrożenie przez potok zatwierdza.** `PUT /admin/v1/registry/servers/{serverId}` z certyfikatu `mcp-registry-ci` to wdrożenie
-   serwera: przegląd potoku jest zatwierdzeniem, więc nowe narzędzia i zmienione definicje stają się `approved`
-   (`approvedInVersion` = wersja manifestu), a narzędzie, którego manifest już nie ma, jest usuwane. Audyt: `admin_change` z powodem
-   `definition_registered` (jedno zdarzenie na narzędzie, z `definitionHash`) i `tool_removed`.
-2. **Zmiana poza wdrożeniem blokuje narzędzie.** Gdy definicja, którą serwer podaje w `tools/list` albo przy `tools/call`, różni się od
-   zatwierdzonej, narzędzie jest ukryte w `tools/list`, a wywołanie daje C10 `tool_disabled` (audyt: powód `definition_changed`), aż
-   administrator (grupa `mcp-platform-admin`) wywoła `approve` z `definitionHash` równym `pendingHash`. Sprawdzenie dotyczy każdego
-   `tools/list` i każdego `tools/call`, nie tylko rejestracji. Audyt zatwierdzenia: `admin_change`, `definition_approved`, `sub`
-   administratora i `definitionHash`. Ręczne `approve` jest więc tylko dla zmian poza wdrożeniem; nie ma operacji "odrzuć" (brak
-   zatwierdzenia to narzędzie ukryte, fail-closed).
-3. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
-   usuniętego i dodanego ponownie. Podniesienie `risk` przechodzi tą samą drogą co inne zmiany.
-4. `RegistryTool.change` (`new` | `changed`, tylko przy `pending_approval`), `approvedInVersion` i `PendingTool.pendingVersion`
-   są informacyjne (widok administracji); decyzja zawsze wiąże `definitionHash`.
+1. **Skąd jest manifest.** Ciało `PUT /admin/v1/registry/servers/{serverId}` (certyfikat `mcp-registry-ci`) to manifest zbudowany
+   z przeglądanego commitu (artefakt etapu budowy, `target/mcp-manifest.json`), nigdy manifest pobrany z działającego serwera, a zadanie
+   potoku z tym certyfikatem działa tylko na chronionej gałęzi. Poza profilem `devstack` gateway nie pobiera manifestu od serwera
+   i nigdy go nie zatwierdza; bootstrap (pobranie manifestu od serwera) istnieje tylko w trybie dev (sekcja "Tryb produkcyjny i tryb dev")
+   i też sprawdza `environment`.
+2. **Co zatwierdza wdrożenie.** Przegląd commitu zatwierdza narzędzia, które nie zmieniają danych: nowe albo zmienione narzędzie `READ_ONLY`
+   jest `approved` (`approvedInVersion` = wersja manifestu), wpis z niezmienionym `definitionHash` zostaje. Nowe albo zmienione narzędzie
+   `UPDATE` lub `DESTRUCTIVE` jest `pending_approval` (`change` `new` albo `changed`, `pendingVersion` = wersja manifestu) i czeka na `approve`
+   administratora (grupa `mcp-platform-admin`, hash równy `pendingHash`). Narzędzie, którego manifest już nie ma, jest usuwane. Audyt
+   `admin_change` z `definitionHash`: `definition_registered` (zatwierdzone), `definition_submitted` (czeka), `tool_removed`; zatwierdzenie to
+   `definition_approved` z `sub` administratora.
+3. **Zmiana poza wdrożeniem blokuje narzędzie.** Odpowiedź na `tools/list` klientowi gateway buduje zawsze z zatwierdzonych wpisów, nie
+   przekazuje jej z serwera. Gateway trzyma ostatnio widzianą definicję każdego narzędzia z `tools/list` serwera (odczyt odświeżany
+   najpóźniej co TTL, konfiguracja, zalecane do 60 s) i porównuje ją z zatwierdzoną przy każdym `tools/list` klienta i przed każdym
+   `tools/call`; okno, w którym zmieniony serwer może jeszcze obsłużyć wywołanie, to więc najwyżej ten TTL. Różnica to `pending_approval`
+   z `change: changed`: definicja pochodzi z serwera, a `risk`, `action` i `resourceRefs` gateway bierze z zatwierdzonego wpisu (zmiana
+   w runtime ich nie zmienia), `pendingHash` liczy z nich, a `pendingVersion` to wersja, którą serwer podaje w `initialize`. Narzędzie jest
+   wtedy ukryte w `tools/list`, a wywołanie daje C10 `tool_disabled` (audyt: powód `definition_changed`), aż `approve`. Narzędzie, które serwer
+   pokazuje, a którego nie ma w rejestrze, jest ignorowane (nie ma dla niego `risk` ani `action`); `change: new` powstaje tylko przy `PUT`.
+4. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
+   usuniętego i dodanego ponownie.
+5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
+   i nowe narzędzie `READ_ONLY` w tym samym manifeście) przechodzi bez `approve`: gateway nie wiąże ich ze sobą. Chronią przegląd commitu
+   i reguły startera dla `risk` i `action`.
+6. `RegistryTool.change`, `approvedInVersion` i `PendingTool.pendingVersion` są informacyjne (widok administracji); decyzja zawsze wiąże
+   `definitionHash`. Nie ma operacji "odrzuć": brak zatwierdzenia to narzędzie ukryte (fail-closed).
 
 ## Retencja i offboarding (CC-134, CC-155)
 
@@ -599,6 +613,11 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
   potwierdzenia, sesje MCP w Redisie i cache poświadczeń. Audyt: `connection_change`/`user_purged`, `authenticator`/`authenticator_removed`,
   `virtual_server_change`/`user_purged`.
 - **Sesje portalu** kończy back-channel logout z IdP (nie ma osobnego endpointu), a token klienta MCP wygasa najdalej po 60 minutach (C1).
+  **Okno przyjęte przez człowieka (2026-10-29):** po `purge` nie blokujemy `sub`; token wydany wcześniej działa do wygaśnięcia, więc przez
+  najwyżej 60 minut odchodzący może jeszcze użyć systemu, który nie wymaga jego połączenia (konto serwisowe Service Desku). `purge` powtórzony
+  po wylogowaniu jest bezpieczny i zalecany (otwarty przepływ OAuth mógł utworzyć połączenie po pierwszym).
+- **Ślad w audycie:** każde wywołanie `purge` (broker i gateway) zostawia jedno zdarzenie `admin_change` z powodem `user_purged`, także gdy nic nie było
+  do usunięcia i dla nieznanego `sub` (odpowiedź `204` jest ta sama); do tego zdarzenia per połączenie i per link.
 - **Czyszczenie nieużywanych połączeń.** Po okresie bez użycia (konfiguracja brokera, domyślnie 180 dni) broker usuwa połączenie;
   audyt `connection_change` z powodem `unused_cleanup`. Wcześniej portal oznacza je jako wygasające (bez przypomnień).
 
@@ -633,16 +652,28 @@ Opisy w `resolveCredential` (C4):
 - **System bez konfiguracji w brokerze:** `422 system_not_configured` zamiast `400`; gateway odpowiada klientowi C10 `internal_error`, ale loguje
   odrębną przyczynę, a audyt `credential_resolve` ma powód `system_not_configured` (outcome `error`).
 - **Manifest a konfiguracja gateway'a:** przy rejestracji i przy starcie gateway sprawdza, że typ poświadczenia, o który poprosi broker dla systemu,
-  jest w `credential.acceptedTypes` manifestu; inaczej `422 manifest_rejected` z powodem `credential_type_mismatch`.
+  jest w `credential.acceptedTypes` manifestu; inaczej `422 manifest_rejected` z powodem `credential_type_mismatch`. Trzymany manifest, który
+  nie przechodzi sprawdzenia przy starcie, nie jest zastępowany ani usuwany: serwer ma `enabled: false`, jego narzędzia dają `tool_disabled`, a gateway
+  loguje przyczynę, aż zarejestrowany zostanie manifest, który przechodzi. **Kolejność migracji:** serwer OpenSearch (jego manifest deklaruje dziś
+  `acceptedTypes: [user-secret]`, a konfiguracja gateway'a i brokera ma `token-exchange`) musi wyjść z `acceptedTypes` zawierającym `token-exchange`
+  i być zarejestrowany **przed** startem gateway'a 4.0.0; inaczej serwer jest wyłączony po starcie.
+- **Broker sprawdza `subjectToken`:** `aud` równe `mcp-credential-broker`, ważny `exp` i `sub` równe `sub` wewnętrznego JWT; inaczej `400 invalid_request`
+  i audyt `subject_token_invalid`.
 
-## Środowisko dev (CC-137, CC-138)
+## Tryb produkcyjny i tryb dev (CC-137, CC-138)
 
+- **Definicja.** Tryb produkcyjny jest domyślny: komponent, który nie dostał jawnej zgody, działa jak produkcja. Tryb dev wymaga **dwóch zgód**:
+  profilu `devstack` (stos deweloperski) **i** jawnego ustawienia (zalecana nazwa `allowTestKeys`). Samo `allowTestKeys` bez profilu `devstack`
+  nie włącza trybu dev; profil bez ustawienia też nie.
 - **Klucze `dev-`.** Reguła CC-044 obejmuje też klucze, których `kid` zaczyna się od `dev-`: odbiorcy (serwery, broker, gateway, odbiorcy paczek)
-  odrzucają je z powodem `test_key_not_allowed`, chyba że jawnie włączono tryb dev (to samo ustawienie co dla `test-`, zalecana nazwa
-  `allowTestKeys`). Stos dev generuje własne klucze z takim prefiksem; lista odcisków opublikowanych kluczy testowych zostaje bez zmian.
-  Wektory: `jwt/dev-kid-rejected-by-default`, `jwt/valid-dev-kid-in-dev-mode`, `bundles/dev-key-id-rejected-by-default`.
+  odrzucają je z powodem `test_key_not_allowed` poza trybem dev. Stos dev generuje własne klucze z takim prefiksem; lista odcisków opublikowanych
+  kluczy testowych zostaje bez zmian. Ograniczenie: dla paczek reguła czyta nazwę klucza z konfiguracji odbiorcy, którą nadaje operator, więc klucz
+  dev skonfigurowany pod inną nazwą jej nie podlega (w trybie dev nie ma to znaczenia); a tryb dev włącza przy okazji opublikowane klucze testowe.
+  Wektory (klucze nieopublikowane, spoza listy SPKI, więc odrzuca je wyłącznie prefiks): `jwt/dev-kid-rejected-by-default`,
+  `jwt/valid-dev-kid-in-dev-mode`, `bundles/dev-key-id-rejected-by-default`, `bundles/dev-key-accepted-in-dev-mode`.
 - **Znacznik w manifeście.** Opcjonalne `environment` (`production` | `dev`; brak znaczy `production`, pole nie wchodzi do `definitionHash`).
-  Gateway w trybie produkcyjnym odrzuca manifest z `dev` (`422 manifest_rejected`, powód `environment_mismatch`).
+  Gateway w trybie produkcyjnym odrzuca manifest z `dev` (`422 manifest_rejected`, powód `environment_mismatch`). Sprawdzenie obejmuje `PUT`,
+  start gateway'a i bootstrap trybu dev; w trybie produkcyjnym bootstrapu nie ma.
 
 ## Audyt: żądania bez ważnego tokenu (CC-143, CC-152)
 
@@ -651,10 +682,11 @@ na powód dla `missing_token` i `malformed`, nadmiar liczy się tylko w liczniku
 (wspólna nazwa). Żądanie odrzucone `400` albo `413` zanim dojdzie do weryfikacji JWT (zły format, za duże) nie jest zdarzeniem `authentication`,
 tylko wchodzi do licznika żądań, żeby nie mnożyć powodów.
 
-## Doprecyzowania 3.2.0
+## Doprecyzowania 4.0.0
 
-- **Manifest powstaje przy starcie albo w budowie** (CC-140): starter może go wygenerować w budowie (`target/mcp-manifest.json`) albo zbudować
-  przy starcie z `tools/list` serwera; w obu wypadkach gateway dostaje go w `PUT` i sprawdza go tak samo.
+- **Manifest powstaje przy starcie albo w budowie** (CC-140): starter generuje go w budowie (`target/mcp-manifest.json`, artefakt przeglądanego
+  commitu) albo buduje przy starcie z `tools/list` serwera (`GET /mcp-manifest`, do porównania i do bootstrapu dev). Do `PUT` rejestru trafia
+  wyłącznie artefakt budowy (CC-133).
 - **Wektory `gateway-authentication/`** (CC-144): `resourcePath` to trasa (`/s/mcp-jira`), a metadane zasobu (RFC 9728) wskazują adres
   endpointu (`/s/mcp-jira/mcp`).
 - **Znacznik epoki stanu potwierdzeń** (CC-145): zapis w jednym magazynie ze stanem potwierdzeń, ważny 210 s po utracie. Przy wielu
@@ -815,12 +847,12 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 59 | odbiorca C2: 23 poprawne, 36 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 55 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 104 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 108 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
-| `bundles/` | 41 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
+| `bundles/` | 42 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
 | `entity-builder/` | 48 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
-| `policy-decisions/` | 91 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
+| `policy-decisions/` | 93 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
 | `result-filter/` | 8 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
@@ -832,7 +864,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `activity-cursor/` | 9 | kursor `/activity/calls`: HMAC, związanie z `sub`, ważność 15 min (CC-095); klucz testowy, NOT FOR PRODUCTION |
 | `gateway-authentication/` | 15 | 401 z `resource_metadata`, 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | akcje katalogu portalu per status, w tym `request_access` bez `requiredEntitlements` i `view_request` przy oczekującym wniosku (CC-083, CC-113) |
-| `query-rendering/` | 16 | zapytania serwera ze struktury: JQL i CQL z wrogimi wartościami, wzorzec i rozwiązanie nazw indeksów OpenSearch (CC-160) |
+| `query-rendering/` | 26 | zapytania serwera ze struktury: JQL i CQL z wrogimi wartościami, wzorzec i rozwiązanie nazw indeksów OpenSearch (CC-160) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
 
 Formaty:

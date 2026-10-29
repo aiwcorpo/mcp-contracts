@@ -53,6 +53,50 @@
               "definitionHash": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
               "status": "approved",
               "approvedInVersion": "1.4.0"
+            },
+            {
+              "name": "update_issue",
+              "risk": "UPDATE",
+              "action": "update",
+              "resourceRefs": [
+                {
+                  "argument": "issueKey",
+                  "type": "Jira::Issue"
+                }
+              ],
+              "definition": {
+                "name": "update_issue",
+                "title": "Update issue",
+                "description": "Updates the summary of an issue.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "issueKey": {
+                      "type": "string",
+                      "description": "Issue key, e.g. ABC-123",
+                      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                      "maxLength": 32
+                    },
+                    "summary": {
+                      "type": "string",
+                      "maxLength": 255
+                    }
+                  },
+                  "required": [
+                    "issueKey",
+                    "summary"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "readOnlyHint": false,
+                  "destructiveHint": false
+                }
+              },
+              "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
+              "status": "pending_approval",
+              "change": "new",
+              "approvedInVersion": null
             }
           ]
         }
