@@ -3323,11 +3323,11 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 - **Decyzja (wariant a):** tryb `serverConfiguredQueues` znika; dostęp do kolejek konta serwisowego wynika tylko z grantów w paczce. Wektor zastąpiony przez `srv-servicedesk-service-account-server-config-is-not-a-grant` (`deny`, `not_found_or_denied`); pole `serverConfiguredQueues` zostaje tylko w nim, jako ignorowane, a referencja je pomija.
 - **Pliki:** `scripts/generate-vectors.mjs`, `test/vectors.test.mjs`, `test-vectors/servicedesk-service-account/*`, README ("Konto serwisowe service desku"), CC-076 (dopisek).
 - **Wpływ:** ws-04 (serwer Service Desku: `MCP_SERVICEDESK_ALLOWED_QUEUES` nie otwiera kolejek; grant w paczce), ws-09 (grant kolejek w `static.json`), ws-10.
-- **SemVer:** usunięcie trybu i zmiana oczekiwania istniejącego wektora: według tabeli README major. **Status:** accepted (decyzja: człowiek, 2026-10-29), wersja do ustalenia przez człowieka (4.0.1 albo 5.0.0, patrz niżej)
+- **SemVer:** usunięcie trybu i zmiana oczekiwania istniejącego wektora: według tabeli README major; wydane jako patch 4.0.1 na decyzję człowieka (naprawa sprzeczności 4.0.0). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.0.1 (wyjątek SemVer opisany w README, decyzja człowieka 2026-10-29)
 
 ## CC-164 | C7 | Lista dozwolonych typów poświadczeń w `credential-type.cedar` (zgłoszenie ws-09 CC-J)
 
 - **Problem:** warunek `context.credentialType != "service-account"` traktował nieznaną wartość (literówka, piąty typ) jak poświadczenie użytkownika i otwierał kolejki poza grantem.
 - **Decyzja:** warunek z listą dozwoloną `["user-oauth", "user-secret", "token-exchange"].contains(...)`; brak albo nieznany typ daje odmowę poza grantem. Wektory `policy-decisions/srv-servicedesk-unknown-credential-type-ticket-outside-scope-denied` (żądanie z `api-key`; builder odrzuca taką wartość, więc wektor zapisuje wejście z odrzuconą wartością i test Java sprawdza odrzucenie przez builder) oraz dotychczasowe.
 - **Pliki:** `cedar/examples/credential-type.cedar`, `PolicyDecisionVectorTest`, `scripts/generate-cedar-vectors.mjs`, README.
-- **SemVer:** zaostrzenie reguły przykładowej: nie zmienia schematu ani bajtów `mcp.cedarschema`; paczki zbudowane na przykładzie 4.0.0 trzeba przebudować. **Status:** accepted (decyzja: człowiek, 2026-10-29), wersja do ustalenia przez człowieka (4.0.1 albo 5.0.0, patrz niżej)
+- **SemVer:** zaostrzenie reguły przykładowej: nie zmienia schematu ani bajtów `mcp.cedarschema`; paczki zbudowane na przykładzie 4.0.0 trzeba przebudować; wydane jako patch 4.0.1 na decyzję człowieka (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.0.1 (wyjątek SemVer opisany w README, decyzja człowieka 2026-10-29)

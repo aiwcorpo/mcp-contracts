@@ -77,6 +77,12 @@ Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defau
 walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1 usunięto odpowiedź `400
 expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
 
+Wyjątek: w 4.0.1 (CC-163, CC-164) usunięcie trybu `serverConfiguredQueues` (kolejki konta serwisowego z konfiguracji serwera, CC-076) i zmiana oczekiwania
+wektora `srv-servicedesk-service-account-granted-in-server-config` z `continue` na `deny`, a także zaostrzenie reguły przykładowej `credential-type.cedar` (lista dozwolona
+typów poświadczeń), są według tej tabeli zmianami major. Wydane jako patch, bo naprawiają sprzeczność wydania 4.0.0: wektor dopuszczał tryb, który przykładowa reguła z tego
+samego wydania odrzucała, więc tryb nigdy nie działał z przykładem (odmowa, fail-closed), a zmiana nie zmienia bajtów schematu Cedar. Dotyka ws-04 (konfiguracja serwera nie otwiera
+kolejek) i ws-09 (przebudowa paczek na przykładzie 4.0.1). Człowiek zdecydował (2026-10-29), że wydanie to 4.0.1 z tym wyjątkiem, jak 3.1.0.
+
 Wyjątek: w 3.1.0 CC-129 (nowy wymagany atrybut encji GitLaba i nowe wymagane wejście buildera, nowe bajty schematu Cedar) jest według tej
 tabeli zmianą major i **jest łamiąca dla paczek polityk 3.0.x** (serwer GitLaba musi podać `ancestorClassifications`, paczki trzeba
 przebudować). Wydanie jako 3.1.0 (minor) wynikło z błędu koordynatora, który nazwał zmianę addytywną; człowiek zdecydował (2026-10-28),

@@ -4,9 +4,10 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
-## Niewydane (po 4.0.0)
+## 4.0.1 - 2026-10-29
 
-Poprawki sprzeczności z 4.0.0 (zgłoszenia ws-09 CC-I i CC-J); numer wydania ustala człowiek (4.0.1 albo 5.0.0).
+Naprawa sprzeczności wydania 4.0.0 (zgłoszenia ws-09 CC-I i CC-J). Formalnie zmiany łamiące według tabeli SemVer (usunięty tryb, zmieniony wektor, zaostrzona reguła
+przykładowa), wydane jako patch na decyzję człowieka z 2026-10-29, z wyjątkiem opisanym w README ("Wersjonowanie"). Bajty `mcp.cedarschema` bez zmian.
 
 - **CC-163:** tryb `serverConfiguredQueues` (kolejki konta serwisowego z konfiguracji serwera) usunięty; grant kolejki tylko z paczki polityk. Wektor
   `srv-servicedesk-service-account-granted-in-server-config` zastąpiony przez `...-server-config-is-not-a-grant` (`deny`, `not_found_or_denied`). Migracja: ws-04 przestaje
