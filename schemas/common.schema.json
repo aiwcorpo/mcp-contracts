@@ -242,9 +242,9 @@
       "pattern": "^[a-z0-9][a-z0-9._-]{0,254}$"
     },
     "OpenSearchIndexPrefix": {
-      "description": "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'.",
+      "description": "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'. One anchored expression without an alternation at the top level, so that it satisfies the input-schema-bounded rule when a tool uses it as a contractPattern (CC-139); it matches the same strings as before.",
       "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$"
+      "pattern": "^(?:[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]|[a-z0-9])$"
     },
     "ServiceDeskQueueId": {
       "description": "Queue id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version.",

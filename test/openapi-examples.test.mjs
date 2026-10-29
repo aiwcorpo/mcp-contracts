@@ -70,6 +70,7 @@ test('portal-bff.v1.yaml: catalog examples follow the action table of CC-083', a
         connectionType: server.connection?.type,
         hasConnection: server.connection != null,
         someToolDenied: server.tools.some((t) => t.access === 'denied'),
+        entitlementsKnown: server.tools.some((t) => t.access === 'denied' && (t.requiredEntitlements ?? []).length > 0),
       }), where);
       if (['service-account', 'token-exchange'].includes(server.credential.defaultType)) {
         assert.equal(server.connection, null, `${where}: nothing to connect`);
@@ -121,3 +122,33 @@ for (const [file, enrollmentOperation] of [['credential-broker.v1.yaml', 'startA
     assert.equal(found, 1);
   });
 }
+
+// CC-097, CC-133: change belongs to pending tools only, and a new tool has no approved version.
+test('gateway-admin.v1.yaml: registry examples keep change and approvedInVersion consistent', async () => {
+  const spec = await dereferenceOpenApi('gateway-admin.v1.yaml');
+  let tools = 0;
+  for (const { operation } of operations(spec)) {
+    for (const response of Object.values(operation.responses)) {
+      for (const example of Object.values(response.content?.['application/json']?.examples ?? {})) {
+        const servers = Array.isArray(example.value) ? example.value : [example.value];
+        for (const server of servers.filter((s) => s && Array.isArray(s.tools))) {
+          for (const tool of server.tools) {
+            tools++;
+            assert.equal(tool.change !== undefined, tool.status === 'pending_approval', `${server.serverId}/${tool.name}: change only with pending_approval`);
+            if (tool.change === 'new') assert.equal(tool.approvedInVersion, null, `${tool.name}: a new tool has no approved version`);
+            if (tool.change === 'changed') assert.match(tool.approvedInVersion, /^\d+\.\d+\.\d+/, `${tool.name}: a changed tool has an approved version`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(tools > 0);
+});
+
+test('result groups of the activity filter (CC-142)', async () => {
+  const { resultGroup } = await import('../scripts/lib/activity-calls.mjs');
+  assert.equal(resultGroup('ok'), 'ok');
+  for (const r of ['denied_not_granted', 'denied_link_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited']) assert.equal(resultGroup(r), 'denied', r);
+  for (const r of ['error', 'credential_required']) assert.equal(resultGroup(r), 'error', r);
+  for (const r of ['confirmed', 'expired', 'confirmation_pending', 'confirmation_failed', 'superseded', 'blocked_by_pending', 'cancelled']) assert.equal(resultGroup(r), 'confirmation', r);
+});

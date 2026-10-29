@@ -1,0 +1,16 @@
+{
+  "description": "Status no_access, but the catalog names no requiredEntitlements: there is nothing to ask for, no action (CC-113).",
+  "input": {
+    "status": "no_access",
+    "supportedTypes": [
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": false,
+    "hasConnection": false,
+    "entitlementsKnown": false
+  },
+  "expected": {
+    "actions": []
+  }
+}

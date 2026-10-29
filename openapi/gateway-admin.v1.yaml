@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 3.1.2-SNAPSHOT
+  version: 3.2.0-SNAPSHOT
   summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, read-only confirmation preview).
   description: |
     Callers and their authentication:
@@ -9,6 +9,7 @@ info:
     - portal BFF: mTLS (CN=mcp-portal-bff) and the user's token exchanged in the IdP for aud=mcp-gateway-admin.
       All "current user" semantics use `sub` of that token.
     - CI: mTLS with client certificate CN=mcp-registry-ci (registry writes).
+    - offboarding (IGA/HR webhook, helpdesk): mTLS with CN=mcp-offboarding, no token (user purge, CC-155).
     - admin operations additionally require group mcp-platform-admin in the user's token.
 
     Tool names in this API are client-visible names `<system>__<tool>`, except under
@@ -37,6 +38,7 @@ tags:
   - name: activity
   - name: confirmations
   - name: policy
+  - name: admin
 paths:
   /admin/v1/catalog:
     get:
@@ -270,6 +272,7 @@ paths:
                               readOnlyHint: true
                           definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
                           status: approved
+                          approvedInVersion: 1.3.0
                         - name: update_issue
                           risk: UPDATE
                           action: update
@@ -300,6 +303,40 @@ paths:
                               destructiveHint: false
                           definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
+                          change: changed
+                          approvedInVersion: 1.3.0
+                        - name: add_comment
+                          risk: UPDATE
+                          action: update
+                          resourceRefs:
+                            - argument: issueKey
+                              type: Jira::Issue
+                          definition:
+                            name: add_comment
+                            title: Add comment
+                            description: Adds a comment to an issue.
+                            inputSchema:
+                              type: object
+                              properties:
+                                issueKey:
+                                  type: string
+                                  description: Issue key, e.g. ABC-123
+                                  pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                  maxLength: 32
+                                body:
+                                  type: string
+                                  maxLength: 4000
+                              required:
+                                - issueKey
+                                - body
+                              additionalProperties: false
+                            annotations:
+                              readOnlyHint: false
+                              destructiveHint: false
+                          definitionHash: sha256:a6d16c1679d3b58d585deb6090032a8b085d4b78a6d9b6cbf6ad7229796524c4
+                          status: pending_approval
+                          change: new
+                          approvedInVersion: null
                 opensearch_disabled:
                   value:
                     - serverId: mcp-opensearch
@@ -321,9 +358,20 @@ paths:
       summary: Register or update a server manifest (CI).
       description: |
         Body is the C6 manifest (schemas/server-manifest.schema.json); `serverId` in the body must equal the path.
-        A new tool or a tool whose definitionHash changed becomes pending_approval. The gateway recomputes
+        This call is the deployment of a server by the pipeline (CN mcp-registry-ci), and the pipeline's review is
+        the approval: every new tool and every tool whose definitionHash changed is approved by this call (status
+        approved, approvedInVersion set to the version of the manifest), and a tool missing from the manifest is
+        removed (CC-133). Each definition and each removal is audited as admin_change (definition_registered,
+        tool_removed, with definitionHash). A definition that differs from the approved one without a deployment,
+        that is, one that the server presents at tools/list or tools/call, becomes pending_approval instead and is
+        approved only by the approve operation below. The gateway recomputes
         every definitionHash from the entry's definition (CC-004, CC-005) and rejects the manifest with 422
-        when one differs or when any semantic manifest rule of the README fails. The binding
+        when one differs or when any semantic manifest rule of the README fails. A tool that lowers risk (for
+        example DESTRUCTIVE to READ_ONLY) is always rejected with 422 manifest_rejected, also for a tool that was
+        removed and added again, and so is a manifest with environment dev on a gateway in production mode
+        (reason environment_mismatch, CC-138), and so is a manifest whose `credential.acceptedTypes` does not contain
+        the credential type that the broker is asked for in this system (reason credential_type_mismatch, CC-159); the gateway
+        checks the same at start for the manifests it holds. The binding
         serverId -> system/internalUrl comes only from gateway configuration; a manifest that disagrees is
         rejected with 422 and nothing is stored.
       security:
@@ -419,22 +467,38 @@ paths:
                           annotations:
                             readOnlyHint: true
                         definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
-                        status: pending_approval
+                        status: approved
+                        approvedInVersion: 1.4.0
         '400':
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
         '422':
-          description: Manifest conflicts with gateway configuration (system, internalUrl or serverId).
+          description: Manifest conflicts with gateway configuration (system, internalUrl, serverId or credential type), lowers the risk of a tool, or declares environment dev on a gateway in production mode.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ManifestRejected'
               examples:
                 manifest_rejected:
                   value:
                     error: manifest_rejected
                     message: system does not match gateway configuration for mcp-jira
+                risk_lowered:
+                  value:
+                    error: manifest_rejected
+                    reason: risk_lowered
+                    message: update_issue lowers risk from UPDATE to READ_ONLY
+                environment_mismatch:
+                  value:
+                    error: manifest_rejected
+                    reason: environment_mismatch
+                    message: manifest of mcp-jira declares environment dev
+                credential_type_mismatch:
+                  value:
+                    error: manifest_rejected
+                    reason: credential_type_mismatch
+                    message: the gateway asks the broker for token-exchange for opensearch, the manifest accepts user-secret
   /admin/v1/registry/servers/{serverId}/tools/{tool}/pending:
     parameters:
       - $ref: '#/components/parameters/ServerId'
@@ -444,7 +508,9 @@ paths:
       operationId: getPendingTool
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Approved and pending entry of a tool, for a diff (admin).
-      description: Both entries carry the full MCP definition (CC-005), so a changed description or inputSchema is visible in the diff.
+      description: |
+        Both entries carry the full MCP definition (CC-005), so a changed description or inputSchema is visible in the diff.
+        approvedInVersion and pendingVersion are the manifest versions of the approved and of the pending entry (CC-097).
       security:
         - mtls: []
           bffUserToken: []
@@ -519,6 +585,8 @@ paths:
                           destructiveHint: false
                       definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
                     pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    approvedInVersion: 1.3.0
+                    pendingVersion: 1.4.0
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -534,7 +602,12 @@ paths:
       operationId: approveTool
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Approve the pending definition of a tool (group mcp-platform-admin).
-      description: definitionHash must equal the current pendingHash, otherwise 409 and nothing changes.
+      description: |
+        definitionHash must equal the current pendingHash, otherwise 409 and nothing changes. Approval is the manual
+        way to accept a definition that changed outside a deployment (CC-133); a deployment through PUT approves by
+        itself. An entry that lowers risk (the approved risk is higher than the pending one) cannot be approved: 422
+        manifest_rejected. The approval is audited as admin_change with reason definition_approved, the administrator
+        as sub and the approved hash as definitionHash.
       security:
         - mtls: []
           bffUserToken: []
@@ -567,13 +640,25 @@ paths:
                 hash_mismatch:
                   value:
                     error: hash_mismatch
+        '422':
+          description: The pending entry lowers the risk of the approved one; it is never approved (CC-133).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestRejected'
+              examples:
+                risk_lowered:
+                  value:
+                    error: manifest_rejected
+                    reason: risk_lowered
+                    message: update_issue lowers risk from UPDATE to READ_ONLY
   /admin/v1/activity:
     get:
       tags: [activity]
       operationId: listActivity
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Recent gateway audit events of the current user (without arguments).
-      description: Events are kept for 30 days. Newest first.
+      description: Events are kept for the retention of the activity store, 30 days by default (configuration of the gateway, not a constant of the contract). Newest first.
       security:
         - mtls: []
           bffUserToken: []
@@ -624,7 +709,7 @@ paths:
         One row per call, computed by the gateway from its audit events and from its internal link between a first
         call and its retries with a code (the confirmationId never leaves the gateway, CC-095). The row carries the
         final result and the number of wrong codes; requestId and ts are those of the first request. `sub` is always
-        the `sub` of the BFF token, the filters and the 30 day window always come from the current request, and only the
+        the `sub` of the BFF token, the filters and the retention window (30 days by default, CC-134) always come from the current request, and only the
         caller's own calls are ever returned, also for an administrator: there is no view of other users' calls in 3.0.0.
         Newest first. Page with the `X-Next-Cursor` header: the cursor is opaque, carries only the position (`ts`,
         `requestId`) and is authenticated by the gateway; a
@@ -648,7 +733,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -903,6 +988,51 @@ paths:
                 upstream_unavailable:
                   value:
                     error: upstream_unavailable
+  /admin/v1/users/{sub}/purge:
+    post:
+      tags: [admin]
+      operationId: purgeUser
+      x-allowed-client-cn: [mcp-offboarding]
+      summary: Remove everything the gateway keeps about a user (offboarding, CC-155).
+      description: |
+        Caller: IGA/HR webhook with mTLS CN=mcp-offboarding, no bearer token. Idempotent. Removes the virtual servers
+        (links) of the user, the pending confirmations and their tombstones, the MCP sessions in Redis and the cached
+        credentials of the user. The activity records (`/admin/v1/activity`, `activity/calls`) are not removed: they stay
+        until the end of their retention, 30 days by default, as evidence (CC-134). Audit: virtual_server_change with
+        reason user_purged, outcome ok, sub of the user, one event per removed link. Sessions of the portal are ended
+        by the back-channel logout of the IdP, and the token of an MCP client expires within 60 minutes (C1); neither is
+        done here. The full offboarding is three independent idempotent calls, in any order (recommended: the IdP
+        first, so that tokens stop being renewed): the IdP or IGA removes the groups, the broker purges
+        (`POST /v1/admin/users/{sub}/purge` of C4) and the gateway purges.
+      security:
+        - mtls: []
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          description: '`sub` of the user from the IdP (C1).'
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+          example: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+      responses:
+        '204':
+          description: Everything removed, or nothing existed.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: Redis or the store of links did not answer; nothing is guaranteed removed, repeat the call.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                upstream_unavailable:
+                  value:
+                    error: upstream_unavailable
   /admin/v1/policy/status:
     get:
       tags: [policy]
@@ -1045,6 +1175,21 @@ components:
         error:
           type: string
           pattern: '^[a-z][a-z0-9_]*$'
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    ManifestRejected:
+      type: object
+      description: 422 of a registration or an approval (CC-133). reason is a known value or absent for the older rejections (a hash that does not match, a rule of the manifest).
+      required: [error]
+      properties:
+        error:
+          const: manifest_rejected
+        reason:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+          description: Known values are risk_lowered, environment_mismatch (CC-138) and credential_type_mismatch (CC-159). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500
@@ -1224,6 +1369,15 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/RegistryToolStatus'
+        change:
+          type: string
+          enum: [new, changed]
+          description: Present exactly when status is pending_approval. new means no approved entry exists, changed means an approved entry exists and differs (CC-097).
+        approvedInVersion:
+          description: Version of the manifest at which the approved entry was approved; null for a new tool that has no approved entry. Absent only for an approved tool whose version was not recorded before this field existed (CC-097).
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/SemVer'
+            - type: 'null'
       unevaluatedProperties: false
     RegistryServer:
       type: object
@@ -1246,8 +1400,16 @@ components:
       additionalProperties: false
     PendingTool:
       type: object
-      required: [approvedEntry, pendingEntry, pendingHash]
+      required: [approvedEntry, pendingEntry, pendingHash, pendingVersion]
       properties:
+        approvedInVersion:
+          description: Version of the manifest at which approvedEntry was approved; null when approvedEntry is null (CC-097).
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/SemVer'
+            - type: 'null'
+        pendingVersion:
+          description: Version of the manifest in which the pending entry appeared (CC-097).
+          $ref: '../schemas/common.schema.json#/$defs/SemVer'
         approvedEntry:
           description: Currently approved entry; null for a new tool.
           oneOf:

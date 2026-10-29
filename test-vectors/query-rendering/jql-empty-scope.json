@@ -1,0 +1,17 @@
+{
+  "description": "An empty scope means nothing to query: no query is built (fail-closed, never \"without a filter\").",
+  "kind": "jql",
+  "input": {
+    "scope": [],
+    "conditions": [
+      {
+        "field": "text",
+        "op": "~",
+        "value": "x"
+      }
+    ]
+  },
+  "expected": {
+    "error": "nothing_to_query_or_not_allowed"
+  }
+}

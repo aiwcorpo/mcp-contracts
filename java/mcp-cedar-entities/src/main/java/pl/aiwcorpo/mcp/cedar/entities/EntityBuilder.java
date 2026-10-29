@@ -64,7 +64,10 @@ public final class EntityBuilder {
             .<Entity, String>comparing(e -> e.getEUID().getType().toString())
             .thenComparing(e -> e.getEUID().getId().toString());
 
+    private static final Set<String> CREDENTIAL_TYPES = Set.of("user-oauth", "user-secret", "token-exchange", "service-account");
+
     private final ScopeMapping scopeMapping;
+    private final String credentialType;
 
     /** Builder without scope mapping: no group grants any resource scope. */
     public EntityBuilder() {
@@ -76,7 +79,26 @@ public final class EntityBuilder {
      *        new builder when a new bundle is loaded
      */
     public EntityBuilder(ScopeMapping scopeMapping) {
+        this(scopeMapping, null);
+    }
+
+    private EntityBuilder(ScopeMapping scopeMapping, String credentialType) {
         this.scopeMapping = Objects.requireNonNull(scopeMapping, "scopeMapping");
+        this.credentialType = credentialType;
+    }
+
+    /**
+     * @param type type of the credential used for the call (CC-136): {@code user-oauth}, {@code user-secret},
+     *        {@code token-exchange} or {@code service-account}; it becomes {@code context.credentialType}
+     * @return a builder like this one that puts the credential type into the context of every request; the builder
+     *         itself stays unchanged (the gateway builds a request per call, with the type from the broker's answer)
+     * @throws EntityBuilderException for any other value
+     */
+    public EntityBuilder withCredentialType(String type) {
+        if (!CREDENTIAL_TYPES.contains(type)) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown credentialType " + type);
+        }
+        return new EntityBuilder(scopeMapping, type);
     }
 
     /**
@@ -155,7 +177,7 @@ public final class EntityBuilder {
         return new CedarRequest(uid("User", caller.sub()), action, resource, context, new LinkedHashSet<>(entities));
     }
 
-    private static Map<String, Value> context(Caller caller, ToolDescriptor tool, Map<String, ?> arguments) {
+    private Map<String, Value> context(Caller caller, ToolDescriptor tool, Map<String, ?> arguments) {
         Objects.requireNonNull(caller, "caller");
         Objects.requireNonNull(tool, "tool");
         Objects.requireNonNull(arguments, "arguments");
@@ -167,6 +189,9 @@ public final class EntityBuilder {
         }
         Map<String, Value> context = new LinkedHashMap<>();
         context.put("client", new PrimString(caller.client()));
+        if (credentialType != null) {
+            context.put("credentialType", new PrimString(credentialType));
+        }
         caller.virtualServer().ifPresent(link -> {
             context.put("virtualServer", new PrimString(link.slug()));
             if (!link.vsScopes().isEmpty()) {

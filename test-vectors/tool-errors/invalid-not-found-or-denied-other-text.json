@@ -1,0 +1,10 @@
+{
+  "description": "Every cause uses one fixed text; another text would tell the causes apart (CC-146).",
+  "expected": {
+    "valid": false
+  },
+  "error": {
+    "error": "not_found_or_denied",
+    "message": "Not found."
+  }
+}

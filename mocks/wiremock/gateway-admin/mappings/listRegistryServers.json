@@ -79,7 +79,8 @@
                   }
                 },
                 "definitionHash": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
-                "status": "approved"
+                "status": "approved",
+                "approvedInVersion": "1.3.0"
               },
               {
                 "name": "update_issue",
@@ -121,7 +122,53 @@
                   }
                 },
                 "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
-                "status": "pending_approval"
+                "status": "pending_approval",
+                "change": "changed",
+                "approvedInVersion": "1.3.0"
+              },
+              {
+                "name": "add_comment",
+                "risk": "UPDATE",
+                "action": "update",
+                "resourceRefs": [
+                  {
+                    "argument": "issueKey",
+                    "type": "Jira::Issue"
+                  }
+                ],
+                "definition": {
+                  "name": "add_comment",
+                  "title": "Add comment",
+                  "description": "Adds a comment to an issue.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "issueKey": {
+                        "type": "string",
+                        "description": "Issue key, e.g. ABC-123",
+                        "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                        "maxLength": 32
+                      },
+                      "body": {
+                        "type": "string",
+                        "maxLength": 4000
+                      }
+                    },
+                    "required": [
+                      "issueKey",
+                      "body"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": false
+                  }
+                },
+                "definitionHash": "sha256:a6d16c1679d3b58d585deb6090032a8b085d4b78a6d9b6cbf6ad7229796524c4",
+                "status": "pending_approval",
+                "change": "new",
+                "approvedInVersion": null
               }
             ]
           }

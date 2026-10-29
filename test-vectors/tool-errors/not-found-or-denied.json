@@ -5,6 +5,6 @@
   },
   "error": {
     "error": "not_found_or_denied",
-    "message": "Not found."
+    "message": "The resource does not exist or you do not have access to it."
   }
 }

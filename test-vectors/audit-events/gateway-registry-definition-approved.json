@@ -1,0 +1,20 @@
+{
+  "description": "An administrator approved a pending definition; sub is the administrator, definitionHash the approved hash (CC-133).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "admin_change",
+    "sub": "3b0d6f2e-91c4-4d7a-8a52-6c1e4f7a9d10",
+    "username": "a.admin",
+    "server": "mcp-jira",
+    "tool": "create_issue",
+    "reason": "definition_approved",
+    "definitionHash": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "outcome": "ok"
+  }
+}

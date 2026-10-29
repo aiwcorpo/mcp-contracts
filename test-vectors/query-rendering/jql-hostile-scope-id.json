@@ -1,0 +1,12 @@
+{
+  "description": "A scope id that would break out of the list is quoted like any value (the id pattern refuses it earlier, this is the second line).",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC) OR project in (HR"
+    ]
+  },
+  "expected": {
+    "query": "project in (\"ABC) OR project in (HR\")"
+  }
+}

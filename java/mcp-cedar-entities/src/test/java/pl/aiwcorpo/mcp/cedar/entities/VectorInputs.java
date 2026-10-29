@@ -39,6 +39,9 @@ final class VectorInputs {
         ToolDescriptor tool = tool(input);
         Map<String, Object> arguments = arguments(input);
         EntityBuilder builder = builder(staticEntitiesPath);
+        if (input.has("credentialType")) {
+            builder = builder.withCredentialType(input.get("credentialType").asText());
+        }
         return switch (level) {
             case "gateway" -> builder.forToolCall(caller, tool, arguments);
             case "server" -> builder.forResource(caller, tool, arguments, resource(input.get("resource")));

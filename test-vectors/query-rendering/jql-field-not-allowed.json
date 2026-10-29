@@ -1,0 +1,19 @@
+{
+  "description": "A field outside the allowlist is refused: the model does not choose fields.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ],
+    "conditions": [
+      {
+        "field": "project",
+        "op": "=",
+        "value": "HR"
+      }
+    ]
+  },
+  "expected": {
+    "error": "nothing_to_query_or_not_allowed"
+  }
+}

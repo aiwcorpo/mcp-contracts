@@ -1,0 +1,10 @@
+{
+  "description": "No granted prefix: nothing to query, the server does not call the system.",
+  "kind": "opensearch-pattern",
+  "input": {
+    "granted": []
+  },
+  "expected": {
+    "error": "nothing_to_query_or_not_allowed"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "description": "A control character in a value is refused.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ],
+    "conditions": [
+      {
+        "field": "text",
+        "op": "~",
+        "value": "a\nb"
+      }
+    ]
+  },
+  "expected": {
+    "error": "nothing_to_query_or_not_allowed"
+  }
+}

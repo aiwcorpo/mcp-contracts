@@ -122,7 +122,9 @@
             },
             "definitionHash": "sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe"
           },
-          "pendingHash": "sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe"
+          "pendingHash": "sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe",
+          "approvedInVersion": "1.3.0",
+          "pendingVersion": "1.4.0"
         }
       }
     },

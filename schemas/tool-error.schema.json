@@ -246,11 +246,12 @@
       ],
       "properties": {
         "error": {
-          "description": "Also the answer for a tool outside the tool list of the virtual server (link) used for the call, so that the link does not reveal tools it does not contain (CC-118, invariant 8).",
+          "description": "Also the answer for a tool outside the tool list of the virtual server (link) used for the call, so that the link does not reveal tools it does not contain (CC-118, invariant 8), and for a resource that does not exist, that the user may not see or that lies outside the link, including a service desk queue outside the link (CC-146). The check of the grant comes before the building of any entity, so that no other error reveals the resource.",
           "const": "not_found_or_denied"
         },
         "message": {
-          "$ref": "#/$defs/Message"
+          "description": "One fixed text for every cause (CC-146), so that the text does not tell the causes apart.",
+          "const": "The resource does not exist or you do not have access to it."
         }
       },
       "additionalProperties": false
@@ -281,6 +282,7 @@
       ],
       "properties": {
         "error": {
+          "description": "A tool call over a limit of the gateway (user, user and client, user and tool; CC-156). retryAfterSeconds is at least 1. The settings are never revealed. Requests that are not tool calls get HTTP 429 with the same body shape (test-vectors/gateway-authentication).",
           "const": "rate_limited"
         },
         "message": {
@@ -323,6 +325,7 @@
       ],
       "properties": {
         "error": {
+          "description": "A system, the secret store or the policy source is unavailable. On a server this is also the answer when the policy bundle is not available (no bundle after a restart, or the policy store failed itself), and the audit reason is policy_unavailable (CC-141).",
           "const": "upstream_unavailable"
         },
         "message": {

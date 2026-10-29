@@ -1,0 +1,24 @@
+{
+  "description": "Scope and one condition: the conditions are in parentheses, the scope follows with AND.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC",
+      "DEF"
+    ],
+    "conditions": [
+      {
+        "field": "text",
+        "op": "~",
+        "value": "login"
+      }
+    ],
+    "orderBy": {
+      "field": "updated",
+      "direction": "DESC"
+    }
+  },
+  "expected": {
+    "query": "(text ~ \"login\") AND project in (\"ABC\", \"DEF\") ORDER BY updated DESC"
+  }
+}

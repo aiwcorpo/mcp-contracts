@@ -137,6 +137,33 @@
           "error": "hash_mismatch"
         }
       }
+    },
+    {
+      "name": "approveTool 422 risk_lowered",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=risk_lowered($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "reason": "risk_lowered",
+          "message": "update_issue lowers risk from UPDATE to READ_ONLY"
+        }
+      }
     }
   ]
 }

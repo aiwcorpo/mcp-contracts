@@ -1,0 +1,20 @@
+{
+  "description": "Connected, a tool is denied, but requiredEntitlements are unknown: no request_access (CC-113).",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": true,
+    "hasConnection": true,
+    "entitlementsKnown": false
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect"
+    ]
+  }
+}

@@ -51,7 +51,8 @@
                 }
               },
               "definitionHash": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
-              "status": "pending_approval"
+              "status": "approved",
+              "approvedInVersion": "1.4.0"
             }
           ]
         }
@@ -121,6 +122,78 @@
         "jsonBody": {
           "error": "manifest_rejected",
           "message": "system does not match gateway configuration for mcp-jira"
+        }
+      }
+    },
+    {
+      "name": "registerServer 422 risk_lowered",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=risk_lowered($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "reason": "risk_lowered",
+          "message": "update_issue lowers risk from UPDATE to READ_ONLY"
+        }
+      }
+    },
+    {
+      "name": "registerServer 422 environment_mismatch",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=environment_mismatch($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "reason": "environment_mismatch",
+          "message": "manifest of mcp-jira declares environment dev"
+        }
+      }
+    },
+    {
+      "name": "registerServer 422 credential_type_mismatch",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=credential_type_mismatch($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "reason": "credential_type_mismatch",
+          "message": "the gateway asks the broker for token-exchange for opensearch, the manifest accepts user-secret"
         }
       }
     }

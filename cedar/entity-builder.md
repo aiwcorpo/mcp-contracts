@@ -9,7 +9,7 @@ biblioteka `pl.aiwcorpo.mcp:mcp-cedar-entities` (`java/mcp-cedar-entities`, CC-0
 wszystkie wektory. `scripts/lib/entity-builder.mjs` to druga, niezależna implementacja, z której generowane są
 wektory.
 
-Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038, CC-056, CC-059, CC-061, CC-062, CC-065.
+Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038, CC-056, CC-059, CC-061, CC-062, CC-065, CC-136, CC-146, CC-147, CC-149, CC-160.
 
 ## 1. Wejście
 
@@ -18,6 +18,7 @@ Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037,
 | `caller.sub`, `usr`, `grp`, `azp`, `vs?`, `vsc?`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u; `vs` i `vsc` zawsze razem (CC-027) |
 | `tool.serverId`, `system`, `name`, `risk`, `action`, `resourceRefs` | zatwierdzony wpis rejestru (C5/C6) | gateway: z rejestru; starter: z własnego manifestu |
 | `arguments` | `params.arguments` z `tools/call` | bez `confirmation_code` (C11) |
+| `credentialType?` | gateway: odpowiedź brokera na `resolve`; serwer: z własnej konfiguracji, kontrakt nie dodaje nagłówka | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
 | mapowanie zakresów | `entities/static.json` załadowanej paczki głównej | `ScopeMapping.fromStaticEntities`, CC-037 |
 | `resource` | resolver serwera (`@ResourceRef`) albo element wyniku wyszukiwania | tylko ocena na serwerze |
 
@@ -112,12 +113,14 @@ Klasyfikacja (CC-057, CC-062, CC-067):
 | Typ | Atrybut | Wymagany | Źródło w systemie |
 | --- | --- | --- | --- |
 | `Jira::Project` | `category` (napis, `""` gdy brak) | tak | kategoria projektu Jira |
-| `Confluence::Space` | `labels` (zbiór) | tak | etykiety przestrzeni |
-| `OpenSearch::Index` | `tags` (zbiór) | tak | tagi indeksu (konfiguracja serwera OpenSearch MCP) |
+| `Confluence::Space` | `labels` (zbiór) | tak | etykiety przestrzeni, pobrane z systemu (CC-149) |
+| `OpenSearch::Index` | `tags` (zbiór) | tak | tagi indeksu: z systemu (metadane indeksu) albo z konfiguracji serwera OpenSearch MCP (CC-149) |
 | `GitLab::Project` | `classification` (zbiór) | nie | topics projektu (GitLab API v4) |
 | `GitLab::Group` | `classification` (zbiór) | nie | zawsze pusty zbiór albo brak: GitLab API v4 nie ma topics dla grup (decyzja 2026-10-28, klasyfikujemy projekty, nie grupy) |
 | `GitLab::Group`, `GitLab::Project` | `ancestorClassifications` (mapa ścieżka grupy -> topics; wejście) -> `inheritedClassification` (zbiór; atrybut encji) | tak | topics grup-przodków, podane przez serwer ze ścieżki; w praktyce puste listy, bo grupy nie mają klasyfikacji (CC-129) |
-| `ServiceDesk::Queue` | `classification` (zbiór) | nie | kategoria kolejki w adapterze service desku |
+| `ServiceDesk::Queue` | `classification` (zbiór) | nie | kategoria kolejki w adapterze service desku, jako lista napisów (CC-149) |
+
+Źródło klasyfikacji podaje adapter, nie builder (CC-149). Etykiety, których system nie zwrócił w całości (lista dłuższa niż jedna odpowiedź, strona kolejna istnieje), są niepełne: adapter odrzuca taki zasób (fail-closed, `internal_error`), zamiast budować encję z częścią etykiet, bo brakująca etykieta `restricted` otworzyłaby zasób.
 
 Zasób (także rodzic, np. projekt zgłoszenia) bez wymaganego atrybutu nie jest budowany (`internal_error`), więc
 wywołanie jest odrzucane, a element wyniku pomijany. Builder normalizuje każdą wartość: `trim` (znaki <= U+0020) i
@@ -145,6 +148,7 @@ sprawdzają `inheritedClassification` (`cedar/examples/forbid-restricted.cedar`)
 | `virtualServer` | `vs`, tylko przy wywołaniu przez link |
 | `vsScopes` | z `vsc`, tylko gdy jest niepusty; każde pole to zbiór `ResourceScope` (`jiraProjects` -> `Jira::Project/<id>` itd.) |
 | `mfaAge` | `mfa`, tylko gdy claim jest |
+| `credentialType` | typ poświadczenia użytego w wywołaniu, tylko gdy wywołujący builder go zna (CC-136); wartość spoza czterech typów to `internal_error` |
 | `refs` | zawsze (może być `{}`) |
 
 `resourceDefaults` -> `vsc`: `Jira::Project` -> `jiraProjects`, `Confluence::Space` -> `confluenceSpaces`,
@@ -230,8 +234,25 @@ argumentu-identyfikatora `refs` są puste. Serwer:
      zaczynające się od `p-`); nigdy `p*` (obejmowałoby `p` z innym ciągiem dalej, np. `logs-team-ab` dla
      `logs-team-a`). Lista dla wielu prefiksów to suma takich par; agregacje, `hits.total` i `_count` liczone są
      tylko na tym wzorcu, bo filtrowanie wyników nie poprawia agregatów.
+   - Zakres wyklucza wszystko (`QueryConstraint.nothingToQuery()`, CC-147): wyszukiwanie i lista zwracają pusty wynik bez wołania systemu (to nie błąd), a pobranie jednego zasobu po id kończy się `not_found_or_denied`, tak samo jak zasób, którego użytkownik nie widzi.
 2. Ocenia każdy zwrócony element przez `forResource` (`ResultFilter.allowed`); element niedozwolony, którego
    nie da się rozwiązać albo ocenić, jest pomijany. Pominięcie nie jest błędem wywołania.
+
+Zapytanie buduje serwer ze struktury i rozwiązuje wzorce do nazw (CC-160):
+
+- Serwer składa zapytanie z pól strukturalnych (pole, operator, wartość z listy dozwolonych), nigdy z surowego JQL, CQL
+  ani DSL OpenSearch podanego przez model. Każda wartość jest cytowana (`\` i `"` poprzedzone `\`, znaki sterujące
+  odrzucone), warunki użytkownika stoją w jednym nawiasie, a warunek zakresu dochodzi po nim przez `AND`, więc `OR`
+  w wartości nie poszerza zakresu. `ORDER BY` przyjmuje tylko pole z listy i `ASC`/`DESC`. Pusty zakres to brak zapytania
+  (patrz wyżej), nigdy zapytanie bez filtra. Wzorzec: `scripts/lib/query-rendering.mjs`, wektory
+  `test-vectors/query-rendering/` (JQL i CQL z wrogimi wartościami, nawias, `ORDER BY`).
+- OpenSearch: serwer nigdy nie wysyła do klucza wzorca typu `logs-team-a*`, bo wzorzec może objąć alias o takiej nazwie,
+  który wskazuje indeksy innych zespołów (zliczenia i `hits.total` policzyłyby wtedy dane spoza zakresu). Najpierw
+  rozwiązuje wzorzec `p,p-*` (`GET _resolve/index/<wzorzec>`) do konkretnych nazw indeksów, **pomijając aliasy i strumienie
+  danych** (tylko wpisy `indices` odpowiedzi), zostawia nazwy równe prefiksowi albo zaczynające się od `<prefiks>-` i dopiero
+  wtedy pyta po liście nazw. Alias lub strumień podany jako argument to `not_found_or_denied`. Dzięki temu agregaty
+  i liczniki są policzone tylko na indeksach zakresu, a reguła wyłączająca `aggregate_logs` w paczce polityk może zniknąć
+  dopiero po wdrożeniu tego w serwerze OpenSearch (ws-09 zdejmuje ją wtedy, nie wcześniej).
 
 Ograniczenie zapytania nie zastępuje filtrowania: filtrowanie jest kontrolą, zapytanie tylko oszczędza
 ruch i nie ujawnia liczby elementów spoza zakresu.
@@ -261,6 +282,19 @@ Wzorce są zachowawcze, więc część istniejących zasobów jest niedostępna 
 zasobu bez uprawnień): starsze ścieżki GitLaba ze znakiem `_` lub `.` na początku albo końcu segmentu, klucze
 projektów Jiry dłuższe niż 10 znaków (przy zmienionym limicie w Jirze), przestrzenie osobiste Confluence (`~user`).
 Ukryte i systemowe indeksy OpenSearch (`.nazwa`, w tym `.ds-*` strumieni danych) nie pasują do wzorca od 2.1.0 (CC-074): argument z taką nazwą to `invalid_argument`, zasób z resolvera to `internal_error`, prefiks z wiodącą kropką w mapowaniu zakresów odrzuca paczka. Strumienie danych jako zasób (nazwa strumienia, nie indeks zapasowy) to osobna decyzja w M2.
+
+## 9b. Kolejność ocen i jedna odmowa dla zasobów (CC-146)
+
+Odmowa dla zasobu ma jeden kod i jeden tekst, żeby jej treść ani moment nie zdradzały, czy zasób istnieje:
+
+1. `not_found_or_denied` ma w C10 jeden stały `message`: `The resource does not exist or you do not have access to it.`
+   Gateway używa tego samego tekstu dla narzędzia spoza linku (CC-118) i dla zasobu poza zakresem.
+2. Kolejność: najpierw grant. Użytkownik bez grantu na typ zasobu (żadna grupa nie daje zakresu tego typu i polityka nie
+   przyznaje dostępu) dostaje `not_found_or_denied` **przed** budową encji, przed odczytem klasyfikacji i przed każdym
+   wywołaniem systemu, które mogłoby się nie udać. Dzięki temu `internal_error` (np. brak wymaganej klasyfikacji) nie
+   ujawnia istnienia zasobu osobie, która i tak go nie widzi.
+3. Kolejka service desku poza zakresem linku (argument `queueId` spoza `vsScopes`) to też `not_found_or_denied`,
+   nie `access_denied`; w kontrakcie `access_denied` zostaje dla narzędzi, nie dla zasobów.
 
 ## 10. Każda wartość każdego `resourceRef` (CC-061)
 

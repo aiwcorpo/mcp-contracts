@@ -126,6 +126,59 @@
       }
     },
     {
+      "name": "startOAuth 422 system_not_configured",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/start",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=system_not_configured($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "system_not_configured"
+        }
+      }
+    },
+    {
+      "name": "startOAuth 429 rate_limited",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/connections/{system}/oauth/start",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=rate_limited($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "Retry-After": "60",
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "rate_limited"
+        }
+      }
+    },
+    {
       "name": "startOAuth 503 upstream_unavailable",
       "priority": 2,
       "request": {

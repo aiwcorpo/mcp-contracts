@@ -1,0 +1,23 @@
+{
+  "description": "Scope and a text condition in CQL.",
+  "kind": "cql",
+  "input": {
+    "scope": [
+      "ENG"
+    ],
+    "conditions": [
+      {
+        "field": "text",
+        "op": "~",
+        "value": "handbook"
+      }
+    ],
+    "orderBy": {
+      "field": "lastmodified",
+      "direction": "DESC"
+    }
+  },
+  "expected": {
+    "query": "(text ~ \"handbook\") AND space in (\"ENG\") ORDER BY lastmodified DESC"
+  }
+}

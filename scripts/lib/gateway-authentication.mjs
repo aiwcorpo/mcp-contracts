@@ -6,6 +6,21 @@ export const RETRY_AFTER_SECONDS = 10;
 const INFRASTRUCTURE = new Set(['jwks_unavailable']);
 
 export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourcePath, retryAfterSeconds = RETRY_AFTER_SECONDS }) {
+  // CC-156: a request over a limit that is not a tool call. The client waits; it does not log in again, so no challenge,
+  // and no X-RateLimit-* header, which would reveal the settings.
+  if (reason === 'rate_limited') {
+    const wait = Math.max(1, Math.ceil(retryAfterSeconds));
+    return {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': String(wait),
+      },
+      absentHeaders: ['WWW-Authenticate', 'Set-Cookie', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+      body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: wait },
+    };
+  }
   if (INFRASTRUCTURE.has(reason)) {
     return {
       status: 503,

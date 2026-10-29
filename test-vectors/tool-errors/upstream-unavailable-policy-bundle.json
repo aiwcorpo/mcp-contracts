@@ -1,0 +1,10 @@
+{
+  "description": "A server without a loaded policy bundle answers upstream_unavailable (CC-141).",
+  "expected": {
+    "valid": true
+  },
+  "error": {
+    "error": "upstream_unavailable",
+    "message": "Policies are not available. Try again later."
+  }
+}

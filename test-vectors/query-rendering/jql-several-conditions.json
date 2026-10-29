@@ -1,0 +1,24 @@
+{
+  "description": "Several conditions are joined by AND inside one pair of parentheses; an OR in a value cannot leave them.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ],
+    "conditions": [
+      {
+        "field": "status",
+        "op": "=",
+        "value": "Open"
+      },
+      {
+        "field": "assignee",
+        "op": "!=",
+        "value": "bob"
+      }
+    ]
+  },
+  "expected": {
+    "query": "(status = \"Open\" AND assignee != \"bob\") AND project in (\"ABC\")"
+  }
+}

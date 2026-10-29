@@ -1,0 +1,203 @@
+{
+  "description": "Server: create_page under parent page 1001 of space ENG, the resource is the parent page.",
+  "covers": [],
+  "builder": {
+    "level": "server",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-00000000000d",
+        "usr": "confluencewriter",
+        "grp": [
+          "mcp-confluence-read",
+          "mcp-confluence-write",
+          "mcp-confluence-space-ENG"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-confluence",
+        "system": "confluence",
+        "name": "create_page",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "parentId",
+            "type": "Confluence::Page"
+          }
+        ]
+      },
+      "arguments": {
+        "parentId": "1001"
+      },
+      "resource": {
+        "type": "Confluence::Page",
+        "id": "1001",
+        "attrs": {
+          "id": "1001"
+        },
+        "parent": {
+          "type": "Confluence::Space",
+          "id": "ENG",
+          "attrs": {
+            "key": "ENG",
+            "labels": []
+          }
+        }
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000d"
+    },
+    "action": {
+      "type": "Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "Confluence::Page",
+      "id": "1001"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "confluencePage": [
+          "1001"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Confluence::Page",
+        "id": "1001"
+      },
+      "attrs": {
+        "id": "1001",
+        "space": {
+          "__entity": {
+            "type": "Confluence::Space",
+            "id": "ENG"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Page/1001"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Space/ENG"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "Confluence::Space",
+          "id": "ENG"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Confluence::Space",
+        "id": "ENG"
+      },
+      "attrs": {
+        "key": "ENG",
+        "labels": [],
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Confluence::Space/ENG"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-00000000000d"
+      },
+      "attrs": {
+        "username": "confluencewriter",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Confluence::Space/ENG"
+              }
+            }
+          ],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-space-ENG"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-space-ENG"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Confluence::Space/ENG"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "confluence-update-page-in-scope"
+    ]
+  }
+}

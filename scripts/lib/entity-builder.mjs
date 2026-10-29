@@ -138,10 +138,16 @@ function argumentIds(argumentName, value) {
   throw new BuilderError('invalid_argument', `${argumentName}: not a resource identifier`);
 }
 
-function buildContext({ caller, tool, arguments: args = {} }) {
+const CREDENTIAL_TYPES = new Set(['user-oauth', 'user-secret', 'token-exchange', 'service-account']);
+
+function buildContext({ caller, tool, arguments: args = {}, credentialType }) {
   if (!RISKS.has(tool.risk)) throw new BuilderError('internal_error', `unknown risk ${tool.risk}`);
   if (!ACTIONS.has(tool.action)) throw new BuilderError('internal_error', `unknown action ${tool.action}`);
   const context = { client: caller.azp };
+  if (credentialType !== undefined) {
+    if (!CREDENTIAL_TYPES.has(credentialType)) throw new BuilderError('internal_error', `unknown credentialType ${credentialType}`);
+    context.credentialType = credentialType;
+  }
   if ((caller.vs === undefined) !== (caller.vsc === undefined)) {
     throw new BuilderError('internal_error', 'vs and vsc must be present together');
   }

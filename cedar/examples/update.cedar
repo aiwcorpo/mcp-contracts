@@ -51,3 +51,37 @@ permit (
   resource is Confluence::Page
 )
 when { principal in resource.scopes };
+
+// Creating a page under a parent page, or changing a space, is evaluated on the space.
+@id("confluence-update-space-in-scope")
+permit (
+  principal in UserGroup::"mcp-confluence-write",
+  action == Action::"update",
+  resource is Confluence::Space
+)
+when { principal in resource.scopes };
+
+// A ticket is covered through its queue (scopes of a ticket are the queue).
+@id("servicedesk-update-queue-in-scope")
+permit (
+  principal in UserGroup::"mcp-servicedesk-write",
+  action == Action::"update",
+  resource is ServiceDesk::Queue
+)
+when { principal in resource.scopes };
+
+@id("servicedesk-update-ticket-in-scope")
+permit (
+  principal in UserGroup::"mcp-servicedesk-write",
+  action == Action::"update",
+  resource is ServiceDesk::Ticket
+)
+when { principal in resource.scopes };
+
+@id("opensearch-update-index-in-scope")
+permit (
+  principal in UserGroup::"mcp-opensearch-write",
+  action == Action::"update",
+  resource is OpenSearch::Index
+)
+when { principal in resource.scopes };

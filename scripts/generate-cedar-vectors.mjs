@@ -17,6 +17,9 @@ const SUB = {
   sdReader: 'b1a7c0de-0000-4000-8000-00000000000a',
   confluenceEditor: 'b1a7c0de-0000-4000-8000-00000000000b',
   platform: 'b1a7c0de-0000-4000-8000-00000000000c',
+  confluenceWriter: 'b1a7c0de-0000-4000-8000-00000000000d',
+  sdWriter: 'b1a7c0de-0000-4000-8000-00000000000e',
+  osWriter: 'b1a7c0de-0000-4000-8000-00000000000f',
 };
 const caller = (name, grp, extra = {}) => ({ sub: SUB[name], usr: name.toLowerCase(), grp, azp: 'claude-code', ...extra });
 
@@ -31,6 +34,9 @@ const users = {
   osReader: () => caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-logs-team-a']),
   confluenceReader: () => caller('confluenceReader', ['mcp-confluence-read', 'mcp-confluence-space-ENG']),
   sdReader: () => caller('sdReader', ['mcp-servicedesk-read', 'mcp-servicedesk-queue-42']),
+  confluenceWriter: () => caller('confluenceWriter', ['mcp-confluence-read', 'mcp-confluence-write', 'mcp-confluence-space-ENG']),
+  sdWriter: () => caller('sdWriter', ['mcp-servicedesk-read', 'mcp-servicedesk-write', 'mcp-servicedesk-queue-42']),
+  osWriter: () => caller('osWriter', ['mcp-opensearch-read', 'mcp-opensearch-write', 'mcp-opensearch-idx-logs-team-a']),
 };
 
 const tool = (system, name, risk, action, resourceRefs = []) => ({ serverId: `mcp-${system}`, system, name, risk, action, resourceRefs });
@@ -58,6 +64,10 @@ const tools = {
     { argument: 'projectPath', type: 'GitLab::Project' }, { argument: 'targetGroup', type: 'GitLab::Group' }]),
   archiveProjects: tool('gitlab', 'archive_projects', 'UPDATE', 'update', [{ argument: 'projectPaths', type: 'GitLab::Project' }]),
   searchSpace: tool('confluence', 'search_space', 'READ_ONLY', 'read', [{ argument: 'spaceKey', type: 'Confluence::Space' }]),
+  createPage: tool('confluence', 'create_page', 'UPDATE', 'update', [{ argument: 'parentId', type: 'Confluence::Page' }]),
+  updateSpace: tool('confluence', 'update_space', 'UPDATE', 'update', [{ argument: 'spaceKey', type: 'Confluence::Space' }]),
+  addNote: tool('servicedesk', 'add_note', 'UPDATE', 'update', [{ argument: 'ticketId', type: 'ServiceDesk::Ticket' }]),
+  tagIndex: tool('opensearch', 'tag_index', 'UPDATE', 'update', [{ argument: 'index', type: 'OpenSearch::Index' }]),
   listQueueTickets: tool('servicedesk', 'list_queue_tickets', 'READ_ONLY', 'read', [{ argument: 'queueId', type: 'ServiceDesk::Queue' }]),
 };
 
@@ -143,6 +153,12 @@ builderVector('server-virtual-server', 'Server: narrowing comes from the vsc cla
   resource: issue('DEF-5', 'DEF', 'Software') });
 builderVector('mfa-age', 'mfa claim becomes principal.mfaAge and context.mfaAge.', 'gateway',
   { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('credential-type-service-account', 'The caller of the builder knows the credential type of the call (for the gateway, the answer of the broker): context.credentialType (CC-136).', 'gateway',
+  { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 501 }, credentialType: 'service-account' });
+builderVector('credential-type-user-oauth-on-server', 'The same on the server level.', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software'), credentialType: 'user-oauth' });
+builderVector('credential-type-unknown', 'A value outside the four credential types is refused: internal_error (CC-136).', 'gateway',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, credentialType: 'api-key' });
 builderVector('server-jira-issue', 'Server: resolved issue with parent project; project attribute duplicates the parent edge.', 'server',
   { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') });
 builderVector('server-jira-issue-moved', 'Server: issue key says ABC but the system resolved it into HR (Restricted).', 'server',
@@ -443,6 +459,47 @@ decision('srv-vs-narrows-opensearch-index', 'Server: index of another team throu
     vs('team-a-logs', { 'OpenSearch::Index': ['logs-team-a'] })), tool: tools.searchIndex, arguments: { index: 'logs-team-b-2026.10' },
     resource: { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } } },
   deny('vs-narrow-opensearch-index'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
+
+// Write groups of Confluence, service desk and OpenSearch, and update on a Confluence space (CC-148).
+decision('gw-confluence-update-allowed', 'Confluence writer calls an UPDATE tool.', 'gateway',
+  { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '1001' } }, allow('confluence-call-update'));
+decision('gw-confluence-update-without-write-group', 'Confluence reader calls an UPDATE tool.', 'gateway',
+  { caller: users.confluenceReader(), tool: tools.createPage, arguments: { parentId: '1001' } }, deny(), { covers: ['write_without_write_group'] });
+decision('gw-servicedesk-update-allowed', 'Service desk writer calls an UPDATE tool (add_note).', 'gateway',
+  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 501 } }, allow('servicedesk-call-update'));
+decision('gw-servicedesk-update-without-write-group', 'Service desk reader calls add_note.', 'gateway',
+  { caller: users.sdReader(), tool: tools.addNote, arguments: { ticketId: 501 } }, deny(), { covers: ['write_without_write_group'] });
+decision('gw-opensearch-update-allowed', 'OpenSearch writer calls an UPDATE tool.', 'gateway',
+  { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-a-2026.10' } }, allow('opensearch-call-update'));
+decision('srv-confluence-create-page-under-parent-in-scope', 'Server: create_page under parent page 1001 of space ENG, the resource is the parent page.', 'server',
+  { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '1001' }, resource: page('1001', 'ENG') }, allow('confluence-update-page-in-scope'));
+decision('srv-confluence-create-page-under-parent-outside-scope', 'Server: the parent page lies in space OPS, which the writer has no grant for.', 'server',
+  { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '2002' }, resource: page('2002', 'OPS') }, deny());
+decision('srv-confluence-update-space-in-scope', 'Server: update on the space itself.', 'server',
+  { caller: users.confluenceWriter(), tool: tools.updateSpace, arguments: { spaceKey: 'ENG' },
+    resource: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG', labels: [] } } }, allow('confluence-update-space-in-scope'));
+decision('srv-confluence-update-space-outside-scope', 'Server: update on a space without a grant.', 'server',
+  { caller: users.confluenceWriter(), tool: tools.updateSpace, arguments: { spaceKey: 'OPS' },
+    resource: { type: 'Confluence::Space', id: 'OPS', attrs: { key: 'OPS', labels: [] } } }, deny());
+decision('srv-servicedesk-add-note-in-scope', 'Server: add_note on a ticket of queue 42.', 'server',
+  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-update-ticket-in-scope'));
+decision('srv-servicedesk-add-note-outside-scope', 'Server: add_note on a ticket of queue 7.', 'server',
+  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 777 }, resource: ticket('777', '7') }, deny());
+decision('srv-opensearch-update-index-in-scope', 'Server: update on an index below the granted prefix.', 'server',
+  { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-a-2026.10' },
+    resource: { type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } } }, allow('opensearch-update-index-in-scope'));
+decision('srv-opensearch-update-index-outside-scope', 'Server: update on an index of another team.', 'server',
+  { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-b-2026.10' },
+    resource: { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } } }, deny());
+// context.credentialType (CC-136): a rule may read it; without the value the rule does not apply.
+decision('gw-destructive-with-service-account-denied', 'DESTRUCTIVE call whose credential is a service account: forbidden by the credential-type example.', 'gateway',
+  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, credentialType: 'service-account' },
+  deny('destructive-not-with-service-account'), { covers: ['forbid_overrides_permit'] });
+decision('gw-destructive-with-user-credential-allowed', 'The same call with a user credential is allowed.', 'gateway',
+  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, credentialType: 'user-oauth' },
+  allow('jira-call-destructive'));
+decision('gw-destructive-without-credential-type-allowed', 'The builder caller did not give a credential type: the attribute is absent and the guarded rule does not apply.', 'gateway',
+  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, allow('jira-call-destructive'));
 
 console.log(`policy decisions: ${decisionCount}`);
 

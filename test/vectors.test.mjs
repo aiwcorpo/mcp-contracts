@@ -309,3 +309,16 @@ test('activity cursor vectors: authenticated, bound to sub, 15 minutes (CC-095)'
     if (data.expected.valid) assert.deepEqual(position, data.expected.position, name);
   }
 });
+
+test('query rendering vectors: quoting, scope in parentheses, resolved index names (CC-160)', async () => {
+  const { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexNames } = await import('../scripts/lib/query-rendering.mjs');
+  const render = { jql: renderJql, cql: renderCql, 'opensearch-pattern': ({ granted }) => openSearchPattern(granted),
+    'opensearch-resolve': ({ granted, resolved }) => resolveIndexNames(granted, resolved) };
+  const vectors = listJson('test-vectors', 'query-rendering');
+  assert.ok(vectors.length >= 15);
+  for (const { name, data } of vectors) {
+    let actual;
+    try { actual = { query: render[data.kind](data.input) }; } catch (e) { if (!(e instanceof QueryError)) throw e; actual = { error: 'nothing_to_query_or_not_allowed' }; }
+    assert.deepEqual(actual, data.expected, name);
+  }
+});

@@ -1,0 +1,29 @@
+{
+  "description": "A wait shorter than a second is rounded up: Retry-After and retryAfterSeconds are at least 1 (CC-156).",
+  "input": {
+    "reason": "rate_limited",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/v/team-a-dev",
+    "retryAfterSeconds": 0.2
+  },
+  "expected": {
+    "status": 429,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "1"
+    },
+    "absentHeaders": [
+      "WWW-Authenticate",
+      "Set-Cookie",
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "X-RateLimit-Reset"
+    ],
+    "body": {
+      "error": "rate_limited",
+      "message": "Too many requests. Try again later.",
+      "retryAfterSeconds": 1
+    }
+  }
+}

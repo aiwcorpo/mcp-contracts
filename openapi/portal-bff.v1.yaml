@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 3.1.2-SNAPSHOT
+  version: 3.2.0-SNAPSHOT
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -23,6 +23,10 @@ info:
     Error bodies for statuses whose body C12 does not define use the generic `Error` shape (CC-012).
     Operations backed by the broker (C4) or the gateway admin API (C5) answer `503 upstream_unavailable` when
     those (or the IdP token exchange) fail; there are no partial answers (CC-050).
+
+    Limits (CC-156). The BFF limits per session the writing of a token (`PUT /connections/{system}/secret`) and the
+    operations of the authenticator; over a limit it answers `429 rate_limited` with `Retry-After` (seconds, at least
+    1). The values are configuration, not contract, and no `X-RateLimit-*` header is sent.
 
     Correlation: the BFF creates a requestId (UUIDv7) per request (a value sent by the client is ignored) and
     sends it to the broker and gateway in `X-Request-Id`, so their audit events and the portal's share one
@@ -185,6 +189,11 @@ paths:
 
         `request_access` is added to `expiring`, `reconnect_required` and `not_connected` never, whatever the denied tools (CC-110;
         vectors `catalog-actions/`).
+
+        Two rules for requests (CC-113). `request_access` is offered only when the catalog names `requiredEntitlements` for
+        a denied tool (without them there is nothing to ask for, so `no_access` then has no action). When the user has a
+        pending request for an entitlement that a denied tool needs, `view_request` is returned instead of
+        `request_access`, also for a server whose status is `connected`.
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
         (CC-080).
@@ -564,6 +573,8 @@ paths:
                 secret_invalid:
                   value:
                     error: secret_invalid
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/connections/{system}:
@@ -716,6 +727,8 @@ paths:
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/CsrfInvalid'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/authenticator/enrollment:
@@ -774,9 +787,15 @@ paths:
                     error: already_registered
         '429':
           headers:
+            Retry-After:
+              description: Seconds to wait, at least 1.
+              schema:
+                type: integer
+                minimum: 1
+              example: 600
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Too many enrollment starts (broker limit).
+          description: Too many enrollment starts (broker limit, default 10 per hour, CC-151).
           content:
             application/json:
               schema:
@@ -849,6 +868,8 @@ paths:
                 enrollment_invalid:
                   value:
                     error: enrollment_invalid
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/confirmations/{id}/viewed:
@@ -950,12 +971,25 @@ paths:
                       status: pending
                       createdAt: '2026-10-25T09:00:00Z'
                       requestUrl: https://iga.internal/requests/REQ-2026-0042
+                approved:
+                  value:
+                    - requestId: REQ-2026-0040
+                      entitlement: mcp-jira-write
+                      status: approved
+                      createdAt: '2026-10-20T09:00:00Z'
+                      decidedAt: '2026-10-21T11:30:00Z'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
     post:
       tags: [access-requests]
       operationId: createAccessRequest
       summary: Request an entitlement (C13 request); result depends on the IGA adapter.
+      description: |
+        When a request for the entitlement is already pending, the BFF answers 200 with the requestId of that request
+        (CC-096): the user wants to reach the request, not to read an error. An adapter without a request flow
+        (`keycloak-groups`: a catalog without requests) or an unknown entitlement is `422 not_requestable`.
       security:
         - session: []
           csrf: []
@@ -992,6 +1026,77 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/CsrfInvalid'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The IGA adapter has no request flow or does not know the entitlement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_requestable:
+                  value:
+                    error: not_requestable
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/access-requests/entitlements:
+    get:
+      tags: [access-requests]
+      operationId: listRequestableEntitlements
+      summary: Entitlements of a system that the user can request (C13 catalog, CC-154).
+      description: |
+        For a request made from a server row, where no single entitlement is obvious: the BFF returns what
+        `catalog(system)` of the IGA port gives, limited to entitlements the user can order, and the UI lets the user
+        choose before sending. `description` comes from the IGA and is untrusted text (shown as text, never as markup).
+        An adapter without a request flow answers `422 not_requestable`.
+      security:
+        - session: []
+      parameters:
+        - name: system
+          in: query
+          required: true
+          schema:
+            $ref: '../schemas/common.schema.json#/$defs/SystemId'
+          example: confluence
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Entitlements the user can request, possibly none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestableEntitlement'
+              examples:
+                confluence:
+                  value:
+                    - entitlement: mcp-confluence-read
+                      description: Read access to Confluence
+                    - entitlement: mcp-confluence-write
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The IGA adapter has no request flow.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_requestable:
+                  value:
+                    error: not_requestable
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
   /api/v1/virtual-servers:
     get:
       tags: [virtual-servers]
@@ -1227,7 +1332,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -1257,7 +1362,7 @@ paths:
                 type: string
                 maxLength: 256
               example: eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln
-          description: Newest first; at most 30 days back. X-Next-Cursor is present when more rows exist.
+          description: Newest first; at most the retention window back (30 days by default, CC-134). X-Next-Cursor is present when more rows exist.
           content:
             application/json:
               schema:
@@ -1386,6 +1491,8 @@ paths:
                               destructiveHint: false
                           definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
+                          change: new
+                          approvedInVersion: null
                 opensearch_disabled:
                   value:
                     - serverId: mcp-opensearch
@@ -1454,6 +1561,8 @@ paths:
                           destructiveHint: false
                       definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                     pendingHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                    approvedInVersion: null
+                    pendingVersion: 1.4.0
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1469,7 +1578,7 @@ paths:
     post:
       tags: [admin]
       operationId: approveAdminTool
-      summary: Approve a pending tool definition (proxy to C5).
+      summary: Approve a pending tool definition (proxy to C5). The manual way to accept a change made outside a deployment (CC-133).
       security:
         - session: []
           csrf: []
@@ -1508,6 +1617,21 @@ paths:
                 hash_mismatch:
                   value:
                     error: hash_mismatch
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The pending definition lowers the risk of the approved one; it is never approved (CC-133).
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ManifestRejected'
+              examples:
+                risk_lowered:
+                  value:
+                    error: manifest_rejected
+                    reason: risk_lowered
+                    message: update_issue lowers risk from UPDATE to READ_ONLY
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
 components:
@@ -1647,11 +1771,30 @@ components:
             not_found_or_denied:
               value:
                 error: not_found_or_denied
+    TooManyRequests:
+      headers:
+        Retry-After:
+          description: Seconds to wait, at least 1.
+          schema:
+            type: integer
+            minimum: 1
+          example: 60
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+      description: A limit of the BFF was exceeded (CC-156). Retry-After says how long to wait; no header names a limit or a setting.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            rate_limited:
+              value:
+                error: rate_limited
     UpstreamUnavailable:
       headers:
         X-Request-Id:
           $ref: '#/components/headers/RequestId'
-      description: "The broker, the gateway admin API or the IdP token exchange did not answer or answered with an error the BFF does not pass on (CC-050). No partial data: the catalog is either complete or 503. Upstream bodies are never forwarded."
+      description: "The broker, the gateway admin API, the IGA or the IdP token exchange did not answer or answered with an error the BFF does not pass on (CC-050). No partial data: the catalog is either complete or 503. Upstream bodies are never forwarded."
       content:
         application/json:
           schema:
@@ -1806,10 +1949,24 @@ components:
           $ref: '#/components/schemas/AccessRequestStatus'
         createdAt:
           $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        decidedAt:
+          description: When the IGA decided the request (approved or rejected). Absent while the request is pending (CC-154).
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
         requestUrl:
           type: string
           format: uri
           description: Page of the request in the IGA, when the adapter has one.
+      additionalProperties: false
+    RequestableEntitlement:
+      type: object
+      required: [entitlement]
+      properties:
+        entitlement:
+          $ref: '../schemas/common.schema.json#/$defs/GroupName'
+        description:
+          type: string
+          maxLength: 500
+          description: Text of the IGA catalog, untrusted.
       additionalProperties: false
     AccessRequestCreate:
       type: object

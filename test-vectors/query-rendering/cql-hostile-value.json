@@ -1,0 +1,19 @@
+{
+  "description": "A CQL value that tries to close the literal.",
+  "kind": "cql",
+  "input": {
+    "scope": [
+      "ENG"
+    ],
+    "conditions": [
+      {
+        "field": "title",
+        "op": "=",
+        "value": "x\") OR space in (\"HR"
+      }
+    ]
+  },
+  "expected": {
+    "query": "(title = \"x\\\") OR space in (\\\"HR\") AND space in (\"ENG\")"
+  }
+}

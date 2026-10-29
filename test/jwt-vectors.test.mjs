@@ -27,7 +27,7 @@ async function verify(vector) {
   const jwks = readJson('test-vectors', verifier.jwks);
   const jwk = jwks.keys.find((k) => k.kid === header.kid);
   if (!jwk) return 'unknown_kid';
-  if (header.kid.startsWith('test-') && !verifier.allowTestKeys) return 'test_key_not_allowed';
+  if (/^(test|dev)-/.test(header.kid) && !verifier.allowTestKeys) return 'test_key_not_allowed';
   let claims;
   try {
     const { payload } = await compactVerify(token, await importJWK(jwk, 'ES256'), { algorithms: ['ES256'] });

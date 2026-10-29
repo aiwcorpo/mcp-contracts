@@ -4,6 +4,60 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 3.2.0 - 2026-10-29
+
+Pakiet kontraktowy M4 (decyzje człowieka z 2026-10-29, `mcp-platform-plan/cc-pakiet-m4.md`). Wydanie minor ze zmianą bajtów
+`cedar/mcp.cedarschema` (skrót SHA-256 `741b441cb5b70f6099204a8d0a30d49047e6f3f512a964865b653f64ce7d6fac`, poprzednio `cf79068b...`):
+biblioteki, paczki polityk i serwery przechodzą na 3.2.0 razem (jak przy 3.1.0). Dwie zmiany zaostrzają walidację (CC-146: stały `message`
+`not_found_or_denied`; CC-157: `expiresAt` wymagane dla `token-exchange`), przyjęte przez człowieka jako minor w tym pakiecie.
+
+Nowe CC: CC-133 ... CC-160 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, CC-097, CC-113.
+
+- **Rejestr (CC-097, CC-133):** `RegistryTool.change`, `approvedInVersion`, `PendingTool.pendingVersion`; `PUT` z `mcp-registry-ci` zatwierdza,
+  definicja zmieniona poza wdrożeniem blokuje narzędzie (`tool_disabled`, powód `definition_changed`) do ręcznego `approve`; obniżenie `risk`
+  zawsze `422 manifest_rejected` (`reason: risk_lowered`); audyt `admin_change` z `definition_registered|definition_approved|tool_removed`
+  i `definitionHash`.
+- **IGA (CC-096, CC-113, CC-154):** `503`, idempotentny duplikat, `422 not_requestable`; reguły `request_access`/`view_request`;
+  `GET /api/v1/access-requests/entitlements`; `AccessRequest.decidedAt`.
+- **Offboarding i retencja (CC-134, CC-155):** `purge` brokera (połączenia, sekrety, przepływy OAuth, Authenticator, blokada), nowy `POST /admin/v1/users/{sub}/purge`
+  (CN `mcp-offboarding`), powody `user_purged` i `unused_cleanup`; retencja aktywności to konfiguracja (domyślnie 30 dni), audyt w SIEM 365 dni.
+- **Limity (CC-135, CC-156):** `429` z `Retry-After` dla żądań MCP innych niż `tools/call`, powody `rate_limited_user|client|tool`, `429` w brokerze
+  i BFF; bez `X-RateLimit-*`; limit DESTRUCTIVE jako konfiguracja.
+- **Poświadczenia (CC-157, CC-158, CC-159):** semantyka `token-exchange` i `service-account` w `resolve`, `403 exchange_denied`, `422 system_not_configured`,
+  `credential_type_mismatch` przy rejestracji.
+- **Cedar (CC-136, CC-148, CC-149):** opcjonalne `context.credentialType` (`EntityBuilder.withCredentialType`), przykłady zapisu dla Confluence, Service Desku
+  i OpenSearch, przykład `credential-type.cedar`.
+- **Środowisko dev (CC-137, CC-138):** `kid`/identyfikator z prefiksem `dev-` odrzucany poza trybem dev; opcjonalne `environment` w manifeście.
+- **Zapytania serwera (CC-160):** `scripts/lib/query-rendering.mjs` i `test-vectors/query-rendering/`.
+- **Doprecyzowania:** CC-139 (`OpenSearchIndexPrefix` bez alternacji), CC-140, CC-141, CC-142 (słownik `reason`, grupy filtra), CC-143, CC-144, CC-145,
+  CC-146 (jedna odmowa `not_found_or_denied`), CC-147, CC-150, CC-151, CC-152.
+
+### Migracja per komponent
+
+- **mcp-starter-lib (ws-02):** biblioteki 3.2.0; wejście buildera z `credentialType` (opcjonalne); odrzucanie `kid` `dev-` poza trybem dev; ten sam
+  `message` dla `not_found_or_denied` i kolejność "grant przed budową encji"; `upstream_unavailable` i powód `policy_unavailable` przy braku paczki;
+  budżet zdarzeń `authentication` i licznik `mcp_audit_authentication_suppressed_total{component,reason}`, bez zdarzenia dla `400`/`413` przed JWT;
+  manifest z `environment: dev` w profilu dev; `contractPattern` z `OpenSearchIndexPrefix` działa bez obejścia.
+- **mcp-server-template / serwery (ws-03, ws-04):** `nothingToQuery()` daje pusty wynik, a po id `not_found_or_denied`; zapytania ze struktury (wzorzec
+  `query-rendering`); OpenSearch rozwiązuje wzorce do nazw indeksów bez aliasów i strumieni, potem `aggregate_logs` może wrócić; kolejka poza linkiem to
+  `not_found_or_denied`; źródła klasyfikacji (CC-149); Service Desk i OpenSearch: `service-account` i `token-exchange`.
+- **mcp-gateway (ws-05):** `PUT` zatwierdza (`definition_registered`), zmiana definicji z serwera blokuje (`definition_changed`), `approve` z audytem
+  `definition_approved`, `422` dla `risk_lowered`, `environment_mismatch`, `credential_type_mismatch`; `POST /admin/v1/users/{sub}/purge`; limity z `429`
+  i powodami `rate_limited_*`; `token-exchange`/`service-account` w `resolve` (mapowanie `exchange_denied` na `access_denied`, `system_not_configured` na
+  `internal_error` z przyczyną w logu); `context.credentialType` do buildera; nowe powody C8 (`link_scope`, `policy_unavailable`, `policy_error`, `upstream_unavailable`).
+- **mcp-credential-broker (ws-06):** `purge` w pełnym zakresie, `unused_cleanup`, `token-exchange` i `service-account`, `403 exchange_denied`, `422 system_not_configured`,
+  `429` dla OAuth start/complete i domyślnie 10 startów rejestracji na godzinę, powody `provider_revoke_failed`, `authenticator_seed_missing`, `user_purged`.
+- **mcp-portal BFF (ws-07):** `503`/`422`/idempotencja wniosków, `GET /api/v1/access-requests/entitlements`, `decidedAt`, `429` z `Retry-After`, `422` w `approve`, pola
+  `change`/`approvedInVersion`/`pendingVersion` (przezroczyste), reguły `request_access`/`view_request`.
+- **mcp-portal web (ws-08):** widok diffu z wersjami, wybór uprawnienia przy wniosku z serwera, komunikat "Zbyt wiele wywołań" dla `rate_limited`, grupy filtra `result`,
+  "ostatnie użycie" konta serwisowego z `activity/calls` (CC-150).
+- **mcp-policies (ws-09):** przebudowa paczek na schemacie 3.2.0; reguły zapisu z przykładów (CC-148); opcjonalna reguła na `credentialType`; reguła wyłączająca
+  `aggregate_logs` zdejmowana dopiero po wdrożeniu CC-160 w serwerze OpenSearch.
+- **mcp-platform-dev (ws-01):** klucze generowane lokalnie z `kid` zaczynającym się od `dev-`, tryb dev włączony tylko w stosie dev; serwery z profilem `devstack` wysyłają
+  `environment: dev`; wywołanie `purge` brokera i gateway'a w procesie offboardingu.
+- **mcp-e2e (ws-10):** nowe wektory i scenariusze: blokada po zmianie definicji i ręczne `approve`, `429`, offboarding (oba `purge`), `token-exchange` i `service-account`,
+  `dev-` odrzucony w trybie produkcyjnym, `environment_mismatch`.
+
 ## 3.1.1 - 2026-10-28
 
 Doprecyzowania bez zmiany schematu Cedar (skrót SHA-256 jak w 3.1.0).

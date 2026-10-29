@@ -6,6 +6,7 @@ import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash } from './lib/definition-hash.mjs';
 import { path } from './lib/contracts.mjs';
 import { tarGz } from './lib/tar.mjs';
+import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexNames } from './lib/query-rendering.mjs';
 
 // Invisible and format characters are written as \uXXXX escapes, so that they stay visible in review and in diffs.
 const escapeInvisible = (json) => json.replace(/[\u007f-\u00a0\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff9-\ufffb]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
@@ -201,6 +202,11 @@ manifest('valid-no-credential', 'Server whose tools need no backend credential; 
   credential: { required: false, acceptedTypes: [] },
   tools: [manifestTool('get_issue')],
 }), true);
+manifest('valid-environment-dev', 'Manifest of a dev stack server; environment is not part of the hashes, which stay those of test-vectors/definition-hash (CC-138).', { ...jiraManifest(), environment: 'dev' }, true);
+manifest('valid-environment-production', 'environment production is the same as no field (CC-138).', { ...jiraManifest(), environment: 'production' }, true);
+{
+  manifest('invalid-environment-staging', 'environment is production or dev, nothing else (CC-138).', { ...jiraManifest(), environment: 'staging' }, false, 'schema');
+}
 {
   const m = jiraManifest(); delete m.tools[0].risk;
   manifest('invalid-missing-risk', 'Tool without risk.', m, false, 'schema');
@@ -413,6 +419,43 @@ audit('gateway-policy-deny', 'Gateway policy decision: deny by forbid.', {
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
   tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'policy_forbid', policyRevision: '20261026120000-a1b2c3d',
   outcome: 'denied', errorCode: 'access_denied', argsLength: 64,
+}, true);
+const adminSub = '3b0d6f2e-91c4-4d7a-8a52-6c1e4f7a9d10';
+audit('gateway-registry-definition-registered', 'The pipeline registered a manifest; every definition it carried is approved by that registration, one event per tool (CC-133).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'create_issue',
+  reason: 'definition_registered', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
+}, true);
+audit('gateway-registry-definition-approved', 'An administrator approved a pending definition; sub is the administrator, definitionHash the approved hash (CC-133).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'create_issue',
+  reason: 'definition_approved', definitionHash: 'sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2', outcome: 'ok',
+}, true);
+audit('gateway-registry-tool-removed', 'A tool left the registered manifest (CC-133).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'delete_issue',
+  reason: 'tool_removed', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
+}, true);
+audit('invalid-definition-hash-format', 'definitionHash must be sha256:<64 hex> (CC-133).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'create_issue',
+  reason: 'definition_approved', definitionHash: 'sha1:abc', outcome: 'ok',
+}, false);
+audit('gateway-definition-changed', 'The definition the server presents differs from the approved one: the tool is refused as tool_disabled (CC-133).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
+  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'definition_changed', policyRevision: '20261026120000-a1b2c3d',
+  outcome: 'denied', errorCode: 'tool_disabled', argsLength: 64,
+}, true);
+audit('gateway-link-scope', 'Tool outside the virtual server link: policy_decision with reason link_scope (CC-142).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', virtualServer: 'team-a-dev', server: 'mcp-jira',
+  tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'link_scope', policyRevision: '20261026120000-a1b2c3d',
+  outcome: 'denied', errorCode: 'not_found_or_denied', argsLength: 12,
+}, true);
+audit('broker-authenticator-seed-missing', 'The seed of a registered authenticator is gone from the secret store; the registration is reset (CC-142).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', reason: 'authenticator_seed_missing', outcome: 'error', errorCode: 'upstream_unavailable',
+}, true);
+audit('broker-connection-provider-revoke-failed', 'The token could not be revoked at the provider; the connection is deleted anyway (CC-142).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'connection_change',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', credentialType: 'user-oauth', reason: 'provider_revoke_failed', outcome: 'error',
 }, true);
 audit('gateway-confirmation-pending', 'Destructive call waiting for confirmation.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
@@ -943,6 +986,58 @@ gatewayAuth('jwks-unavailable-configured-retry-after', 'Retry-After is the confi
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '30' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The identity provider keys are temporarily unavailable. Try again in a few seconds.' } });
 
+gatewayAuth('rate-limited', 'An MCP request that is not a tool call (tools/list, initialize) over a limit: 429 with Retry-After, the C10 body, no challenge and no X-RateLimit headers (CC-156).',
+  { reason: 'rate_limited', publicBaseUrl: BASE, resourcePath: '/s/mcp-jira', retryAfterSeconds: 12 },
+  { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '12' },
+    absentHeaders: ['WWW-Authenticate', 'Set-Cookie', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+    body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: 12 } });
+gatewayAuth('rate-limited-at-least-one-second', 'A wait shorter than a second is rounded up: Retry-After and retryAfterSeconds are at least 1 (CC-156).',
+  { reason: 'rate_limited', publicBaseUrl: BASE, resourcePath: '/v/team-a-dev', retryAfterSeconds: 0.2 },
+  { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '1' },
+    absentHeaders: ['WWW-Authenticate', 'Set-Cookie', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+    body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: 1 } });
+
+// ---------- query rendering (entity-builder.md, section 8, CC-160) ----------
+
+const queryVector = (name, description, kind, input, produce) => {
+  let expected;
+  try { expected = { query: produce(input) }; } catch (e) { if (!(e instanceof QueryError)) throw e; expected = { error: 'nothing_to_query_or_not_allowed' }; }
+  write('query-rendering', `${kind}-${name}.json`, { description, kind, input, expected });
+};
+queryVector('plain', 'Scope and one condition: the conditions are in parentheses, the scope follows with AND.', 'jql',
+  { scope: ['ABC', 'DEF'], conditions: [{ field: 'text', op: '~', value: 'login' }], orderBy: { field: 'updated', direction: 'DESC' } }, renderJql);
+queryVector('hostile-value', 'A value that tries to close the literal and add an OR: it stays inside the quotes (CC-160).', 'jql',
+  { scope: ['ABC'], conditions: [{ field: 'text', op: '~', value: 'x" OR project = "HR' }] }, renderJql);
+queryVector('hostile-scope-id', 'A scope id that would break out of the list is quoted like any value (the id pattern refuses it earlier, this is the second line).', 'jql',
+  { scope: ['ABC) OR project in (HR'] }, renderJql);
+queryVector('backslash', 'A backslash is doubled before the quote is escaped.', 'jql',
+  { scope: ['ABC'], conditions: [{ field: 'summary', op: '~', value: 'a\\"b' }] }, renderJql);
+queryVector('several-conditions', 'Several conditions are joined by AND inside one pair of parentheses; an OR in a value cannot leave them.', 'jql',
+  { scope: ['ABC'], conditions: [{ field: 'status', op: '=', value: 'Open' }, { field: 'assignee', op: '!=', value: 'bob' }] }, renderJql);
+queryVector('no-conditions', 'No conditions: only the scope.', 'jql', { scope: ['ABC'] }, renderJql);
+queryVector('empty-scope', 'An empty scope means nothing to query: no query is built (fail-closed, never "without a filter").', 'jql',
+  { scope: [], conditions: [{ field: 'text', op: '~', value: 'x' }] }, renderJql);
+queryVector('field-not-allowed', 'A field outside the allowlist is refused: the model does not choose fields.', 'jql',
+  { scope: ['ABC'], conditions: [{ field: 'project', op: '=', value: 'HR' }] }, renderJql);
+queryVector('order-by-not-allowed', 'ORDER BY accepts only an allowlisted field and ASC or DESC.', 'jql',
+  { scope: ['ABC'], orderBy: { field: 'summary ASC, project', direction: 'ASC' } }, renderJql);
+queryVector('control-character', 'A control character in a value is refused.', 'jql',
+  { scope: ['ABC'], conditions: [{ field: 'text', op: '~', value: 'a\nb' }] }, renderJql);
+queryVector('plain', 'Scope and a text condition in CQL.', 'cql',
+  { scope: ['ENG'], conditions: [{ field: 'text', op: '~', value: 'handbook' }], orderBy: { field: 'lastmodified', direction: 'DESC' } }, renderCql);
+queryVector('hostile-value', 'A CQL value that tries to close the literal.', 'cql',
+  { scope: ['ENG'], conditions: [{ field: 'title', op: '=', value: 'x") OR space in ("HR' }] }, renderCql);
+queryVector('empty-scope', 'No granted space: no query.', 'cql', { scope: [] }, renderCql);
+queryVector('prefixes', 'Two prefixes: the index of that name and the indices below it, for each; never a trailing wildcard on the prefix alone.', 'opensearch-pattern',
+  { granted: ['logs-team-b', 'logs-team-a'] }, ({ granted }) => openSearchPattern(granted));
+queryVector('no-prefix', 'No granted prefix: nothing to query, the server does not call the system.', 'opensearch-pattern', { granted: [] }, ({ granted }) => openSearchPattern(granted));
+queryVector('aliases-and-lookalikes', 'The answer of the system lists an alias named like a granted prefix that points to another team, a data stream and a look-alike index. Only concrete indices of the grant are queried, and the query goes to their names (CC-160).', 'opensearch-resolve',
+  { granted: ['logs-team-a'], resolved: {
+    indices: [{ name: 'logs-team-a-2026.10', aliases: [] }, { name: 'logs-team-a' }, { name: 'logs-team-ab' }, { name: 'logs-team-b-1', aliases: ['logs-team-a-all'] }],
+    aliases: [{ name: 'logs-team-a-all', indices: ['logs-team-b-1'] }],
+    data_streams: [{ name: 'logs-team-a-stream', backing_indices: ['.ds-logs-team-a-stream-000001'] }] } },
+  ({ granted, resolved }) => resolveIndexNames(granted, resolved));
+
 // ---------- activity calls (C5, C12, CC-095) ----------
 
 const SUBJ = '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11';
@@ -957,6 +1052,12 @@ const activityRow = (name, description, value, valid) => write('activity-calls',
 aggregation('ok', 'A read call without confirmation: one tool_call event, result ok.',
   [gw(1, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', outcome: 'ok', errorCode: null })],
   { requestId: RID(1), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'ok', errorCode: null });
+aggregation('credential-required-tool-call', 'The gateway allowed the call, the broker had no credential: a tool_call event with reason credential_required is a credential_required row, not a plain error (CC-142).',
+  [gw(80, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', reason: 'credential_required', outcome: 'error', errorCode: 'credential_required' })],
+  { requestId: RID(80), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'credential_required', errorCode: 'credential_required' });
+aggregation('rate-limited-tool-call', 'A tool_call event with reason rate_limited is a rate_limited row (CC-142).',
+  [gw(81, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'deny', reason: 'rate_limited', outcome: 'denied', errorCode: 'rate_limited' })],
+  { requestId: RID(81), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'rate_limited', errorCode: 'rate_limited' });
 aggregation('confirmed-two-wrong-codes', 'First call, two wrong codes, then the right one: one row, result confirmed, wrongCodeCount 2, requestId of the first request.', [
   gw(2, '2026-10-26T20:00:00.000Z', { ...deleteBase, event: 'confirmation', decision: 'confirmation_pending' }),
   gw(3, '2026-10-26T20:00:20.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', outcome: 'denied', errorCode: 'confirmation_failed' }),
@@ -1310,7 +1411,9 @@ toolError('credential-required', 'No connected account.', {
   error: 'credential_required', ...safe('Connect your Jira account in the portal.'), system: 'jira',
   connectUrl: 'https://mcp-portal.internal/connections?system=jira',
 }, true);
-toolError('not-found-or-denied', 'Missing or not visible resource.', { error: 'not_found_or_denied', ...safe('Not found.') }, true);
+toolError('not-found-or-denied', 'Missing or not visible resource.', { error: 'not_found_or_denied', ...safe('The resource does not exist or you do not have access to it.') }, true);
+toolError('invalid-not-found-or-denied-other-text', 'Every cause uses one fixed text; another text would tell the causes apart (CC-146).', { error: 'not_found_or_denied', ...safe('Not found.') }, false);
+toolError('upstream-unavailable-policy-bundle', 'A server without a loaded policy bundle answers upstream_unavailable (CC-141).', { error: 'upstream_unavailable', ...safe('Policies are not available. Try again later.') }, true);
 toolError('invalid-argument', 'Caller error.', { error: 'invalid_argument', ...safe('issueKey must look like ABC-123.') }, true);
 toolError('rate-limited', 'Rate limit.', { error: 'rate_limited', ...safe('Too many calls.'), retryAfterSeconds: 30 }, true);
 toolError('step-up-required', 'MFA too old for a destructive action.', {
@@ -1549,6 +1652,12 @@ mainCase(13, 'tar-total-size-limit', 'Five entries of 3.5 MiB each: every entry 
   const revision = R(11);
   bundleCase('test-key-under-production-id', 'Published test key configured under a production-looking id: refused by its SPKI, not only by its label (review 1.2.0 M4).', {
     publicKeyId: 'prod-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
+    publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
+}
+{
+  const revision = R(11);
+  bundleCase('dev-key-id-rejected-by-default', 'Key id starting with dev- (a key of a dev stack): refused without allowTestKeys like test-, whatever the key is (CC-137).', {
+    publicKeyId: 'dev-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
     publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
 }
 const overridesCase = (n, name, description, policies, reason) => {

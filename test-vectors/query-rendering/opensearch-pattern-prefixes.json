@@ -1,0 +1,13 @@
+{
+  "description": "Two prefixes: the index of that name and the indices below it, for each; never a trailing wildcard on the prefix alone.",
+  "kind": "opensearch-pattern",
+  "input": {
+    "granted": [
+      "logs-team-b",
+      "logs-team-a"
+    ]
+  },
+  "expected": {
+    "query": "logs-team-a,logs-team-a-*,logs-team-b,logs-team-b-*"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "description": "An MCP request that is not a tool call (tools/list, initialize) over a limit: 429 with Retry-After, the C10 body, no challenge and no X-RateLimit headers (CC-156).",
+  "input": {
+    "reason": "rate_limited",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/s/mcp-jira",
+    "retryAfterSeconds": 12
+  },
+  "expected": {
+    "status": 429,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "12"
+    },
+    "absentHeaders": [
+      "WWW-Authenticate",
+      "Set-Cookie",
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "X-RateLimit-Reset"
+    ],
+    "body": {
+      "error": "rate_limited",
+      "message": "Too many requests. Try again later.",
+      "retryAfterSeconds": 12
+    }
+  }
+}

@@ -1,11 +1,17 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **3.1.1**, tag `v3.1.1` (praca dalej na `3.1.2-SNAPSHOT`); wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Praca na **3.2.0-SNAPSHOT** (pakiet M4, gotowy do wydania po przeglądzie; bez tagu); wydane **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja 3.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 253 testy Node; `./mvnw verify`: 418 testów JUnit,
 w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
+
+## 3.2.0 (przygotowane, nie wydane)
+
+- Zakres i migracja per komponent: `CHANGELOG.md` ("3.2.0"). Nowe CC-133 ... CC-160 (CC-153 odrzucone); CC-096, CC-097, CC-113 wdrożone.
+- Zmieniają się bajty `cedar/mcp.cedarschema` (CC-136).
+- Do wykonania po zgodzie człowieka: tag `v3.2.0`, `npm run pack`, `./mvnw clean install`, tarball w `release/`, wersja `3.2.1-SNAPSHOT`.
 
 ## Plan 3.1.2 (zostało)
 

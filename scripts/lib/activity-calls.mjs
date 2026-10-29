@@ -7,6 +7,14 @@
 const TTL_SECONDS = 120;
 const TERMINAL = new Set(['user_confirmed', 'user_confirmed_no_preview', 'attempts_exhausted', 'superseded', 'pending_exists', 'confirmation_expired', 'cancelled_by_owner']);
 
+// Filter group of the result query parameter of GET /activity/calls (CC-142).
+export function resultGroup(result) {
+  if (result === 'ok') return 'ok';
+  if (['denied_not_granted', 'denied_link_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited'].includes(result)) return 'denied';
+  if (['error', 'credential_required'].includes(result)) return 'error';
+  return 'confirmation';
+}
+
 export function aggregateCall(allEvents, now) {
   // Events after the first terminal one (for example more retries after the attempts ran out) do not change the row.
   const cut = allEvents.findIndex((e) => e.event === 'confirmation' && TERMINAL.has(e.reason));
@@ -49,8 +57,10 @@ export function aggregateCall(allEvents, now) {
     if (result === 'expired' || result === 'confirmation_pending') errorCode = null;
   } else if (last.event === 'tool_call') {
     const confirmed = confirmations.some((e) => e.reason === 'user_confirmed' || e.reason === 'user_confirmed_no_preview');
+    // The credential or the limit stopped the call after the gateway had allowed it: the row says so instead of a plain error (CC-142).
+    const stopped = { credential_required: 'credential_required', rate_limited: 'rate_limited' }[last.reason];
     if (last.outcome === 'ok') result = confirmed ? 'confirmed' : 'ok';
-    else { result = 'error'; errorCode = last.errorCode ?? null; }
+    else { result = stopped ?? 'error'; errorCode = last.errorCode ?? null; }
   } else {
     result = {
       not_granted: 'denied_not_granted', link_scope: 'denied_link_scope', policy_forbid: 'denied_policy', tool_disabled: 'tool_disabled',

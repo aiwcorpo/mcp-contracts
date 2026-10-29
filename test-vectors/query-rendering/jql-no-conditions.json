@@ -1,0 +1,12 @@
+{
+  "description": "No conditions: only the scope.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ]
+  },
+  "expected": {
+    "query": "project in (\"ABC\")"
+  }
+}

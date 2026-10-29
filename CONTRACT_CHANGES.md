@@ -2478,7 +2478,7 @@ G-15, G-16, G-18, G-22.
 - **Wektory / testy:** test przykładów i mocków; bez nowych wektorów.
 - **SemVer:** minor (nowe odpowiedzi).
 - **Wpływ na strumienie:** ws-07 (idempotencja duplikatu, mapowanie błędów adaptera), ws-08 (komunikaty).
-- **Status:** proposed - zatwierdzone co do kierunku (decyzja: człowiek, 2026-10-27), tekst do akceptacji
+- **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0 (kierunek 2026-10-27; tekst wdrożony bez zmian: `503` dla obu operacji, idempotentny duplikat, `422 not_requestable`)
 
 ## CC-097 | C5/C12 | `change` i wersje definicji w rejestrze (przed/po)
 
@@ -2539,7 +2539,7 @@ G-15, G-16, G-18, G-22.
      "Zatwierdź zmiany" serwera to seria `approve` po stronie frontendu.
   4. Pełny diff pokazuje frontend z istniejących `approvedEntry` i `pendingEntry` (od CC-115 także `title`).
   5. Kamień M4, wydanie z kamieniem (nie 3.0.0).
-- **Status:** accepted (decyzja: człowiek, 2026-10-28; tekst przyjęty), kamień M4, poza 3.0.0 (nie zaimplementowane w OpenAPI; wydanie z kamieniem M4).
+- **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0 (tekst przyjęty 2026-10-28; wdrożony w OpenAPI C5 i C12, reguły zachowania w CC-133)
 
 ## CC-098 | C5/C12 | `resource` w `ConfirmationView`
 
@@ -2750,7 +2750,9 @@ G-15, G-16, G-18, G-22.
 
 - **Zgłasza:** C1 (ws-07)
 - **Propozycja:** rozstrzygnąć `request_access` przy `no_access` bez `requiredEntitlements` i `view_request` przy `connected` z oczekującym wnioskiem na odmówione narzędzie. Razem z wnioskami IGA.
-- **Status:** deferred (decyzja: człowiek, 2026-10-28; grupa C pakietu M2, kamień: M4)
+- **Propozycja przyjęta 2026-10-29:** `request_access` przy `no_access` (i `connected` z odmówionym narzędziem) tylko gdy znane jest `requiredEntitlements`; `view_request` także przy `connected`, gdy użytkownik ma oczekujący wniosek na uprawnienie wymagane przez odmówione narzędzie (zamiast `request_access`). Referencja `scripts/lib/catalog-actions.mjs` (wejścia `entitlementsKnown`, `pendingRequestForDeniedTool`), wektory `catalog-actions/no-access-unknown-entitlements`, `connected-denied-tool-unknown-entitlements`, `connected-denied-tool-request-pending`, opis `getPortalCatalog`.
+- **SemVer:** minor (nowe wektory, doprecyzowanie tabeli).
+- **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0 (poprzednio deferred, 2026-10-28)
 
 ## CC-114 | C4/C12 | Format poświadczenia Basic w `PutSecretRequest`
 
@@ -3126,4 +3128,167 @@ G-15, G-16, G-18, G-22.
 ## CC-132 | C7/C8 | `BundleFetcher` i powód `upstream_unavailable` w słowniku (propozycja CC-A)
 
 - **Propozycja:** klient pobierania paczek w `mcp-policy-bundle` (`latest.json` z `ETag`, limit 16 MiB, kolejność pobrań) oraz powód `upstream_unavailable` w słowniku odrzuceń.
-- **Status:** deferred (decyzja: człowiek, 2026-10-28).
+- **Status:** deferred (decyzja: człowiek, 2026-10-28). Powód `upstream_unavailable` w słowniku odrzuceń zamyka CC-142 (3.2.0); `BundleFetcher` zostaje odłożony.
+
+
+---
+
+## Pakiet M4 (3.2.0) - decyzje człowieka z 2026-10-29
+
+Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. Źródło: `mcp-platform-plan/cc-pakiet-m4.md`
+(kolumna "Decyzja"). Wszystkie wpisy poniżej: accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0.
+
+| CC | Pozycja pakietu | Tytuł | SemVer (wg README) |
+| --- | --- | --- | --- |
+| CC-096, CC-097, CC-113 | A2a, A1a, A2b | wcześniejsze wpisy, wdrożone | minor |
+| CC-133 | A1b-A1d | Reguły rejestru: wdrożenie przez potok zatwierdza, zmiana poza wdrożeniem blokuje, obniżenie `risk` zawsze 422, audyt | minor |
+| CC-134 | A3 (retencja) | Retencja aktywności (konfiguracja, domyślnie 30 dni) i audytu (SIEM 365 dni) | patch (opis) |
+| CC-135 | A4a | Wymiary limitów i limit DESTRUCTIVE jako konfiguracja | patch (opis) |
+| CC-136 | A5d | `context.credentialType` w modelu Cedar | minor (zmiana bajtów schematu) |
+| CC-137 | A7a | Klucze z prefiksem `dev-` odrzucane poza trybem dev | minor |
+| CC-138 | A7b | `environment` w manifeście | minor |
+| CC-139 ... CC-152 | B1-B11, B13-B15 | doprecyzowania, patrz niżej | minor / patch |
+| CC-153 | B12 | `neutralized` i limity argumentów w `ConfirmationArgument` | rejected |
+| CC-154 | A2c, A2d | `GET /api/v1/access-requests/entitlements`, `decidedAt` | minor |
+| CC-155 | A3a, A3b, A3c, A3d, A3e | Offboarding: `purge` brokera i gateway'a, `user_purged`, `unused_cleanup` | minor |
+| CC-156 | A4b-A4f | Odpowiedzi przy przekroczeniu limitu i powody `rate_limited_*` | minor |
+| CC-157 | A5a-A5c | `token-exchange` i `service-account` w `resolve` | minor |
+| CC-158 | A5e | `422 system_not_configured` | minor |
+| CC-159 | A5f | `credential_type_mismatch` przy rejestracji | minor |
+| CC-160 | A6a, A6b | Zapytania serwera ze struktury, nazwy indeksów zamiast wzorców | minor (opis i wektory) |
+
+## CC-133 | C5/C8 | Reguły rejestru: zatwierdzanie, blokada, obniżenie `risk`, ślad w audycie (A1b-A1d)
+
+- **Zgłasza:** gateway (G-13), ws-00; decyzja człowieka 2026-10-29 z doprecyzowaniem
+- **Problem:** CC-097 dodaje pola, ale nie mówi, co robi gateway przy zmianie definicji ani kto zatwierdza wdrożenie.
+- **Wariant:** (1) `PUT` rejestru z certyfikatu `mcp-registry-ci` to wdrożenie i zatwierdza definicje (jak w M3), a narzędzie usunięte z manifestu jest usuwane;
+  (2) definicja podana przez serwer w `tools/list` lub `tools/call`, różna od zatwierdzonej, jest ukryta (`tool_disabled`, powód audytu `definition_changed`)
+  do czasu ręcznego `approve` (`mcp-platform-admin`, hash równy `pendingHash`); (3) obniżenie `risk` to zawsze `422 manifest_rejected`
+  (`reason: risk_lowered`), także przy `approve` i dla narzędzia usuniętego i dodanego ponownie; (4) audyt `admin_change` z powodami `definition_registered`,
+  `definition_approved`, `tool_removed` i opcjonalnym polem `definitionHash`.
+- **Pliki:** `openapi/gateway-admin.v1.yaml` (opis `registerServer` i `approveTool`, `ManifestRejected`, `422`, przykłady), `openapi/portal-bff.v1.yaml` (`422` w `approveAdminTool`),
+  `schemas/audit-event.schema.json` (`definitionHash`, opis `reason`), wektory `audit-events/gateway-registry-*`, `gateway-definition-changed`, README ("Rejestr i przypinanie definicji").
+- **SemVer:** minor (nowe pole opcjonalne, nowe znane wartości, nowy powód w istniejącym `422`).
+- **Wpływ:** ws-05 (zachowanie, audyt), ws-04 i ws-02 (serwery przy zmianie definicji), ws-08 (widok diffu), ws-10.
+- **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-134 | README | Retencja aktywności i audytu (A3, zasada)
+
+- **Wariant:** retencja tabeli aktywności portalu (`/activity`, `/activity/calls`) jest konfiguracją komponentu, domyślnie 30 dni, nie stałą kontraktu; aktywność odchodzącego użytkownika zostaje do końca retencji; pełny audyt C8 idzie na stdout do SIEM, retencja 365 dni po stronie SIEM.
+- **Pliki:** README ("Retencja i offboarding"), opisy `listActivity` i `listActivityCalls`, `listMyActivityCalls`.
+- **SemVer:** patch (opis). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-135 | README | Wymiary limitów i osobny limit DESTRUCTIVE (A4a)
+
+- **Wariant:** trzy liczniki w gateway'u (użytkownik; użytkownik i klient AI; użytkownik i narzędzie); wartości to konfiguracja. Osobny, niższy limit dla DESTRUCTIVE to konfiguracja per narzędzie; kontrakt się nie zmienia poza opisem.
+- **Pliki:** README ("Limity zapytań"), opis C4 (limity brokera są konfiguracją).
+- **SemVer:** patch (opis). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-136 | C7 | `context.credentialType` (A5d)
+
+- **Wariant:** opcjonalny napis w `RequestContext` (jeden z czterech typów z C4), podawany przez wywołującego builder (gateway: odpowiedź brokera na `resolve`; serwer: z własnej konfiguracji, kontrakt nie dodaje nagłówka). Polityka chroni odczyt przez `has`. Przykład: `cedar/examples/credential-type.cedar` (DESTRUCTIVE nie z kontem serwisowym).
+- **Bajty `mcp.cedarschema`:** zmieniają się (atrybut i komentarz nagłówka), SHA-256 `741b441cb5b70f6099204a8d0a30d49047e6f3f512a964865b653f64ce7d6fac` (3.1.x: `cf79068b...`). Biblioteki, paczki polityk i serwery przechodzą na 3.2.0 razem; paczka na schemacie 3.1.x daje `schema_mismatch`.
+- **Pliki:** `cedar/mcp.cedarschema`, `cedar/entity-builder.md`, `EntityBuilder.withCredentialType`, `scripts/lib/entity-builder.mjs`, wektory `entity-builder/credential-type-*`, `policy-decisions/gw-destructive-*credential*`, testy skrótu.
+- **SemVer:** minor (opcjonalny atrybut kontekstu), ze zmianą bajtów jak w 3.1.0. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-137 | C2/C7 | Klucze z prefiksem `dev-` (A7a)
+
+- **Wariant:** rozszerzenie CC-044: odbiorcy (serwery, broker, gateway, odbiorcy paczek) odrzucają `kid`/identyfikator klucza zaczynający się od `dev-` z powodem `test_key_not_allowed`, chyba że jawnie włączono tryb dev (to samo ustawienie co `allowTestKeys`). Lista odcisków kluczy testowych bez zmian.
+- **Pliki:** `BundleVerifier`, `schemas/internal-jwt.schema.json`, README, wektory `jwt/dev-kid-rejected-by-default`, `jwt/valid-dev-kid-in-dev-mode`, `bundles/dev-key-id-rejected-by-default`, `keys/dev-gateway-jwks.json`.
+- **SemVer:** minor (nowa reguła odbiorcy). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-138 | C6 | `environment` w manifeście (A7b)
+
+- **Wariant:** opcjonalne `environment` (`production` | `dev`, brak = `production`, poza `definitionHash`); gateway w trybie produkcyjnym odrzuca `dev`: `422 manifest_rejected`, `reason: environment_mismatch`.
+- **Pliki:** `schemas/server-manifest.schema.json`, opis `registerServer`, wektory `manifests/*environment*`.
+- **SemVer:** minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-139 | C6/common | `OpenSearchIndexPrefix` jako jedna zakotwiczona postać (B1)
+
+- **Zmiana:** `^(?:[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]|[a-z0-9])$` zamiast alternacji na najwyższym poziomie; ten sam język, więc patch. Naprawia użycie jako `contractPattern` przy regule `input-schema-bounded` (CC-123). `ResourceIds.java` zgodnie.
+- **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-140 | README/C6 | Manifest powstaje przy starcie lub w budowie (B2)
+
+- **Zmiana:** opis w README i w schemacie manifestu (patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-141 | C10/C8 | Niedostępna polityka na serwerze, `policy_forbid` i `not_granted` na serwerze (B3)
+
+- **Zmiana:** `upstream_unavailable` także dla braku paczki polityk po restarcie lub własnego błędu silnika polityk (powód audytu `policy_unavailable`); w C8 na serwerze `policy_forbid` to odmowa polityki, `not_granted` zasób nierozwiązany albo bez grantu (patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-142 | C8 | Słownik `reason` i grupy filtra `result` (B4)
+
+- **Zmiana:** znane wartości `link_scope`, `policy_unavailable`, `policy_error`, `upstream_unavailable` (dla `virtual_server_change` i `authenticator`), `provider_revoke_failed`, `authenticator_seed_missing`; `ActivityCall.result` dla `tool_call` z powodem `credential_required` i `rate_limited` (referencja `aggregateCall`, wektory); grupy filtra `result` (ok = ok; denied = `denied_*`, `tool_disabled`, `step_up_required`, `rate_limited`; error = `error`, `credential_required`; confirmation = reszta) w opisie `listActivityCalls` i `listMyActivityCalls`. Zamyka część CC-132 (powód `upstream_unavailable`). minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-143 | README/C8 | Budżet zdarzeń `authentication` i nazwa licznika (B5)
+
+- **Zmiana:** osobny budżet na powód dla `missing_token` i `malformed`, nadmiar tylko w liczniku `mcp_audit_authentication_suppressed_total{component,reason}` (README, patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-144 | README | `resourcePath` w wektorach `gateway-authentication/` (B6)
+
+- **Zmiana:** `resourcePath` to trasa, metadane zasobu (RFC 9728) wskazują adres endpointu (README, patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-145 | README/C11 | Znacznik epoki stanu potwierdzeń (B7)
+
+- **Zmiana:** nazwa "znacznik epoki stanu potwierdzeń" (w jednym magazynie ze stanem, ważny 210 s po utracie) i zachowanie wielu instancji (README, patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-146 | C10/entity-builder | Jedna odmowa `not_found_or_denied` (B8)
+
+- **Zmiana:** (a) jeden stały `message` (`The resource does not exist or you do not have access to it.`, `const` w schemacie); (b) najpierw grant, potem budowa encji i klasyfikacja; (c) kolejka service desku poza linkiem w argumencie to `not_found_or_denied`, nie `access_denied`. Zaostrzenie `message` według tabeli SemVer jest zmianą major; według decyzji człowieka (pakiet M4) wydanie jako minor, jak 3.1.0. Wektory `tool-errors/*not-found-or-denied*`. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-147 | entity-builder | `nothingToQuery()` (B9)
+
+- **Zmiana:** zakres wykluczający wszystko: wyszukiwanie zwraca pusty wynik, pobranie po id `not_found_or_denied` (sekcja 8, patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-148 | cedar/examples | Reguły zapisu Confluence, Service Desk i OpenSearch (B10)
+
+- **Zmiana:** `call` dla `mcp-confluence-write`, `mcp-servicedesk-write`, `mcp-opensearch-write`; `update` na `Confluence::Space`, `ServiceDesk::Queue`/`Ticket`, `OpenSearch::Index`; wektory `policy-decisions/*confluence-update*`, `*servicedesk-add-note*`, `*opensearch-update*`, `srv-confluence-create-page-under-parent-*` (minor). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-149 | entity-builder | Źródła klasyfikacji (B11)
+
+- **Zmiana:** etykiety przestrzeni Confluence i tagi indeksu OpenSearch z systemu albo z konfiguracji serwera, kategoria kolejki z adaptera (lista napisów); etykiety niepełne powodują odrzucenie zasobu (patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-150 | README | "Ostatnie użycie" konta serwisowego (B13)
+
+- **Zmiana:** liczone z wierszy `activity/calls` o wyniku `ok` lub `confirmed` (i `error`, jeśli dotarło do systemu); bez nowego pola (patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-151 | C4 | Domyślny limit startów rejestracji Authenticatora (B14)
+
+- **Zmiana:** 10 startów na godzinę na `sub`, `429 rate_limited` z `Retry-After`, wartość domyślna w opisie (patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-152 | README | `400`/`413` przed weryfikacją JWT (B15)
+
+- **Zmiana:** żądania odrzucone `400` lub `413` przed weryfikacją tokenu nie są zdarzeniami `authentication` (tylko licznik) (patch). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-153 | C5/C12 | `neutralized` i limity argumentów w `ConfirmationArgument` (B12)
+
+- **Propozycja:** opcjonalne `neutralized: boolean`, limit długości `value` (8192) i liczby argumentów (64), wzorzec `name`.
+- **Status:** rejected (decyzja: człowiek, 2026-10-29).
+
+## CC-154 | C12 | Lista uprawnień do zamówienia i `decidedAt` (A2c, A2d)
+
+- **Zmiana:** `GET /api/v1/access-requests/entitlements?system=` (`RequestableEntitlement`: `entitlement`, opcjonalne `description` jako tekst nieufny), opcjonalne `AccessRequest.decidedAt`; `AccessRequestStatus` bez zmian; anulowanie wniosku z portalu dopiero po M4 (poza 3.2.0). Wnioskodawca jak w CC-052 (A2e, bez zmian). minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-155 | C4/C5/C8 | Offboarding (A3a, A3b, A3c, A3d, A3e)
+
+- **Zmiana:** broker `purge` usuwa połączenia i sekrety (wszystkie wersje), przepływy OAuth, rejestrację Authenticatora i wiersz blokady; nowy `POST /admin/v1/users/{sub}/purge` w C5 (CN `mcp-offboarding`): linki, oczekujące potwierdzenia, sesje MCP, cache poświadczeń; aktywność zostaje do końca retencji (CC-134); sesje portalu kończy back-channel logout; trzy wywołania offboardingu są niezależne i idempotentne; audyt `user_purged` (`connection_change`, `virtual_server_change`) i `unused_cleanup` (domyślnie 180 dni, konfiguracja brokera). minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-156 | C10/C1/C8/C4/C12 | Przekroczenie limitu (A4b-A4f)
+
+- **Zmiana:** `tools/call` ponad limit: C10 `rate_limited` z `retryAfterSeconds` >= 1; inne żądania MCP: HTTP `429` z `Retry-After`, ciałem C10 i bez `WWW-Authenticate`; bez nagłówków `X-RateLimit-*`; audyt z powodami `rate_limited_user|client|tool`; `ActivityCall.result` `rate_limited` w grupie `denied`; `429` z `Retry-After` w brokerze (start i zakończenie OAuth) i w BFF (zapis tokenu, operacje Authenticatora). Wektory `gateway-authentication/rate-limited*`. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-157 | C4 | `token-exchange` i `service-account` w `resolve` (A5a, A5b, A5c)
+
+- **Zmiana:** `token-exchange`: `expiresAt` zawsze podane, `cacheTtlSeconds` <= 60 i <= czas do `expiresAt`, nic w OpenBao, `403 exchange_denied` (C10 `access_denied` bez `requiredEntitlements`, audyt `exchange_denied`); `service-account`: klucz z OpenBao (`secret/data/mcp/service-accounts/<system>`), schemat zgodny z systemem (też `Basic`). Schemat `ResolvedCredential` wymaga niepustego `expiresAt` dla `token-exchange`. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-158 | C4/C8 | `422 system_not_configured` (A5e)
+
+- **Zmiana:** system bez konfiguracji w brokerze: `422 system_not_configured` zamiast `400`; gateway odpowiada `internal_error`, loguje przyczynę, audyt `credential_resolve` z powodem `system_not_configured`. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-159 | C5 | `credential_type_mismatch` (A5f)
+
+- **Zmiana:** przy rejestracji i starcie gateway sprawdza, że typ poświadczenia, o który poprosi broker, jest w `credential.acceptedTypes`; inaczej `422 manifest_rejected`, `reason: credential_type_mismatch`. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0
+
+## CC-160 | entity-builder | Zapytania serwera i nazwy indeksów (A6a, A6b)
+
+- **Zmiana:** serwer składa zapytanie ze struktury (nie przyjmuje surowego JQL/CQL), cytuje wartości, warunki użytkownika w nawiasie, `ORDER BY` z listy; OpenSearch rozwiązuje wzorzec `p,p-*` do konkretnych nazw indeksów z pominięciem aliasów i strumieni danych i pyta po liście nazw; alias w argumencie to `not_found_or_denied`. Referencja `scripts/lib/query-rendering.mjs`, wektory `query-rendering/`. `aggregate_logs` wraca po wdrożeniu w serwerze OpenSearch; ws-09 zdejmuje regułę wyłączającą dopiero wtedy. minor (opis i wektory). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 3.2.0

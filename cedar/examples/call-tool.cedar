@@ -78,3 +78,29 @@ when {
   context.refs has jiraProject &&
   !principal.scopes.jiraProjects.containsAll(context.refs.jiraProject)
 };
+
+// Calls that change data (risk UPDATE) need the write group of the system (C9). Where the change is bounded by a scope
+// (Confluence spaces and pages, service desk queues), the server checks `principal in resource.scopes` (update.cedar).
+@id("confluence-call-update")
+permit (
+  principal in UserGroup::"mcp-confluence-write",
+  action == Action::"call",
+  resource is Tool
+)
+when { resource.server == "mcp-confluence" && resource.risk == "UPDATE" };
+
+@id("servicedesk-call-update")
+permit (
+  principal in UserGroup::"mcp-servicedesk-write",
+  action == Action::"call",
+  resource is Tool
+)
+when { resource.server == "mcp-servicedesk" && resource.risk == "UPDATE" };
+
+@id("opensearch-call-update")
+permit (
+  principal in UserGroup::"mcp-opensearch-write",
+  action == Action::"call",
+  resource is Tool
+)
+when { resource.server == "mcp-opensearch" && resource.risk == "UPDATE" };

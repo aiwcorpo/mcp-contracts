@@ -31,9 +31,9 @@ test('entity-builder vectors agree with scripts/lib/entity-builder.mjs', () => {
 import { createHash, createPublicKey } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 
-test('cedar/mcp.cedarschema is frozen for the 3.1 line (byte hash, LF only)', () => {
+test('cedar/mcp.cedarschema is frozen for the 3.2 line (byte hash, LF only)', () => {
   const bytes = readFileSync(path('cedar', 'mcp.cedarschema'));
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), 'cf79068bc845d392a12a96c88431564afc4eb5afc1697cda083180717b7e4d8a');
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), '741b441cb5b70f6099204a8d0a30d49047e6f3f512a964865b653f64ce7d6fac');
   assert.ok(!bytes.includes(0x0d));
 });
 

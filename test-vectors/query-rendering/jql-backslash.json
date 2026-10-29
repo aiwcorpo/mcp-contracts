@@ -1,0 +1,19 @@
+{
+  "description": "A backslash is doubled before the quote is escaped.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ],
+    "conditions": [
+      {
+        "field": "summary",
+        "op": "~",
+        "value": "a\\\"b"
+      }
+    ]
+  },
+  "expected": {
+    "query": "(summary ~ \"a\\\\\\\"b\") AND project in (\"ABC\")"
+  }
+}

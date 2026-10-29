@@ -649,6 +649,17 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 429,
+        "name": "rate_limited",
+        "body": {
+          "error": "rate_limited"
+        },
+        "headers": {
+          "Retry-After": "60",
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 503,
         "name": "upstream_unavailable",
         "body": {
@@ -892,6 +903,17 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 429,
+        "name": "rate_limited",
+        "body": {
+          "error": "rate_limited"
+        },
+        "headers": {
+          "Retry-After": "60",
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 503,
         "name": "upstream_unavailable",
         "body": {
@@ -962,6 +984,7 @@ export const portalBffExamples: OperationExamples[] = [
           "error": "rate_limited"
         },
         "headers": {
+          "Retry-After": "600",
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
@@ -1051,6 +1074,17 @@ export const portalBffExamples: OperationExamples[] = [
           "error": "enrollment_invalid"
         },
         "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 429,
+        "name": "rate_limited",
+        "body": {
+          "error": "rate_limited"
+        },
+        "headers": {
+          "Retry-After": "60",
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
@@ -1199,10 +1233,36 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 200,
+        "name": "approved",
+        "body": [
+          {
+            "requestId": "REQ-2026-0040",
+            "entitlement": "mcp-jira-write",
+            "status": "approved",
+            "createdAt": "2026-10-20T09:00:00Z",
+            "decidedAt": "2026-10-21T11:30:00Z"
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 401,
         "name": "unauthenticated",
         "body": {
           "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -1261,6 +1321,90 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "csrf_invalid",
         "body": {
           "error": "csrf_invalid"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "not_requestable",
+        "body": {
+          "error": "not_requestable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "listRequestableEntitlements",
+    "method": "GET",
+    "route": "/api/v1/access-requests/entitlements",
+    "defaultExample": "confluence",
+    "responses": [
+      {
+        "status": 200,
+        "name": "confluence",
+        "body": [
+          {
+            "entitlement": "mcp-confluence-read",
+            "description": "Read access to Confluence"
+          },
+          {
+            "entitlement": "mcp-confluence-write"
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "not_requestable",
+        "body": {
+          "error": "not_requestable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -1719,7 +1863,9 @@ export const portalBffExamples: OperationExamples[] = [
                   }
                 },
                 "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
-                "status": "pending_approval"
+                "status": "pending_approval",
+                "change": "new",
+                "approvedInVersion": null
               }
             ]
           }
@@ -1828,7 +1974,9 @@ export const portalBffExamples: OperationExamples[] = [
             },
             "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb"
           },
-          "pendingHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb"
+          "pendingHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
+          "approvedInVersion": null,
+          "pendingVersion": "1.4.0"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -1924,6 +2072,18 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "hash_mismatch",
         "body": {
           "error": "hash_mismatch"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "risk_lowered",
+        "body": {
+          "error": "manifest_rejected",
+          "reason": "risk_lowered",
+          "message": "update_issue lowers risk from UPDATE to READ_ONLY"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

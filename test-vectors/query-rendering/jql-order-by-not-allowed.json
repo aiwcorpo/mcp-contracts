@@ -1,0 +1,16 @@
+{
+  "description": "ORDER BY accepts only an allowlisted field and ASC or DESC.",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ],
+    "orderBy": {
+      "field": "summary ASC, project",
+      "direction": "ASC"
+    }
+  },
+  "expected": {
+    "error": "nothing_to_query_or_not_allowed"
+  }
+}

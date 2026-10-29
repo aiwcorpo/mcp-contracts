@@ -1,0 +1,19 @@
+{
+  "description": "A value that tries to close the literal and add an OR: it stays inside the quotes (CC-160).",
+  "kind": "jql",
+  "input": {
+    "scope": [
+      "ABC"
+    ],
+    "conditions": [
+      {
+        "field": "text",
+        "op": "~",
+        "value": "x\" OR project = \"HR"
+      }
+    ]
+  },
+  "expected": {
+    "query": "(text ~ \"x\\\" OR project = \\\"HR\") AND project in (\"ABC\")"
+  }
+}

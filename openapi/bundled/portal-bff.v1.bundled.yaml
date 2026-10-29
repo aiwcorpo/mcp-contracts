@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 3.1.2-SNAPSHOT
+  version: 3.2.0-SNAPSHOT
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -24,6 +24,10 @@ info:
     Error bodies for statuses whose body C12 does not define use the generic `Error` shape (CC-012).
     Operations backed by the broker (C4) or the gateway admin API (C5) answer `503 upstream_unavailable` when
     those (or the IdP token exchange) fail; there are no partial answers (CC-050).
+
+    Limits (CC-156). The BFF limits per session the writing of a token (`PUT /connections/{system}/secret`) and the
+    operations of the authenticator; over a limit it answers `429 rate_limited` with `Retry-After` (seconds, at least
+    1). The values are configuration, not contract, and no `X-RateLimit-*` header is sent.
 
     Correlation: the BFF creates a requestId (UUIDv7) per request (a value sent by the client is ignored) and
     sends it to the broker and gateway in `X-Request-Id`, so their audit events and the portal's share one
@@ -198,6 +202,11 @@ paths:
 
         `request_access` is added to `expiring`, `reconnect_required` and `not_connected` never, whatever the denied tools (CC-110;
         vectors `catalog-actions/`).
+
+        Two rules for requests (CC-113). `request_access` is offered only when the catalog names `requiredEntitlements` for
+        a denied tool (without them there is nothing to ask for, so `no_access` then has no action). When the user has a
+        pending request for an entitlement that a denied tool needs, `view_request` is returned instead of
+        `request_access`, also for a server whose status is `connected`.
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
         (CC-080).
@@ -618,6 +627,8 @@ paths:
                 secret_invalid:
                   value:
                     error: secret_invalid
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/connections/{system}:
@@ -774,6 +785,8 @@ paths:
           $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/CsrfInvalid"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/authenticator/enrollment:
@@ -833,9 +846,15 @@ paths:
                     error: already_registered
         "429":
           headers:
+            Retry-After:
+              description: Seconds to wait, at least 1.
+              schema:
+                type: integer
+                minimum: 1
+              example: 600
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
-          description: Too many enrollment starts (broker limit).
+          description: Too many enrollment starts (broker limit, default 10 per hour, CC-151).
           content:
             application/json:
               schema:
@@ -909,6 +928,8 @@ paths:
                 enrollment_invalid:
                   value:
                     error: enrollment_invalid
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/confirmations/{id}/viewed:
@@ -1013,13 +1034,26 @@ paths:
                       status: pending
                       createdAt: 2026-10-25T09:00:00Z
                       requestUrl: https://iga.internal/requests/REQ-2026-0042
+                approved:
+                  value:
+                    - requestId: REQ-2026-0040
+                      entitlement: mcp-jira-write
+                      status: approved
+                      createdAt: 2026-10-20T09:00:00Z
+                      decidedAt: 2026-10-21T11:30:00Z
         "401":
           $ref: "#/components/responses/Unauthenticated"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
     post:
       tags:
         - access-requests
       operationId: createAccessRequest
       summary: Request an entitlement (C13 request); result depends on the IGA adapter.
+      description: |
+        When a request for the entitlement is already pending, the BFF answers 200 with the requestId of that request
+        (CC-096): the user wants to reach the request, not to read an error. An adapter without a request flow
+        (`keycloak-groups`: a catalog without requests) or an unknown entitlement is `422 not_requestable`.
       security:
         - session: []
           csrf: []
@@ -1056,6 +1090,78 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/CsrfInvalid"
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The IGA adapter has no request flow or does not know the entitlement.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                not_requestable:
+                  value:
+                    error: not_requestable
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/access-requests/entitlements:
+    get:
+      tags:
+        - access-requests
+      operationId: listRequestableEntitlements
+      summary: Entitlements of a system that the user can request (C13 catalog, CC-154).
+      description: |
+        For a request made from a server row, where no single entitlement is obvious: the BFF returns what
+        `catalog(system)` of the IGA port gives, limited to entitlements the user can order, and the UI lets the user
+        choose before sending. `description` comes from the IGA and is untrusted text (shown as text, never as markup).
+        An adapter without a request flow answers `422 not_requestable`.
+      security:
+        - session: []
+      parameters:
+        - name: system
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/SystemId"
+          example: confluence
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Entitlements the user can request, possibly none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RequestableEntitlement"
+              examples:
+                confluence:
+                  value:
+                    - entitlement: mcp-confluence-read
+                      description: Read access to Confluence
+                    - entitlement: mcp-confluence-write
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The IGA adapter has no request flow.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                not_requestable:
+                  value:
+                    error: not_requestable
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/virtual-servers:
     get:
       tags:
@@ -1304,7 +1410,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group. confirmation covers pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum:
@@ -1338,7 +1444,7 @@ paths:
                 type: string
                 maxLength: 256
               example: eyJwIjoiMjAyNi0xMC0yNlQxOTo1MDowMFoiLCJtIjoiYWJjMTIzIn0.c2ln
-          description: Newest first; at most 30 days back. X-Next-Cursor is present when more rows exist.
+          description: Newest first; at most the retention window back (30 days by default, CC-134). X-Next-Cursor is present when more rows exist.
           content:
             application/json:
               schema:
@@ -1468,6 +1574,8 @@ paths:
                               destructiveHint: false
                           definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
+                          change: new
+                          approvedInVersion: null
                 opensearch_disabled:
                   value:
                     - serverId: mcp-opensearch
@@ -1537,6 +1645,8 @@ paths:
                           destructiveHint: false
                       definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                     pendingHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                    approvedInVersion: null
+                    pendingVersion: 1.4.0
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1553,7 +1663,7 @@ paths:
       tags:
         - admin
       operationId: approveAdminTool
-      summary: Approve a pending tool definition (proxy to C5).
+      summary: Approve a pending tool definition (proxy to C5). The manual way to accept a change made outside a deployment (CC-133).
       security:
         - session: []
           csrf: []
@@ -1592,6 +1702,21 @@ paths:
                 hash_mismatch:
                   value:
                     error: hash_mismatch
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The pending definition lowers the risk of the approved one; it is never approved (CC-133).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestRejected"
+              examples:
+                risk_lowered:
+                  value:
+                    error: manifest_rejected
+                    reason: risk_lowered
+                    message: update_issue lowers risk from UPDATE to READ_ONLY
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
 components:
@@ -1731,11 +1856,30 @@ components:
             not_found_or_denied:
               value:
                 error: not_found_or_denied
+    TooManyRequests:
+      headers:
+        Retry-After:
+          description: Seconds to wait, at least 1.
+          schema:
+            type: integer
+            minimum: 1
+          example: 60
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      description: A limit of the BFF was exceeded (CC-156). Retry-After says how long to wait; no header names a limit or a setting.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            rate_limited:
+              value:
+                error: rate_limited
     UpstreamUnavailable:
       headers:
         X-Request-Id:
           $ref: "#/components/headers/RequestId"
-      description: "The broker, the gateway admin API or the IdP token exchange did not answer or answered with an error the BFF does not pass on (CC-050). No partial data: the catalog is either complete or 503. Upstream bodies are never forwarded."
+      description: "The broker, the gateway admin API, the IGA or the IdP token exchange did not answer or answered with an error the BFF does not pass on (CC-050). No partial data: the catalog is either complete or 503. Upstream bodies are never forwarded."
       content:
         application/json:
           schema:
@@ -1936,10 +2080,25 @@ components:
           $ref: "#/components/schemas/AccessRequestStatus"
         createdAt:
           $ref: "#/components/schemas/Timestamp"
+        decidedAt:
+          description: When the IGA decided the request (approved or rejected). Absent while the request is pending (CC-154).
+          $ref: "#/components/schemas/Timestamp"
         requestUrl:
           type: string
           format: uri
           description: Page of the request in the IGA, when the adapter has one.
+      additionalProperties: false
+    RequestableEntitlement:
+      type: object
+      required:
+        - entitlement
+      properties:
+        entitlement:
+          $ref: "#/components/schemas/GroupName"
+        description:
+          type: string
+          maxLength: 500
+          description: Text of the IGA catalog, untrusted.
       additionalProperties: false
     AccessRequestCreate:
       type: object
@@ -2436,9 +2595,9 @@ components:
       items:
         $ref: "#/components/schemas/GitLabGroupPath"
     OpenSearchIndexPrefix:
-      description: "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'."
+      description: "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'. One anchored expression without an alternation at the top level, so that it satisfies the input-schema-bounded rule when a tool uses it as a contractPattern (CC-139); it matches the same strings as before."
       type: string
-      pattern: ^[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]$|^[a-z0-9]$
+      pattern: ^(?:[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]|[a-z0-9])$
     OpenSearchIndexPrefixes:
       type: array
       minItems: 1
@@ -2528,6 +2687,10 @@ components:
         - step_up_required
         - upstream_unavailable
         - internal_error
+    DefinitionHash:
+      description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
     ActivityCall:
       type: object
       required:
@@ -2613,10 +2776,6 @@ components:
         annotations:
           type: object
       additionalProperties: false
-    DefinitionHash:
-      description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
-      type: string
-      pattern: ^sha256:[0-9a-f]{64}$
     ToolEntryFields:
       description: Fields of a manifest tool entry, open for composition (used by the gateway registry API).
       type: object
@@ -2659,6 +2818,17 @@ components:
       properties:
         status:
           $ref: "#/components/schemas/RegistryToolStatus"
+        change:
+          type: string
+          enum:
+            - new
+            - changed
+          description: Present exactly when status is pending_approval. new means no approved entry exists, changed means an approved entry exists and differs (CC-097).
+        approvedInVersion:
+          description: Version of the manifest at which the approved entry was approved; null for a new tool that has no approved entry. Absent only for an approved tool whose version was not recorded before this field existed (CC-097).
+          oneOf:
+            - $ref: "#/components/schemas/SemVer"
+            - type: "null"
       unevaluatedProperties: false
     RegistryServer:
       type: object
@@ -2695,7 +2865,16 @@ components:
         - approvedEntry
         - pendingEntry
         - pendingHash
+        - pendingVersion
       properties:
+        approvedInVersion:
+          description: Version of the manifest at which approvedEntry was approved; null when approvedEntry is null (CC-097).
+          oneOf:
+            - $ref: "#/components/schemas/SemVer"
+            - type: "null"
+        pendingVersion:
+          description: Version of the manifest in which the pending entry appeared (CC-097).
+          $ref: "#/components/schemas/SemVer"
         approvedEntry:
           description: Currently approved entry; null for a new tool.
           oneOf:
@@ -2713,6 +2892,22 @@ components:
       properties:
         definitionHash:
           $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    ManifestRejected:
+      type: object
+      description: 422 of a registration or an approval (CC-133). reason is a known value or absent for the older rejections (a hash that does not match, a rule of the manifest).
+      required:
+        - error
+      properties:
+        error:
+          const: manifest_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+          description: Known values are risk_lowered, environment_mismatch (CC-138) and credential_type_mismatch (CC-159). A client must show an unknown value as a generic message.
+        message:
+          type: string
+          maxLength: 500
       additionalProperties: false
     AuditEvent:
       title: Audit event (C8)
@@ -2801,7 +2996,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited. For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool, client and virtualServer from the internal JWT). For event virtual_server_change (gateway, CC-116; before 3.0.0 these were admin_change, CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied (the list of tools of a link is not a field of this schema). event admin_change is left for the other administrative changes of the gateway (registry approvals) and has no list of reasons in the contract; the vs_* reasons are not emitted with admin_change since 3.0.0. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, user_purged, unused_cleanup, definition_changed, link_scope, policy_unavailable, policy_error. For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied) and system_not_configured (the system is not configured in the broker, CC-158, outcome error). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). For event virtual_server_change the offboarding purge of the gateway records user_purged (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool, client and virtualServer from the internal JWT). For event virtual_server_change (gateway, CC-116; before 3.0.0 these were admin_change, CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied, and upstream_unavailable when a store behind the operation is down (the list of tools of a link is not a field of this schema; CC-142). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: link_scope (the tool or resource lies outside the virtual server link, decision deny), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) and definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133). On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway registry with reasons definition_registered (a manifest was registered by the pipeline, which approves its definitions, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and tool_removed (a tool left the registered manifest); other reasons are not defined. The vs_* reasons are not emitted with admin_change since 3.0.0. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
@@ -2826,6 +3021,9 @@ components:
           description: Length in bytes of the serialized arguments; the only trace of arguments allowed in audit.
           type: integer
           minimum: 0
+        definitionHash:
+          description: "Hash of the tool definition an admin_change concerns (CC-133): for definition_approved the approved hash, for definition_registered the hash of each registered definition (one event per tool), for tool_removed the hash of the removed entry. Together with sub (the administrator) and tool it tells afterwards who approved which definition. Not a secret."
+          $ref: "#/components/schemas/DefinitionHash"
       allOf:
         - description: "Authenticator events (CC-094) always say how they ended (outcome) and why (reason). The field list stays closed through additionalProperties: there is no field that could carry a code, a seed or an otpauth URI."
           if:

@@ -1,0 +1,51 @@
+{
+  "description": "The answer of the system lists an alias named like a granted prefix that points to another team, a data stream and a look-alike index. Only concrete indices of the grant are queried, and the query goes to their names (CC-160).",
+  "kind": "opensearch-resolve",
+  "input": {
+    "granted": [
+      "logs-team-a"
+    ],
+    "resolved": {
+      "indices": [
+        {
+          "name": "logs-team-a-2026.10",
+          "aliases": []
+        },
+        {
+          "name": "logs-team-a"
+        },
+        {
+          "name": "logs-team-ab"
+        },
+        {
+          "name": "logs-team-b-1",
+          "aliases": [
+            "logs-team-a-all"
+          ]
+        }
+      ],
+      "aliases": [
+        {
+          "name": "logs-team-a-all",
+          "indices": [
+            "logs-team-b-1"
+          ]
+        }
+      ],
+      "data_streams": [
+        {
+          "name": "logs-team-a-stream",
+          "backing_indices": [
+            ".ds-logs-team-a-stream-000001"
+          ]
+        }
+      ]
+    }
+  },
+  "expected": {
+    "query": [
+      "logs-team-a",
+      "logs-team-a-2026.10"
+    ]
+  }
+}

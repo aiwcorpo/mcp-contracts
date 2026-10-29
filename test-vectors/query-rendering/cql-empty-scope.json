@@ -1,0 +1,10 @@
+{
+  "description": "No granted space: no query.",
+  "kind": "cql",
+  "input": {
+    "scope": []
+  },
+  "expected": {
+    "error": "nothing_to_query_or_not_allowed"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "Connected, a tool is denied and the user already has a pending request for the entitlement it needs: view_request instead of request_access (CC-113).",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": true,
+    "hasConnection": true,
+    "pendingRequestForDeniedTool": true
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "view_request"
+    ]
+  }
+}

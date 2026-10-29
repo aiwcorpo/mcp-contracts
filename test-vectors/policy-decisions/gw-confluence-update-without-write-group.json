@@ -1,0 +1,133 @@
+{
+  "description": "Confluence reader calls an UPDATE tool.",
+  "covers": [
+    "write_without_write_group"
+  ],
+  "builder": {
+    "level": "gateway",
+    "staticEntities": "cedar/examples/static-entities.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000009",
+        "usr": "confluencereader",
+        "grp": [
+          "mcp-confluence-read",
+          "mcp-confluence-space-ENG"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-confluence",
+        "system": "confluence",
+        "name": "create_page",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "parentId",
+            "type": "Confluence::Page"
+          }
+        ]
+      },
+      "arguments": {
+        "parentId": "1001"
+      }
+    }
+  },
+  "policies": "cedar/examples",
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000009"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "confluence__create_page"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": {
+        "confluencePage": [
+          "1001"
+        ]
+      }
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "confluence__create_page"
+      },
+      "attrs": {
+        "server": "mcp-confluence",
+        "name": "create_page",
+        "risk": "UPDATE"
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000009"
+      },
+      "attrs": {
+        "username": "confluencereader",
+        "client": "claude-code",
+        "scopes": {
+          "jiraProjects": [],
+          "confluenceSpaces": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Confluence::Space/ENG"
+              }
+            }
+          ],
+          "gitlabGroups": [],
+          "opensearchIndexPrefixes": [],
+          "servicedeskQueues": []
+        }
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-confluence-space-ENG"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-confluence-space-ENG"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Confluence::Space/ENG"
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}
