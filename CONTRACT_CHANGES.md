@@ -3332,17 +3332,26 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 - **Pliki:** `cedar/examples/credential-type.cedar`, `PolicyDecisionVectorTest`, `scripts/generate-cedar-vectors.mjs`, README.
 - **SemVer:** zaostrzenie reguły przykładowej: nie zmienia schematu ani bajtów `mcp.cedarschema`; paczki zbudowane na przykładzie 4.0.0 trzeba przebudować; wydane jako patch 4.0.1 na decyzję człowieka (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.0.1 (wyjątek SemVer opisany w README, decyzja człowieka 2026-10-29)
 
-## CC-165 | C8/C5/C12 | Powody audytu rate limit, definicji i wymiany tokenu jako odmowa w aktywności
+## CC-165 | C8/C5/C12 | Wynik wiersza aktywności z powodu ostatniego zdarzenia (zmiana wyniku istniejących wierszy)
 
-- **Zmiana:** `rate_limited_user|client|tool` dają wynik wiersza `rate_limited`, `definition_changed` i `tool_not_served` wynik `tool_disabled`, `exchange_denied` wynik `denied_not_granted`; wszystkie w grupie filtra `denied`. Referencja `scripts/lib/activity-calls.mjs`, po jednym wektorze `activity-calls/aggregation-denied-*` na powód.
-- **SemVer:** minor (nowe znane powody mapowane na istniejące wartości). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+- **Zmiana:** powody `rate_limited_user|client|tool`, `definition_changed`, `tool_not_served` i `exchange_denied` były już znane w 4.0.x, ale wiersz z takim powodem miał wynik `error`. Teraz: `rate_limited_*` -> `rate_limited`,
+  `definition_changed` i `tool_not_served` -> `tool_disabled`, `exchange_denied` -> `denied_not_granted`; wszystkie w grupie filtra `denied`. Dla `tool_call` z `outcome` innym niż `ok` obowiązuje teraz cała mapa powodów, więc zmieniają się też
+  wiersze z powodami `not_granted` (`denied_not_granted`), `link_scope` (`denied_link_scope`), `policy_forbid` (`denied_policy`), `tool_disabled` i `step_up_required`: wcześniej `error`.
+- **Normatywny kształt `exchange_denied`:** `tool_call` z `decision: allow`, `outcome: denied`, `errorCode: access_denied` (gateway zdążył dopuścić wywołanie, IdP odmówił wymiany). Portal nie proponuje `request_access` na podstawie samego `result`.
+- **Pliki:** `scripts/lib/activity-calls.mjs`, wektory `activity-calls/aggregation-denied-*` (`policy_decision`) i `aggregation-tool-call-denied-*` (`tool_call`), opis filtra `result` w OpenAPI.
+- **SemVer:** `result` to otwarty napis, żadna wartość nie znika; zmiana wyniku istniejących wierszy jest minor. **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
 
-## CC-166 | C3/C8/C10 | Typ poświadczenia: nagłówek `X-MCP-Credential-Type` a konfiguracja serwera
+## CC-166 | C3/C8/C10 | Typ poświadczenia: nagłówek `X-MCP-Credential-Type` a konfiguracja
 
-- **Zmiana:** gateway wysyła typ poświadczenia w `X-MCP-Credential-Type` obok `X-MCP-Credential`; serwer porównuje go z typem z własnej konfiguracji. Rozjazd, brak nagłówka albo wartość spoza czterech typów to odmowa: C10 `internal_error` bez szczegółów, audyt `policy_decision`/`tool_call` z powodem `credential_type_mismatch` (`decision: deny`, `outcome: error`). Referencja `scripts/lib/credential-type-check.mjs`, wektory `credential-type-header/` (6) i `audit-events/server-credential-type-mismatch`.
-- **SemVer:** minor (nowy nagłówek żądania i nowy powód; serwery bez sprawdzenia dalej działają, ale tracą ochronę). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+- **Zmiana:** nagłówek (istniejący w C3) niesie typ zwrócony przez broker. Jedyne źródło prawdy to konfiguracja systemu w gateway'u: gdy broker zwróci inny typ, gateway odmawia (`internal_error`, audyt `credential_resolve` z powodem `credential_type_mismatch`).
+  Serwer porównuje nagłówek z własną konfiguracją przed Cedar, sondą grantu i resolverami; dotyczy tylko żądań z `X-MCP-Credential` (brak nagłówka, nieznana wartość lub różnica = odmowa `internal_error`, audyt `credential_type_mismatch`).
+  Założenie modelu zagrożeń: mTLS + JWT między gateway'em a serwerem wystarcza, bez claimu typu.
+- **Pliki:** `scripts/lib/credential-type-check.mjs`, wektory `credential-type-header/` (9), audyt `server-credential-type-mismatch` i `gateway-credential-type-mismatch`, README.
+- **SemVer:** serwer, który nie ma sprawdzenia, dalej działa (traci ochronę); nowy serwer ze starym gateway'em działa, bo stary gateway już wysyła nagłówek (z typu brokera), o ile typ zgadza się z konfiguracją serwera; wdrażać razem. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
 
-## CC-167 | README | Limity przy niedostępnym Redisie, podłoga ryzyka, `credentialType` przy dwóch typach
+## CC-167 | C5/README | Limity fail-closed, podłoga ryzyka, `acceptRiskLowering`
 
-- **Zmiana (opis):** limity w gateway'u przy niedostępnym Redisie odmawiają (`upstream_unavailable` w wyniku narzędzia, HTTP `503` dla innych żądań), fail-closed; podłoga ryzyka to najwyższe ryzyko kiedykolwiek zgłoszone dla narzędzia (także oczekujące), każde niższe zgłoszenie to `422 risk_lowered`; `context.credentialType` dla systemu z dwoma typami to typ z konfiguracji systemu w gateway'u.
-- **SemVer:** patch (opis); podłoga ryzyka doprecyzowuje CC-133 (`422 risk_lowered`). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+- **Zmiana:** limity przy niedostępnym Redisie odmawiają (`upstream_unavailable`, HTTP `503` w kształcie C10 z `Retry-After`, bez `WWW-Authenticate`; wektor `gateway-authentication/rate-limit-store-unavailable`). Podłoga ryzyka to najwyższe ryzyko kiedykolwiek zgłoszone dla narzędzia, także oczekujące;
+  niższe zgłoszenie z potoku to `422 risk_lowered`. Nowe `ApproveRequest.acceptRiskLowering` (tylko `mcp-platform-admin`, nigdy potok): jawna droga w dół, audyt `admin_change` z powodem `risk_lowered_by_admin`. Wpisy `source: server` nie podnoszą podłogi.
+  `context.credentialType` dla systemu z dwoma typami to typ z konfiguracji systemu w gateway'u.
+- **SemVer:** liczenie wpisu oczekującego w podłodze jest według tabeli zaostrzeniem walidacji (major); wydane jako minor na decyzję człowieka 2026-10-29 (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0

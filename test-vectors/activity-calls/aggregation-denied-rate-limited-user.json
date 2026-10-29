@@ -1,5 +1,5 @@
 {
-  "description": "A refusal with reason rate_limited_user is the row result rate_limited, in the filter group denied (CC-165).",
+  "description": "A policy_decision refusal with reason rate_limited_user is the row result rate_limited, in the filter group denied (CC-165).",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {

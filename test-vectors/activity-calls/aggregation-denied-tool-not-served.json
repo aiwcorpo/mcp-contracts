@@ -1,5 +1,5 @@
 {
-  "description": "A refusal with reason tool_not_served is the row result tool_disabled, in the filter group denied (CC-165).",
+  "description": "A policy_decision refusal with reason tool_not_served is the row result tool_disabled, in the filter group denied (CC-165).",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {

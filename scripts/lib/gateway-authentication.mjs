@@ -21,6 +21,15 @@ export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourceP
       body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: wait },
     };
   }
+  // CC-167: the counter of the limits is down, so the request is refused (fail-closed), like the key set above, with no challenge.
+  if (reason === 'rate_limit_store_unavailable') {
+    return {
+      status: 503,
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': String(retryAfterSeconds) },
+      absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
+      body: { error: 'upstream_unavailable', message: 'Request limits are temporarily unavailable. Try again in a few seconds.' },
+    };
+  }
   if (INFRASTRUCTURE.has(reason)) {
     return {
       status: 503,

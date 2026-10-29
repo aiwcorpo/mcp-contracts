@@ -1,0 +1,24 @@
+{
+  "description": "The counter of the limits does not answer: the request is refused (fail-closed) with 503 upstream_unavailable, Retry-After, no challenge (CC-167).",
+  "input": {
+    "reason": "rate_limit_store_unavailable",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/s/mcp-jira"
+  },
+  "expected": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "10"
+    },
+    "absentHeaders": [
+      "WWW-Authenticate",
+      "Set-Cookie"
+    ],
+    "body": {
+      "error": "upstream_unavailable",
+      "message": "Request limits are temporarily unavailable. Try again in a few seconds."
+    }
+  }
+}

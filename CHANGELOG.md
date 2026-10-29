@@ -6,17 +6,19 @@ ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcj
 
 ## 4.1.0 - 2026-10-29
 
-Wydanie minor: nowe znane wartości i nagłówek żądania, bez zmian łamiących i bez zmiany bajtów `mcp.cedarschema` (SHA-256 jak w 4.0.0). Nowe CC: CC-165 ... CC-167.
+Wydanie minor z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): podłoga ryzyka liczy wpis oczekujący (CC-167). Bajty `mcp.cedarschema` bez zmian (SHA-256 jak w 4.0.0). Nowe CC: CC-165 ... CC-167.
 
-- **Aktywność (CC-165):** powody `rate_limited_user|client|tool`, `definition_changed`, `tool_not_served` i `exchange_denied` są odmową w `ActivityCall.result` i w grupie filtra `denied`
-  (wyniki `rate_limited`, `tool_disabled`, `denied_not_granted`); wektory `activity-calls/aggregation-denied-*`.
-- **Typ poświadczenia (CC-166):** nagłówek `X-MCP-Credential-Type` od gateway'a; serwer odmawia przy rozjeździe z konfiguracją, braku nagłówka lub nieznanej wartości
-  (C10 `internal_error`, audyt `credential_type_mismatch`); wektory `credential-type-header/`.
-- **Opisy (CC-167):** limity przy niedostępnym Redisie fail-closed, podłoga ryzyka (najwyższe zgłoszone, także oczekujące), `context.credentialType` z konfiguracji systemu.
+- **Aktywność (CC-165):** zmiana wyniku istniejących wierszy, nie nowe powody (te były znane w 4.0.x): `rate_limited_user|client|tool` -> `rate_limited`, `definition_changed` i `tool_not_served` -> `tool_disabled`,
+  `exchange_denied` -> `denied_not_granted`, wszystko w grupie `denied`. Dla `tool_call` z `outcome` innym niż `ok` obowiązuje cała mapa, więc wiersze z `not_granted`, `link_scope`, `policy_forbid`, `step_up_required`
+  zmieniają wynik z `error` na `denied_*`. Normatywny kształt `exchange_denied`: `tool_call` allow z `outcome: denied`. Wektory `activity-calls/aggregation-denied-*` i `aggregation-tool-call-denied-*`.
+- **Typ poświadczenia (CC-166):** nagłówek `X-MCP-Credential-Type` (istniejący w C3) niesie typ zwrócony przez broker; gateway odmawia, gdy różni się od konfiguracji systemu; serwer odmawia przed Cedar, sondą
+  i resolverami przy rozjeździe, braku lub nieznanej wartości, ale tylko dla żądań z `X-MCP-Credential`. Wektory `credential-type-header/`.
+- **Rejestr (CC-167):** podłoga ryzyka (najwyższe zgłoszone, także oczekujące); jedyna droga w dół to `approve` z `acceptRiskLowering: true` (`mcp-platform-admin`), audyt `risk_lowered_by_admin`. Limity fail-closed
+  przy niedostępnym Redisie (503 w kształcie C10). `context.credentialType` z konfiguracji systemu.
 
-Migracja: **ws-05 gateway:** wysyła `X-MCP-Credential-Type`, mapuje powody na wyniki aktywności, limity fail-closed przy Redisie, podłoga ryzyka, typ z konfiguracji systemu.
-**ws-02 starter / ws-04 serwery:** porównują nagłówek z konfiguracją i odmawiają (`internal_error`, `credential_type_mismatch`). **ws-08:** bez zmian poza etykietami wyników, które już istnieją.
-**ws-10:** scenariusze rozjazdu typu i Redisa niedostępnego.
+Migracja: **ws-05 gateway:** podłoga ryzyka i `acceptRiskLowering`, odmowa przy typie brokera różnym od konfiguracji, mapowanie powodów na wyniki, limity fail-closed (503 z `Retry-After`).
+**ws-02 starter / ws-04 serwery:** sprawdzenie nagłówka przed Cedar, sondą i resolverami, tylko przy `X-MCP-Credential`. **ws-07 BFF / ws-08 web:** pole `acceptRiskLowering` w `approve` dla admina; wyniki aktywności bez nowych
+etykiet; nie proponować `request_access` na podstawie samego `result`. **ws-10:** rozjazd typu, `tool_call` z odmowami, Redis niedostępny, obniżenie ryzyka przez admina.
 
 ## 4.0.1 - 2026-10-29
 

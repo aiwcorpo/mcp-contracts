@@ -1,0 +1,14 @@
+{
+  "description": "A request with X-MCP-Credential and no header: refused (fail-closed), the server does not guess the type.",
+  "input": {
+    "side": "server",
+    "header": null,
+    "configured": "user-oauth",
+    "credentialPresent": true
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "internal_error",
+    "auditReason": "credential_type_mismatch"
+  }
+}

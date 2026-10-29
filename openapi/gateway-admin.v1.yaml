@@ -758,7 +758,7 @@ paths:
         definitionHash must equal the current pendingHash, otherwise 409 and nothing changes. Approval is the way to accept
         what a deployment through PUT left pending (a new or changed UPDATE or DESTRUCTIVE tool) and a definition that changed
         outside a deployment (CC-133). An entry that lowers risk (the approved risk is higher than the pending one) cannot be approved: 422
-        manifest_rejected. The approval is audited as admin_change with reason definition_approved, the administrator
+        manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; the pipeline never can, CC-167). The approval is audited as admin_change with reason definition_approved (risk_lowered_by_admin when a lowering was accepted), the administrator
         as sub and the approved hash as definitionHash.
       security:
         - mtls: []
@@ -773,6 +773,10 @@ paths:
               approve:
                 value:
                   definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+              approve_lower_risk:
+                value:
+                  definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                  acceptRiskLowering: true
       responses:
         '204':
           description: Approved.
@@ -793,7 +797,7 @@ paths:
                   value:
                     error: hash_mismatch
         '422':
-          description: The pending entry lowers the risk of the approved one; it is never approved (CC-133).
+          description: The pending entry lowers the risk floor and acceptRiskLowering was not given; it is not approved (CC-133, CC-167).
           content:
             application/json:
               schema:
@@ -885,7 +889,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group (CC-142). ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). The result of a row comes from the reason of the last event of the call (mapping in CC-165, scripts/lib/activity-calls.mjs). A UI must not offer request_access on the result alone, because the C10 error access_denied carries no requiredEntitlements. ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -1592,6 +1596,10 @@ components:
       properties:
         definitionHash:
           $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
+        acceptRiskLowering:
+          type: boolean
+          default: false
+          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk. Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
       additionalProperties: false
     ActivityCall:
       type: object

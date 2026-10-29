@@ -1,0 +1,39 @@
+{
+  "description": "A tool_call that the gateway allowed and whose token exchange the IdP refused: reason exchange_denied, outcome denied, access_denied; the row is denied_not_granted (CC-165).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e87",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "tool_call",
+      "server": "mcp-opensearch",
+      "tool": "search",
+      "risk": "READ_ONLY",
+      "resource": {
+        "type": "OpenSearch::Index",
+        "id": "logs-team-a-2026.10"
+      },
+      "decision": "allow",
+      "reason": "exchange_denied",
+      "outcome": "denied",
+      "errorCode": "access_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e87",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "opensearch__search",
+    "risk": "READ_ONLY",
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10"
+    },
+    "result": "denied_not_granted",
+    "errorCode": "access_denied"
+  }
+}

@@ -1332,7 +1332,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group (CC-142). ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). The result of a row comes from the reason of the last event of the call (mapping in CC-165, scripts/lib/activity-calls.mjs). A UI must not offer request_access on the result alone, because the C10 error access_denied carries no requiredEntitlements. ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -1690,7 +1690,7 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: The pending definition lowers the risk of the approved one; it is never approved (CC-133).
+          description: The pending definition lowers the risk floor and acceptRiskLowering was not given; it is not approved (CC-133, CC-167).
           content:
             application/json:
               schema:

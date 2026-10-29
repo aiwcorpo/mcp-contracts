@@ -1,0 +1,41 @@
+{
+  "description": "A tool_call refusal with reason rate_limited_client is the row result rate_limited (CC-165); before 4.1.0 the row was error.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e93",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "tool_call",
+      "server": "mcp-jira",
+      "tool": "get_issue",
+      "risk": "READ_ONLY",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "decision": "deny",
+      "reason": "rate_limited_client",
+      "outcome": "denied",
+      "errorCode": "rate_limited"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e93",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "jira__get_issue",
+    "risk": "READ_ONLY",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "result": "rate_limited",
+    "errorCode": "rate_limited"
+  }
+}

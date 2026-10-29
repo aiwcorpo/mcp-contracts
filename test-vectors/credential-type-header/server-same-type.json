@@ -1,8 +1,10 @@
 {
   "description": "The header and the configuration agree: the call goes on.",
   "input": {
+    "side": "server",
     "header": "service-account",
-    "configured": "service-account"
+    "configured": "service-account",
+    "credentialPresent": true
   },
   "expected": {
     "decision": "continue"

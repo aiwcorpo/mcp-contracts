@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **4.0.1** (po 4.0.0, majorze z pakietem kontraktowym M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **4.1.0** (po 4.0.1; 4.0.0 było majorem z pakietem kontraktowym M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -78,6 +78,12 @@ Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defau
 walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1 usunięto odpowiedź `400
 expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
 
+Wyjątek: w 4.1.0 podłoga ryzyka liczy także wpis oczekujący (CC-167): `PUT` z niższym ryzykiem niż zgłoszone wcześniej, nawet tylko jako oczekujące, przechodził w 4.0.x, a teraz jest `422 risk_lowered`;
+według tej tabeli to zaostrzenie walidacji, czyli major. Wydane jako minor na decyzję człowieka (2026-10-29), jak 4.0.1, bo jest to doprecyzowanie reguły z 4.0.0 ("obniżenie `risk` zawsze 422"),
+a nie ma konsumentów, którzy zależą od przyjmowania niższego ryzyka; wyjście w dół zapewnia jawne `acceptRiskLowering` administratora. Przy okazji wiersze aktywności z odmową zmieniają wynik z `error`
+na `denied_*` (CC-165), a serwer odmawia przy rozjeździe typu poświadczenia (CC-166): `result` to otwarty napis, a reguła serwera dotyczy żądań z poświadczeniem i działa w obu kierunkach wersji
+(stary gateway już wysyła nagłówek, więc nowy serwer z nim działa, o ile typ zgadza się z jego konfiguracją; stary serwer nie sprawdza i nie ma tej ochrony): wdrażać razem.
+
 Wyjątek: w 4.0.1 (CC-163, CC-164) usunięcie trybu `serverConfiguredQueues` (kolejki konta serwisowego z konfiguracji serwera, CC-076) i zmiana oczekiwania
 wektora `srv-servicedesk-service-account-granted-in-server-config` z `continue` na `deny`, a także zaostrzenie reguły przykładowej `credential-type.cedar` (lista dozwolona
 typów poświadczeń), są według tej tabeli zmianami major. Wydane jako patch, bo naprawiają sprzeczność wydania 4.0.0: wektor dopuszczał tryb, który przykładowa reguła z tego
@@ -106,13 +112,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:4.0.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:4.0.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:4.0.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:4.0.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:4.0.1` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:4.0.1` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-4.0.1.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-4.0.1.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:4.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:4.1.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:4.1.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:4.1.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:4.1.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:4.1.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-4.1.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-4.1.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -121,8 +127,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/4.0.1/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-4.0.1.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/4.1.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-4.1.0.tgz
 ```
 
 ```xml
@@ -619,7 +625,10 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
    a gdy niesie definicję równą zatwierdzonej, wpis `server` jest usuwany (serwer dalej podający inną definicję powstaje od nowa przy następnym odczycie). Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
 4. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
    usuniętego i dodanego ponownie. Podłoga ryzyka to najwyższe ryzyko, jakie kiedykolwiek zgłoszono dla narzędzia (także we wpisie oczekującym i w wpisach usuniętych);
-   każde niższe zgłoszenie jest odrzucane (CC-167). Podłoga nie spada przy `approve`, usunięciu ani ponownym dodaniu.
+   każde niższe zgłoszenie z potoku jest odrzucane (CC-167). Podłoga nie spada przy `approve`, usunięciu ani ponownym dodaniu. Wpisy `source: server` jej nie podnoszą
+   (`risk` pochodzi z zatwierdzonego wpisu), a omyłkowe zgłoszenie wyższego ryzyka z potoku podnosi ją trwale. **Jedyna droga w dół to jawna decyzja administratora:** `approve` z
+   `acceptRiskLowering: true` (wyłącznie grupa `mcp-platform-admin`, nigdy potok) zatwierdza niższe ryzyko, podłoga staje się tym ryzykiem, a audyt to `admin_change` z powodem
+   `risk_lowered_by_admin`.
 5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
    i nowe narzędzie `READ_ONLY` w tym samym manifeście) przechodzi bez `approve`: gateway nie wiąże ich ze sobą. Chronią przegląd commitu
    i reguły startera dla `risk` i `action`.
@@ -659,9 +668,12 @@ Wartości limitów to konfiguracja komponentu, nie kontrakt. Kontrakt mówi tylk
   `gateway-authentication/rate-limited*.json`.
 - **Audyt:** `tool_call` (dla `tools/call`) albo `policy_decision` z `decision: deny`, `outcome: denied`, `errorCode: rate_limited`
   i powodem `rate_limited_user`, `rate_limited_client` albo `rate_limited_tool` (klient nie dowiaduje się, który limit, administrator tak).
-  Gateway może agregować nadmiar jak przy CC-125. W `activity/calls` wiersz ma wynik `rate_limited` (grupa filtra `denied`).
+  Gateway może agregować nadmiar jak przy CC-125. W `activity/calls` wiersz ma wynik `rate_limited` (grupa filtra `denied`). Wynik wiersza wynika z powodu ostatniego zdarzenia (CC-165): `rate_limited_*` -> `rate_limited`, `definition_changed` i `tool_not_served`
+  -> `tool_disabled`, `exchange_denied` -> `denied_not_granted`, a dla `tool_call` z `outcome` innym niż `ok` także `not_granted`, `link_scope`, `policy_forbid`, `step_up_required`
+  (wcześniej taki wiersz miał wynik `error`). Portal nie proponuje `request_access` na podstawie samego `result`: C10 `access_denied` nie niesie `requiredEntitlements`.
 - **Redis niedostępny:** limity w gateway'u fail-closed. Gdy licznik nie odpowiada, `tools/call` daje C10 `upstream_unavailable`, a inne żądania MCP HTTP `503` z ciałem
-  `upstream_unavailable` (CC-167); gateway nie przepuszcza ruchu bez liczenia.
+  `{"error":"upstream_unavailable","message":...}` (kształt C10), `Retry-After` jak w CC-124, bez `WWW-Authenticate` i bez `Set-Cookie` (CC-167); gateway nie przepuszcza ruchu bez liczenia.
+  Wektor `gateway-authentication/rate-limit-store-unavailable`. Audyt: powód `upstream_unavailable` na zdarzeniu `tool_call`/`policy_decision`.
 - **Broker i BFF:** start i zakończenie przepływu OAuth w brokerze (na `sub`), zapis tokenu i operacje Authenticatora w BFF (na sesję):
   `429 rate_limited` z `Retry-After`. Rejestracja Authenticatora: domyślnie 10 startów na godzinę na `sub` (CC-151).
 
@@ -678,10 +690,15 @@ Opisy w `resolveCredential` (C4):
   (też `Basic`), `expiresAt` zgodne z rotacją albo `null`. Użytkownik nie ma połączenia, więc `GET /v1/connections` go nie zwraca.
 - **System bez konfiguracji w brokerze:** `422 system_not_configured` zamiast `400`; gateway odpowiada klientowi C10 `internal_error`, ale loguje
   odrębną przyczynę, a audyt `credential_resolve` ma powód `system_not_configured` (outcome `error`).
-- **`context.credentialType` przy systemie z dwoma typami** (np. `user-oauth` i `user-secret`): gateway podaje typ z konfiguracji systemu (domyślny typ systemu), nie zgadywany
-  z odpowiedzi brokera ani z połączenia użytkownika (CC-167). Serwer bierze typ ze swojej konfiguracji i porównuje go z nagłówkiem `X-MCP-Credential-Type`, który gateway wysyła obok
-  `X-MCP-Credential` (C3): rozjazd, brak nagłówka albo wartość spoza czterech typów to odmowa, klient dostaje C10 `internal_error` bez szczegółów, a audyt `policy_decision`/`tool_call`
-  z powodem `credential_type_mismatch` (CC-166); wektory `credential-type-header/`.
+- **`context.credentialType` i nagłówek `X-MCP-Credential-Type` (CC-166, CC-167).** Jedynym źródłem prawdy o typie jest konfiguracja systemu w gateway'u (dla systemu z dwoma
+  typami, np. `user-oauth` i `user-secret`, to typ z tej konfiguracji, nie zgadywany z połączenia użytkownika). Nagłówek niesie typ zwrócony przez broker; gdy różni się od typu z
+  konfiguracji systemu, gateway odmawia przed użyciem poświadczenia (C10 `internal_error`, audyt `credential_resolve` z powodem `credential_type_mismatch`). Serwer porównuje nagłówek ze
+  swoją konfiguracją **przed** oceną Cedar, sondą grantu i resolverami, tak by poświadczenie nie zostało użyte: dla żądania z `X-MCP-Credential` brak nagłówka, wartość spoza czterech
+  typów albo różna od konfiguracji to odmowa (`internal_error` bez szczegółów, audyt `policy_decision`/`tool_call` z powodem `credential_type_mismatch`). Żądania bez poświadczenia
+  (`initialize`, `tools/list`, wywołania rejestru) nie są sprawdzane. Wektory `credential-type-header/`. Nagłówek jest w C3 od początku; nowa jest reguła serwera.
+- **Założenie modelu zagrożeń (decyzja człowieka 2026-10-29).** Ruch gateway -> serwer chroni mTLS i podpisany JWT (C2), a gateway usuwa przychodzące `X-MCP-*`, więc uznajemy to za
+  wystarczające: nagłówek typu nie jest podpisany i nie ma claimu typu w JWT. Sprawdzenie chroni przed rozjazdem konfiguracji, nie przed atakującym na ścieżce między gateway'em
+  a serwerem; ten wymagałby osobnej decyzji (claim typu i skrót poświadczenia w JWT).
 - **Manifest a konfiguracja gateway'a:** przy rejestracji i przy starcie gateway sprawdza, że typ poświadczenia, o który poprosi broker dla systemu,
   jest w `credential.acceptedTypes` manifestu; inaczej `422 manifest_rejected` z powodem `credential_type_mismatch`. Trzymany manifest, który
   nie przechodzi sprawdzenia przy starcie, nie jest zastępowany ani usuwany: serwer ma `enabled: false`, jego narzędzia dają `tool_disabled`, a gateway
@@ -881,7 +898,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 60 | odbiorca C2: 23 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 55 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 110 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 112 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `bundles/` | 43 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
@@ -893,13 +910,13 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `confirmation-binding/` | 77 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | Authenticator brokera: RFC 6238, okno, jednorazowość kroku, blokada 5/15 min, limit dzienny, rejestracja, URI `otpauth` (CC-092, CC-126); ziarno z RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | zbiór zakazany w argumentach, identyfikatorach i filtrach wzmianek oraz zastępowanie w tekście z systemu (CC-121, CC-122) |
-| `activity-calls/` | 48 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
+| `activity-calls/` | 53 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
 | `gateway-authentication-decision/` | 12 | wybór powodu i statusu 401/503 ze stanu kopii kluczy, `kid` i odświeżenia (CC-124) |
 | `activity-cursor/` | 9 | kursor `/activity/calls`: HMAC, związanie z `sub`, ważność 15 min (CC-095); klucz testowy, NOT FOR PRODUCTION |
-| `gateway-authentication/` | 15 | 401 z `resource_metadata`, 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
+| `gateway-authentication/` | 16 | 401 z `resource_metadata`, 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | akcje katalogu portalu per status, w tym `request_access` bez `requiredEntitlements` i `view_request` przy oczekującym wniosku (CC-083, CC-113) |
 | `query-rendering/` | 26 | zapytania serwera ze struktury: JQL i CQL z wrogimi wartościami, wzorzec i rozwiązanie nazw indeksów OpenSearch (CC-160) |
-| `credential-type-header/` | 6 | nagłówek `X-MCP-Credential-Type` a konfiguracja serwera: zgodność, rozjazd, brak, nieznana wartość (CC-166) |
+| `credential-type-header/` | 9 | nagłówek `X-MCP-Credential-Type` a konfiguracja serwera: zgodność, rozjazd, brak, nieznana wartość (CC-166) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
 
 Formaty:

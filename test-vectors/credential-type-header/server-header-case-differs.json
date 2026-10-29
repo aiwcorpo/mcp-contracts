@@ -1,8 +1,10 @@
 {
   "description": "The comparison is exact, case included.",
   "input": {
+    "side": "server",
     "header": "User-OAuth",
-    "configured": "user-oauth"
+    "configured": "user-oauth",
+    "credentialPresent": true
   },
   "expected": {
     "decision": "deny",

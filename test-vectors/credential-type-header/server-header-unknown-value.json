@@ -1,8 +1,10 @@
 {
   "description": "A value outside the four types: refused.",
   "input": {
+    "side": "server",
     "header": "api-key",
-    "configured": "user-oauth"
+    "configured": "user-oauth",
+    "credentialPresent": true
   },
   "expected": {
     "decision": "deny",
