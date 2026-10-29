@@ -1759,7 +1759,21 @@ paths:
               $ref: "#/components/headers/RequestId"
           description: Approved.
         "401":
-          $ref: "#/components/responses/StepUpOrUnauthenticated"
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: No valid session, or acceptRiskLowering true without a fresh MFA (step_up_required with stepUpUrl, the return path is the admin page, CC-167).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StepUpRequired"
+                  - $ref: "#/components/schemas/Error"
+              examples:
+                step_up_required:
+                  value:
+                    error: step_up_required
+                    stepUpUrl: /api/v1/auth/login?stepUp=true&returnPath=/admin/registry
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":

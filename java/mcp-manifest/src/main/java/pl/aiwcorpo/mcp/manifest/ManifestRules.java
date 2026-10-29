@@ -19,6 +19,8 @@ public final class ManifestRules {
     /** serverId == "mcp-" + system. */
     public static final String SERVER_ID_MATCHES_SYSTEM = "serverId-matches-system";
     /** Tool names are unique. */
+    /** acceptedTypes is either service-account alone or user types only (CC-168). */
+    public static final String CREDENTIAL_TYPES_NOT_MIXED = "credential-types-not-mixed";
     public static final String UNIQUE_TOOL_NAMES = "unique-tool-names";
     /** resourceRefs[].type and resourceTypes[].parent are declared in resourceTypes, which has no duplicates. */
     public static final String RESOURCE_TYPES_DECLARED = "resource-types-declared";
@@ -59,6 +61,18 @@ public final class ManifestRules {
         Set<String> violations = new LinkedHashSet<>();
         if (!manifest.path("serverId").asText().equals("mcp-" + manifest.path("system").asText())) {
             violations.add(SERVER_ID_MATCHES_SYSTEM);
+        }
+        boolean hasServiceAccount = false;
+        boolean hasUserType = false;
+        for (JsonNode type : manifest.path("credential").path("acceptedTypes")) {
+            if ("service-account".equals(type.asText())) {
+                hasServiceAccount = true;
+            } else {
+                hasUserType = true;
+            }
+        }
+        if (hasServiceAccount && hasUserType) {
+            violations.add(CREDENTIAL_TYPES_NOT_MIXED);
         }
         Set<String> names = new HashSet<>();
         for (JsonNode tool : manifest.path("tools")) {

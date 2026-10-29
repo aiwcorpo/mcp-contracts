@@ -208,6 +208,9 @@ manifest('valid-environment-production', 'environment production is the same as 
 {
   manifest('invalid-environment-staging', 'environment is production or dev, nothing else (CC-138).', { ...jiraManifest(), environment: 'staging' }, false, 'schema');
 }
+manifest('invalid-credential-types-mixed', 'acceptedTypes mixes service-account with a user type: rejected at registration (422 credential_type_mismatch, CC-168).', withHash({
+  ...jiraManifest(), credential: { required: true, acceptedTypes: ['user-oauth', 'service-account'] },
+}), false, 'credential-types-not-mixed');
 {
   const m = jiraManifest(); delete m.tools[0].risk;
   manifest('invalid-missing-risk', 'Tool without risk.', m, false, 'schema');
@@ -477,8 +480,8 @@ audit('gateway-registry-risk-lowered-by-admin', 'An administrator explicitly app
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
   risk: 'READ_ONLY', reason: 'risk_lowered_by_admin', definitionHash: 'sha256:'+'d4'.repeat(32), outcome: 'ok',
 }, true);
-audit('gateway-limit-store-unavailable', 'The counter of the limits does not answer: the request is refused as upstream_unavailable (CC-167).', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+audit('gateway-limit-store-unavailable', 'The counter of the limits does not answer: the tools/call is refused as upstream_unavailable, recorded as tool_call like the other limit refusals (CC-167).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
   tool: 'get_issue', risk: 'READ_ONLY', decision: 'deny', reason: 'upstream_unavailable', outcome: 'error', errorCode: 'upstream_unavailable', argsLength: 20,
 }, true);

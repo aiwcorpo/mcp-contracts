@@ -3358,3 +3358,11 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
   do zatwierdzonego ryzyka, jedno zdarzenie `admin_change`/`risk_lowered_by_admin` z polem `risk`; bez flagi `422 risk_lowered`; flaga przy wpisie, który niczego nie obniża, jest ignorowana. Wpisy `source: server` nie podnoszą podłogi.
   `context.credentialType` to typ domyślny systemu z konfiguracji gateway'a.
 - **SemVer:** liczenie wpisu oczekującego w podłodze (dawniej przechodzący `PUT` czeka teraz na administratora) jest według tabeli zaostrzeniem (major); wydane jako minor na decyzję człowieka 2026-10-29 (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+
+## CC-168 | C6/C5 | Zbiór typów systemu nie miesza `service-account` z typami użytkownika
+
+- **Zmiana (norma):** `credential.acceptedTypes` to samo `service-account` albo same typy użytkownika. Gateway odmawia startu przy takiej konfiguracji systemu, serwer odmawia startu, gdy `accepted-credential-types` miesza oba rodzaje;
+  rejestracja takiego manifestu to `422 manifest_rejected`, `reason: credential_type_mismatch`; reguła manifestu `credential-types-not-mixed` (Node i Java), wektor `manifests/invalid-credential-types-mixed`.
+  Powód: `context.credentialType` w Cedar to typ domyślny systemu, więc mieszany zbiór ukryłby konto serwisowe przed regułami `credential-type.cedar`. Typ domyślny po stronie serwera to pierwszy z `accepted-credential-types`.
+- **Dopisek do CC-159:** sprawdzenie dotyczy każdego typu ze zbioru systemu, nie tylko typu domyślnego.
+- **SemVer:** nowa reguła odrzucenia manifestu, który wcześniej przechodził (tylko błędna konfiguracja); w ramach wyjątku 4.1.0. **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0

@@ -412,9 +412,9 @@ paths:
         fails; a manifest with environment dev on a gateway in production mode (the default) is rejected
         (environment_mismatch, CC-138); so is a manifest whose `credential.acceptedTypes` does not contain a credential
         type that the system allows (credential_type_mismatch, CC-159: every type the broker may return for the system
-        must be accepted by the server). A tool whose risk is lower than the risk floor, the highest risk ever reported
+        must be accepted by the server), or one that mixes service-account with user types (credential_type_mismatch, CC-168). A tool whose risk is lower than the risk floor, the highest risk ever reported
         for it, a pending entry included (CC-167), does not reject the manifest: that one tool becomes pending_approval
-        (source ci, change changed, riskLowered true) and stays hidden and refused as tool_disabled, and the rest of the
+        (source ci, change as for any entry: new for a tool that was removed and added again, changed otherwise; riskLowered true) and stays hidden and refused as tool_disabled, and the rest of the
         manifest follows the rules above. Only an administrator can approve it, with acceptRiskLowering true on the approve
         operation (with a fresh MFA in the portal); the floor then falls to the approved risk. The 422 of this call stays
         for the other rejections listed here and for a hash that does not match. At

@@ -6,7 +6,7 @@ ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcj
 
 ## 4.1.0 - 2026-10-29
 
-Wydanie minor z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): podłoga ryzyka liczy wpis oczekujący (CC-167). Bajty `mcp.cedarschema` bez zmian (SHA-256 jak w 4.0.0). Nowe CC: CC-165 ... CC-167.
+Wydanie minor z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): podłoga ryzyka liczy wpis oczekujący (CC-167). Bajty `mcp.cedarschema` bez zmian (SHA-256 jak w 4.0.0). Nowe CC: CC-165 ... CC-168.
 
 - **Aktywność (CC-165):** zmiana wyniku istniejących wierszy, nie nowe powody (te były znane w 4.0.x): `rate_limited_user|client|tool` -> `rate_limited`, `definition_changed` i `tool_not_served` -> `tool_disabled`,
   `exchange_denied` -> `denied_not_granted`, wszystko w grupie `denied`. Dla `tool_call` z `outcome` innym niż `ok` obowiązuje cała mapa, więc wiersze z `not_granted`, `link_scope`, `policy_forbid`, `step_up_required`
@@ -18,9 +18,11 @@ Wydanie minor z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): podłoga r
   to `approve` z `acceptRiskLowering: true` (`mcp-platform-admin`, świeże MFA w BFF), jedno zdarzenie `risk_lowered_by_admin` z polem `risk`. Limity fail-closed
   przy niedostępnym Redisie (503 w kształcie C10). `context.credentialType` z konfiguracji systemu.
 
+- **Zbiór typów (CC-168):** `acceptedTypes` nie miesza `service-account` z typami użytkownika (odmowa startu, `422 credential_type_mismatch`, reguła manifestu `credential-types-not-mixed`). Typ domyślny serwera: pierwszy z `accepted-credential-types`.
+
 Migracja: **ws-05 gateway:** podłoga ryzyka i `acceptRiskLowering`, odmowa przy typie brokera różnym od konfiguracji, mapowanie powodów na wyniki, limity fail-closed (503 z `Retry-After`).
 **ws-02 starter / ws-04 serwery:** sprawdzenie nagłówka przed Cedar, sondą i resolverami, tylko przy `X-MCP-Credential`. **ws-07 BFF / ws-08 web:** pole `acceptRiskLowering` w `approve` dla admina, wysyłane tylko przy `true` (starszy gateway odrzuca nieznane pole, więc gateway wchodzi pierwszy), ze step-up MFA (`401 step_up_required`); pole `riskLowered` w diffie; wyniki aktywności bez nowych
-etykiet; nie proponować `request_access` na podstawie samego `result`. **ws-10:** rozjazd typu, `tool_call` z odmowami, Redis niedostępny, obniżenie ryzyka przez admina.
+etykiet; nie proponować `request_access` na podstawie samego `result`. **Krok rejestracji w CI (ws-01/ws-05):** `PUT`, który w 4.0.x kończył się `422`, gdy obniżał ryzyko, teraz zwraca `200`; krok powinien pokazać `riskLowered: true` z odpowiedzi (ostrzeżenie albo błąd kroku), bo narzędzie znika z `tools/list` do decyzji admina. **Gateway i BFF wchodzą razem:** `RegistryTool` i `PendingTool` mają `additionalProperties: false`, więc BFF 4.0.x odrzuci `riskLowered`, a gateway 4.0.x odrzuci `acceptRiskLowering` z nowego BFF. **ws-10:** rozjazd typu, `tool_call` z odmowami, Redis niedostępny, obniżenie ryzyka przez admina.
 
 ## 4.0.1 - 2026-10-29
 

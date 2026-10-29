@@ -4,6 +4,10 @@ import { manifestEntryHash } from './definition-hash.mjs';
 export function manifestRuleViolations(manifest) {
   const violations = [];
   if (manifest.serverId !== `mcp-${manifest.system}`) violations.push('serverId-matches-system');
+  // CC-168: the credential types of a system are either service-account alone or user types; a mix would let the Cedar context (the default type of
+  // the system) hide a service account.
+  const accepted = manifest.credential?.acceptedTypes ?? [];
+  if (accepted.includes('service-account') && accepted.some((t) => t !== 'service-account')) violations.push('credential-types-not-mixed');
   const names = manifest.tools.map((t) => t.name);
   if (new Set(names).size !== names.length) violations.push('unique-tool-names');
   const declared = new Set(manifest.resourceTypes.map((r) => r.type));

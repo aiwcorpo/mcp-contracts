@@ -624,13 +624,15 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
    `approve` ze starym hashem to `409`); znika, gdy serwer znów podaje zatwierdzoną definicję; `PUT` go zastępuje: gdy niesie inną definicję, powstaje wpis `ci`,
    a gdy niesie definicję równą zatwierdzonej, wpis `server` jest usuwany (serwer dalej podający inną definicję powstaje od nowa przy następnym odczycie). Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
 4. **Podłoga ryzyka (CC-167).** Podłoga to najwyższe ryzyko, jakie kiedykolwiek zgłoszono dla narzędzia (także we wpisie oczekującym i w wpisach usuniętych); nie spada przy
-   usunięciu ani ponownym dodaniu. `PUT` z narzędziem o ryzyku niższym od podłogi **nie odrzuca manifestu**: to jedno narzędzie staje się `pending_approval` (`source: ci`, `change: changed`,
-   `riskLowered: true`), pozostaje ukryte i odmawiane jako `tool_disabled`, a reszta manifestu przechodzi wg zwykłych reguł. `422` przy `PUT` zostaje dla pozostałych odrzuceń (niezgodny
+   usunięciu ani ponownym dodaniu. `PUT` z narzędziem o ryzyku niższym od podłogi **nie odrzuca manifestu**: to jedno narzędzie staje się `pending_approval` (`source: ci`, `change` jak w regule 2: `changed`,
+   a `new` z `approvedInVersion: null` dla narzędzia usuniętego i dodanego ponownie; `riskLowered: true`), pozostaje ukryte i odmawiane jako `tool_disabled`, a reszta manifestu przechodzi wg zwykłych reguł. `422` przy `PUT` zostaje dla pozostałych odrzuceń (niezgodny
    hash, reguły semantyczne manifestu, `environment_mismatch`, `credential_type_mismatch`, niezgodność z konfiguracją gateway'a). Wpis `riskLowered` zatwierdza wyłącznie administrator
    (`mcp-platform-admin`, nigdy potok): `approve` z `acceptRiskLowering: true` (BFF wymaga wtedy świeżego MFA, jak rejestracja Authenticatora: `401 step_up_required` ze `stepUpUrl`, to samo okno;
    zwykłe `approve` bez zmian i BFF wysyła pole tylko przy `true`), podłoga spada do zatwierdzonego ryzyka, a audyt to jedno zdarzenie `admin_change` z powodem `risk_lowered_by_admin`
    (zamiast `definition_approved`; pole `risk` niesie nowe ryzyko). Bez flagi `approve` takiego wpisu to `422 risk_lowered`; z flagą przy wpisie, który niczego nie obniża, pole jest ignorowane
-   (`definition_approved`). Wpisy `source: server` podłogi nie podnoszą (`risk` pochodzi z zatwierdzonego wpisu).
+   (`definition_approved`). Wpisy `source: server` podłogi nie podnoszą (`risk` pochodzi z zatwierdzonego wpisu). Reguła 4 wygrywa z regułą 2: także powrót do wcześniej zatwierdzonej definicji (np. cofnięty commit po omyłkowym
+   zgłoszeniu wyższego ryzyka) jest zgłoszeniem poniżej podłogi i czeka na administratora; narzędzie jest ukryte do jego decyzji. Gateway ufa BFF co do świeżego MFA przy `acceptRiskLowering`
+   (jak broker przy Authenticatorze, CC-093): przyjmuje `approve` tylko od CN `mcp-portal-bff` z tokenem administratora.
 5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
    i nowe narzędzie `READ_ONLY` w tym samym manifeście) przechodzi bez `approve`: gateway nie wiąże ich ze sobą. Chronią przegląd commitu
    i reguły startera dla `risk` i `action`.
@@ -693,19 +695,19 @@ Opisy w `resolveCredential` (C4):
 - **System bez konfiguracji w brokerze:** `422 system_not_configured` zamiast `400`; gateway odpowiada klientowi C10 `internal_error`, ale loguje
   odrębną przyczynę, a audyt `credential_resolve` ma powód `system_not_configured` (outcome `error`).
 - **`context.credentialType` i nagłówek `X-MCP-Credential-Type` (CC-166, CC-167).** Konfiguracja systemu to **zbiór** dozwolonych typów (GitLab: `user-oauth` i `user-secret`, typ
-  domyślny `user-oauth`); system nie miesza `service-account` z typami użytkownika. Nagłówek niesie typ zwrócony przez broker (dla GitLaba typ połączenia użytkownika, np. `user-secret`
+  domyślny `user-oauth`); system nie miesza `service-account` z typami użytkownika (**norma, CC-168**: gateway odmawia startu przy takiej konfiguracji systemu, serwer odmawia startu, gdy `accepted-credential-types` miesza oba rodzaje, a rejestracja manifestu z takim `acceptedTypes` to `422 credential_type_mismatch`; wektor `manifests/invalid-credential-types-mixed`). Nagłówek niesie typ zwrócony przez broker (dla GitLaba typ połączenia użytkownika, np. `user-secret`
   dla PAT). Gateway odmawia przed użyciem poświadczenia, gdy ten typ nie należy do zbioru z konfiguracji systemu (C10 `internal_error`, audyt `credential_resolve` z powodem
   `credential_type_mismatch`). Serwer sprawdza, że nagłówek należy do zbioru jego dozwolonych typów (`accepted-credential-types`), **przed** oceną Cedar, sondą grantu i resolverami, tak by
   poświadczenie nie zostało użyte: dla żądania z `X-MCP-Credential` brak nagłówka, wartość spoza czterech typów albo spoza zbioru to odmowa (`internal_error` bez szczegółów, audyt
   `policy_decision`/`tool_call` z powodem `credential_type_mismatch`); serwer bez żadnego skonfigurowanego typu, który dostaje poświadczenie, też odmawia. Żądania bez poświadczenia
-  (`initialize`, `tools/list`, wywołania rejestru) nie są sprawdzane. **`context.credentialType` w Cedar** to typ domyślny systemu z konfiguracji gateway'a: Cedar jest oceniany przed
+  (`initialize`, `tools/list`, wywołania rejestru) nie są sprawdzane. **`context.credentialType` w Cedar** to typ domyślny systemu z konfiguracji gateway'a (po stronie serwera: pierwszy typ z `accepted-credential-types`; nie ma osobnej właściwości): Cedar jest oceniany przed
   pytaniem brokera, więc typ faktycznie użyty nie jest jeszcze znany; reguły `credential-type.cedar` odróżniają konto serwisowe od poświadczenia użytkownika po tym typie domyślnym, a
   zbiór systemu nigdy nie łączy obu rodzajów. Wektory `credential-type-header/` (w tym GitLab z dwoma typami). Nagłówek jest w C3 od początku; nowa jest reguła serwera.
 - **Założenie modelu zagrożeń (decyzja człowieka 2026-10-29).** Ruch gateway -> serwer chroni mTLS i podpisany JWT (C2), a gateway usuwa przychodzące `X-MCP-*`, więc uznajemy to za
   wystarczające: nagłówek typu nie jest podpisany i nie ma claimu typu w JWT. Sprawdzenie chroni przed rozjazdem konfiguracji, nie przed atakującym na ścieżce między gateway'em
   a serwerem; ten wymagałby osobnej decyzji (claim typu i skrót poświadczenia w JWT).
 - **Manifest a konfiguracja gateway'a:** przy rejestracji i przy starcie gateway sprawdza, że typ poświadczenia, o który poprosi broker dla systemu,
-  jest w `credential.acceptedTypes` manifestu; inaczej `422 manifest_rejected` z powodem `credential_type_mismatch`. Trzymany manifest, który
+  jest w `credential.acceptedTypes` manifestu; inaczej `422 manifest_rejected` z powodem `credential_type_mismatch`. Dotyczy **każdego typu ze zbioru systemu** (GitLab z `user-oauth` i `user-secret` wymaga obu w `acceptedTypes`), nie tylko typu domyślnego. Trzymany manifest, który
   nie przechodzi sprawdzenia przy starcie, nie jest zastępowany ani usuwany: serwer ma `enabled: false`, jego narzędzia dają `tool_disabled`, a gateway
   loguje przyczynę, aż zarejestrowany zostanie manifest, który przechodzi. **Kolejność migracji:** serwer OpenSearch (jego manifest deklaruje dziś
   `acceptedTypes: [user-secret]`, a konfiguracja gateway'a i brokera ma `token-exchange`) musi wyjść z `acceptedTypes` zawierającym `token-exchange`
@@ -901,7 +903,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | Katalog | Liczba | Co sprawdza |
 | --- | --- | --- |
 | `jwt/` | 60 | odbiorca C2: 23 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
-| `manifests/` | 55 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
+| `manifests/` | 56 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 113 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
@@ -968,6 +970,8 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
    `^`, kończy na nieeskejpowanym `$` i nie ma alternacji poza grupą (`^a|b$` nie jest zakotwiczony); brak `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`. Przy naruszeniu schematu serwer
    odpowiada `invalid_argument` (C10): komunikat może wskazać argument zadeklarowany w schemacie i regułę, nigdy wartość
    ani niezadeklarowaną nazwę.
+9. `credential.acceptedTypes` albo zawiera samo `service-account`, albo same typy użytkownika (`user-oauth`, `user-secret`, `token-exchange`); mieszanie to reguła
+   `credential-types-not-mixed` (CC-168), przy rejestracji `422 manifest_rejected` z powodem `credential_type_mismatch`.
 
 ## Wymagania dla odbiorców i paczek polityk
 
