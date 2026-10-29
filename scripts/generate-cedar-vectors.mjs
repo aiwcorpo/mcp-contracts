@@ -246,7 +246,7 @@ builderVector('tool-unknown-resource-type', 'resourceRefs with a type outside th
 // ---------- policy decisions ----------
 outDir('policy-decisions');
 let decisionCount = 0;
-const decision = (name, description, level, input, expected, { covers = [], mutate } = {}) => {
+const decision = (name, description, level, input, expected, { covers = [], mutate, adjustment, recordedInput } = {}) => {
   const built = build(level, input, STATIC);
   if (mutate) mutate(built);
   decisionCount++;
@@ -254,7 +254,7 @@ const decision = (name, description, level, input, expected, { covers = [], muta
     description,
     covers,
     // How request and entities were produced; implementations can rebuild them from this input.
-    builder: { level, staticEntities: STATIC_PATH, input, ...(mutate && { adjustment: 'remove-tool-entity' }) },
+    builder: { level, staticEntities: STATIC_PATH, input: recordedInput ?? input, ...((adjustment ?? (mutate && 'remove-tool-entity')) && { adjustment: adjustment ?? 'remove-tool-entity' }) },
     policies: 'cedar/examples',
     request: { principal: built.principal, action: built.action, resource: built.resource, context: built.context },
     entities: built.entities,
@@ -500,6 +500,9 @@ decision('srv-servicedesk-without-credential-type-ticket-outside-scope-denied', 
   sdRead(null, '7'), deny('servicedesk-service-account-ticket-outside-scope'), { covers: ['forbid_overrides_permit'] });
 decision('srv-servicedesk-service-account-ticket-in-scope-allowed', 'Ticket of queue 42 with the service account: inside the grant, allowed.', 'server',
   sdRead('service-account', '42'), allow('servicedesk-read'));
+decision('srv-servicedesk-unknown-credential-type-ticket-outside-scope-denied', 'A credential type outside the four (a typo, a fifth type) is not a user credential: the allow-list in the rule makes it forbidden (CC-164). The builder refuses such a value, so the request is given as it is and the builder input is recorded with the refused value.', 'server',
+  sdRead('user-secret', '7'), deny('servicedesk-service-account-ticket-outside-scope'),
+  { covers: ['forbid_overrides_permit'], adjustment: 'unknown-credential-type', recordedInput: sdRead('api-key', '7'), mutate: (b) => { b.context.credentialType = 'api-key'; } });
 decision('srv-servicedesk-user-credential-ticket-outside-scope-allowed', 'A user credential is not touched by the rule: the system applies the rights of the user.', 'server',
   sdRead('user-secret', '7'), allow('servicedesk-read'));
 decision('srv-servicedesk-service-account-queue-outside-scope-denied', 'Queue 7 with the service account and no grant: forbidden.', 'server',

@@ -564,12 +564,14 @@ do `definitionHash` (C6, CC-004). Gateway, klienci i testy ws-10 sprawdzają jed
 
 Dla poświadczenia `service-account` serwer ocenia każdy zasób `ServiceDesk::*` względem kolejki zwróconej przez
 system w chwili wywołania (zgłoszenie przeniesione do innej kolejki ma nową kolejkę, argument się nie liczy); brak
-grantu kolejki w paczce i w konfiguracji serwera oznacza odmowę (niezmiennik 6, CC-076). Reguła działa przed
+grantu kolejki w paczce polityk oznacza odmowę (niezmiennik 6, CC-076). Jedynym źródłem grantów kolejek jest paczka: lista kolejek
+z konfiguracji serwera (`serverConfiguredQueues`, `MCP_SERVICEDESK_ALLOWED_QUEUES`) nie jest grantem i nie otwiera kolejki (CC-163). Reguła działa przed
 Cedar i zostaje; wektory w `test-vectors/servicedesk-service-account/`, a nie w `policy-decisions/`. Od 4.0.0 model Cedar
 niesie opcjonalne `context.credentialType` (CC-136) jako drugą linię obrony: gateway bierze typ z własnej konfiguracji systemu (tej samej,
 której używa CC-159) i podaje go zawsze przed decyzją Cedar, serwer z własnej konfiguracji. Przykład `cedar/examples/credential-type.cedar`
 jest fail-closed (brak atrybutu też daje odmowę) i zabrania odczytu kolejki lub zgłoszenia poza przyznanym zakresem przy koncie serwisowym;
-reguła serwera z CC-076 zostaje i nie zależy od niego.
+reguła serwera z CC-076 zostaje i nie zależy od niego. Reguły przykładu rozpoznają poświadczenie użytkownika listą dozwoloną
+(`user-oauth`, `user-secret`, `token-exchange`); brak typu albo nieznany typ jest traktowany jak konto serwisowe, czyli odmowa poza grantem (CC-164).
 
 ## Rejestr i przypinanie definicji (CC-097, CC-133)
 
@@ -870,7 +872,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `bundles/` | 43 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
 | `entity-builder/` | 48 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
-| `policy-decisions/` | 93 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
+| `policy-decisions/` | 94 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
 | `result-filter/` | 8 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |

@@ -13,7 +13,7 @@
     "stateAfter": {
       "main": {
         "revision": "20261026120000-a1b2c3d",
-        "archiveSha256": "sha256:f137df11409db7f5bad88ae825a82ce19bfb7dfcc87aa9d39351ed25d107b577"
+        "archiveSha256": "sha256:80fdf02d678f2539200e27998c779b6a944bf831dbd3c9603271e9358b47c251"
       },
       "overrides": {
         "revision": "20261026121500-d4e5f60",

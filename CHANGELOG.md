@@ -4,6 +4,16 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## Niewydane (po 4.0.0)
+
+Poprawki sprzeczności z 4.0.0 (zgłoszenia ws-09 CC-I i CC-J); numer wydania ustala człowiek (4.0.1 albo 5.0.0).
+
+- **CC-163:** tryb `serverConfiguredQueues` (kolejki konta serwisowego z konfiguracji serwera) usunięty; grant kolejki tylko z paczki polityk. Wektor
+  `srv-servicedesk-service-account-granted-in-server-config` zastąpiony przez `...-server-config-is-not-a-grant` (`deny`, `not_found_or_denied`). Migracja: ws-04 przestaje
+  traktować `MCP_SERVICEDESK_ALLOWED_QUEUES` jako grant; ws-09 daje granty kolejek w `static.json`.
+- **CC-164:** `credential-type.cedar` rozpoznaje poświadczenie użytkownika listą dozwoloną (`user-oauth`, `user-secret`, `token-exchange`); brak albo nieznany typ to odmowa
+  poza grantem. Nowy wektor `srv-servicedesk-unknown-credential-type-ticket-outside-scope-denied`. Bajty `mcp.cedarschema` bez zmian. Migracja: ws-09 przebudowuje paczki.
+
 ## 4.0.0 - 2026-10-29
 
 Wydanie major: pakiet kontraktowy M4 (decyzje człowieka z 2026-10-29, `mcp-platform-plan/cc-pakiet-m4.md`) po przeglądzie, który wykazał zmiany łamiące

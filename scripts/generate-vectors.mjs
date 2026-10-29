@@ -849,28 +849,28 @@ const sdAccount = (name, description, input, expected) =>
   write('servicedesk-service-account', `${name}.json`, { description, input, expected });
 const denied = { decision: 'deny', errorCode: 'not_found_or_denied' };
 sdAccount('srv-servicedesk-service-account-no-queue-grant',
-  'No queue grant in the bundle and none in the server configuration: deny, the system is not asked for the ticket (invariant 6).',
-  { credentialType: 'service-account', bundleQueueGrants: [], serverConfiguredQueues: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
+  'No queue grant in the bundle: deny, the system is not asked for the ticket (invariant 6).',
+  { credentialType: 'service-account', bundleQueueGrants: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
   denied);
 sdAccount('srv-servicedesk-ticket-moved-out-of-granted-queue',
   'Queue 42 is granted, but the system now returns queue 7 for the ticket: the queue returned by the system decides, not the one the ticket had earlier.',
-  { credentialType: 'service-account', bundleQueueGrants: ['42'], serverConfiguredQueues: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '7' } },
+  { credentialType: 'service-account', bundleQueueGrants: ['42'], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '7' } },
   denied);
 sdAccount('srv-servicedesk-service-account-granted-in-bundle',
   'Queue returned by the system is granted in the bundle: the decision goes on to Cedar.',
-  { credentialType: 'service-account', bundleQueueGrants: ['42'], serverConfiguredQueues: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
+  { credentialType: 'service-account', bundleQueueGrants: ['42'], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
   { decision: 'continue' });
-sdAccount('srv-servicedesk-service-account-granted-in-server-config',
-  'Queue granted only in the server configuration (M1 without Cedar grants).',
+sdAccount('srv-servicedesk-service-account-server-config-is-not-a-grant',
+  'A queue named only in the server configuration is not a grant: the only source of grants is the policy bundle (CC-163). The field serverConfiguredQueues exists only here, to show that it is ignored.',
   { credentialType: 'service-account', bundleQueueGrants: [], serverConfiguredQueues: ['42'], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
-  { decision: 'continue' });
+  denied);
 sdAccount('srv-servicedesk-queue-resource-not-granted',
   'A queue resource is evaluated by its own id.',
-  { credentialType: 'service-account', bundleQueueGrants: ['42'], serverConfiguredQueues: [], resource: { type: 'ServiceDesk::Queue', id: '7', queueReturnedBySystem: '7' } },
+  { credentialType: 'service-account', bundleQueueGrants: ['42'], resource: { type: 'ServiceDesk::Queue', id: '7', queueReturnedBySystem: '7' } },
   denied);
 sdAccount('srv-servicedesk-user-secret-not-restricted-by-grants',
   'The rule is for service-account only; with a user secret the system applies the user\'s own rights.',
-  { credentialType: 'user-secret', bundleQueueGrants: [], serverConfiguredQueues: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
+  { credentialType: 'user-secret', bundleQueueGrants: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
   { decision: 'continue' });
 
 // ---------- pending confirmations and the TOTP code (C11, CC-091) ----------

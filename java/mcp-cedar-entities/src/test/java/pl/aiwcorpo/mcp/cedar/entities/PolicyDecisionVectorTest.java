@@ -89,6 +89,11 @@ class PolicyDecisionVectorTest {
     void decisionThroughEntityBuilder(Path file) throws Exception {
         JsonNode vector = read(file);
         JsonNode builder = vector.get("builder");
+        if ("unknown-credential-type".equals(builder.path("adjustment").asText())) {
+            org.junit.jupiter.api.Assertions.assertThrows(EntityBuilderException.class,
+                    () -> VectorInputs.build(builder.get("level").asText(), builder.get("input"), builder.get("staticEntities").asText()));
+            return;
+        }
         CedarRequest built = VectorInputs.build(builder.get("level").asText(), builder.get("input"),
                 builder.get("staticEntities").asText());
         if ("remove-tool-entity".equals(builder.path("adjustment").asText())) {

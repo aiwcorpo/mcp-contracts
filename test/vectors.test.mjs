@@ -101,11 +101,11 @@ test('UntrustedText vectors (CC-072)', () => {
 });
 
 // Reference rule of CC-076, executed by the server before Cedar: with a service account the queue returned by
-// the system for the resource must be granted in the bundle or in the server configuration.
-function serviceDeskServiceAccountDecision({ credentialType, bundleQueueGrants, serverConfiguredQueues, resource }) {
+// the system for the resource must be granted in the policy bundle (CC-163: the server configuration is not a source of grants).
+function serviceDeskServiceAccountDecision({ credentialType, bundleQueueGrants, resource }) {
   if (credentialType !== 'service-account') return { decision: 'continue' };
   const queue = resource.type === 'ServiceDesk::Queue' ? resource.id : resource.queueReturnedBySystem;
-  return [...bundleQueueGrants, ...serverConfiguredQueues].includes(queue)
+  return bundleQueueGrants.includes(queue)
     ? { decision: 'continue' } : { decision: 'deny', errorCode: 'not_found_or_denied' };
 }
 

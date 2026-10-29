@@ -987,6 +987,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   odróżni konta serwisowego bez zmiany `mcp.cedarschema` (zamrożony w 2.x). Reguła jest egzekwowana przez serwer
   przed Cedar; referencyjna implementacja w testach Node. Pytanie, czy lista z konfiguracji serwera zostaje po
   M3 jako dodatkowe zawężenie, czy znika na rzecz paczki, pozostaje otwarte (do planowania M3).
+- **Dopisek (CC-163, 2026-10-29):** lista kolejek z konfiguracji serwera przestaje być źródłem grantów; jedynym źródłem jest paczka polityk.
 - **Status:** accepted (decyzja: człowiek, 2026-10-27, wydanie 2.1.0)
 
 ## CC-078 | C6/C10 | `inputSchema` zamknięty i walidowany przez serwer; treść `invalid_argument` przy naruszeniu schematu
@@ -3315,3 +3316,18 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 - **Wariant:** `PendingTool.source` (`ci` | `server`, wymagane) i `RegistryTool.source` (przy `pending_approval`); odczyt z serwera nigdy nie zastępuje wpisu ze `source: ci` (tylko blokuje narzędzie i jest logowany); wpis ze `source: server` znika, gdy serwer wraca do zatwierdzonej definicji, i jest zastępowany przez `PUT`; `pendingVersion` dla `server` to wersja zgłoszona przez serwer (widoczna razem ze `source`).
 - **Pliki:** `openapi/gateway-admin.v1.yaml`, `openapi/portal-bff.v1.yaml` (przykłady), README. Manifest nie niesie commitu budowy (decyzja człowieka).
 - **SemVer:** major (pole wymagane w odpowiedzi). **Status:** accepted (decyzja: człowiek, 2026-10-29, po drugim przeglądzie), wydanie 4.0.0
+
+## CC-163 | C7 | Kolejki konta serwisowego: tylko z paczki polityk (zgłoszenie ws-09 CC-I)
+
+- **Problem:** wektor `servicedesk-service-account/srv-servicedesk-service-account-granted-in-server-config` oczekiwał `continue` dla kolejki przyznanej tylko w `serverConfiguredQueues` (CC-076), a przykład `credential-type.cedar` (CC-136) zabrania zasobu poza `principal in resource.scopes`, który pochodzi wyłącznie z paczki. Kontrakt 4.0.0 był więc sprzeczny.
+- **Decyzja (wariant a):** tryb `serverConfiguredQueues` znika; dostęp do kolejek konta serwisowego wynika tylko z grantów w paczce. Wektor zastąpiony przez `srv-servicedesk-service-account-server-config-is-not-a-grant` (`deny`, `not_found_or_denied`); pole `serverConfiguredQueues` zostaje tylko w nim, jako ignorowane, a referencja je pomija.
+- **Pliki:** `scripts/generate-vectors.mjs`, `test/vectors.test.mjs`, `test-vectors/servicedesk-service-account/*`, README ("Konto serwisowe service desku"), CC-076 (dopisek).
+- **Wpływ:** ws-04 (serwer Service Desku: `MCP_SERVICEDESK_ALLOWED_QUEUES` nie otwiera kolejek; grant w paczce), ws-09 (grant kolejek w `static.json`), ws-10.
+- **SemVer:** usunięcie trybu i zmiana oczekiwania istniejącego wektora: według tabeli README major. **Status:** accepted (decyzja: człowiek, 2026-10-29), wersja do ustalenia przez człowieka (4.0.1 albo 5.0.0, patrz niżej)
+
+## CC-164 | C7 | Lista dozwolonych typów poświadczeń w `credential-type.cedar` (zgłoszenie ws-09 CC-J)
+
+- **Problem:** warunek `context.credentialType != "service-account"` traktował nieznaną wartość (literówka, piąty typ) jak poświadczenie użytkownika i otwierał kolejki poza grantem.
+- **Decyzja:** warunek z listą dozwoloną `["user-oauth", "user-secret", "token-exchange"].contains(...)`; brak albo nieznany typ daje odmowę poza grantem. Wektory `policy-decisions/srv-servicedesk-unknown-credential-type-ticket-outside-scope-denied` (żądanie z `api-key`; builder odrzuca taką wartość, więc wektor zapisuje wejście z odrzuconą wartością i test Java sprawdza odrzucenie przez builder) oraz dotychczasowe.
+- **Pliki:** `cedar/examples/credential-type.cedar`, `PolicyDecisionVectorTest`, `scripts/generate-cedar-vectors.mjs`, README.
+- **SemVer:** zaostrzenie reguły przykładowej: nie zmienia schematu ani bajtów `mcp.cedarschema`; paczki zbudowane na przykładzie 4.0.0 trzeba przebudować. **Status:** accepted (decyzja: człowiek, 2026-10-29), wersja do ustalenia przez człowieka (4.0.1 albo 5.0.0, patrz niżej)
