@@ -57,7 +57,7 @@ class PolicyBundleVectorTest {
         PublicKey key = BundleVerifier.ed25519PublicKeyFromPem(
                 ContractFiles.read(ContractFiles.resolve("test-vectors/" + vector.get("publicKey").asText())));
         BundleVerifier verifier = BundleVerifier.of(channel, key, vector.get("publicKeyId").asText(),
-                vector.get("allowTestKeys").asBoolean());
+                vector.get("allowTestKeys").asBoolean()).withDevstackProfile(vector.path("devstackProfile").asBoolean(false));
         byte[] archive = Files.readAllBytes(BUNDLES.resolve(vector.get("bundle").asText()));
         byte[] signature = Files.readAllBytes(BUNDLES.resolve(vector.get("signature").asText()));
         Optional<String> loaded = vector.get("loadedRevision").isNull()

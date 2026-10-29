@@ -25,10 +25,14 @@ Nowe CC: CC-133 ... CC-160 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, 
 6. **`ResolvedCredential.expiresAt` (CC-157):** wymagane (niepuste) dla `token-exchange`; broker odrzuca `subjectToken` o złym `aud`, wygasły albo z innym `sub` (`400`).
 7. **`not_found_or_denied` (CC-146):** `message` jest stałą (`The resource does not exist or you do not have access to it.`); kolejka service desku poza linkiem daje `not_found_or_denied`,
    nie `access_denied`; wektor `tool-errors/not-found-or-denied` zmieniony.
-8. **Klucze `dev-` (CC-137):** odbiorcy odrzucają `kid` i identyfikator z prefiksem `dev-` poza trybem dev (profil `devstack` i jawne ustawienie).
+8. **Klucze `dev-` (CC-137):** odbiorcy odrzucają `kid` i identyfikator z prefiksem `dev-` poza trybem dev (profil `devstack` i jawne `allowTestKeys` razem); klucze `test-` wymagają, jak dotąd, samego `allowTestKeys`. `BundleVerifier.withDevstackProfile`.
 9. **Tabela akcji katalogu (CC-113):** `no_access` i `connected` z odmówionym narzędziem bez `requiredEntitlements` nie dają `request_access`; oczekujący wniosek daje `view_request` także przy `connected`.
-10. **Wektory ze zmienionym oczekiwaniem:** `tool-errors/not-found-or-denied`, pięć `policy-store/*` (`archiveSha256`) i wszystkie `bundles/files/*` (nowy schemat).
+10. **Wektory ze zmienionym oczekiwaniem:** `tool-errors/not-found-or-denied`, pięć `policy-store/*` (`archiveSha256`), `policy-decisions/srv-vs-narrows-servicedesk-ticket` (dodane `credentialType`, bo nowa reguła przykładu dokłada drugą politykę decydującą) i wszystkie `bundles/files/*` (nowy schemat).
 11. **`ManifestRejected`** zamiast `Error` w `422` rejestracji i `approve` (nowe pole `reason`, schemat zamknięty).
+12. **Certyfikat potoku (CC-161):** `PUT` rejestru przyjmuje tylko CN `mcp-registry-ci-<serverId>` dla tego samego `serverId`; dawny `mcp-registry-ci` to `403`.
+13. **`PendingTool.source` (CC-162):** pole wymagane odpowiedzi (`ci` | `server`).
+
+Nowe kody odpowiedzi w istniejących operacjach (`429` w brokerze i BFF, `503` i `422` we wnioskach, `422` w `approve`) są addytywne i nie są tu liczone osobno.
 
 ### Nowe w 4.0.0
 
@@ -55,7 +59,7 @@ Nowe CC: CC-133 ... CC-160 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, 
 - **mcp-server-template / serwery (ws-03, ws-04):** `nothingToQuery()` daje pusty wynik, a po id `not_found_or_denied`; zapytania ze struktury (`query-rendering`, listy normatywne);
   OpenSearch: manifest z `acceptedTypes` zawierającym `token-exchange` zarejestrowany **przed** gatewayem 4.0.0, rozwiązywanie wzorców do nazw bez aliasów, potem `aggregate_logs`
   może wrócić; kolejka poza linkiem to `not_found_or_denied`; źródła klasyfikacji (CC-149); Service Desk: `service-account`.
-- **mcp-gateway (ws-05):** `PUT` zatwierdza tylko `READ_ONLY` z artefaktu budowy, reszta `pending_approval`; brak bootstrapu poza `devstack`; porównanie definicji z serwera z zatwierdzoną
+- **mcp-gateway (ws-05):** certyfikat potoku `mcp-registry-ci-<serverId>` związany ze ścieżką (inaczej `403` i audyt); `PendingTool.source` i pierwszeństwo wpisu z `PUT`; zatwierdzone narzędzie nieobecne na serwerze ukryte (`tool_not_served`); TTL odczytu `tools/list` najwyżej 60 s; `PUT` zatwierdza tylko `READ_ONLY` z artefaktu budowy, reszta `pending_approval`; brak bootstrapu poza `devstack`; porównanie definicji z serwera z zatwierdzoną
   (`definition_changed`); `approve` z audytem i `422` dla `risk_lowered`; `422` dla `environment_mismatch` i `credential_type_mismatch` (także przy starcie: serwer wyłączony);
   `POST /admin/v1/users/{sub}/purge` ze zdarzeniem zbiorczym; limity z `429` i powodami `rate_limited_*`; `token-exchange`/`service-account` w `resolve` (`exchange_denied` na `access_denied`,
   `system_not_configured` na `internal_error`); `credentialType` z konfiguracji do buildera przed Cedar; nowe powody C8.
@@ -63,13 +67,13 @@ Nowe CC: CC-133 ... CC-160 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, 
   `422 system_not_configured` (także w `oauth/*`), `429` dla OAuth i domyślnie 10 startów rejestracji na godzinę, powody `provider_revoke_failed`, `authenticator_seed_missing`, `user_purged`, `subject_token_invalid`.
 - **mcp-portal BFF (ws-07):** `503`/`422`/idempotencja wniosków, `GET /api/v1/access-requests/entitlements`, `decidedAt`, `429` z `Retry-After`, `422` w `approve`, `pendingVersion` wymagane,
   `422 system_not_configured` w `oauth/*` i nowa wartość enum, reguły `request_access`/`view_request`.
-- **mcp-portal web (ws-08):** widok diffu z wersjami; po wdrożeniu przez `PUT` oczekują tylko narzędzia zapisu; wybór uprawnienia przy wniosku z serwera; komunikat "Zbyt wiele wywołań";
+- **mcp-portal web (ws-08):** widok diffu z wersjami i polem `source` (wpis z serwera oznaczony, jego wersja zgłoszona przez serwer); po wdrożeniu przez `PUT` oczekują tylko narzędzia zapisu; wybór uprawnienia przy wniosku z serwera; komunikat "Zbyt wiele wywołań";
   grupy filtra `result`; "ostatnie użycie" konta serwisowego z `activity/calls` (CC-150).
 - **mcp-policies (ws-09):** przebudowa paczek na schemacie 4.0.0; reguły zapisu z przykładów (CC-148); reguły z `credential-type.cedar` dla konta serwisowego; reguła wyłączająca
   `aggregate_logs` zdejmowana dopiero po wdrożeniu CC-160 w serwerze OpenSearch.
-- **mcp-platform-dev (ws-01):** klucze generowane lokalnie z `kid` `dev-`, tryb dev tylko ze stosem `devstack` i jawnym ustawieniem; bootstrap manifestu tylko w dev; serwery `devstack`
+- **mcp-platform-dev (ws-01):** potoki rejestru dostają certyfikaty `mcp-registry-ci-<serverId>` (jeden na serwer); klucze generowane lokalnie z `kid` `dev-`, tryb dev tylko ze stosem `devstack` i jawnym ustawieniem; bootstrap manifestu tylko w dev; serwery `devstack`
   wysyłają `environment: dev`; wywołanie obu `purge` w offboardingu (powtórzone po wylogowaniu).
-- **mcp-e2e (ws-10):** blokada po zmianie definicji i ręczne `approve`, `PUT` z manifestem X przy serwerze serwującym Y (Y ukryte), `429`, offboarding (oba `purge`, zdarzenia zbiorcze),
+- **mcp-e2e (ws-10):** trzymany manifest nie przechodzi przy starcie (`credential_type_mismatch`) -> `enabled: false` i `tool_disabled`; `PUT` innym CN dla cudzego serwera -> `403`; odczyt z serwera nie zastępuje wpisu z `PUT`; zatwierdzone narzędzie, którego serwer nie podaje, jest ukryte; `dev-` z samym `allowTestKeys` odrzucony; blokada po zmianie definicji i ręczne `approve`, `PUT` z manifestem X przy serwerze serwującym Y (Y ukryte), `429`, offboarding (oba `purge`, zdarzenia zbiorcze),
   `token-exchange` i `service-account`, `dev-` odrzucony w trybie produkcyjnym, `environment_mismatch`, odczyt kolejki poza zakresem kontem serwisowym.
 
 ## 3.1.1 - 2026-10-28

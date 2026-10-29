@@ -4,7 +4,7 @@ export default function mtlsClientCn(operation) {
   const usesMtls = (operation?.security ?? []).some((requirement) => Object.hasOwn(requirement, 'mtls'));
   if (!usesMtls) return [];
   const cns = operation['x-allowed-client-cn'];
-  if (!Array.isArray(cns) || cns.length === 0 || cns.some((cn) => typeof cn !== 'string' || !/^mcp-[a-z0-9-]+$/.test(cn))) {
+  if (!Array.isArray(cns) || cns.length === 0 || cns.some((cn) => typeof cn !== 'string' || !/^mcp-[a-z0-9-]+(-\{serverId\})?$/.test(cn))) {
     return [{ message: 'operation secured with mtls needs x-allowed-client-cn: non-empty list of mcp-* certificate CNs' }];
   }
   if (!operation.responses?.['403']) {

@@ -1,0 +1,20 @@
+{
+  "description": "allowTestKeys alone does not make a dev- key acceptable: dev mode needs the devstack profile too (CC-137).",
+  "publicKeyId": "dev-policy-main",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026151100-17ba079",
+    "url": "policies-20261026151100-17ba079.tar.gz",
+    "sigUrl": "policies-20261026151100-17ba079.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026151100-17ba079.tar.gz",
+  "signature": "files/policies-20261026151100-17ba079.tar.gz.sig-by-dev-key",
+  "publicKey": "keys/dev-policy-bundle.pub.pem",
+  "loadedRevision": "20261026130000-b2c3d4e",
+  "allowTestKeys": true,
+  "devstackProfile": false,
+  "expected": {
+    "accept": false,
+    "reason": "test_key_not_allowed"
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "description": "The same bundle and key in dev mode (allowTestKeys true): accepted (CC-137).",
+  "description": "The same bundle and key in dev mode, the devstack profile and allowTestKeys together: accepted (CC-137).",
   "publicKeyId": "dev-policy-main",
   "channel": "main",
   "latest": {
@@ -12,6 +12,7 @@
   "publicKey": "keys/dev-policy-bundle.pub.pem",
   "loadedRevision": "20261026130000-b2c3d4e",
   "allowTestKeys": true,
+  "devstackProfile": true,
   "expected": {
     "accept": true
   }

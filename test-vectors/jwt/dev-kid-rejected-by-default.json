@@ -1,6 +1,6 @@
 {
-  "description": "Otherwise valid token whose kid starts with dev- (signed with a key of a dev stack that is not one of the published test keys); a receiver without allowTestKeys rejects it like a test- key (CC-137).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTEifQ.eE7Kd5gf6o16MDYdd8wQaG-alWZsJ-Q0vMpnZiT10-xjOJRYFUW7gWMQ7M9tCAVdBEhtmkGnY8nOJ-gzZolV5g",
+  "description": "Otherwise valid token whose kid starts with dev- (signed with a key of a dev stack that is not one of the published test keys); a receiver that is not in dev mode (devstack profile and allowTestKeys) rejects it (CC-137).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTEifQ.OGWXhjFbCBlVlHQnnE63VBw9gFVr5hepTTEXo-8NTuFh--D6G7gMR2-Prakaq77ift0HAWfcFrCyK-QWqz5F5A",
   "header": {
     "alg": "ES256",
     "kid": "dev-gw-2026-10-a",
@@ -32,7 +32,8 @@
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
     "seenJtis": [],
-    "allowTestKeys": false
+    "allowTestKeys": false,
+    "devstackProfile": false
   },
   "request": {
     "kind": "jsonrpc",

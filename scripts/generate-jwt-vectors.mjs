@@ -268,12 +268,15 @@ const devPair = await generateKeyPair('ES256', { extractable: true });
 const devPublic = { ...(await exportJWK(devPair.publicKey)), kid: 'dev-gw-2026-10-a', alg: 'ES256', use: 'sig' };
 writeFileSync(path('test-vectors', 'keys', 'dev-gateway-jwks.json'), JSON.stringify({ keys: [devPublic] }, null, 2) + '\n');
 const signWithDevKey = (claims) => new SignJWT(claims).setProtectedHeader({ alg: 'ES256', kid: 'dev-gw-2026-10-a', typ: 'JWT' }).sign(devPair.privateKey);
-await add('dev-kid-rejected-by-default', 'Otherwise valid token whose kid starts with dev- (signed with a key of a dev stack that is not one of the published test keys); a receiver without allowTestKeys rejects it like a test- key (CC-137).', {
+await add('dev-kid-rejected-by-default', 'Otherwise valid token whose kid starts with dev- (signed with a key of a dev stack that is not one of the published test keys); a receiver that is not in dev mode (devstack profile and allowTestKeys) rejects it (CC-137).', {
   token: await signWithDevKey(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000091' })),
-  request: toolsCall('get_issue'), verifierOverrides: { jwks: 'keys/dev-gateway-jwks.json', allowTestKeys: false }, valid: false, reason: 'test_key_not_allowed' });
-await add('valid-dev-kid-in-dev-mode', 'The same token accepted when dev mode is switched on explicitly (allowTestKeys true) (CC-137).', {
+  request: toolsCall('get_issue'), verifierOverrides: { jwks: 'keys/dev-gateway-jwks.json', allowTestKeys: false, devstackProfile: false }, valid: false, reason: 'test_key_not_allowed' });
+await add('dev-kid-rejected-without-devstack-profile', 'allowTestKeys alone (a unit test setting) does not make a dev- key acceptable: dev mode needs the devstack profile too (CC-137).', {
+  token: await signWithDevKey(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000093' })),
+  request: toolsCall('get_issue'), verifierOverrides: { jwks: 'keys/dev-gateway-jwks.json', allowTestKeys: true, devstackProfile: false }, valid: false, reason: 'test_key_not_allowed' });
+await add('valid-dev-kid-in-dev-mode', 'The same token accepted in dev mode: the devstack profile and allowTestKeys together (CC-137).', {
   token: await signWithDevKey(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000092' })),
-  request: toolsCall('get_issue'), verifierOverrides: { jwks: 'keys/dev-gateway-jwks.json', allowTestKeys: true }, valid: true });
+  request: toolsCall('get_issue'), verifierOverrides: { jwks: 'keys/dev-gateway-jwks.json', allowTestKeys: true, devstackProfile: true }, valid: true });
 await add('vsc-invalid-id', 'vsc id outside the Jira project key pattern; it would otherwise reach a JQL query (CC-056).', {
   token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC) OR project in (HR'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000054' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });

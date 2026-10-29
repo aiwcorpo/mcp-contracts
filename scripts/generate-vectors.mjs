@@ -1690,11 +1690,12 @@ mainCase(13, 'tar-total-size-limit', 'Five entries of 3.5 MiB each: every entry 
   writeFileSync(path('test-vectors', 'keys', 'dev-policy-bundle.pub.pem'), createPublicKey(devKey).export({ type: 'spki', format: 'pem' }));
   const revision = R(11);
   writeFileSync(path(...bundleDir, `policies-${revision}.tar.gz.sig-by-dev-key`), sign(null, archives[revision], devKey));
-  const devCase = (name, description, allowTestKeys, expected) => bundleCase(name, description, {
+  const devCase = (name, description, allowTestKeys, devstackProfile, expected) => bundleCase(name, description, {
     publicKeyId: 'dev-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`,
-    signature: `files/policies-${revision}.tar.gz.sig-by-dev-key`, publicKey: 'keys/dev-policy-bundle.pub.pem', loadedRevision: R2, allowTestKeys, expected });
-  devCase('dev-key-id-rejected-by-default', 'Valid bundle signed with a dev-stack key that is not a published test key and configured under the id dev-policy-main: refused without allowTestKeys by the dev- prefix alone (CC-137).', false, { accept: false, reason: 'test_key_not_allowed' });
-  devCase('dev-key-accepted-in-dev-mode', 'The same bundle and key in dev mode (allowTestKeys true): accepted (CC-137).', true, { accept: true });
+    signature: `files/policies-${revision}.tar.gz.sig-by-dev-key`, publicKey: 'keys/dev-policy-bundle.pub.pem', loadedRevision: R2, allowTestKeys, devstackProfile, expected });
+  devCase('dev-key-id-rejected-by-default', 'Valid bundle signed with a dev-stack key that is not a published test key and configured under the id dev-policy-main: refused outside dev mode by the dev- prefix alone (CC-137).', false, false, { accept: false, reason: 'test_key_not_allowed' });
+  devCase('dev-key-rejected-without-devstack-profile', 'allowTestKeys alone does not make a dev- key acceptable: dev mode needs the devstack profile too (CC-137).', true, false, { accept: false, reason: 'test_key_not_allowed' });
+  devCase('dev-key-accepted-in-dev-mode', 'The same bundle and key in dev mode, the devstack profile and allowTestKeys together: accepted (CC-137).', true, true, { accept: true });
 }
 const overridesCase = (n, name, description, policies, reason) => {
   const revision = `2026102616${String(n).padStart(2, '0')}00-${createHash('sha1').update('o' + n).digest('hex').slice(0, 7)}`;

@@ -96,6 +96,7 @@
               "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
               "status": "pending_approval",
               "change": "new",
+              "source": "ci",
               "approvedInVersion": null
             }
           ]

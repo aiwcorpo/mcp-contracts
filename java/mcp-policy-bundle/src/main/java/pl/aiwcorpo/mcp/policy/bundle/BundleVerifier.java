@@ -56,14 +56,16 @@ public final class BundleVerifier {
     private final PublicKey key;
     private final String keyId;
     private final boolean allowTestKeys;
+    private final boolean devstackProfile;
     private final TarReader.Limits limits;
     private final BasicAuthorizationEngine engine = new BasicAuthorizationEngine();
 
-    private BundleVerifier(Channel channel, PublicKey key, String keyId, boolean allowTestKeys, TarReader.Limits limits) {
+    private BundleVerifier(Channel channel, PublicKey key, String keyId, boolean allowTestKeys, boolean devstackProfile, TarReader.Limits limits) {
         this.channel = Objects.requireNonNull(channel, "channel");
         this.key = Objects.requireNonNull(key, "key");
         this.keyId = Objects.requireNonNull(keyId, "keyId");
         this.allowTestKeys = allowTestKeys;
+        this.devstackProfile = devstackProfile;
         this.limits = Objects.requireNonNull(limits, "limits");
     }
 
@@ -71,16 +73,28 @@ public final class BundleVerifier {
      * @param channel channel this verifier serves; main and overrides must use different keys
      * @param key Ed25519 public key of the channel
      * @param keyId identifier of the key in the receiver configuration; ids starting with {@code test-}, and the
-     *        published test keys under any id and ids starting with {@code dev-}, are refused unless {@code allowTestKeys} (CC-044, CC-137)
+     *        published test keys under any id, are refused unless {@code allowTestKeys} (CC-044); ids starting with
+     *        {@code dev-} are refused unless dev mode is on, see {@link #withDevstackProfile} (CC-137)
      * @param allowTestKeys true only in dev and test environments
      */
     public static BundleVerifier of(Channel channel, PublicKey key, String keyId, boolean allowTestKeys) {
-        return new BundleVerifier(channel, key, keyId, allowTestKeys, TarReader.Limits.DEFAULT);
+        return new BundleVerifier(channel, key, keyId, allowTestKeys, false, TarReader.Limits.DEFAULT);
     }
 
     /** Same as {@link #of(Channel, PublicKey, String, boolean)} with explicit archive limits. */
     public static BundleVerifier of(Channel channel, PublicKey key, String keyId, boolean allowTestKeys, TarReader.Limits limits) {
-        return new BundleVerifier(channel, key, keyId, allowTestKeys, limits);
+        return new BundleVerifier(channel, key, keyId, allowTestKeys, false, limits);
+    }
+
+    /**
+     * Dev mode is two consents: the devstack profile and {@code allowTestKeys} (CC-137). A key id starting with
+     * {@code dev-} is accepted only when both are set; {@code allowTestKeys} alone, as in a unit test, still refuses it.
+     *
+     * @param devstackProfile true only for a component started with the devstack profile
+     * @return a verifier like this one with the profile consent given
+     */
+    public BundleVerifier withDevstackProfile(boolean devstackProfile) {
+        return new BundleVerifier(channel, key, keyId, allowTestKeys, devstackProfile, limits);
     }
 
     /** @return the Ed25519 public key from an SPKI PEM text */
@@ -176,7 +190,8 @@ public final class BundleVerifier {
     private Map<String, byte[]> verifiedFiles(BundlePointer pointer, byte[] archive, byte[] signature)
             throws BundleRejectedException {
         pointer.check();
-        if ((keyId.startsWith("test-") || keyId.startsWith("dev-") || isPublishedTestKey(key)) && !allowTestKeys) {
+        boolean devMode = allowTestKeys && devstackProfile;
+        if (((keyId.startsWith("test-") || isPublishedTestKey(key)) && !allowTestKeys) || (keyId.startsWith("dev-") && !devMode)) {
             throw new BundleRejectedException(Reason.TEST_KEY_NOT_ALLOWED, "key " + keyId + " is a published test key");
         }
         try {

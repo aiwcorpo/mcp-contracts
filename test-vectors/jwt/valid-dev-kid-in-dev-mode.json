@@ -1,6 +1,6 @@
 {
-  "description": "The same token accepted when dev mode is switched on explicitly (allowTestKeys true) (CC-137).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTIifQ.FcgIsUkzD-zvBfM-Ei5s90oRWbFnZqTOvuX3j_h50D-8z51IUTSrGE54wIu4NKoRA8lUCk7Z6ug86AvIRmAHFA",
+  "description": "The same token accepted in dev mode: the devstack profile and allowTestKeys together (CC-137).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTIifQ.nYWLt9iGGMs49j726I-xW822G7VhnYBJ5nR6Ttb0H7f6Qitboda67i2Ijj7QGpKk6ZcBkrkCRyBr8H3fMb40yg",
   "header": {
     "alg": "ES256",
     "kid": "dev-gw-2026-10-a",
@@ -32,7 +32,8 @@
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
     "seenJtis": [],
-    "allowTestKeys": true
+    "allowTestKeys": true,
+    "devstackProfile": true
   },
   "request": {
     "kind": "jsonrpc",

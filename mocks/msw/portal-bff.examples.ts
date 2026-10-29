@@ -1865,6 +1865,7 @@ export const portalBffExamples: OperationExamples[] = [
                 "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
                 "status": "pending_approval",
                 "change": "new",
+                "source": "ci",
                 "approvedInVersion": null
               }
             ]
@@ -1976,7 +1977,8 @@ export const portalBffExamples: OperationExamples[] = [
           },
           "pendingHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
           "approvedInVersion": null,
-          "pendingVersion": "1.4.0"
+          "pendingVersion": "1.4.0",
+          "source": "ci"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

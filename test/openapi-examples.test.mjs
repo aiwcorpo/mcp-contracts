@@ -135,6 +135,7 @@ test('gateway-admin.v1.yaml: registry examples keep change and approvedInVersion
           for (const tool of server.tools) {
             tools++;
             assert.equal(tool.change !== undefined, tool.status === 'pending_approval', `${server.serverId}/${tool.name}: change only with pending_approval`);
+            assert.equal(tool.source !== undefined, tool.status === 'pending_approval', `${server.serverId}/${tool.name}: source only with pending_approval`);
             if (tool.change === 'new') assert.equal(tool.approvedInVersion, null, `${tool.name}: a new tool has no approved version`);
             if (tool.change === 'changed') assert.match(tool.approvedInVersion, /^\d+\.\d+\.\d+/, `${tool.name}: a changed tool has an approved version`);
           }

@@ -268,7 +268,7 @@ Każdy adapter IGA wybiera identyfikator wnioskodawcy z konfiguracji (np. `reque
 `preferred_username`); brak tego claimu w `Requester` to błąd adaptera i odmowa (fail-closed). Kształty
 `AccessRequest` i `RequestResult`: CC-024.
 
-## Zamrożony schemat Cedar (linia 3.2)
+## Zamrożony schemat Cedar (linia 4.0)
 
 `cedar/mcp.cedarschema` jest bajtowo zamrożony w obrębie linii, łącznie z komentarzem nagłówka i końcami linii LF: paczka
 polityk musi nieść dokładnie ten plik (CC-059), więc każda zmiana, nawet komentarza, sprawia, że komponenty na różnych wydaniach
@@ -574,11 +574,14 @@ reguła serwera z CC-076 zostaje i nie zależy od niego.
 Gateway trzyma dla każdego narzędzia zatwierdzoną definicję (jej odcisk to `definitionHash`) i nie pokazuje ani nie wykonuje
 narzędzia, którego aktualna definicja jest inna. Reguły:
 
-1. **Skąd jest manifest.** Ciało `PUT /admin/v1/registry/servers/{serverId}` (certyfikat `mcp-registry-ci`) to manifest zbudowany
-   z przeglądanego commitu (artefakt etapu budowy, `target/mcp-manifest.json`), nigdy manifest pobrany z działającego serwera, a zadanie
-   potoku z tym certyfikatem działa tylko na chronionej gałęzi. Poza profilem `devstack` gateway nie pobiera manifestu od serwera
-   i nigdy go nie zatwierdza; bootstrap (pobranie manifestu od serwera) istnieje tylko w trybie dev (sekcja "Tryb produkcyjny i tryb dev")
-   i też sprawdza `environment`.
+1. **Skąd jest manifest i kto go wysyła.** Ciało `PUT /admin/v1/registry/servers/{serverId}` to manifest zbudowany z przeglądanego commitu
+   (artefakt etapu budowy, `target/mcp-manifest.json`), nigdy manifest pobrany z działającego serwera, a zadanie potoku działa tylko na chronionej
+   gałęzi. Tożsamość potoku jest związana z serwerem (CC-161): certyfikat ma CN `mcp-registry-ci-<serverId>` (np. `mcp-registry-ci-mcp-jira`), a gateway
+   przyjmuje go tylko dla `PUT` ze ścieżką o tym samym `serverId`; inny CN, także dawny `mcp-registry-ci`, to `403`, nic nie jest zapisywane, a audyt
+   to `authentication` z powodem `client_certificate_rejected`. Wybrałem CN na serwer, a nie SAN z `serverId`, bo kontrakt już autoryzuje po CN
+   (`x-allowed-client-cn`) i nie trzeba sprawdzać drugiego miejsca w certyfikacie. Potok jednego repozytorium nie zmieni więc wpisu cudzego serwera.
+   Poza trybem dev gateway nie pobiera manifestu od serwera i nigdy go nie zatwierdza; bootstrap (pobranie manifestu od serwera) istnieje tylko w trybie
+   dev (sekcja "Tryb produkcyjny i tryb dev") i też sprawdza `environment`.
 2. **Co zatwierdza wdrożenie.** Przegląd commitu zatwierdza narzędzia, które nie zmieniają danych: nowe albo zmienione narzędzie `READ_ONLY`
    jest `approved` (`approvedInVersion` = wersja manifestu), wpis z niezmienionym `definitionHash` zostaje. Nowe albo zmienione narzędzie
    `UPDATE` lub `DESTRUCTIVE` jest `pending_approval` (`change` `new` albo `changed`, `pendingVersion` = wersja manifestu) i czeka na `approve`
@@ -586,13 +589,19 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
    `admin_change` z `definitionHash`: `definition_registered` (zatwierdzone), `definition_submitted` (czeka), `tool_removed`; zatwierdzenie to
    `definition_approved` z `sub` administratora.
 3. **Zmiana poza wdrożeniem blokuje narzędzie.** Odpowiedź na `tools/list` klientowi gateway buduje zawsze z zatwierdzonych wpisów, nie
-   przekazuje jej z serwera. Gateway trzyma ostatnio widzianą definicję każdego narzędzia z `tools/list` serwera (odczyt odświeżany
-   najpóźniej co TTL, konfiguracja, zalecane do 60 s) i porównuje ją z zatwierdzoną przy każdym `tools/list` klienta i przed każdym
-   `tools/call`; okno, w którym zmieniony serwer może jeszcze obsłużyć wywołanie, to więc najwyżej ten TTL. Różnica to `pending_approval`
-   z `change: changed`: definicja pochodzi z serwera, a `risk`, `action` i `resourceRefs` gateway bierze z zatwierdzonego wpisu (zmiana
-   w runtime ich nie zmienia), `pendingHash` liczy z nich, a `pendingVersion` to wersja, którą serwer podaje w `initialize`. Narzędzie jest
-   wtedy ukryte w `tools/list`, a wywołanie daje C10 `tool_disabled` (audyt: powód `definition_changed`), aż `approve`. Narzędzie, które serwer
-   pokazuje, a którego nie ma w rejestrze, jest ignorowane (nie ma dla niego `risk` ani `action`); `change: new` powstaje tylko przy `PUT`.
+   przekazuje jej z serwera. Gateway trzyma ostatnio widzianą definicję każdego narzędzia z `tools/list` serwera (odczyt odświeżany co TTL,
+   konfiguracja, **najwyżej 60 s**) i porównuje ją z zatwierdzoną przy każdym `tools/list` klienta i przed każdym `tools/call`; okno, w którym
+   zmieniony serwer może jeszcze obsłużyć wywołanie, to więc najwyżej 60 s. Różnica to `pending_approval` ze `source: server` i `change: changed`:
+   definicja pochodzi z serwera, a `risk`, `action` i `resourceRefs` gateway bierze z zatwierdzonego wpisu (zmiana w runtime ich nie zmienia),
+   `pendingHash` liczy z nich, a `pendingVersion` to wersja z `initialize`, wartość kontrolowana przez serwer, dlatego administrator widzi ją razem
+   ze `source`. Narzędzie jest wtedy ukryte w `tools/list`, a wywołanie daje C10 `tool_disabled` (audyt: `definition_changed`), aż `approve`.
+   Zatwierdzone narzędzie, którego serwer nie podaje w `tools/list`, jest ukryte tak samo (fail-closed): nie trafia do `tools/list` klienta,
+   wywołanie daje `tool_disabled`, audyt `tool_not_served`; wraca, gdy serwer znów je poda. Narzędzie, które serwer pokazuje, a którego nie ma
+   w rejestrze, jest ignorowane (nie ma dla niego `risk` ani `action`); `change: new` powstaje tylko przy `PUT`.
+   **Pierwszeństwo (CC-162):** wpis `pending_approval` ze `source: ci` (zostawiony przez `PUT`) nigdy nie jest zastępowany odczytem z serwera: różnica
+   między serwerem a takim wpisem tylko blokuje narzędzie i jest logowana, a administrator zatwierdza ten sam wpis z commitu. Wpis ze `source: server`
+   powstaje tylko tam, gdzie nie ma wpisu ze `source: ci`, znika, gdy serwer znów podaje zatwierdzoną definicję, i jest zastępowany przez kolejny
+   `PUT`. Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
 4. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
    usuniętego i dodanego ponownie.
 5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
@@ -665,12 +674,15 @@ Opisy w `resolveCredential` (C4):
 - **Definicja.** Tryb produkcyjny jest domyślny: komponent, który nie dostał jawnej zgody, działa jak produkcja. Tryb dev wymaga **dwóch zgód**:
   profilu `devstack` (stos deweloperski) **i** jawnego ustawienia (zalecana nazwa `allowTestKeys`). Samo `allowTestKeys` bez profilu `devstack`
   nie włącza trybu dev; profil bez ustawienia też nie.
+- **Rozróżnienie kluczy.** Klucze `test-` (opublikowane klucze wektorów) wymagają tylko `allowTestKeys`: tak działają testy jednostkowe komponentów bez stosu
+  (CC-044). Klucze `dev-` wymagają trybu dev, czyli obu zgód; w wektorach pole `devstackProfile` obok `allowTestKeys`.
 - **Klucze `dev-`.** Reguła CC-044 obejmuje też klucze, których `kid` zaczyna się od `dev-`: odbiorcy (serwery, broker, gateway, odbiorcy paczek)
-  odrzucają je z powodem `test_key_not_allowed` poza trybem dev. Stos dev generuje własne klucze z takim prefiksem; lista odcisków opublikowanych
+  odrzucają je z powodem `test_key_not_allowed` poza trybem dev (samo `allowTestKeys` nie wystarcza). Stos dev generuje własne klucze z takim prefiksem; lista odcisków opublikowanych
   kluczy testowych zostaje bez zmian. Ograniczenie: dla paczek reguła czyta nazwę klucza z konfiguracji odbiorcy, którą nadaje operator, więc klucz
   dev skonfigurowany pod inną nazwą jej nie podlega (w trybie dev nie ma to znaczenia); a tryb dev włącza przy okazji opublikowane klucze testowe.
   Wektory (klucze nieopublikowane, spoza listy SPKI, więc odrzuca je wyłącznie prefiks): `jwt/dev-kid-rejected-by-default`,
-  `jwt/valid-dev-kid-in-dev-mode`, `bundles/dev-key-id-rejected-by-default`, `bundles/dev-key-accepted-in-dev-mode`.
+  `jwt/valid-dev-kid-in-dev-mode`, `jwt/dev-kid-rejected-without-devstack-profile`, `bundles/dev-key-id-rejected-by-default`, `bundles/dev-key-rejected-without-devstack-profile`,
+  `bundles/dev-key-accepted-in-dev-mode`.
 - **Znacznik w manifeście.** Opcjonalne `environment` (`production` | `dev`; brak znaczy `production`, pole nie wchodzi do `definitionHash`).
   Gateway w trybie produkcyjnym odrzuca manifest z `dev` (`422 manifest_rejected`, powód `environment_mismatch`). Sprawdzenie obejmuje `PUT`,
   start gateway'a i bootstrap trybu dev; w trybie produkcyjnym bootstrapu nie ma.
@@ -914,8 +926,8 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 
 ## Wymagania dla odbiorców i paczek polityk
 
-- Odbiorcy C2 i odbiorcy paczek domyślnie odrzucają klucze z identyfikatorem `test-*` i `dev-*`; wyłącza to tylko jawne
-  ustawienie (zalecana nazwa `allowTestKeys`) w dev/test (CC-044, CC-137). `mcp-policy-bundle` rozpoznaje opublikowane
+- Odbiorcy C2 i odbiorcy paczek domyślnie odrzucają klucze z identyfikatorem `test-*` i `dev-*`; `test-*` wyłącza jawne ustawienie
+  (zalecana nazwa `allowTestKeys`) w testach i dev (CC-044), `dev-*` dopiero tryb dev: profil `devstack` i to ustawienie razem (CC-137). `mcp-policy-bundle` rozpoznaje opublikowane
   klucze testowe także po skrócie SPKI, niezależnie od identyfikatora w konfiguracji; odbiorcy C2 powinni robić to
   samo z kluczami z `test-vectors/keys/test-gateway-jwks.json`. Wektory mają `allowTestKeys: true` i osobne
   przypadki odrzucenia.

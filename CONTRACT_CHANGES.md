@@ -2527,8 +2527,7 @@ G-15, G-16, G-18, G-22.
 - **Wektory / testy:** test przykładów; reguła spójności w teście Node: `change` obecne wtedy i tylko wtedy, gdy
   `status: pending_approval`; `change: new` wymaga `approvedInVersion: null` (albo braku), `change: changed` wymaga
   semantycznej wersji; w `PendingTool` `approvedEntry: null` wymaga `approvedInVersion: null`.
-- **SemVer:** minor (nowe pola opcjonalne; `pendingVersion` w `required` odpowiedzi to dodatek po stronie producenta, nie
-  zmiana żądania).
+- **SemVer:** `pendingVersion` i `source` (CC-162) są wymagane w odpowiedzi `PendingTool`, więc według tabeli README to major (4.0.0); pozostałe pola opcjonalne.
 - **Wpływ na strumienie:** ws-05 (rejestr zapisuje wersję manifestu przy rejestracji i zatwierdzeniu), ws-07
   (przezroczyste), ws-08 (widok diffu).
 - **Do akceptacji człowieka (3-6 punktów):**
@@ -3140,7 +3139,7 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 
 | CC | Pozycja pakietu | Tytuł | SemVer (wg README) |
 | --- | --- | --- | --- |
-| CC-096, CC-097, CC-113 | A2a, A1a, A2b | wcześniejsze wpisy, wdrożone | minor |
+| CC-096, CC-097, CC-113 | A2a, A1a, A2b | wcześniejsze wpisy, wdrożone | CC-097 i CC-113 major (pole wymagane, zmiana tabeli akcji), CC-096 minor |
 | CC-133 | A1b-A1d | Reguły rejestru: pochodzenie manifestu, wdrożenie zatwierdza tylko `READ_ONLY`, zmiana poza wdrożeniem blokuje, obniżenie `risk` zawsze 422, audyt | major |
 | CC-134 | A3 (retencja) | Retencja aktywności (konfiguracja, domyślnie 30 dni) i audytu (SIEM 365 dni) | patch (opis) |
 | CC-135 | A4a | Wymiary limitów i limit DESTRUCTIVE jako konfiguracja | patch (opis) |
@@ -3156,6 +3155,8 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 | CC-158 | A5e | `422 system_not_configured` | major (zmiana kodu, nowa wartość enum) |
 | CC-159 | A5f | `credential_type_mismatch` przy rejestracji | major (odrzuca dzisiejszy manifest OpenSearch) |
 | CC-160 | A6a, A6b | Zapytania serwera ze struktury, nazwy indeksów zamiast wzorców | minor (opis i wektory) |
+| CC-161 | po przeglądzie 4.0.0 | Certyfikat potoku związany z `serverId`; zatwierdzone narzędzie nieobecne na serwerze ukryte | major (zmiana CN dla `PUT`) |
+| CC-162 | po przeglądzie 4.0.0 | `PendingTool.source` i pierwszeństwo wpisu z `PUT` | major (pole wymagane) |
 
 ## CC-133 | C5/C8 | Reguły rejestru: pochodzenie manifestu, zatwierdzanie, blokada, obniżenie `risk`, ślad w audycie (A1b-A1d)
 
@@ -3299,3 +3300,18 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 ## CC-160 | entity-builder | Zapytania serwera i nazwy indeksów (A6a, A6b)
 
 - **Zmiana:** serwer składa zapytanie ze struktury (nie przyjmuje surowego JQL/CQL), cytuje wartości, warunki użytkownika w nawiasie, `ORDER BY` z listy; OpenSearch rozwiązuje wzorzec `p,p-*` do konkretnych nazw indeksów z pominięciem aliasów i strumieni danych i pyta po liście nazw; alias w argumencie to `not_found_or_denied`. Referencja `scripts/lib/query-rendering.mjs`, wektory `query-rendering/`. `aggregate_logs` wraca po wdrożeniu w serwerze OpenSearch; ws-09 zdejmuje regułę wyłączającą dopiero wtedy. minor (opis i wektory). **Status:** accepted (decyzja: człowiek, 2026-10-29, pakiet M4), wydanie 4.0.0
+
+## CC-161 | C5 | Certyfikat potoku związany z `serverId`; narzędzie nieobecne na serwerze (po przeglądzie 4.0.0)
+
+- **Problem:** jeden CN `mcp-registry-ci` dla wszystkich potoków pozwalał potokowi jednego repozytorium zmienić wpis cudzego serwera (usunąć jego narzędzia albo zatwierdzić `READ_ONLY` z wybranym opisem).
+- **Wariant:** CN `mcp-registry-ci-<serverId>`; gateway przyjmuje go tylko dla `PUT` ze ścieżką o tym `serverId`, inny CN (także dawny `mcp-registry-ci`) to `403`, nic nie jest zapisywane, audyt `authentication`/`client_certificate_rejected`.
+  Wybrano CN, nie SAN, bo kontrakt już autoryzuje po CN (`x-allowed-client-cn`). Zatwierdzone narzędzie, którego serwer nie podaje w `tools/list`, jest ukryte (`tool_disabled`, powód audytu `tool_not_served`), fail-closed.
+- **Pliki:** `openapi/gateway-admin.v1.yaml`, `spectral-functions/mtlsClientCn.js`, `schemas/audit-event.schema.json`, README ("Rejestr i przypinanie definicji").
+- **SemVer:** major (zmiana CN dla istniejącej operacji). **Status:** accepted (decyzja: człowiek, 2026-10-29, po drugim przeglądzie), wydanie 4.0.0
+
+## CC-162 | C5/C12 | `PendingTool.source` i pierwszeństwo wpisu z `PUT` (po przeglądzie 4.0.0)
+
+- **Problem:** wpis oczekujący z `PUT` i z odczytu serwera nie były rozróżnione; przejęty serwer mógł podać wersję i definicję, które administrator zatwierdziłby jako zmianę z wdrożenia.
+- **Wariant:** `PendingTool.source` (`ci` | `server`, wymagane) i `RegistryTool.source` (przy `pending_approval`); odczyt z serwera nigdy nie zastępuje wpisu ze `source: ci` (tylko blokuje narzędzie i jest logowany); wpis ze `source: server` znika, gdy serwer wraca do zatwierdzonej definicji, i jest zastępowany przez `PUT`; `pendingVersion` dla `server` to wersja zgłoszona przez serwer (widoczna razem ze `source`).
+- **Pliki:** `openapi/gateway-admin.v1.yaml`, `openapi/portal-bff.v1.yaml` (przykłady), README. Manifest nie niesie commitu budowy (decyzja człowieka).
+- **SemVer:** major (pole wymagane w odpowiedzi). **Status:** accepted (decyzja: człowiek, 2026-10-29, po drugim przeglądzie), wydanie 4.0.0
