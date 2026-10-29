@@ -342,7 +342,7 @@
       ],
       "properties": {
         "error": {
-          "description": "Also the answer of a server when the credential type in X-MCP-Credential-Type does not match its configuration (audit reason credential_type_mismatch, CC-166); the message gives no detail.",
+          "description": "Also the answer of a server when the credential type in X-MCP-Credential-Type is not one of its accepted types (audit reason credential_type_mismatch, CC-166); the message gives no detail.",
           "const": "internal_error"
         },
         "message": {

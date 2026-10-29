@@ -104,6 +104,78 @@
       }
     },
     {
+      "name": "registerServer 200 registered_with_lowered_risk",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=registered_with_lowered_risk($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "serverId": "mcp-jira",
+          "system": "jira",
+          "version": "1.5.0",
+          "tools": [
+            {
+              "name": "update_issue",
+              "risk": "READ_ONLY",
+              "action": "update",
+              "resourceRefs": [
+                {
+                  "argument": "issueKey",
+                  "type": "Jira::Issue"
+                }
+              ],
+              "definition": {
+                "name": "update_issue",
+                "title": "Update issue",
+                "description": "Updates the summary of an issue.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "issueKey": {
+                      "type": "string",
+                      "description": "Issue key, e.g. ABC-123",
+                      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                      "maxLength": 32
+                    },
+                    "summary": {
+                      "type": "string",
+                      "maxLength": 255
+                    }
+                  },
+                  "required": [
+                    "issueKey",
+                    "summary"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "readOnlyHint": false,
+                  "destructiveHint": false
+                }
+              },
+              "definitionHash": "sha256:a54246cd697847b72aebc9c8bb91e44e3f13b6ef84b5f0f868fe1eaa78d5045c",
+              "status": "pending_approval",
+              "change": "changed",
+              "source": "ci",
+              "approvedInVersion": "1.4.0",
+              "riskLowered": true
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "registerServer 400 invalid_request",
       "priority": 2,
       "request": {
@@ -167,30 +239,6 @@
         "jsonBody": {
           "error": "manifest_rejected",
           "message": "system does not match gateway configuration for mcp-jira"
-        }
-      }
-    },
-    {
-      "name": "registerServer 422 risk_lowered",
-      "priority": 2,
-      "request": {
-        "method": "PUT",
-        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}",
-        "headers": {
-          "Prefer": {
-            "matches": "(^|.*[ ,;])example=risk_lowered($|[ ,;].*)"
-          }
-        }
-      },
-      "response": {
-        "status": 422,
-        "headers": {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        "jsonBody": {
-          "error": "manifest_rejected",
-          "reason": "risk_lowered",
-          "message": "update_issue lowers risk from UPDATE to READ_ONLY"
         }
       }
     },

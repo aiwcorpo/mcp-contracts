@@ -11,13 +11,15 @@ Wydanie minor z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): podłoga r
 - **Aktywność (CC-165):** zmiana wyniku istniejących wierszy, nie nowe powody (te były znane w 4.0.x): `rate_limited_user|client|tool` -> `rate_limited`, `definition_changed` i `tool_not_served` -> `tool_disabled`,
   `exchange_denied` -> `denied_not_granted`, wszystko w grupie `denied`. Dla `tool_call` z `outcome` innym niż `ok` obowiązuje cała mapa, więc wiersze z `not_granted`, `link_scope`, `policy_forbid`, `step_up_required`
   zmieniają wynik z `error` na `denied_*`. Normatywny kształt `exchange_denied`: `tool_call` allow z `outcome: denied`. Wektory `activity-calls/aggregation-denied-*` i `aggregation-tool-call-denied-*`.
-- **Typ poświadczenia (CC-166):** nagłówek `X-MCP-Credential-Type` (istniejący w C3) niesie typ zwrócony przez broker; gateway odmawia, gdy różni się od konfiguracji systemu; serwer odmawia przed Cedar, sondą
-  i resolverami przy rozjeździe, braku lub nieznanej wartości, ale tylko dla żądań z `X-MCP-Credential`. Wektory `credential-type-header/`.
-- **Rejestr (CC-167):** podłoga ryzyka (najwyższe zgłoszone, także oczekujące); jedyna droga w dół to `approve` z `acceptRiskLowering: true` (`mcp-platform-admin`), audyt `risk_lowered_by_admin`. Limity fail-closed
+- **Typ poświadczenia (CC-166):** konfiguracja to zbiór typów systemu. Nagłówek `X-MCP-Credential-Type` (istniejący w C3) niesie typ zwrócony przez broker; gateway odmawia, gdy nie należy do zbioru z konfiguracji
+  systemu; serwer odmawia przed Cedar, sondą i resolverami, gdy nagłówek nie należy do jego zbioru, brak go albo jest nieznany, ale tylko dla żądań z `X-MCP-Credential` (serwer bez skonfigurowanego typu też odmawia).
+  `context.credentialType` w Cedar to typ domyślny systemu z konfiguracji. Wektory `credential-type-header/` (13, w tym GitLab z dwoma typami).
+- **Rejestr (CC-167):** podłoga ryzyka (najwyższe zgłoszone, także oczekujące). `PUT` z niższym ryzykiem nie odrzuca manifestu: to narzędzie jest `pending_approval` z `riskLowered: true`, ukryte; jedyna droga w dół
+  to `approve` z `acceptRiskLowering: true` (`mcp-platform-admin`, świeże MFA w BFF), jedno zdarzenie `risk_lowered_by_admin` z polem `risk`. Limity fail-closed
   przy niedostępnym Redisie (503 w kształcie C10). `context.credentialType` z konfiguracji systemu.
 
 Migracja: **ws-05 gateway:** podłoga ryzyka i `acceptRiskLowering`, odmowa przy typie brokera różnym od konfiguracji, mapowanie powodów na wyniki, limity fail-closed (503 z `Retry-After`).
-**ws-02 starter / ws-04 serwery:** sprawdzenie nagłówka przed Cedar, sondą i resolverami, tylko przy `X-MCP-Credential`. **ws-07 BFF / ws-08 web:** pole `acceptRiskLowering` w `approve` dla admina; wyniki aktywności bez nowych
+**ws-02 starter / ws-04 serwery:** sprawdzenie nagłówka przed Cedar, sondą i resolverami, tylko przy `X-MCP-Credential`. **ws-07 BFF / ws-08 web:** pole `acceptRiskLowering` w `approve` dla admina, wysyłane tylko przy `true` (starszy gateway odrzuca nieznane pole, więc gateway wchodzi pierwszy), ze step-up MFA (`401 step_up_required`); pole `riskLowered` w diffie; wyniki aktywności bez nowych
 etykiet; nie proponować `request_access` na podstawie samego `result`. **ws-10:** rozjazd typu, `tool_call` z odmowami, Redis niedostępny, obniżenie ryzyka przez admina.
 
 ## 4.0.1 - 2026-10-29

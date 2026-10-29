@@ -388,10 +388,15 @@ paths:
 
         **Rejections (422 manifest_rejected, with reason).** The gateway recomputes every definitionHash from the entry's
         definition (CC-004, CC-005) and rejects the manifest when one differs or when a semantic manifest rule of the README
-        fails. A tool that lowers risk (for example DESTRUCTIVE to READ_ONLY) is always rejected (risk_lowered), also for a
-        tool that was removed and added again: the floor is the highest risk ever reported for the tool, a pending entry included (CC-167); a manifest with environment dev on a gateway in production mode (the
-        default) is rejected (environment_mismatch, CC-138); so is a manifest whose `credential.acceptedTypes` does not
-        contain the credential type that the broker is asked for in this system (credential_type_mismatch, CC-159). At
+        fails; a manifest with environment dev on a gateway in production mode (the default) is rejected
+        (environment_mismatch, CC-138); so is a manifest whose `credential.acceptedTypes` does not contain a credential
+        type that the system allows (credential_type_mismatch, CC-159: every type the broker may return for the system
+        must be accepted by the server). A tool whose risk is lower than the risk floor, the highest risk ever reported
+        for it, a pending entry included (CC-167), does not reject the manifest: that one tool becomes pending_approval
+        (source ci, change changed, riskLowered true) and stays hidden and refused as tool_disabled, and the rest of the
+        manifest follows the rules above. Only an administrator can approve it, with acceptRiskLowering true on the approve
+        operation (with a fresh MFA in the portal); the floor then falls to the approved risk. The 422 of this call stays
+        for the other rejections listed here and for a hash that does not match. At
         start the gateway makes the same checks for the manifests it holds; a held manifest that fails them is not
         replaced: the server is reported with enabled false and its tools are refused as tool_disabled until a manifest
         that passes is registered. The binding serverId -> system/internalUrl comes only from gateway configuration; a
@@ -553,12 +558,53 @@ paths:
                         change: new
                         source: ci
                         approvedInVersion: null
+                registered_with_lowered_risk:
+                  summary: The pipeline reported a risk below the floor for update_issue; the rest of the manifest went through
+                  value:
+                    serverId: mcp-jira
+                    system: jira
+                    version: 1.5.0
+                    tools:
+                      - name: update_issue
+                        risk: READ_ONLY
+                        action: update
+                        resourceRefs:
+                          - argument: issueKey
+                            type: Jira::Issue
+                        definition:
+                          name: update_issue
+                          title: Update issue
+                          description: Updates the summary of an issue.
+                          inputSchema:
+                            type: object
+                            properties:
+                              issueKey:
+                                type: string
+                                description: Issue key, e.g. ABC-123
+                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                                maxLength: 32
+                              summary:
+                                type: string
+                                maxLength: 255
+                            required:
+                              - issueKey
+                              - summary
+                            additionalProperties: false
+                          annotations:
+                            readOnlyHint: false
+                            destructiveHint: false
+                        definitionHash: sha256:a54246cd697847b72aebc9c8bb91e44e3f13b6ef84b5f0f868fe1eaa78d5045c
+                        status: pending_approval
+                        change: changed
+                        source: ci
+                        approvedInVersion: 1.4.0
+                        riskLowered: true
         '400':
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
         '422':
-          description: Manifest conflicts with gateway configuration (system, internalUrl, serverId or credential type), lowers the risk of a tool, or declares environment dev on a gateway in production mode.
+          description: Manifest conflicts with gateway configuration (system, internalUrl, serverId or credential type), fails a rule, or declares environment dev on a gateway in production mode.
           content:
             application/json:
               schema:
@@ -568,11 +614,6 @@ paths:
                   value:
                     error: manifest_rejected
                     message: system does not match gateway configuration for mcp-jira
-                risk_lowered:
-                  value:
-                    error: manifest_rejected
-                    reason: risk_lowered
-                    message: update_issue lowers risk from UPDATE to READ_ONLY
                 environment_mismatch:
                   value:
                     error: manifest_rejected
@@ -672,6 +713,7 @@ paths:
                     approvedInVersion: 1.3.0
                     pendingVersion: 1.4.0
                     source: ci
+                    riskLowered: true
                 changed_on_server:
                   summary: A running server presented another definition than the approved one (source server)
                   value:
@@ -757,8 +799,8 @@ paths:
       description: |
         definitionHash must equal the current pendingHash, otherwise 409 and nothing changes. Approval is the way to accept
         what a deployment through PUT left pending (a new or changed UPDATE or DESTRUCTIVE tool) and a definition that changed
-        outside a deployment (CC-133). An entry that lowers risk (the approved risk is higher than the pending one) cannot be approved: 422
-        manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; the pipeline never can, CC-167). The approval is audited as admin_change with reason definition_approved (risk_lowered_by_admin when a lowering was accepted), the administrator
+        outside a deployment (CC-133). An entry whose risk is lower than the risk floor (riskLowered true) cannot be approved: 422
+        manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; the pipeline never can, CC-167). The approval is audited as admin_change with reason definition_approved, or, when a lowering was accepted, with one event risk_lowered_by_admin in its place (risk = the new risk), the administrator
         as sub and the approved hash as definitionHash.
       security:
         - mtls: []
@@ -1539,6 +1581,9 @@ components:
           type: string
           enum: [ci, server]
           description: Present exactly when status is pending_approval (CC-162); same meaning as PendingTool.source.
+        riskLowered:
+          type: boolean
+          description: True when the pending entry has a risk below the risk floor (CC-167). The tool is hidden and refused as tool_disabled, and only an administrator can approve it, with acceptRiskLowering true. Absent means false.
         approvedInVersion:
           description: Version of the manifest at which the approved entry was approved; null for a new tool that has no approved entry. Absent only for an approved tool whose version was not recorded before this field existed (CC-097).
           oneOf:
@@ -1576,6 +1621,9 @@ components:
         pendingVersion:
           description: Version of the manifest in which the pending entry appeared (CC-097). For source server it is the version the server reported in initialize, a value the server controls, so the administrator sees it together with source.
           $ref: '../schemas/common.schema.json#/$defs/SemVer'
+        riskLowered:
+          type: boolean
+          description: True when the pending entry has a risk below the risk floor, the highest risk ever reported for the tool (CC-167); approve needs acceptRiskLowering true then. Absent means false.
         source:
           type: string
           enum: [ci, server]
@@ -1599,7 +1647,7 @@ components:
         acceptRiskLowering:
           type: boolean
           default: false
-          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk. Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
+          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
       additionalProperties: false
     ActivityCall:
       type: object

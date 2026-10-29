@@ -473,9 +473,14 @@ audit('gateway-credential-type-mismatch', 'The broker returned another credentia
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'credential_resolve',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-opensearch', credentialType: 'user-secret', reason: 'credential_type_mismatch', outcome: 'error', errorCode: 'internal_error',
 }, true);
-audit('gateway-registry-risk-lowered-by-admin', 'An administrator explicitly approved a lower risk than the floor (acceptRiskLowering, CC-167).', {
+audit('gateway-registry-risk-lowered-by-admin', 'An administrator explicitly approved a lower risk than the floor (acceptRiskLowering, CC-167): one event instead of definition_approved, risk is the new risk.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
-  reason: 'risk_lowered_by_admin', definitionHash: 'sha256:'+'d4'.repeat(32), outcome: 'ok',
+  risk: 'READ_ONLY', reason: 'risk_lowered_by_admin', definitionHash: 'sha256:'+'d4'.repeat(32), outcome: 'ok',
+}, true);
+audit('gateway-limit-store-unavailable', 'The counter of the limits does not answer: the request is refused as upstream_unavailable (CC-167).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
+  tool: 'get_issue', risk: 'READ_ONLY', decision: 'deny', reason: 'upstream_unavailable', outcome: 'error', errorCode: 'upstream_unavailable', argsLength: 20,
 }, true);
 audit('gateway-link-scope', 'Tool outside the virtual server link: policy_decision with reason link_scope (CC-142).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
@@ -1090,15 +1095,20 @@ argumentVector('unknown', 'A name the system does not know looks the same: not_f
 // ---------- credential type header (C3, CC-166) ----------
 
 const typeVector = (name, description, input) => write('credential-type-header', `${name}.json`, { description, input, expected: credentialTypeCheck(input) });
-typeVector('server-same-type', 'The header and the configuration agree: the call goes on.', { side: 'server', header: 'service-account', configured: 'service-account', credentialPresent: true });
-typeVector('server-user-vs-service-account', 'The gateway says user-secret, the server is configured for service-account: refused, internal_error, reason credential_type_mismatch.', { side: 'server', header: 'user-secret', configured: 'service-account', credentialPresent: true });
-typeVector('server-service-account-vs-user', 'The gateway says service-account, the server is configured for user-secret: refused.', { side: 'server', header: 'service-account', configured: 'user-secret', credentialPresent: true });
-typeVector('server-header-missing', 'A request with X-MCP-Credential and no header: refused (fail-closed), the server does not guess the type.', { side: 'server', header: null, configured: 'user-oauth', credentialPresent: true });
-typeVector('server-header-unknown-value', 'A value outside the four types: refused.', { side: 'server', header: 'api-key', configured: 'user-oauth', credentialPresent: true });
-typeVector('server-header-case-differs', 'The comparison is exact, case included.', { side: 'server', header: 'User-OAuth', configured: 'user-oauth', credentialPresent: true });
-typeVector('server-request-without-credential', 'initialize, tools/list and registry calls carry no credential: the check does not apply and the missing header is not an error.', { side: 'server', header: null, configured: 'user-oauth', credentialPresent: false });
-typeVector('gateway-broker-returns-configured-type', 'The broker returns the type that the gateway configuration names for the system: the credential is used and the header carries that type.', { side: 'gateway', returned: 'token-exchange', configured: 'token-exchange' });
-typeVector('gateway-broker-returns-other-type', 'The broker returns another type than the configuration names: the gateway refuses (internal_error, audit credential_resolve with reason credential_type_mismatch) and sends nothing to the server.', { side: 'gateway', returned: 'user-secret', configured: 'token-exchange' });
+const GITLAB = ['user-oauth', 'user-secret'];
+typeVector('server-gitlab-pat', 'GitLab server accepts user-oauth and user-secret; the user connected a PAT, the gateway sends user-secret: the call goes on (CC-166).', { side: 'server', header: 'user-secret', allowed: GITLAB, credentialPresent: true });
+typeVector('server-gitlab-oauth', 'The same server, the header says user-oauth: the call goes on.', { side: 'server', header: 'user-oauth', allowed: GITLAB, credentialPresent: true });
+typeVector('server-gitlab-service-account', 'A service account key for a server that accepts only user types: refused, internal_error, reason credential_type_mismatch.', { side: 'server', header: 'service-account', allowed: GITLAB, credentialPresent: true });
+typeVector('server-service-account-sent-user-type', 'A service desk server accepts only service-account; the header says user-secret: refused.', { side: 'server', header: 'user-secret', allowed: ['service-account'], credentialPresent: true });
+typeVector('server-header-missing', 'A request with X-MCP-Credential and no header: refused (fail-closed), the server does not guess the type.', { side: 'server', header: null, allowed: GITLAB, credentialPresent: true });
+typeVector('server-header-unknown-value', 'A value outside the four types: refused.', { side: 'server', header: 'api-key', allowed: GITLAB, credentialPresent: true });
+typeVector('server-header-case-differs', 'The comparison is exact, case included.', { side: 'server', header: 'User-OAuth', allowed: GITLAB, credentialPresent: true });
+typeVector('server-no-configured-type', 'A server with no configured credential type that receives X-MCP-Credential refuses the call (fail-closed).', { side: 'server', header: 'user-oauth', allowed: [], credentialPresent: true });
+typeVector('server-request-without-credential', 'initialize, tools/list and registry calls carry no credential: the check does not apply and the missing header is not an error.', { side: 'server', header: null, allowed: GITLAB, credentialPresent: false });
+typeVector('gateway-gitlab-broker-returns-pat', 'GitLab is configured with user-oauth (default) and user-secret; the broker returns the type of the user connection, user-secret: the call goes on and the header carries user-secret.', { side: 'gateway', returned: 'user-secret', allowed: GITLAB });
+typeVector('gateway-gitlab-broker-returns-oauth', 'The broker returns user-oauth: the call goes on.', { side: 'gateway', returned: 'user-oauth', allowed: GITLAB });
+typeVector('gateway-broker-returns-type-outside-set', 'The broker returns service-account for a system that allows user-oauth and user-secret: the gateway refuses (internal_error, audit credential_resolve with reason credential_type_mismatch) and sends nothing to the server.', { side: 'gateway', returned: 'service-account', allowed: GITLAB });
+typeVector('gateway-token-exchange-system', 'A system with the single type token-exchange: the broker returns it, the call goes on.', { side: 'gateway', returned: 'token-exchange', allowed: ['token-exchange'] });
 
 gatewayAuth('rate-limit-store-unavailable', 'The counter of the limits does not answer: the request is refused (fail-closed) with 503 upstream_unavailable, Retry-After, no challenge (CC-167).',
   { reason: 'rate_limit_store_unavailable', publicBaseUrl: BASE, resourcePath: '/s/mcp-jira' },
@@ -1141,7 +1151,7 @@ for (const [n, reason, errorCode, result] of [
 aggregation('credential-required-tool-call', 'The gateway allowed the call, the broker had no credential: a tool_call event with reason credential_required is a credential_required row, not a plain error (CC-142).',
   [gw(80, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', reason: 'credential_required', outcome: 'error', errorCode: 'credential_required' })],
   { requestId: RID(80), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'credential_required', errorCode: 'credential_required' });
-aggregation('rate-limited-tool-call', 'A tool_call event with reason rate_limited is a rate_limited row (CC-142).',
+aggregation('rate-limited-tool-call', 'A tool_call event with the general reason rate_limited is a rate_limited row (CC-142). Since CC-156 the gateway emits rate_limited_user, rate_limited_client or rate_limited_tool instead (see aggregation-tool-call-denied-*), so this vector is not a model for new events.',
   [gw(81, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'deny', reason: 'rate_limited', outcome: 'denied', errorCode: 'rate_limited' })],
   { requestId: RID(81), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'rate_limited', errorCode: 'rate_limited' });
 aggregation('confirmed-two-wrong-codes', 'First call, two wrong codes, then the right one: one row, result confirmed, wrongCodeCount 2, requestId of the first request.', [

@@ -1,0 +1,16 @@
+{
+  "description": "The broker returns service-account for a system that allows user-oauth and user-secret: the gateway refuses (internal_error, audit credential_resolve with reason credential_type_mismatch) and sends nothing to the server.",
+  "input": {
+    "side": "gateway",
+    "returned": "service-account",
+    "allowed": [
+      "user-oauth",
+      "user-secret"
+    ]
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "internal_error",
+    "auditReason": "credential_type_mismatch"
+  }
+}

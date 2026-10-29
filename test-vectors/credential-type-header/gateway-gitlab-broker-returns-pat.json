@@ -1,0 +1,14 @@
+{
+  "description": "GitLab is configured with user-oauth (default) and user-secret; the broker returns the type of the user connection, user-secret: the call goes on and the header carries user-secret.",
+  "input": {
+    "side": "gateway",
+    "returned": "user-secret",
+    "allowed": [
+      "user-oauth",
+      "user-secret"
+    ]
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

@@ -3341,17 +3341,20 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 - **Pliki:** `scripts/lib/activity-calls.mjs`, wektory `activity-calls/aggregation-denied-*` (`policy_decision`) i `aggregation-tool-call-denied-*` (`tool_call`), opis filtra `result` w OpenAPI.
 - **SemVer:** `result` to otwarty napis, żadna wartość nie znika; zmiana wyniku istniejących wierszy jest minor. **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
 
-## CC-166 | C3/C8/C10 | Typ poświadczenia: nagłówek `X-MCP-Credential-Type` a konfiguracja
+## CC-166 | C3/C8/C10 | Typ poświadczenia: nagłówek `X-MCP-Credential-Type` a zbiór typów z konfiguracji
 
-- **Zmiana:** nagłówek (istniejący w C3) niesie typ zwrócony przez broker. Jedyne źródło prawdy to konfiguracja systemu w gateway'u: gdy broker zwróci inny typ, gateway odmawia (`internal_error`, audyt `credential_resolve` z powodem `credential_type_mismatch`).
-  Serwer porównuje nagłówek z własną konfiguracją przed Cedar, sondą grantu i resolverami; dotyczy tylko żądań z `X-MCP-Credential` (brak nagłówka, nieznana wartość lub różnica = odmowa `internal_error`, audyt `credential_type_mismatch`).
-  Założenie modelu zagrożeń: mTLS + JWT między gateway'em a serwerem wystarcza, bez claimu typu.
-- **Pliki:** `scripts/lib/credential-type-check.mjs`, wektory `credential-type-header/` (9), audyt `server-credential-type-mismatch` i `gateway-credential-type-mismatch`, README.
-- **SemVer:** serwer, który nie ma sprawdzenia, dalej działa (traci ochronę); nowy serwer ze starym gateway'em działa, bo stary gateway już wysyła nagłówek (z typu brokera), o ile typ zgadza się z konfiguracją serwera; wdrażać razem. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+- **Zmiana:** konfiguracja systemu to zbiór dozwolonych typów (GitLab: `user-oauth`, `user-secret`). Nagłówek (istniejący w C3) niesie typ zwrócony przez broker. Gateway odmawia (`internal_error`, audyt `credential_resolve`
+  z powodem `credential_type_mismatch`), gdy typ z brokera nie należy do zbioru. Serwer sprawdza, że nagłówek należy do jego zbioru typów, przed Cedar, sondą grantu i resolverami; dotyczy tylko żądań z `X-MCP-Credential`
+  (brak nagłówka, nieznana wartość, wartość spoza zbioru albo brak skonfigurowanego typu = odmowa `internal_error`, audyt `credential_type_mismatch`). `context.credentialType` w Cedar to typ domyślny systemu z konfiguracji gateway'a
+  (Cedar jest oceniany przed pytaniem brokera). Założenie modelu zagrożeń: mTLS + JWT między gateway'em a serwerem wystarcza, bez claimu typu.
+- **Pliki:** `scripts/lib/credential-type-check.mjs`, wektory `credential-type-header/` (13, w tym GitLab z dwoma typami), audyt `server-credential-type-mismatch` i `gateway-credential-type-mismatch`, README.
+- **SemVer:** serwer bez sprawdzenia dalej działa (traci ochronę); nowy serwer ze starym gateway'em działa, bo stary gateway już wysyła nagłówek (typ brokera), o ile należy do zbioru serwera; wdrażać razem. Żaden istniejący przepływ (PAT w GitLabie) nie jest odrzucany. minor. **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
 
-## CC-167 | C5/README | Limity fail-closed, podłoga ryzyka, `acceptRiskLowering`
+## CC-167 | C5/C12/README | Limity fail-closed, podłoga ryzyka, `acceptRiskLowering`
 
-- **Zmiana:** limity przy niedostępnym Redisie odmawiają (`upstream_unavailable`, HTTP `503` w kształcie C10 z `Retry-After`, bez `WWW-Authenticate`; wektor `gateway-authentication/rate-limit-store-unavailable`). Podłoga ryzyka to najwyższe ryzyko kiedykolwiek zgłoszone dla narzędzia, także oczekujące;
-  niższe zgłoszenie z potoku to `422 risk_lowered`. Nowe `ApproveRequest.acceptRiskLowering` (tylko `mcp-platform-admin`, nigdy potok): jawna droga w dół, audyt `admin_change` z powodem `risk_lowered_by_admin`. Wpisy `source: server` nie podnoszą podłogi.
-  `context.credentialType` dla systemu z dwoma typami to typ z konfiguracji systemu w gateway'u.
-- **SemVer:** liczenie wpisu oczekującego w podłodze jest według tabeli zaostrzeniem walidacji (major); wydane jako minor na decyzję człowieka 2026-10-29 (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0
+- **Zmiana:** limity przy niedostępnym Redisie odmawiają (`upstream_unavailable`, HTTP `503` w kształcie C10 z `Retry-After`, bez `WWW-Authenticate`; wektor i zdarzenie `gateway-limit-store-unavailable`). Podłoga ryzyka to najwyższe ryzyko kiedykolwiek zgłoszone dla narzędzia, także oczekujące.
+  `PUT` z ryzykiem niższym od podłogi nie odrzuca manifestu: to jedno narzędzie jest `pending_approval` (`source: ci`, `change: changed`, `riskLowered: true`), ukryte i odmawiane jako `tool_disabled`; reszta manifestu przechodzi. `422` przy `PUT`
+  zostaje dla pozostałych odrzuceń. `ApproveRequest.acceptRiskLowering` (tylko `mcp-platform-admin`, nigdy potok; BFF wymaga świeżego MFA, `401 step_up_required`, wysyła pole tylko przy `true`): jedyna droga w dół; podłoga spada
+  do zatwierdzonego ryzyka, jedno zdarzenie `admin_change`/`risk_lowered_by_admin` z polem `risk`; bez flagi `422 risk_lowered`; flaga przy wpisie, który niczego nie obniża, jest ignorowana. Wpisy `source: server` nie podnoszą podłogi.
+  `context.credentialType` to typ domyślny systemu z konfiguracji gateway'a.
+- **SemVer:** liczenie wpisu oczekującego w podłodze (dawniej przechodzący `PUT` czeka teraz na administratora) jest według tabeli zaostrzeniem (major); wydane jako minor na decyzję człowieka 2026-10-29 (wyjątek w README). **Status:** accepted (decyzja: człowiek, 2026-10-29), wydanie 4.1.0

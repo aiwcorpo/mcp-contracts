@@ -1,5 +1,5 @@
 {
-  "description": "A tool_call event with reason rate_limited is a rate_limited row (CC-142).",
+  "description": "A tool_call event with the general reason rate_limited is a rate_limited row (CC-142). Since CC-156 the gateway emits rate_limited_user, rate_limited_client or rate_limited_tool instead (see aggregation-tool-call-denied-*), so this vector is not a model for new events.",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {

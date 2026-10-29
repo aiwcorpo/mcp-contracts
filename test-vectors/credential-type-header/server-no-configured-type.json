@@ -1,0 +1,14 @@
+{
+  "description": "A server with no configured credential type that receives X-MCP-Credential refuses the call (fail-closed).",
+  "input": {
+    "side": "server",
+    "header": "user-oauth",
+    "allowed": [],
+    "credentialPresent": true
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "internal_error",
+    "auditReason": "credential_type_mismatch"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "description": "The broker returns user-oauth: the call goes on.",
+  "input": {
+    "side": "gateway",
+    "returned": "user-oauth",
+    "allowed": [
+      "user-oauth",
+      "user-secret"
+    ]
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

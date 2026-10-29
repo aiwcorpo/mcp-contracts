@@ -2136,9 +2136,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

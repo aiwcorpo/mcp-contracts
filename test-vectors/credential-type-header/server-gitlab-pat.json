@@ -1,0 +1,15 @@
+{
+  "description": "GitLab server accepts user-oauth and user-secret; the user connected a PAT, the gateway sends user-secret: the call goes on (CC-166).",
+  "input": {
+    "side": "server",
+    "header": "user-secret",
+    "allowed": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "credentialPresent": true
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

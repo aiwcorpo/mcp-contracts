@@ -3,7 +3,10 @@
   "input": {
     "side": "server",
     "header": "api-key",
-    "configured": "user-oauth",
+    "allowed": [
+      "user-oauth",
+      "user-secret"
+    ],
     "credentialPresent": true
   },
   "expected": {

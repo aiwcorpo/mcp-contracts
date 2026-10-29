@@ -1648,6 +1648,8 @@ paths:
       tags: [admin]
       operationId: approveAdminTool
       summary: Approve a pending tool definition (proxy to C5). The manual way to accept a change made outside a deployment (CC-133).
+      description: |
+        Plain approve is unchanged. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
       security:
         - session: []
           csrf: []
@@ -1661,6 +1663,10 @@ paths:
               approve:
                 value:
                   definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+              approve_lower_risk:
+                value:
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                  acceptRiskLowering: true
       responses:
         '204':
           headers:
@@ -1668,7 +1674,7 @@ paths:
               $ref: '#/components/headers/RequestId'
           description: Approved.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':

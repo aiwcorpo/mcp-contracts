@@ -1,0 +1,15 @@
+{
+  "description": "The same server, the header says user-oauth: the call goes on.",
+  "input": {
+    "side": "server",
+    "header": "user-oauth",
+    "allowed": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "credentialPresent": true
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

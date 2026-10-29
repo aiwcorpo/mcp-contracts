@@ -78,7 +78,7 @@ Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defau
 walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1 usunięto odpowiedź `400
 expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
 
-Wyjątek: w 4.1.0 podłoga ryzyka liczy także wpis oczekujący (CC-167): `PUT` z niższym ryzykiem niż zgłoszone wcześniej, nawet tylko jako oczekujące, przechodził w 4.0.x, a teraz jest `422 risk_lowered`;
+Wyjątek: w 4.1.0 podłoga ryzyka liczy także wpis oczekujący (CC-167): `PUT` z niższym ryzykiem niż zgłoszone wcześniej, nawet tylko jako oczekujące, przechodził w 4.0.x, a teraz to narzędzie czeka na administratora (`pending_approval`, `riskLowered`, ukryte);
 według tej tabeli to zaostrzenie walidacji, czyli major. Wydane jako minor na decyzję człowieka (2026-10-29), jak 4.0.1, bo jest to doprecyzowanie reguły z 4.0.0 ("obniżenie `risk` zawsze 422"),
 a nie ma konsumentów, którzy zależą od przyjmowania niższego ryzyka; wyjście w dół zapewnia jawne `acceptRiskLowering` administratora. Przy okazji wiersze aktywności z odmową zmieniają wynik z `error`
 na `denied_*` (CC-165), a serwer odmawia przy rozjeździe typu poświadczenia (CC-166): `result` to otwarty napis, a reguła serwera dotyczy żądań z poświadczeniem i działa w obu kierunkach wersji
@@ -623,12 +623,14 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
    powstaje tylko tam, gdzie nie ma wpisu ze `source: ci`; nowszy odczyt z inną definicją zastępuje poprzedni wpis `server` (nowy `pendingHash`, więc
    `approve` ze starym hashem to `409`); znika, gdy serwer znów podaje zatwierdzoną definicję; `PUT` go zastępuje: gdy niesie inną definicję, powstaje wpis `ci`,
    a gdy niesie definicję równą zatwierdzonej, wpis `server` jest usuwany (serwer dalej podający inną definicję powstaje od nowa przy następnym odczycie). Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
-4. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
-   usuniętego i dodanego ponownie. Podłoga ryzyka to najwyższe ryzyko, jakie kiedykolwiek zgłoszono dla narzędzia (także we wpisie oczekującym i w wpisach usuniętych);
-   każde niższe zgłoszenie z potoku jest odrzucane (CC-167). Podłoga nie spada przy `approve`, usunięciu ani ponownym dodaniu. Wpisy `source: server` jej nie podnoszą
-   (`risk` pochodzi z zatwierdzonego wpisu), a omyłkowe zgłoszenie wyższego ryzyka z potoku podnosi ją trwale. **Jedyna droga w dół to jawna decyzja administratora:** `approve` z
-   `acceptRiskLowering: true` (wyłącznie grupa `mcp-platform-admin`, nigdy potok) zatwierdza niższe ryzyko, podłoga staje się tym ryzykiem, a audyt to `admin_change` z powodem
-   `risk_lowered_by_admin`.
+4. **Podłoga ryzyka (CC-167).** Podłoga to najwyższe ryzyko, jakie kiedykolwiek zgłoszono dla narzędzia (także we wpisie oczekującym i w wpisach usuniętych); nie spada przy
+   usunięciu ani ponownym dodaniu. `PUT` z narzędziem o ryzyku niższym od podłogi **nie odrzuca manifestu**: to jedno narzędzie staje się `pending_approval` (`source: ci`, `change: changed`,
+   `riskLowered: true`), pozostaje ukryte i odmawiane jako `tool_disabled`, a reszta manifestu przechodzi wg zwykłych reguł. `422` przy `PUT` zostaje dla pozostałych odrzuceń (niezgodny
+   hash, reguły semantyczne manifestu, `environment_mismatch`, `credential_type_mismatch`, niezgodność z konfiguracją gateway'a). Wpis `riskLowered` zatwierdza wyłącznie administrator
+   (`mcp-platform-admin`, nigdy potok): `approve` z `acceptRiskLowering: true` (BFF wymaga wtedy świeżego MFA, jak rejestracja Authenticatora: `401 step_up_required` ze `stepUpUrl`, to samo okno;
+   zwykłe `approve` bez zmian i BFF wysyła pole tylko przy `true`), podłoga spada do zatwierdzonego ryzyka, a audyt to jedno zdarzenie `admin_change` z powodem `risk_lowered_by_admin`
+   (zamiast `definition_approved`; pole `risk` niesie nowe ryzyko). Bez flagi `approve` takiego wpisu to `422 risk_lowered`; z flagą przy wpisie, który niczego nie obniża, pole jest ignorowane
+   (`definition_approved`). Wpisy `source: server` podłogi nie podnoszą (`risk` pochodzi z zatwierdzonego wpisu).
 5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
    i nowe narzędzie `READ_ONLY` w tym samym manifeście) przechodzi bez `approve`: gateway nie wiąże ich ze sobą. Chronią przegląd commitu
    i reguły startera dla `risk` i `action`.
@@ -690,12 +692,15 @@ Opisy w `resolveCredential` (C4):
   (też `Basic`), `expiresAt` zgodne z rotacją albo `null`. Użytkownik nie ma połączenia, więc `GET /v1/connections` go nie zwraca.
 - **System bez konfiguracji w brokerze:** `422 system_not_configured` zamiast `400`; gateway odpowiada klientowi C10 `internal_error`, ale loguje
   odrębną przyczynę, a audyt `credential_resolve` ma powód `system_not_configured` (outcome `error`).
-- **`context.credentialType` i nagłówek `X-MCP-Credential-Type` (CC-166, CC-167).** Jedynym źródłem prawdy o typie jest konfiguracja systemu w gateway'u (dla systemu z dwoma
-  typami, np. `user-oauth` i `user-secret`, to typ z tej konfiguracji, nie zgadywany z połączenia użytkownika). Nagłówek niesie typ zwrócony przez broker; gdy różni się od typu z
-  konfiguracji systemu, gateway odmawia przed użyciem poświadczenia (C10 `internal_error`, audyt `credential_resolve` z powodem `credential_type_mismatch`). Serwer porównuje nagłówek ze
-  swoją konfiguracją **przed** oceną Cedar, sondą grantu i resolverami, tak by poświadczenie nie zostało użyte: dla żądania z `X-MCP-Credential` brak nagłówka, wartość spoza czterech
-  typów albo różna od konfiguracji to odmowa (`internal_error` bez szczegółów, audyt `policy_decision`/`tool_call` z powodem `credential_type_mismatch`). Żądania bez poświadczenia
-  (`initialize`, `tools/list`, wywołania rejestru) nie są sprawdzane. Wektory `credential-type-header/`. Nagłówek jest w C3 od początku; nowa jest reguła serwera.
+- **`context.credentialType` i nagłówek `X-MCP-Credential-Type` (CC-166, CC-167).** Konfiguracja systemu to **zbiór** dozwolonych typów (GitLab: `user-oauth` i `user-secret`, typ
+  domyślny `user-oauth`); system nie miesza `service-account` z typami użytkownika. Nagłówek niesie typ zwrócony przez broker (dla GitLaba typ połączenia użytkownika, np. `user-secret`
+  dla PAT). Gateway odmawia przed użyciem poświadczenia, gdy ten typ nie należy do zbioru z konfiguracji systemu (C10 `internal_error`, audyt `credential_resolve` z powodem
+  `credential_type_mismatch`). Serwer sprawdza, że nagłówek należy do zbioru jego dozwolonych typów (`accepted-credential-types`), **przed** oceną Cedar, sondą grantu i resolverami, tak by
+  poświadczenie nie zostało użyte: dla żądania z `X-MCP-Credential` brak nagłówka, wartość spoza czterech typów albo spoza zbioru to odmowa (`internal_error` bez szczegółów, audyt
+  `policy_decision`/`tool_call` z powodem `credential_type_mismatch`); serwer bez żadnego skonfigurowanego typu, który dostaje poświadczenie, też odmawia. Żądania bez poświadczenia
+  (`initialize`, `tools/list`, wywołania rejestru) nie są sprawdzane. **`context.credentialType` w Cedar** to typ domyślny systemu z konfiguracji gateway'a: Cedar jest oceniany przed
+  pytaniem brokera, więc typ faktycznie użyty nie jest jeszcze znany; reguły `credential-type.cedar` odróżniają konto serwisowe od poświadczenia użytkownika po tym typie domyślnym, a
+  zbiór systemu nigdy nie łączy obu rodzajów. Wektory `credential-type-header/` (w tym GitLab z dwoma typami). Nagłówek jest w C3 od początku; nowa jest reguła serwera.
 - **Założenie modelu zagrożeń (decyzja człowieka 2026-10-29).** Ruch gateway -> serwer chroni mTLS i podpisany JWT (C2), a gateway usuwa przychodzące `X-MCP-*`, więc uznajemy to za
   wystarczające: nagłówek typu nie jest podpisany i nie ma claimu typu w JWT. Sprawdzenie chroni przed rozjazdem konfiguracji, nie przed atakującym na ścieżce między gateway'em
   a serwerem; ten wymagałby osobnej decyzji (claim typu i skrót poświadczenia w JWT).
@@ -898,7 +903,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 60 | odbiorca C2: 23 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 55 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 112 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 113 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `bundles/` | 43 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
@@ -916,7 +921,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `gateway-authentication/` | 16 | 401 z `resource_metadata`, 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | akcje katalogu portalu per status, w tym `request_access` bez `requiredEntitlements` i `view_request` przy oczekującym wniosku (CC-083, CC-113) |
 | `query-rendering/` | 26 | zapytania serwera ze struktury: JQL i CQL z wrogimi wartościami, wzorzec i rozwiązanie nazw indeksów OpenSearch (CC-160) |
-| `credential-type-header/` | 9 | nagłówek `X-MCP-Credential-Type` a konfiguracja serwera: zgodność, rozjazd, brak, nieznana wartość (CC-166) |
+| `credential-type-header/` | 13 | nagłówek `X-MCP-Credential-Type` a konfiguracja serwera: zgodność, rozjazd, brak, nieznana wartość (CC-166) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
 
 Formaty:

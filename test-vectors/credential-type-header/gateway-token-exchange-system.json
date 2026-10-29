@@ -1,0 +1,13 @@
+{
+  "description": "A system with the single type token-exchange: the broker returns it, the call goes on.",
+  "input": {
+    "side": "gateway",
+    "returned": "token-exchange",
+    "allowed": [
+      "token-exchange"
+    ]
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

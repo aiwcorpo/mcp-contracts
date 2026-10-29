@@ -1,5 +1,5 @@
 {
-  "description": "An administrator explicitly approved a lower risk than the floor (acceptRiskLowering, CC-167).",
+  "description": "An administrator explicitly approved a lower risk than the floor (acceptRiskLowering, CC-167): one event instead of definition_approved, risk is the new risk.",
   "expected": {
     "valid": true
   },
@@ -13,6 +13,7 @@
     "username": "a.admin",
     "server": "mcp-jira",
     "tool": "update_issue",
+    "risk": "READ_ONLY",
     "reason": "risk_lowered_by_admin",
     "definitionHash": "sha256:d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
     "outcome": "ok"

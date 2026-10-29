@@ -1,0 +1,24 @@
+{
+  "description": "The counter of the limits does not answer: the request is refused as upstream_unavailable (CC-167).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "policy_decision",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "server": "mcp-jira",
+    "tool": "get_issue",
+    "risk": "READ_ONLY",
+    "decision": "deny",
+    "reason": "upstream_unavailable",
+    "outcome": "error",
+    "errorCode": "upstream_unavailable",
+    "argsLength": 20
+  }
+}
