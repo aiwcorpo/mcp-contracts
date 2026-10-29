@@ -3,6 +3,7 @@ extends:
 functionsDir: spectral-functions
 functions:
   - mtlsClientCn
+  - cnTemplateParameter
 rules:
   # Every operation must state who may call it; an operation without security would be anonymous.
   operation-security-required:
@@ -18,6 +19,12 @@ rules:
     given: $.paths[*][get,put,post,delete,patch]
     then:
       function: mtlsClientCn
+  mtls-cn-template-server-id:
+    description: A CN template with {serverId} needs a serverId path parameter.
+    severity: error
+    given: $.paths[*]
+    then:
+      function: cnTemplateParameter
   operation-operationId: error
   operation-tags: error
   operation-description: off

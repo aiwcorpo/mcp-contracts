@@ -199,8 +199,10 @@ Referencyjny odbiorca C7 (CC-045): weryfikuje i ładuje paczkę z bajtów; pobie
 
 ```java
 PublicKey mainKey = BundleVerifier.ed25519PublicKeyFromPem(config.mainKeyPem());
-BundleVerifier main = BundleVerifier.of(Channel.MAIN, mainKey, config.mainKeyId(), config.allowTestKeys());
-BundleVerifier overrides = BundleVerifier.of(Channel.OVERRIDES, overridesKey, config.overridesKeyId(), config.allowTestKeys());
+BundleVerifier main = BundleVerifier.of(Channel.MAIN, mainKey, config.mainKeyId(), config.allowTestKeys())
+        .withDevstackProfile(config.devstackProfile()); // klucze dev-* tylko przy obu zgodach (CC-137)
+BundleVerifier overrides = BundleVerifier.of(Channel.OVERRIDES, overridesKey, config.overridesKeyId(), config.allowTestKeys())
+        .withDevstackProfile(config.devstackProfile());
 
 BundlePointer pointer = BundlePointer.parse(latestJsonBytes);
 try {
@@ -214,7 +216,7 @@ PolicyBundle emergency = overrides.verifyOverrides(pointerO, archiveO, signature
 ```
 
 Kolejność kontroli: `latest.json` (CC-026), klucz (identyfikator `test-*` i opublikowane klucze testowe po SPKI
-tylko z `allowTestKeys`, CC-044), podpis Ed25519, archiwum (`TarReader`: prefiks ustar, sumy kontrolne, tylko pliki zwykłe i katalogi, bez nazw
+tylko z `allowTestKeys`, CC-044; identyfikator `dev-*` tylko w trybie dev, czyli z `allowTestKeys` i `withDevstackProfile(true)`, CC-137), podpis Ed25519, archiwum (`TarReader`: prefiks ustar, sumy kontrolne, tylko pliki zwykłe i katalogi, bez nazw
 absolutnych, `.`/`..` i duplikatów, limity 1000 wpisów, 4 MiB na plik, 16 MiB razem), `manifest.json` i zgodność
 rewizji, zawartość (overrides: tylko `manifest.json` i `policies/**`, CC-028), rewizja ściśle wyższa w ramach
 kanału, polityki (bez szablonów, bez `permit` w overrides, `vsScopes` i `virtualServer` tylko w `forbid`, CC-041,
@@ -596,12 +598,16 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
    `pendingHash` liczy z nich, a `pendingVersion` to wersja z `initialize`, wartość kontrolowana przez serwer, dlatego administrator widzi ją razem
    ze `source`. Narzędzie jest wtedy ukryte w `tools/list`, a wywołanie daje C10 `tool_disabled` (audyt: `definition_changed`), aż `approve`.
    Zatwierdzone narzędzie, którego serwer nie podaje w `tools/list`, jest ukryte tak samo (fail-closed): nie trafia do `tools/list` klienta,
-   wywołanie daje `tool_disabled`, audyt `tool_not_served`; wraca, gdy serwer znów je poda. Narzędzie, które serwer pokazuje, a którego nie ma
+   wywołanie daje `tool_disabled`; wraca, gdy serwer znów je poda. Audyt: przy każdym odrzuconym wywołaniu (nie raz na odczyt) `tool_call` albo
+   `policy_decision` z `deny` i powodem `tool_not_served` (tak samo `definition_changed`), z `sub` wołającego. Nieudany odczyt `tools/list` serwera
+   (niedostępny) nie jest dowodem ani zmiany, ani braku: gateway zachowuje ostatni udany odczyt, nie ukrywa wszystkich narzędzi i nie emituje tych
+   powodów, a wywołanie, które wymaga świeżego odczytu, a dostaje błąd, jest odrzucane jako `upstream_unavailable` bez wołania serwera (fail-closed). Narzędzie, które serwer pokazuje, a którego nie ma
    w rejestrze, jest ignorowane (nie ma dla niego `risk` ani `action`); `change: new` powstaje tylko przy `PUT`.
    **Pierwszeństwo (CC-162):** wpis `pending_approval` ze `source: ci` (zostawiony przez `PUT`) nigdy nie jest zastępowany odczytem z serwera: różnica
    między serwerem a takim wpisem tylko blokuje narzędzie i jest logowana, a administrator zatwierdza ten sam wpis z commitu. Wpis ze `source: server`
-   powstaje tylko tam, gdzie nie ma wpisu ze `source: ci`, znika, gdy serwer znów podaje zatwierdzoną definicję, i jest zastępowany przez kolejny
-   `PUT`. Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
+   powstaje tylko tam, gdzie nie ma wpisu ze `source: ci`; nowszy odczyt z inną definicją zastępuje poprzedni wpis `server` (nowy `pendingHash`, więc
+   `approve` ze starym hashem to `409`); znika, gdy serwer znów podaje zatwierdzoną definicję; `PUT` go zastępuje: gdy niesie inną definicję, powstaje wpis `ci`,
+   a gdy niesie definicję równą zatwierdzonej, wpis `server` jest usuwany (serwer dalej podający inną definicję powstaje od nowa przy następnym odczycie). Wersja wpisu to `pendingVersion` (dla `ci` wersja manifestu, dla `server` wersja zgłoszona przez serwer).
 4. **Obniżenie `risk` jest zawsze odrzucane** (`422 manifest_rejected`, powód `risk_lowered`): przy `PUT`, przy `approve` i także dla narzędzia
    usuniętego i dodanego ponownie.
 5. **Ryzyko rezydualne przyjęte przez człowieka (2026-10-29).** Zmiana nazwy z obniżeniem ryzyka w jednym `PUT` (usunięte narzędzie zapisu
@@ -859,7 +865,7 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `jwt/` | 60 | odbiorca C2: 23 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 55 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 108 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 109 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `bundles/` | 43 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
 | `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |

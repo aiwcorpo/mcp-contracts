@@ -457,6 +457,12 @@ audit('gateway-definition-changed', 'The definition the server presents differs 
   tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'definition_changed', policyRevision: '20261026120000-a1b2c3d',
   outcome: 'denied', errorCode: 'tool_disabled', argsLength: 64,
 }, true);
+audit('gateway-tool-not-served', 'An approved tool that the server no longer serves: the call is refused as tool_disabled (CC-161).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
+  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'tool_not_served', policyRevision: '20261026120000-a1b2c3d',
+  outcome: 'denied', errorCode: 'tool_disabled', argsLength: 64,
+}, true);
 audit('gateway-link-scope', 'Tool outside the virtual server link: policy_decision with reason link_scope (CC-142).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', virtualServer: 'team-a-dev', server: 'mcp-jira',

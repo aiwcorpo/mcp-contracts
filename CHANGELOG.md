@@ -10,7 +10,7 @@ Wydanie major: pakiet kontraktowy M4 (decyzje człowieka z 2026-10-29, `mcp-plat
 według tabeli SemVer z README. Człowiek zdecydował o numerze 4.0.0 i zostawił zmiany łamiące. Zmieniają się bajty `cedar/mcp.cedarschema`
 (SHA-256 `902b254090cc7bd5b8f4ff3fa26b76850f516e9d07da0f9faed1729deb1412f7`, poprzednio `cf79068b...`); biblioteki, paczki polityk i serwery przechodzą razem.
 
-Nowe CC: CC-133 ... CC-160 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, CC-097, CC-113.
+Nowe CC: CC-133 ... CC-162 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, CC-097, CC-113.
 
 ### Zmiany łamiące (względem 3.1.1)
 
@@ -29,8 +29,11 @@ Nowe CC: CC-133 ... CC-160 (CC-153 odrzucone). Wdrożone wcześniejsze: CC-096, 
 9. **Tabela akcji katalogu (CC-113):** `no_access` i `connected` z odmówionym narzędziem bez `requiredEntitlements` nie dają `request_access`; oczekujący wniosek daje `view_request` także przy `connected`.
 10. **Wektory ze zmienionym oczekiwaniem:** `tool-errors/not-found-or-denied`, pięć `policy-store/*` (`archiveSha256`), `policy-decisions/srv-vs-narrows-servicedesk-ticket` (dodane `credentialType`, bo nowa reguła przykładu dokłada drugą politykę decydującą) i wszystkie `bundles/files/*` (nowy schemat).
 11. **`ManifestRejected`** zamiast `Error` w `422` rejestracji i `approve` (nowe pole `reason`, schemat zamknięty).
-12. **Certyfikat potoku (CC-161):** `PUT` rejestru przyjmuje tylko CN `mcp-registry-ci-<serverId>` dla tego samego `serverId`; dawny `mcp-registry-ci` to `403`.
-13. **`PendingTool.source` (CC-162):** pole wymagane odpowiedzi (`ci` | `server`).
+12. **Certyfikat potoku i narzędzia nieobecne na serwerze (CC-161):** `PUT` rejestru przyjmuje tylko CN `mcp-registry-ci-<serverId>` dokładnie równy dla `serverId` ze ścieżki;
+    dawny `mcp-registry-ci` to `403`. Zatwierdzone narzędzie, którego serwer nie podaje w `tools/list`, jest ukryte (`tool_disabled`, powód `tool_not_served`), a TTL odczytu
+    `tools/list` serwera ma górną granicę 60 s (dotąd "zalecane"; konfiguracja gateway'a).
+13. **`source` w rejestrze (CC-162):** `PendingTool.source` (`ci` | `server`) jest wymagane w odpowiedzi, a `RegistryTool.source` występuje przy `pending_approval`; odczyt z serwera
+    nie zastępuje wpisu ze `source: ci`.
 
 Nowe kody odpowiedzi w istniejących operacjach (`429` w brokerze i BFF, `503` i `422` we wnioskach, `422` w `approve`) są addytywne i nie są tu liczone osobno.
 

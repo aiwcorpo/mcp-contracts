@@ -9,7 +9,7 @@ w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
 
 ## 4.0.0 (przygotowane, nie wydane)
 
-- Zakres i migracja per komponent: `CHANGELOG.md` ("4.0.0"). Nowe CC-133 ... CC-160 (CC-153 odrzucone); CC-096, CC-097, CC-113 wdrożone.
+- Zakres i migracja per komponent: `CHANGELOG.md` ("4.0.0"). Nowe CC-133 ... CC-162 (CC-153 odrzucone); CC-096, CC-097, CC-113 wdrożone.
 - Zmieniają się bajty `cedar/mcp.cedarschema` (CC-136).
 - Do wykonania po zgodzie człowieka: tag `v4.0.0`, `npm run pack`, `./mvnw clean install`, tarball w `release/`, wersja `4.0.1-SNAPSHOT`.
 
