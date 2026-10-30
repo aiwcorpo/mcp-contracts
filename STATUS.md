@@ -9,7 +9,7 @@ w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
 
 ## M5, krok 1 (2026-10-30): propozycje punktu A
 
-- `CONTRACT_CHANGES.md`: CC-169 ... CC-177, status `proposed` (decyzja człowieka): zbiorczy `/mcp`, filtr w query (`systems`, `tools`, `access`, `exclude`), OAuth z query (RFC 9728/8707, warianty V1/V2/V3, wybór po PoC `poc/oauth-query`), wiązanie filtra z sesją, koniec `vs`/`vsc`/`virtualServer`/`vsScopes`/`resourceDefaults`, audyt `filter` zamiast `virtualServer`, usunięcie API linków, `list_changed`, migracja `/v/`.
+- `CONTRACT_CHANGES.md`: CC-169 ... CC-177, status `proposed` (decyzja człowieka): zbiorczy `/mcp`, filtr w query (`systems`, `tools`, `access`, `exclude`), OAuth z query (RFC 9728/8707, warianty V1/V2/V3, wybór po PoC `poc/mcp-query`), wiązanie filtra z sesją, koniec `vs`/`vsc`/`virtualServer`/`vsScopes`/`resourceDefaults`, audyt `filter` zamiast `virtualServer`, usunięcie API linków, `list_changed`, migracja `/v/`.
 - Pakiet to wydanie 5.0.0 (major). W tym kroku bez zmian wersji (nadal `4.1.1-SNAPSHOT`), schematów, wektorów, mocków i Cedar.
 - Czeka na: wynik PoC (CC-171), decyzje z pytań w raporcie (CC-170, CC-174, CC-175, CC-177).
 

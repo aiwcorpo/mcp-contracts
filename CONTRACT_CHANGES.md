@@ -3371,7 +3371,7 @@ Pozycje A1-A7, B1-B11, B13-B15 przyjęte; B12 odrzucona; pozycje C odłożone. W
 
 Propozycje M5, punkt A (jeden adres `/mcp`, filtr w query, bez zapisanych linków). Źródło: `mcp-platform-plan/m5-plan.md` (punkt A, decyzja M5-1). CC-169 ... CC-177 tworzą jeden pakiet:
 całość to wydanie 5.0.0 i wchodzi tylko razem, bo wpisy odwołują się do siebie. Wydanie nie jest przygotowane w tym kroku (żadnych zmian wersji, schematów, wektorów ani mocków); wpisy opisują, co się zmieni po decyzji.
-Zależność od PoC (ws-05 + ws-01, gałąź `poc/oauth-query`): CC-171 ma warianty, a wynik PoC wskazuje, który obowiązuje; przy wyniku negatywnym wracamy do człowieka (M5-1), a CC-170 i CC-172 przechodzą
+Zależność od PoC (ws-05 + ws-01, gałąź `poc/mcp-query`): CC-171 ma warianty, a wynik PoC wskazuje, który obowiązuje; przy wyniku negatywnym wracamy do człowieka (M5-1), a CC-170 i CC-172 przechodzą
 na postać ścieżkową (wariant V3 z CC-171) albo odpadają razem z całym pakietem.
 
 ## CC-169 | C1/C5/README | Zbiorczy endpoint `/mcp` (wszystkie narzędzia użytkownika)
@@ -3423,7 +3423,7 @@ na postać ścieżkową (wariant V3 z CC-171) albo odpadają razem z całym paki
 
 - **Problem:** RFC 9728 buduje adres metadanych z identyfikatora zasobu i wymaga, by pole `resource` metadanych było identyczne z identyfikatorem, z którego adres zbudowano; identyfikator może mieć query. Klient MCP może (a) zachować query w adresie metadanych i w `resource`,
   (b) obciąć query, (c) zbudować inny adres. Dziś `WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource<ścieżka trasy>"` i `aud` tokenu = `mcp-gateway` jedno dla wszystkich tras (`01-contracts.md`, C1); IdP nie dostaje `resource` od klienta w sposób, na którym gateway polega.
-- **Warianty (obowiązujący wybiera wynik PoC `poc/oauth-query` w ws-05/ws-01: Claude Code oraz drugi klient, np. Claude Desktop lub VS Code; kryteria: klient dociera do metadanych, `resource` w metadanych i w żądaniu autoryzacji zgodne, token przyjęty, query nie gubione przy odświeżeniu tokenu):**
+- **Warianty (obowiązujący wybiera wynik PoC `poc/mcp-query` w ws-05/ws-01: Claude Code oraz drugi klient, np. Claude Desktop lub VS Code; kryteria: klient dociera do metadanych, `resource` w metadanych i w żądaniu autoryzacji zgodne, token przyjęty, query nie gubione przy odświeżeniu tokenu):**
   - **V1 (query w identyfikatorze, znak w znak):** `resource_metadata` wskazuje `.../.well-known/oauth-protected-resource/mcp?<znormalizowane query>`; metadane niosą `resource: <publicBaseUrl>/mcp?<znormalizowane query>`. Gateway odpowiada na adres z query tym samym dokumentem z `resource` zbudowanym z znormalizowanego query żądania
     (nie z surowego: CC-170), nigdy z `Host` ani z cudzego query. Wpis `authorization_servers` bez zmian. Zalety: zgodność z RFC bez założeń o kliencie; wada: metadane per filtr (cache po stronie proxy musi uwzględniać query), a klient może zgłosić do IdP `resource` z query, którego IdP nie zna.
   - **V2 (query poza identyfikatorem):** identyfikator zasobu to `<publicBaseUrl>/mcp` bez query, metadane pod `.../oauth-protected-resource/mcp`; gateway przyjmuje dowolny poprawny filtr na `/mcp`. Działa tylko, gdy klient obcina query przy wyszukiwaniu metadanych (inaczej klient odrzuci niezgodne `resource`). Najprostszy po stronie IdP i proxy: jeden dokument, jedna rejestracja klienta.
@@ -3489,7 +3489,7 @@ na postać ścieżkową (wariant V3 z CC-171) albo odpadają razem z całym paki
 ## CC-175 | C5/C12/README | Usunięcie API zapisanych linków; kreator jako generator adresu
 
 - **Zmiana:** znikają `GET|POST /admin/v1/virtual-servers`, `DELETE /admin/v1/virtual-servers/{slug}` (C5) oraz `GET|POST|DELETE /api/me/virtual-servers*` (C12), schematy `VirtualServer*`, `PortalVirtualServer*`, tag `virtual-servers`, kody `slug_taken` / `virtual_server_limit`, limit `MCP_VIRTUAL_SERVERS_MAX_PER_USER`, tabela `virtual_servers`,
-  sprzątanie linków w offboardingu (`mcp-offboarding` czyści już tylko połączenia brokera; `purge` gatewaya zostaje albo znika razem z nim: do rozstrzygnięcia przy wdrożeniu, bo `POST /admin/v1/users/{sub}/purge` zajmował się tylko linkami; jeśli nic innego nie zostaje, operacja i CN `mcp-offboarding` na gatewayu znikają),
+  sprzątanie linków w offboardingu (`POST /admin/v1/users/{sub}/purge` gatewaya zostaje: poza linkami usuwa oczekujące potwierdzenia, ślady kodów, sesje MCP w Redisie i cache poświadczeń; traci tylko część "linki" i zdarzenia `virtual_server_change`, a `admin_change` z `reason: user_purged` zostaje; CN `mcp-offboarding` bez zmian),
   `404` cudzego linku bez audytu (uwaga z testu M4) przestaje istnieć.
   Kreator w portalu zostaje bez zapisu w bazie: użytkownik wybiera systemy, narzędzia, `read`/`write`, wykluczenia; kreator pokazuje adres i gotowe konfiguracje klientów (`clientConfigs`: Claude Code, Claude Desktop, VS Code, ...). Adres budowany przez jedną normalizację (CC-170): 
   zalecany wariant to czysto kliencka funkcja z pakietu `types` plus wektory (`test-vectors/endpoint-filter/`), a `clientConfigs` dla adresu bazowego `/mcp` dalej z BFF (z `publicBaseUrl`, nigdy z żądania); alternatywa: `GET /api/me/mcp-endpoint?<filtr>` (BFF zwraca znormalizowany adres, `clientConfigs` i liczbę narzędzi w wyniku), co daje jedno źródło normalizacji i licznik narzędzi do ostrzeżenia o rozmiarze listy, kosztem nowej operacji C12.
