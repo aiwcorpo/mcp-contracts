@@ -1,17 +1,22 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **4.1.0**, tag `v4.1.0` (CC-165 ... CC-168; praca dalej na `4.1.1-SNAPSHOT`); wcześniej **4.0.1**, tag `v4.0.1`; **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **5.0.0**, tag `v5.0.0` (CC-169 ... CC-177, M5 punkt A; praca dalej na `5.0.1-SNAPSHOT`); wcześniej **4.1.0**, tag `v4.1.0` (CC-165 ... CC-168); **4.0.1**, tag `v4.0.1`; **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
-Walidacja 3.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 253 testy Node; `./mvnw verify`: 418 testów JUnit,
-w tym 293 mcp-cedar-entities, 56 mcp-policy-bundle, 69 mcp-manifest).
+Walidacja 5.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 267 testów Node; `./mvnw clean verify`: 543 testy JUnit,
+w tym 327 mcp-cedar-entities, 59 mcp-policy-bundle, 157 mcp-manifest).
 
-## M5, krok 1 (2026-10-30): propozycje punktu A
+## 5.0.0 (wydane 2026-10-31)
 
-- `CONTRACT_CHANGES.md`: CC-169 ... CC-177, status `proposed` (decyzja człowieka): zbiorczy `/mcp`, filtr w query (`systems`, `tools`, `access`, `exclude`), OAuth z query (RFC 9728/8707, warianty V1/V2/V3, wybór po PoC `poc/mcp-query`), wiązanie filtra z sesją, koniec `vs`/`vsc`/`virtualServer`/`vsScopes`/`resourceDefaults`, audyt `filter` zamiast `virtualServer`, usunięcie API linków, `list_changed`, migracja `/v/`.
-- Pakiet to wydanie 5.0.0 (major). W tym kroku bez zmian wersji (nadal `4.1.1-SNAPSHOT`), schematów, wektorów, mocków i Cedar.
-- Czeka na: wynik PoC (CC-171), decyzje z pytań w raporcie (CC-170, CC-174, CC-175, CC-177).
+- CC-169 ... CC-177 `accepted` (decyzje człowieka 2026-10-31 po PoC OAuth z query w Claude Code): zbiorczy `/mcp`, filtr w query (`access=write` rozłączne z `read`), OAuth wariant V2 (zasób bez query, `aud = mcp-gateway`),
+  filtr związany z sesją, koniec `vs`/`vsc`/`virtualServer`/`vsScopes`/`resourceDefaults` (zmiana `mcp.cedarschema`), audyt z jawnym `filter` i powodem `filter_scope`, operacja BFF `GET /api/v1/me/mcp-endpoint`, `list_changed`
+  (zmiana połączenia nie jest wyzwalaczem), `/v/` usunięte od razu. Zakres i migracja per komponent: `CHANGELOG.md` ("5.0.0"). Przyjęte ryzyko V2 (tylko Claude Code): README, "Jeden adres do całej platformy".
+- Nowe katalogi wektorów: `endpoint-filter/` (82), `endpoint-aggregate/` (25), `mcp-endpoint/` (11); referencje `scripts/lib/endpoint-filter.mjs`, `endpoint-aggregate.mjs`, `mcp-endpoint.mjs`; klasa Java `EndpointFilter` w `mcp-manifest`.
+- Zmieniają się bajty `cedar/mcp.cedarschema` (SHA-256 `51d71b2d...`) i wszystkie `bundles/files/*`.
+- Odstępstwa od tekstu CC (do wiadomości): ciało `400` filtra to nowy `EndpointFilterError` poza C10 (C10 nie miał `invalid_request` ani `reason`); ścieżka BFF to `/api/v1/me/mcp-endpoint` (prefiks `/api/v1` jak reszta C12);
+  forbid chroniony `has` czytający usunięte pola przechodzi walidację (nie "nawet w forbid nie przechodzi"); `GET /api/v1/activity*` nie miał parametru `virtualServer`, więc nic nie znika ani nie dochodzi; wpis `systems` to składnia, nie wyliczenie systemów.
+- Wydane: artefakty `pl.aiwcorpo.mcp:*:5.0.0` w `~/.m2`, `release/aiwcorpo-mcp-contracts-5.0.0.tgz`, tag `v5.0.0`.
 
 ## 4.1.0 (wydane 2026-10-29)
 
