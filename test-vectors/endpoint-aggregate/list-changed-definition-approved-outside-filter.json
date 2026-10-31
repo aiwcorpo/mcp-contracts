@@ -13,6 +13,10 @@
       {
         "name": "gitlab__get_project",
         "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
       }
     ]
   },

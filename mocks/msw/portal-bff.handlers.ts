@@ -102,8 +102,12 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
       }
       if (operation.operationId === 'getMcpEndpoint') {
         // A parameter outside the four is an invalid filter and not a lost one, as on the gateway (CC-170).
-        const unknown = [...new URL(request.url).searchParams.keys()].some((name) => !MCP_ENDPOINT_PARAMETERS.includes(name));
-        if (unknown) return toResponse(pickExample(operation, 'example=invalid_filter'));
+        // searchParams are decoded, like the typed parameters the BFF receives (CC-182): a value that still has a percent sign
+        // (sent as %25) is an invalid filter, and so is a name outside the four or a repeated one.
+        const pairs = [...new URL(request.url).searchParams.entries()];
+        const invalid = pairs.some(([name, value]) => !MCP_ENDPOINT_PARAMETERS.includes(name) || /[%&=]/u.test(value))
+          || new Set(pairs.map(([name]) => name)).size !== pairs.length;
+        if (invalid) return toResponse(pickExample(operation, 'example=invalid_filter'));
       }
       const extra: Record<string, string> = operation.operationId === 'getMe'
         ? { 'Set-Cookie': `${XSRF_COOKIE}=${MOCK_XSRF_TOKEN}; Path=/; Secure; SameSite=Strict` }

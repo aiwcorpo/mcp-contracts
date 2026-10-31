@@ -1,0 +1,20 @@
+{
+  "description": "A query that is not a valid filter is 400 whatever the session is; the session is not read, so the answer says nothing about it.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "system=jira",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-b",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 400,
+    "error": "invalid_request",
+    "reason": "invalid_filter",
+    "sessionRead": false
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Own session and the same filter after normalization: the request goes on.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "SYSTEMS=Jira",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": "continue"
+  }
+}

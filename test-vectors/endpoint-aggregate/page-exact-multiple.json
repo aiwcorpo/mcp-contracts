@@ -1,0 +1,42 @@
+{
+  "description": "A list that is a multiple of the page size ends on a page without nextCursor.",
+  "kind": "page",
+  "input": {
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "afterName": null,
+    "pageSize": 3
+  },
+  "expected": {
+    "tools": [
+      "confluence__get_page",
+      "gitlab__get_project",
+      "gitlab__update_project"
+    ],
+    "nextCursorAfter": "gitlab__update_project"
+  }
+}

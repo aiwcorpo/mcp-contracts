@@ -11,10 +11,10 @@ import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
-import { gatewayAuthenticationResponse, keyDecision } from '../scripts/lib/gateway-authentication.mjs';
-import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionMatches } from '../scripts/lib/endpoint-filter.mjs';
-import { listChangedNotification, routeCall, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
-import { mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
+import { gatewayAuthenticationResponse, keyDecision, protectedResourceMetadata } from '../scripts/lib/gateway-authentication.mjs';
+import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches } from '../scripts/lib/endpoint-filter.mjs';
+import { issueCursor, listChangedNotification, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
+import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 
 const ajv = createAjv();
 
@@ -339,8 +339,8 @@ test('endpoint filter vectors: parsing, normalization, route, visible set, call 
   const validError = schemaValidator(ajv, 'common.schema.json#/$defs/EndpointFilterError');
   const vectors = listJson('test-vectors', 'endpoint-filter');
   const kinds = new Set(vectors.map((v) => v.data.kind));
-  assert.deepEqual([...kinds].sort(), ['apply', 'call', 'error-response', 'parse', 'route', 'session']);
-  assert.ok(vectors.length >= 70);
+  assert.deepEqual([...kinds].sort(), ['apply', 'call', 'call-state', 'error-response', 'parse', 'route', 'session', 'session-order']);
+  assert.ok(vectors.length >= 100);
   for (const { name, data } of vectors) {
     const { input, expected } = data;
     if (data.kind === 'parse' || data.kind === 'route') {
@@ -364,8 +364,14 @@ test('endpoint filter vectors: parsing, normalization, route, visible set, call 
     } else if (data.kind === 'call') {
       const { filter } = parseFilter(input.query);
       assert.deepEqual({ canonical: parseFilter(input.query).canonical, ...callDecision(filter, input.tool, input.tools) }, expected, name);
+    } else if (data.kind === 'call-state') {
+      const { filter } = parseFilter(input.query);
+      assert.deepEqual({ canonical: parseFilter(input.query).canonical, ...callDecision(filter, input.tool, input.tools, input.state) }, expected, name);
+      assert.deepEqual(input.mayCall, input.tools.map((t) => t.name), `${name}: mayCall is the set of the tools, whatever the state`);
     } else if (data.kind === 'session') {
       assert.equal(sessionMatches(input.initializeQuery, input.requestQuery), expected.match, name);
+    } else if (data.kind === 'session-order') {
+      assert.deepEqual(sessionDecision(input), expected, name);
     } else {
       if (expected.status === 400) {
         assert.ok(validError(expected.body), `${name}: ${formatErrors(validError.errors)}`);
@@ -389,20 +395,47 @@ test('the audit event and the activity row carry the filter in the canonical for
   for (const filter of ['systems=jira', 'systems=gitlab,jira&access=write&exclude=jira__delete_issue', 'tools=jira__get_issue']) {
     assert.ok(validate({ ...base, filter }), filter);
   }
-  for (const filter of ['', 'systems=', 'access=maybe', 'systems=jira&&access=read', 'ACCESS=read', 'systems=jira,gitlab&tools=jira__get_issue&access=read&exclude=a&x=1']) {
+  for (const filter of ['', 'systems=', 'access=maybe', 'systems=jira&&access=read', 'ACCESS=read', 'systems=jira,gitlab&tools=jira__get_issue&access=read&exclude=a&x=1',
+    '&access=read', 'systems=jira&', 'tools=jira', 'tools=a__b__c', 'access=read&systems=jira', 'systems=jira&access=readx', 'exclude=jira__', 'systems=jira,']) {
     assert.ok(!validate({ ...base, filter }), filter);
   }
+  assert.ok(validate({ ...base, filter: 'exclude=confluence,jira__delete_issue' }));
+});
+
+test('the filter field belongs to the gateway and to four events, and a rejected filter has none (CC-186)', () => {
+  const validate = schemaValidator(ajv, 'audit-event.schema.json');
+  const base = { ts: '2026-10-28T10:00:00.123Z', requestId: '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f', component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', filter: 'systems=jira' };
+  assert.ok(validate(base));
+  for (const event of ['policy_decision', 'confirmation', 'credential_resolve']) assert.ok(validate({ ...base, event }), event);
+  for (const event of ['connection_change', 'admin_change', 'authenticator']) assert.ok(!validate({ ...base, event, outcome: 'ok', reason: 'user_purged' }), event);
+  assert.ok(!validate({ ...base, component: 'server', componentId: 'mcp-jira' }), 'servers do not receive the filter');
+  assert.ok(!validate({ ...base, component: 'broker', componentId: 'mcp-credential-broker', event: 'credential_resolve' }), 'the broker does not receive the filter');
+  assert.ok(!validate({ ...base, event: 'policy_decision', decision: 'deny', outcome: 'error', reason: 'invalid_filter' }), 'nothing valid was normalized');
+  assert.ok(validate({ ...base, event: 'policy_decision', decision: 'deny', outcome: 'denied', reason: 'filter_mismatch' }));
 });
 
 test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169, CC-176, CC-177)', () => {
   const vectors = listJson('test-vectors', 'endpoint-aggregate');
-  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['legacy-route', 'list', 'list-changed', 'routing']);
+  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'page', 'routing']);
   const validateError = schemaValidator(ajv, 'tool-error.schema.json');
   for (const { name, data } of vectors) {
     if (data.kind === 'list') {
       assert.deepEqual(visibleTools(data.input.servers).map((t) => t.name), data.expected.visible, name);
     } else if (data.kind === 'routing') {
       assert.deepEqual(routeCall(data.input.name, data.input.knownSystems), data.expected, name);
+    } else if (data.kind === 'availability') {
+      assert.equal(serverAvailable(data.input.read, data.input.timeoutMs), data.expected.available, name);
+    } else if (data.kind === 'page') {
+      assert.deepEqual(page(data.input.tools, data.input.afterName, data.input.pageSize), data.expected, name);
+    } else if (data.kind === 'cursor') {
+      const { issuedFor, presentedBy, mutation, afterSeconds } = data.input;
+      const iat = Date.parse('2026-10-31T10:00:00Z') / 1000;
+      let cursor = issueCursor({ sub: issuedFor.sub, canonicalFilter: parseFilter(issuedFor.query).canonical, afterName: 'jira__get_issue', iat });
+      if (mutation === 'tampered') cursor = `${cursor.slice(0, -2)}${cursor.endsWith('AA') ? 'BB' : 'AA'}`;
+      if (mutation === 'malformed') cursor = 'not-a-cursor';
+      if (mutation === 'not-a-string') cursor = 42;
+      const result = readCursor(cursor, { sub: presentedBy.sub, canonicalFilter: parseFilter(presentedBy.query).canonical, now: iat + afterSeconds });
+      assert.deepEqual(result.error ? { valid: false, error: result.error } : { valid: true }, data.expected, name);
     } else if (data.kind === 'list-changed') {
       assert.equal(listChangedNotification(parseFilter(data.input.query).filter, data.input.before, data.input.after), data.expected.notify, name);
     } else {
@@ -420,6 +453,7 @@ test('mcp-endpoint vectors: the BFF answer for a filter (CC-175)', async () => {
   const vectors = listJson('test-vectors', 'mcp-endpoint');
   assert.ok(vectors.some((v) => v.data.expected.status === 200) && vectors.some((v) => v.data.expected.status === 400));
   for (const { name, data } of vectors) {
+    if (data.input.httpQuery !== undefined) assert.equal(composeQuery(new URLSearchParams(data.input.httpQuery)), data.input.rawQuery, `${name}: rawQuery is what the BFF composes`);
     assert.deepEqual(mcpEndpoint(data.input), data.expected, name);
     const validate = data.expected.status === 200 ? validateOk : validateInvalid;
     assert.ok(validate(data.expected.body), `${name}: ${formatErrors(validate.errors)}`);
@@ -435,6 +469,15 @@ test('the examples of getMcpEndpoint equal what the reference builds for their a
     assert.equal(value.url, built.url, name);
     assert.deepEqual(value.clientConfigs, built.clientConfigs, name);
     assert.equal(value.filter, built.filter, name);
+  }
+});
+
+test('oauth-metadata vectors: the document of the protected resource ignores the query (CC-171, CC-187)', () => {
+  const vectors = listJson('test-vectors', 'oauth-metadata');
+  assert.ok(vectors.length >= 6 && vectors.some((v) => v.data.expected.status === 404) && vectors.some((v) => v.data.input.requestQuery !== ''));
+  for (const { name, data } of vectors) {
+    assert.deepEqual(protectedResourceMetadata(data.input), data.expected, name);
+    if (data.expected.status === 200) assert.ok(!data.expected.document.resource.includes('?'), `${name}: resource has no query`);
   }
 });
 

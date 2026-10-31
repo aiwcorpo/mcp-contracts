@@ -1,11 +1,12 @@
-// Generates test-vectors/endpoint-filter and test-vectors/endpoint-aggregate (CC-169, CC-170, CC-172, CC-176).
+// Generates test-vectors/endpoint-filter, endpoint-aggregate and mcp-endpoint (CC-169, CC-170, CC-172, CC-175, CC-178 ... CC-187).
 // The expected values come from the reference in scripts/lib/endpoint-filter.mjs and endpoint-aggregate.mjs; the Java class
 // EndpointFilter and the tests must reproduce them.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionMatches } from './lib/endpoint-filter.mjs';
-import { listChangedNotification, routeCall, visibleTools } from './lib/endpoint-aggregate.mjs';
-import { mcpEndpoint } from './lib/mcp-endpoint.mjs';
+import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches } from './lib/endpoint-filter.mjs';
+import { issueCursor, listChangedNotification, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
+import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
+import { protectedResourceMetadata } from './lib/gateway-authentication.mjs';
 
 const writer = (dir) => {
   rmSync(path('test-vectors', dir), { recursive: true, force: true });
@@ -135,6 +136,11 @@ applyVector('order-of-the-set-not-of-the-filter', 'The order of the list does no
 applyVector('risk-changed', 'The filter works on the risk of the approved entry: a tool whose risk was raised to UPDATE leaves access=read.', 'access=read',
   catalog.map((t) => (t.name === 'gitlab__get_project' ? { ...t, risk: 'UPDATE' } : t)));
 
+const withUnknownRisk = [...catalog, { name: 'jira__legacy_tool', risk: 'UNKNOWN' }, { name: 'jira__lowercase_tool', risk: 'read_only' }];
+applyVector('access-write-risk-outside-the-set', 'A risk outside READ_ONLY, UPDATE, DESTRUCTIVE is in neither group: access=write does not leave it (fail-closed, CC-186).', 'access=write', withUnknownRisk);
+applyVector('access-read-risk-outside-the-set', 'Neither does access=read; without access the tool stays visible.', 'access=read', withUnknownRisk);
+applyVector('no-access-risk-outside-the-set', 'Without access nothing depends on the risk.', 'systems=jira', withUnknownRisk);
+
 // ---------- tools/call under a filter ----------
 
 const callVector = (name, description, query, tool, mayCall = catalog) => {
@@ -152,6 +158,31 @@ callVector('no-grant-and-filter', 'No right and a filter that would remove it an
   catalog.filter((t) => t.name !== 'confluence__update_page'));
 callVector('unknown-tool', 'A tool that does not exist.', 'systems=jira', 'jira__no_such_tool');
 
+// ---------- tools/call: filter first, then the state of the tool, the server and the account (CC-178) ----------
+
+const callStateVector = (name, description, query, tool, state, mayCall = catalog) => {
+  const { filter, canonical } = parseFilter(query);
+  filterOut(`call-state-${name}`, { description, kind: 'call-state', input: { query, tool, mayCall: mayCall.map((t) => t.name), tools: mayCall, state },
+    expected: { canonical, ...callDecision(filter, tool, mayCall, state) } });
+};
+const up = { toolEnabled: true, serverAvailable: true, connected: true };
+callStateVector('filter-passes-server-available', 'The filter leaves the tool, everything works: the call goes to the server.', 'systems=jira', 'jira__get_issue', up);
+callStateVector('filter-passes-server-unavailable', 'The filter leaves the tool and the server is down: upstream_unavailable.', 'systems=jira', 'jira__get_issue', { ...up, serverAvailable: false });
+callStateVector('filter-cuts-server-available', 'The filter removes the tool the user may call: not_found_or_denied, filter_scope.', 'systems=gitlab', 'jira__get_issue', up);
+callStateVector('filter-cuts-server-unavailable', 'The filter removes the tool and the server is down: the same answer as with the server up, so the state of the server is not revealed.', 'systems=gitlab', 'jira__get_issue', { ...up, serverAvailable: false });
+callStateVector('no-filter-server-unavailable', 'Without a filter a server that is down gives upstream_unavailable, not not_found_or_denied.', '', 'jira__get_issue', { ...up, serverAvailable: false });
+callStateVector('tool-disabled', 'A tool that is disabled, pending approval, changed or not served by its server and that the filter leaves: tool_disabled.', '', 'jira__create_issue', { ...up, toolEnabled: false });
+callStateVector('tool-disabled-cut-by-filter', 'The same tool under a filter that removes it: filter_scope first.', 'access=read', 'jira__create_issue', { ...up, toolEnabled: false });
+callStateVector('not-connected', 'A system without a connection of the account: credential_required (connectUrl is in the body).', '', 'gitlab__get_project', { ...up, connected: false });
+callStateVector('not-connected-cut-by-filter', 'The same call under a filter that removes it: not_found_or_denied, filter_scope.', 'systems=jira', 'gitlab__get_project', { ...up, connected: false });
+callStateVector('order-disabled-before-unavailable', 'Tool disabled and server down: tool_disabled.', '', 'jira__create_issue', { toolEnabled: false, serverAvailable: false, connected: true });
+callStateVector('order-unavailable-before-credential', 'Server down and no connection: upstream_unavailable.', '', 'gitlab__get_project', { toolEnabled: true, serverAvailable: false, connected: false });
+callStateVector('order-all-three', 'All three problems: tool_disabled.', '', 'gitlab__get_project', { toolEnabled: false, serverAvailable: false, connected: false });
+callStateVector('no-grant-server-unavailable', 'The user has no right to the tool and its server is down: not_found_or_denied, not_granted. mayCall does not depend on availability.', '', 'confluence__update_page', { ...up, serverAvailable: false },
+  catalog.filter((t) => t.name !== 'confluence__update_page'));
+callStateVector('destructive-cut-keeps-pending-confirmation', 'The filter comes before the confirmation gate: a DESTRUCTIVE call the filter cuts is not_found_or_denied and does not invalidate the confirmation the user has pending.', 'access=read', 'jira__delete_issue',
+  { ...up, pendingConfirmation: true });
+
 // ---------- binding to the session (CC-172) ----------
 
 const sessionVector = (name, description, initializeQuery, requestQuery) => {
@@ -166,6 +197,27 @@ sessionVector('other-filter', 'Another filter in the same session: 404 and filte
 sessionVector('filter-added', 'A filter where the session has none.', '', 'systems=jira');
 sessionVector('filter-removed', 'No filter where the session has one.', 'systems=jira', '');
 sessionVector('narrower-filter', 'A narrower filter is a different filter too.', 'systems=jira', 'systems=jira&access=read');
+
+// ---------- order of the checks of a request with a session (CC-184) ----------
+
+const sessionOrderVector = (name, description, input) => {
+  filterOut(`session-order-${name}`, { description, kind: 'session-order', input, expected: sessionDecision(input) });
+};
+const mine = { sub: 'user-a', route: '/mcp', initializeQuery: 'systems=jira' };
+sessionOrderVector('syntax-before-session', 'A query that is not a valid filter is 400 whatever the session is; the session is not read, so the answer says nothing about it.',
+  { requestQuery: 'system=jira', route: '/mcp', callerSub: 'user-a', session: { ...mine, sub: 'user-b' } });
+sessionOrderVector('foreign-session-other-filter', 'A session of another user is a plain 404 as for an unknown session, with no filter_mismatch, even though the filter differs.',
+  { requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: { ...mine, sub: 'user-b' } });
+sessionOrderVector('unknown-session', 'An unknown or expired session: the same 404 and no filter_mismatch.',
+  { requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: null });
+sessionOrderVector('own-session-other-filter', 'Own session and another filter: 404 and filter_mismatch.',
+  { requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: mine });
+sessionOrderVector('own-session-same-filter', 'Own session and the same filter after normalization: the request goes on.',
+  { requestQuery: 'SYSTEMS=Jira', route: '/mcp', callerSub: 'user-a', session: mine });
+sessionOrderVector('own-session-other-route', 'A session opened on /mcp used on /s/mcp-jira/mcp: 404 and filter_mismatch (the route is part of the address the session is bound to), even though the query equals the stored one.',
+  { requestQuery: 'systems=jira', route: '/s/mcp-jira/mcp', callerSub: 'user-a', session: mine });
+sessionOrderVector('session-header-with-meta', 'A request with Mcp-Session-Id and _meta is a session request: the binding is checked (here the filter differs). _meta does not switch it off.',
+  { requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: mine, meta: { protocolVersion: '2026-07-28' } });
 
 filterOut('error-response', {
   description: 'Answer to a query that is not a valid filter: 400 in the shape of EndpointFilterError, after the check of the token, with no WWW-Authenticate; it does not depend on the state of any system.',
@@ -227,6 +279,69 @@ listVector('not-served-hidden', 'An approved tool the server does not serve is h
 ]);
 listVector('nothing-visible', 'No tools at all: an empty list, no error.', [srv('mcp-jira', [t('jira__get_issue', 'READ_ONLY', { allowedByPolicy: false })])]);
 
+
+// ---------- availability of a server for one tools/list (CC-180) ----------
+
+const availabilityVector = (name, description, read, timeoutMs) => {
+  const input = timeoutMs === undefined ? { read } : { read, timeoutMs };
+  aggOut(`availability-${name}`, { description, kind: 'availability', input, expected: { available: serverAvailable(read, timeoutMs) } });
+};
+availabilityVector('answers-in-time', 'A valid answer within the default timeout of 3000 ms.', { outcome: 'ok', elapsedMs: 120 });
+availabilityVector('answers-at-the-limit', 'An answer at exactly the timeout is in time.', { outcome: 'ok', elapsedMs: 3000 });
+availabilityVector('answers-too-late', 'An answer after the timeout: the server is skipped as unavailable, whatever it said.', { outcome: 'ok', elapsedMs: 3001 });
+availabilityVector('configured-timeout', 'The timeout is configurable: 500 ms here.', { outcome: 'ok', elapsedMs: 800 }, 500);
+availabilityVector('connection-error', 'A connection or TLS error, or a status other than 200.', { outcome: 'error', elapsedMs: 40 });
+availabilityVector('invalid-result', 'A body that is not a result of tools/list or does not match its schema.', { outcome: 'invalid', elapsedMs: 40 });
+availabilityVector('read-from-cache', 'A read inside the TTL of the cache needs no call, so the timeout does not apply.', { outcome: 'cached' });
+listVector('slow-server-skipped', 'A server that did not answer in time is skipped like an unavailable one; the others are listed and the list does not wait for it.', [
+  srv('mcp-jira', [t('jira__get_issue')]),
+  srv('mcp-gitlab', [t('gitlab__get_project')], { available: serverAvailable({ outcome: 'ok', elapsedMs: 3500 }), readOutcome: { outcome: 'ok', elapsedMs: 3500 } }),
+]);
+
+// ---------- pages of tools/list and the cursor (CC-181) ----------
+
+const named = (...names) => names.map((name) => ({ name, risk: 'READ_ONLY' }));
+const pageVector = (name, description, tools, afterName, pageSize) => {
+  const input = pageSize === undefined ? { tools, afterName } : { tools, afterName, pageSize };
+  aggOut(`page-${name}`, { description, kind: 'page', input, expected: page(tools, afterName, pageSize) });
+};
+const seven = named('confluence__get_page', 'gitlab__get_project', 'gitlab__update_project', 'jira__create_issue', 'jira__delete_issue', 'jira__get_issue', 'jira__search_issues');
+pageVector('first', 'The first page has no cursor in the request; more follow, so the answer has nextCursor.', seven, null, 3);
+pageVector('middle', 'The cursor names the last tool of the previous page.', seven, 'gitlab__update_project', 3);
+pageVector('last', 'The last page has no nextCursor.', seven, 'jira__delete_issue', 3);
+pageVector('exact-multiple', 'A list that is a multiple of the page size ends on a page without nextCursor.', seven.slice(0, 6), null, 3);
+pageVector('exact-multiple-second', 'The second page of the same list.', seven.slice(0, 6), 'gitlab__update_project', 3);
+pageVector('empty', 'An empty list is one page, no error and no cursor.', [], null, 3);
+pageVector('tool-removed-between-pages', 'The tool the cursor names is gone: the next page still starts after its position, nothing is repeated and nothing that stays is skipped.',
+  seven.filter((x) => x.name !== 'gitlab__update_project'), 'gitlab__update_project', 3);
+pageVector('order-is-by-server-id', 'The order is that of CC-169 (ServerId, then tool name), not plain sorting of the qualified names: system a sorts before a1 although "a1__x" < "a__x".',
+  named('a1__x', 'a__x', 'a__y', 'b__x'), 'a__x', 2);
+const bigList = Array.from({ length: 150 }, (_, i) => ({ name: `s${String(Math.floor(i / 10)).padStart(2, '0')}__tool_${String(i % 10).padStart(2, '0')}`, risk: 'READ_ONLY' }));
+pageVector('default-page-size-first', `The default page size is ${PAGE_SIZE}.`, bigList, null);
+pageVector('default-page-size-second', 'The second page has the remaining 50 tools.', bigList, bigList[PAGE_SIZE - 1].name);
+
+const IAT = Date.parse('2026-10-31T10:00:00Z') / 1000;
+const cursorVector = (name, description, issuedFor, presentedBy, { mutation = 'none', afterSeconds = 60 } = {}) => {
+  let cursor = issueCursor({ sub: issuedFor.sub, canonicalFilter: parseFilter(issuedFor.query).canonical, afterName: 'jira__get_issue', iat: IAT });
+  if (mutation === 'tampered') cursor = `${cursor.slice(0, -2)}${cursor.endsWith('AA') ? 'BB' : 'AA'}`;
+  if (mutation === 'malformed') cursor = 'not-a-cursor';
+  if (mutation === 'not-a-string') cursor = 42;
+  const result = readCursor(cursor, { sub: presentedBy.sub, canonicalFilter: parseFilter(presentedBy.query).canonical, now: IAT + afterSeconds });
+  aggOut(`cursor-${name}`, { description: `${description} Key: test only, NOT FOR PRODUCTION.`, kind: 'cursor', input: { issuedFor, presentedBy, mutation, afterSeconds },
+    expected: result.error ? { valid: false, error: result.error } : { valid: true } });
+};
+const owner = { sub: 'user-a', query: 'systems=jira&access=read' };
+cursorVector('same-user-same-filter', 'A cursor given back by the user it was issued to, with the same filter, a minute later.', owner, owner);
+cursorVector('valid-at-lifetime-limit', 'Exactly 15 minutes after issue.', owner, owner, { afterSeconds: 900 });
+cursorVector('expired', 'One second after the lifetime.', owner, owner, { afterSeconds: 901 });
+cursorVector('same-filter-other-spelling', 'The filter is compared after normalization.', owner, { sub: 'user-a', query: 'ACCESS=read&systems=jira' });
+cursorVector('other-user', 'A cursor of another user: the same -32602 as for garbage, no hint why.', owner, { sub: 'user-b', query: 'systems=jira&access=read' });
+cursorVector('other-filter', 'A cursor used with another filter.', owner, { sub: 'user-a', query: 'systems=jira' });
+cursorVector('filter-removed', 'A cursor issued under a filter and used without one.', owner, { sub: 'user-a', query: '' });
+cursorVector('tampered', 'A cursor that was changed.', owner, owner, { mutation: 'tampered' });
+cursorVector('malformed', 'A string that never was a cursor.', owner, owner, { mutation: 'malformed' });
+cursorVector('not-a-string', 'A cursor that is not a string.', owner, owner, { mutation: 'not-a-string' });
+
 const routeVectorAgg = (name, description, toolName) => {
   aggOut(`routing-${name}`, { description, kind: 'routing', input: { name: toolName, knownSystems: ['jira', 'confluence', 'gitlab', 'servicedesk', 'opensearch'] },
     expected: routeCall(toolName, ['jira', 'confluence', 'gitlab', 'servicedesk', 'opensearch']) });
@@ -244,7 +359,9 @@ const jiraRead = { name: 'jira__get_issue', risk: 'READ_ONLY' };
 const jiraUpdate = { name: 'jira__create_issue', risk: 'UPDATE' };
 const gitlabRead = { name: 'gitlab__get_project', risk: 'READ_ONLY' };
 changedVector('definition-approved', 'definition_approved: a new tool appears in the list of the session.', '', [jiraRead], [jiraRead, jiraUpdate]);
-changedVector('definition-approved-outside-filter', 'The same event, but the filter of the session cuts the tool: no notification.', 'systems=gitlab', [gitlabRead], [gitlabRead]);
+changedVector('definition-approved-outside-filter', 'The same event, but the filter of the session cuts the tool: no notification.', 'systems=gitlab', [gitlabRead], [gitlabRead, jiraUpdate]);
+changedVector('definition-changed-and-approved', 'A new definition of a tool that stays in the list (same name and risk, other definitionHash): the result of tools/list changed.', '',
+  [{ ...jiraRead, definitionHash: 'sha256:aaaa' }], [{ ...jiraRead, definitionHash: 'sha256:bbbb' }]);
 changedVector('tool-disabled', 'tool_disabled: the tool leaves the list.', '', [jiraRead, jiraUpdate], [jiraRead]);
 changedVector('tool-removed', 'tool_removed: the tool leaves the registry.', 'systems=jira', [jiraRead, jiraUpdate], [jiraRead]);
 changedVector('risk-lowered-by-admin', 'risk_lowered_by_admin: a tool that access=read cut becomes READ_ONLY and enters the list.', 'access=read', [jiraRead], [jiraRead, { ...jiraUpdate, risk: 'READ_ONLY' }]);
@@ -276,9 +393,13 @@ const userCatalog = [
   { name: 'jira__get_issue', risk: 'READ_ONLY', access: 'granted', disabled: false },
   { name: 'jira__search_issues', risk: 'READ_ONLY', access: 'granted', disabled: true },
 ];
-const endpointVector = (name, description, rawQuery, catalog = userCatalog) => {
-  endpointOut(name, { description, input: { publicBaseUrl: PUBLIC_BASE_URL, rawQuery, catalog }, expected: mcpEndpoint({ publicBaseUrl: PUBLIC_BASE_URL, rawQuery, catalog }) });
+// rawQuery is what the BFF composes from the decoded values of the four typed parameters (CC-182); httpQuery, when given,
+// is the query as the client sent it, before the HTTP layer decoded it.
+const endpointVector = (name, description, rawQuery, catalog = userCatalog, httpQuery) => {
+  endpointOut(name, { description, input: { publicBaseUrl: PUBLIC_BASE_URL, ...(httpQuery !== undefined && { httpQuery }), rawQuery, catalog },
+    expected: mcpEndpoint({ publicBaseUrl: PUBLIC_BASE_URL, rawQuery, catalog }) });
 };
+const fromHttp = (name, description, httpQuery) => endpointVector(name, description, composeQuery(new URLSearchParams(httpQuery)), userCatalog, httpQuery);
 endpointVector('no-filter', 'No filter: the address is /mcp, there is no filter field, and every granted, enabled tool is counted.', '');
 endpointVector('system-and-access', 'The address carries the canonical filter; denied and disabled tools are not counted.', 'access=read&systems=jira');
 endpointVector('write-only', 'access=write counts UPDATE and DESTRUCTIVE tools the user is granted.', 'access=write');
@@ -289,6 +410,23 @@ endpointVector('empty-catalog', 'A user who is granted nothing gets a count of 0
 endpointVector('invalid-unknown-parameter', 'A parameter outside the four is an invalid filter.', 'system=jira');
 endpointVector('invalid-access', 'access takes read or write.', 'access=all');
 endpointVector('invalid-repeated-parameter', 'A parameter given twice.', 'systems=jira&systems=gitlab');
-endpointVector('invalid-percent-encoding', 'No percent-encoding.', 'systems=jira%2cgitlab');
+endpointVector('invalid-percent-encoding', 'A decoded value that still has a percent sign (the client sent %252c, or the BFF got a raw %2c from a caller that bypassed the HTTP layer) is an invalid filter, as on the gateway.', 'systems=jira%2cgitlab');
+fromHttp('http-encoded-comma-is-decoded-first', 'The generated client sends a comma as %2C. The HTTP layer decodes it before the BFF sees the value, so this is the filter systems=gitlab,jira and not an error.', 'systems=jira%2Cgitlab');
+fromHttp('http-double-encoded-comma', 'A comma encoded twice (%252C) decodes once to %2C, a value with a percent sign: invalid filter.', 'systems=jira%252Cgitlab');
+fromHttp('http-ampersand-in-value', 'An encoded ampersand inside a value must not add a parameter: systems=jira%26access=read is one invalid value, not the filter systems=jira&access=read.', 'systems=jira%26access=read');
+fromHttp('http-plus-is-a-space', 'A plus sign in a query decodes to a space, which is not in the alphabet of the filter.', 'systems=jira+gitlab');
+
+// ---------- metadata document of the protected resource (CC-171, CC-187) ----------
+
+const oauthOut = writer('oauth-metadata');
+const metadataVector = (name, description, requestPath, requestQuery = '') => {
+  oauthOut(name, { description, input: { publicBaseUrl: PUBLIC_BASE_URL, requestPath, requestQuery }, expected: protectedResourceMetadata({ publicBaseUrl: PUBLIC_BASE_URL, requestPath }) });
+};
+metadataVector('aggregate-endpoint', 'The document for /mcp: resource is the address without a query.', '/.well-known/oauth-protected-resource/mcp');
+metadataVector('aggregate-endpoint-query-ignored', 'A request for the document with the filter of the address gets the same document: the query is ignored and resource has none (V2).', '/.well-known/oauth-protected-resource/mcp', 'systems=jira&access=read');
+metadataVector('aggregate-endpoint-invalid-query-ignored', 'Even a query that is not a valid filter does not change the document: this route does not read it.', '/.well-known/oauth-protected-resource/mcp', 'system=jira');
+metadataVector('system-route', 'The document for one system: resource is the route of that system.', '/.well-known/oauth-protected-resource/s/mcp-jira/mcp');
+metadataVector('saved-link-route-gone', 'There is no document for /v/ (CC-177): the usual 404.', '/.well-known/oauth-protected-resource/v/team-a-dev/mcp');
+metadataVector('unknown-route', 'A route the gateway does not serve.', '/.well-known/oauth-protected-resource/f/systems=jira/mcp');
 
 console.log('endpoint vectors written');

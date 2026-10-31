@@ -1,0 +1,14 @@
+{
+  "description": "A request for the document with the filter of the address gets the same document: the query is ignored and resource has none (V2).",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "requestPath": "/.well-known/oauth-protected-resource/mcp",
+    "requestQuery": "systems=jira&access=read"
+  },
+  "expected": {
+    "status": 200,
+    "document": {
+      "resource": "https://mcp.aiwcorpo.pl/mcp"
+    }
+  }
+}

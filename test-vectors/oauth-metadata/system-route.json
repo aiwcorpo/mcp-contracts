@@ -1,0 +1,14 @@
+{
+  "description": "The document for one system: resource is the route of that system.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "requestPath": "/.well-known/oauth-protected-resource/s/mcp-jira/mcp",
+    "requestQuery": ""
+  },
+  "expected": {
+    "status": 200,
+    "document": {
+      "resource": "https://mcp.aiwcorpo.pl/s/mcp-jira/mcp"
+    }
+  }
+}

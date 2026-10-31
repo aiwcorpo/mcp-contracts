@@ -73,6 +73,15 @@ test('MSW: getMcpEndpoint answers the default example and rejects a parameter ou
   assert.equal(body.reason, 'invalid_filter');
 });
 
+test('MSW: getMcpEndpoint decodes the query like the BFF and refuses a percent sign that is left (CC-182)', async () => {
+  const encodedComma = await fetch(`${BASE}/api/v1/me/mcp-endpoint?systems=jira%2Cgitlab`);
+  assert.equal(encodedComma.status, 200, 'a comma sent as %2C arrives decoded, so it is a valid filter');
+  for (const query of ['systems=jira%252Cgitlab', 'systems=jira%26access%3Dread', 'systems=jira&systems=gitlab']) {
+    const res = await fetch(`${BASE}/api/v1/me/mcp-endpoint?${query}`);
+    assert.equal(res.status, 400, query);
+  }
+});
+
 test('MSW: every response carries X-Request-Id (CC-087)', async () => {
   const res = await fetch(`${BASE}/api/v1/catalog`);
   assert.match(res.headers.get('x-request-id') ?? '', /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);

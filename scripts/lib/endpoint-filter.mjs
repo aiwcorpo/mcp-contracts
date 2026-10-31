@@ -3,6 +3,8 @@
 // the same answers; test-vectors/endpoint-filter/ pins them.
 
 export const PARAMETERS = ['systems', 'tools', 'access', 'exclude'];
+// The query is limited in bytes, not in entries (CC-185): "tools=" and the separators leave 506 bytes, so 16 names of 30
+// characters or 31 names of 15 characters fit, not 100. A larger selection is expressed with systems and exclude.
 export const MAX_QUERY_BYTES = 512;
 export const MAX_SYSTEMS = 5;
 export const MAX_TOOLS = 100;
@@ -98,6 +100,7 @@ export function applyFilter(filter, tools) {
     const system = tool.name.slice(0, tool.name.indexOf('__'));
     if (filter.systems && !filter.systems.includes(system)) return false;
     if (filter.tools && !filter.tools.includes(tool.name)) return false;
+    // A risk outside the closed set READ_ONLY, UPDATE, DESTRUCTIVE is in neither access group (CC-186).
     if (filter.access === 'read' && tool.risk !== 'READ_ONLY') return false;
     if (filter.access === 'write' && tool.risk !== 'UPDATE' && tool.risk !== 'DESTRUCTIVE') return false;
     if (filter.exclude && (filter.exclude.includes(system) || filter.exclude.includes(tool.name))) return false;
@@ -111,13 +114,56 @@ export function sessionMatches(initializeQuery, requestQuery) {
 }
 
 /**
- * What the gateway does with tools/call on an endpoint with a filter (CC-170, invariant 8): a tool that is in the visible
- * list is called; every other tool is not_found_or_denied, and the audit reason says filter_scope only when the user may
- * call the tool and the filter is what removes it. `mayCall` is the set of tools the user could call without the filter.
+ * Order of the checks of a request on /mcp or /s/<serverId>/mcp that carries a session (CC-184). The token is checked first
+ * (not modeled here: a request without a valid token is a 401 before anything below). Then:
+ *   1. syntax of the query: 400 invalid_filter; the answer depends only on the bytes of the request, the session is not read;
+ *   2. the session belongs to the caller (`sub`): a session of another user and an unknown one give the same 404 and no
+ *      filter_mismatch, so a request cannot tell whether a session exists;
+ *   3. the route of the session: 404, filter_mismatch;
+ *   4. the filter of the session after normalization: 404, filter_mismatch.
+ * `Mcp-Session-Id` makes the request a session request whatever `_meta` says (a request with both is checked as above).
+ * `session` is null for an unknown or expired session.
  */
-export function callDecision(filter, tool, mayCall) {
+export function sessionDecision({ requestQuery, route, callerSub, session }) {
+  let requested;
+  try {
+    requested = parseFilter(requestQuery).canonical;
+  } catch (e) {
+    if (!(e instanceof InvalidFilter)) throw e;
+    return { status: 400, error: 'invalid_request', reason: 'invalid_filter', sessionRead: false };
+  }
+  if (session === null || session.sub !== callerSub) return { status: 404, body: 'as for an unknown session', auditReason: null };
+  if (session.route !== route) return { status: 404, body: 'as for an unknown session', auditReason: 'filter_mismatch' };
+  if (parseFilter(session.initializeQuery).canonical !== requested) {
+    return { status: 404, body: 'as for an unknown session', auditReason: 'filter_mismatch' };
+  }
+  return { status: 'continue' };
+}
+
+/**
+ * What the gateway does with tools/call on an endpoint with a filter (CC-170, CC-178, invariant 8). The filter is checked
+ * first: a tool that the filter leaves out is not_found_or_denied whatever the state of its server, of the tool and of the
+ * account, and the audit reason says filter_scope only when the user may call the tool. `mayCall` is the set of tools the
+ * user could call without the filter: the registry knows the tool and the Cedar decision at the level of the tool (the
+ * decision of tools/list, without arguments) allows it. It does not depend on availability. Only a tool the filter leaves
+ * visible gets to the state checks, in this order: tool_disabled, upstream_unavailable, credential_required.
+ * `state` is { toolEnabled, serverAvailable, connected }, all true when omitted; `pendingConfirmation` (optional) says that
+ * the user has a pending DESTRUCTIVE confirmation for this call: the filter comes before the confirmation gate, so a call
+ * the filter cuts leaves it untouched.
+ */
+export function callDecision(filter, tool, mayCall, state = null) {
   const visible = applyFilter(filter, mayCall).some((t) => t.name === tool);
-  if (visible) return { outcome: 'allowed' };
-  const reason = mayCall.some((t) => t.name === tool) ? 'filter_scope' : 'not_granted';
-  return { outcome: 'denied', errorCode: 'not_found_or_denied', auditReason: reason };
+  const s = { toolEnabled: true, serverAvailable: true, connected: true, ...state };
+  const denied = (errorCode, auditReason) => ({ outcome: 'denied', errorCode, auditReason });
+  let decision;
+  if (visible) {
+    if (!s.toolEnabled) decision = denied('tool_disabled', 'tool_disabled');
+    else if (!s.serverAvailable) decision = denied('upstream_unavailable', 'upstream_unavailable');
+    else if (!s.connected) decision = denied('credential_required', 'credential_required');
+    else decision = { outcome: 'allowed' };
+  } else {
+    decision = denied('not_found_or_denied', mayCall.some((t) => t.name === tool) ? 'filter_scope' : 'not_granted');
+    if (state?.pendingConfirmation && decision.auditReason === 'filter_scope') decision.pendingConfirmation = 'untouched';
+  }
+  return decision;
 }

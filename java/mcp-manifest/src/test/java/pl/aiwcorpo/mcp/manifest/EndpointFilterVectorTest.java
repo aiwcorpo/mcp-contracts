@@ -1,6 +1,7 @@
 package pl.aiwcorpo.mcp.manifest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,7 +37,9 @@ class EndpointFilterVectorTest {
             case "apply" -> apply(file, input, expected);
             case "call" -> call(file, input, expected);
             case "session" -> session(file, input, expected);
-            case "error-response" -> { }
+            // The state checks of tools/call and the order of the checks of a session are decisions of the gateway, not of the
+            // filter; the reference in scripts/lib/endpoint-filter.mjs and the Node tests cover them.
+            case "error-response", "call-state", "session-order" -> { }
             default -> throw new IllegalStateException(file.toString());
         }
     }
@@ -124,7 +127,16 @@ class EndpointFilterVectorTest {
                 throw new IllegalStateException(e);
             }
         }).distinct().sorted().toList();
-        assertEquals(List.of("apply", "call", "error-response", "parse", "route", "session"), kinds);
+        assertEquals(List.of("apply", "call", "call-state", "error-response", "parse", "route", "session", "session-order"), kinds);
+    }
+
+    @Test
+    void aRiskOutsideTheClosedSetIsLeftOutByBothAccessValues() {
+        for (String risk : new String[] {"UNKNOWN", "read_only", "", null}) {
+            assertFalse(EndpointFilter.parse("access=read").allows("jira__legacy_tool", risk), String.valueOf(risk));
+            assertFalse(EndpointFilter.parse("access=write").allows("jira__legacy_tool", risk), String.valueOf(risk));
+            assertTrue(EndpointFilter.parse("systems=jira").allows("jira__legacy_tool", risk), String.valueOf(risk));
+        }
     }
 
     @Test

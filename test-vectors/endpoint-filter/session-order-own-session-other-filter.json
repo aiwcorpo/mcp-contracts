@@ -1,0 +1,19 @@
+{
+  "description": "Own session and another filter: 404 and filter_mismatch.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "systems=gitlab",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": "filter_mismatch"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "A route the gateway does not serve.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "requestPath": "/.well-known/oauth-protected-resource/f/systems=jira/mcp",
+    "requestQuery": ""
+  },
+  "expected": {
+    "status": 404,
+    "body": {
+      "error": "not_found_or_denied",
+      "message": "The resource does not exist or you do not have access to it."
+    }
+  }
+}

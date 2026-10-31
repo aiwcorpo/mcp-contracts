@@ -1,0 +1,12 @@
+{
+  "description": "A read inside the TTL of the cache needs no call, so the timeout does not apply.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "cached"
+    }
+  },
+  "expected": {
+    "available": true
+  }
+}

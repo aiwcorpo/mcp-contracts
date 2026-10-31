@@ -1,0 +1,13 @@
+{
+  "description": "A connection or TLS error, or a status other than 200.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "error",
+      "elapsedMs": 40
+    }
+  },
+  "expected": {
+    "available": false
+  }
+}

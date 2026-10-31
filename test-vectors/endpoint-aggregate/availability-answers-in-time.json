@@ -1,0 +1,13 @@
+{
+  "description": "A valid answer within the default timeout of 3000 ms.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "ok",
+      "elapsedMs": 120
+    }
+  },
+  "expected": {
+    "available": true
+  }
+}

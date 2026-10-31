@@ -1,5 +1,5 @@
 {
-  "description": "No percent-encoding.",
+  "description": "A decoded value that still has a percent sign (the client sent %252c, or the BFF got a raw %2c from a caller that bypassed the HTTP layer) is an invalid filter, as on the gateway.",
   "input": {
     "publicBaseUrl": "https://mcp.aiwcorpo.pl",
     "rawQuery": "systems=jira%2cgitlab",

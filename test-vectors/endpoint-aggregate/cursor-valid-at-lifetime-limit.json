@@ -1,0 +1,19 @@
+{
+  "description": "Exactly 15 minutes after issue. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "cursor",
+  "input": {
+    "issuedFor": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "presentedBy": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "mutation": "none",
+    "afterSeconds": 900
+  },
+  "expected": {
+    "valid": true
+  }
+}

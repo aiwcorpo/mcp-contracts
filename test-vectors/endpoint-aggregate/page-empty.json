@@ -1,0 +1,13 @@
+{
+  "description": "An empty list is one page, no error and no cursor.",
+  "kind": "page",
+  "input": {
+    "tools": [],
+    "afterName": null,
+    "pageSize": 3
+  },
+  "expected": {
+    "tools": [],
+    "nextCursorAfter": null
+  }
+}

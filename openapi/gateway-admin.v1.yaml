@@ -1433,7 +1433,7 @@ components:
           maxLength: 255
           description: Client id (azp), e.g. claude-code; the UI maps it to a display name.
         filter:
-          description: Normalized filter of the address the call was made on (CC-174); absent when the address had no filter.
+          description: Normalized filter of the address the call was made on (CC-174); absent when the address had no filter. Its entries have the syntax of system ids and tool names but are chosen by the client and not checked against the platform's systems and tools (CC-186).
           $ref: '../schemas/common.schema.json#/$defs/EndpointFilterQuery'
         tool:
           $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'

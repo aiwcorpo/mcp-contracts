@@ -1,0 +1,15 @@
+{
+  "description": "An unknown or expired session: the same 404 and no filter_mismatch.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "systems=gitlab",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": null
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": null
+  }
+}

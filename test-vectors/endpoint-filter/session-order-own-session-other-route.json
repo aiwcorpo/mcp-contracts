@@ -1,0 +1,19 @@
+{
+  "description": "A session opened on /mcp used on /s/mcp-jira/mcp: 404 and filter_mismatch (the route is part of the address the session is bound to), even though the query equals the stored one.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "systems=jira",
+    "route": "/s/mcp-jira/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": "filter_mismatch"
+  }
+}

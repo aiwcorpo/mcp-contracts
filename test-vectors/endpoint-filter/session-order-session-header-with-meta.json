@@ -1,0 +1,22 @@
+{
+  "description": "A request with Mcp-Session-Id and _meta is a session request: the binding is checked (here the filter differs). _meta does not switch it off.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "systems=gitlab",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    },
+    "meta": {
+      "protocolVersion": "2026-07-28"
+    }
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": "filter_mismatch"
+  }
+}

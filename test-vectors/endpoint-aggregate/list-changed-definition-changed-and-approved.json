@@ -1,0 +1,24 @@
+{
+  "description": "A new definition of a tool that stays in the list (same name and risk, other definitionHash): the result of tools/list changed.",
+  "kind": "list-changed",
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY",
+        "definitionHash": "sha256:aaaa"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY",
+        "definitionHash": "sha256:bbbb"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

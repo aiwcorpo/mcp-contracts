@@ -1,0 +1,14 @@
+{
+  "description": "Even a query that is not a valid filter does not change the document: this route does not read it.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "requestPath": "/.well-known/oauth-protected-resource/mcp",
+    "requestQuery": "system=jira"
+  },
+  "expected": {
+    "status": 200,
+    "document": {
+      "resource": "https://mcp.aiwcorpo.pl/mcp"
+    }
+  }
+}

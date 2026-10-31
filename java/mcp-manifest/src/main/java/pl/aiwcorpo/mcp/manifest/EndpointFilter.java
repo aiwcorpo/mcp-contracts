@@ -230,7 +230,8 @@ public final class EndpointFilter {
 
     /**
      * @param qualifiedName {@code <system>__<tool>}
-     * @param risk approved risk of the registry entry: READ_ONLY, UPDATE or DESTRUCTIVE
+     * @param risk approved risk of the registry entry: READ_ONLY, UPDATE or DESTRUCTIVE; any other value is left out by
+     *        both values of {@code access}
      * @return true when the filter leaves the tool visible; the caller applies it to tools the user may call
      */
     public boolean allows(String qualifiedName, String risk) {
@@ -243,7 +244,9 @@ public final class EndpointFilter {
         }
         if (access.isPresent()) {
             boolean readOnly = "READ_ONLY".equals(risk);
-            if (access.get() == Access.READ ? !readOnly : readOnly) {
+            boolean write = "UPDATE".equals(risk) || "DESTRUCTIVE".equals(risk);
+            // A risk outside the closed set (or null) is in neither group, so neither access value leaves it (CC-186).
+            if (access.get() == Access.READ ? !readOnly : !write) {
                 return false;
             }
         }

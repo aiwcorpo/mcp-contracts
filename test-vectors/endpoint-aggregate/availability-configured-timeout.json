@@ -1,0 +1,14 @@
+{
+  "description": "The timeout is configurable: 500 ms here.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "ok",
+      "elapsedMs": 800
+    },
+    "timeoutMs": 500
+  },
+  "expected": {
+    "available": false
+  }
+}

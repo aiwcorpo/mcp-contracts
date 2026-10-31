@@ -1,0 +1,13 @@
+{
+  "description": "An answer at exactly the timeout is in time.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "ok",
+      "elapsedMs": 3000
+    }
+  },
+  "expected": {
+    "available": true
+  }
+}

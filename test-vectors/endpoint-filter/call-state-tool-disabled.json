@@ -1,0 +1,58 @@
+{
+  "description": "A tool that is disabled, pending approval, changed or not served by its server and that the filter leaves: tool_disabled.",
+  "kind": "call-state",
+  "input": {
+    "query": "",
+    "tool": "jira__create_issue",
+    "mayCall": [
+      "confluence__get_page",
+      "confluence__update_page",
+      "gitlab__get_project",
+      "gitlab__update_project",
+      "jira__create_issue",
+      "jira__delete_issue",
+      "jira__get_issue"
+    ],
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "confluence__update_page",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "state": {
+      "toolEnabled": false,
+      "serverAvailable": true,
+      "connected": true
+    }
+  },
+  "expected": {
+    "canonical": "",
+    "outcome": "denied",
+    "errorCode": "tool_disabled",
+    "auditReason": "tool_disabled"
+  }
+}

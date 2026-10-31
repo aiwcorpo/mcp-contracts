@@ -1,0 +1,13 @@
+{
+  "description": "An answer after the timeout: the server is skipped as unavailable, whatever it said.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "ok",
+      "elapsedMs": 3001
+    }
+  },
+  "expected": {
+    "available": false
+  }
+}

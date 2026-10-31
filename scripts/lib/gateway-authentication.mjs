@@ -57,6 +57,21 @@ export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourceP
 }
 
 /**
+ * The metadata document of the protected resource (RFC 9728) that resource_metadata points at (CC-171, CC-187). Its `resource`
+ * is the identifier of the route without a query, and the query of the metadata request is ignored: the same document comes
+ * back with or without it. Only `resource` is pinned here; the other members (the authorization servers) come from the
+ * configuration. Routes that do not exist, `/v/` among them (CC-177), are the usual 404.
+ */
+export function protectedResourceMetadata({ publicBaseUrl, requestPath }) {
+  const prefix = '/.well-known/oauth-protected-resource';
+  const resourcePath = requestPath.startsWith(`${prefix}/`) ? requestPath.slice(prefix.length) : null;
+  if (resourcePath === null || (resourcePath !== '/mcp' && !/^\/s\/mcp-[a-z][a-z0-9]*\/mcp$/u.test(resourcePath))) {
+    return { status: 404, body: { error: 'not_found_or_denied', message: 'The resource does not exist or you do not have access to it.' } };
+  }
+  return { status: 200, document: { resource: `${publicBaseUrl}${resourcePath}` } };
+}
+
+/**
  * Which reason a token gets (CC-124). Checks that need no key come first: format, algorithm, claims that are readable
  * without verification. Only then the key is looked up. `keyCache` is the state of the IdP key set: 'usable' (fresh or
  * within the allowed staleness) or 'none' (never loaded or too old). `kid` is 'known' (in the usable key set) or

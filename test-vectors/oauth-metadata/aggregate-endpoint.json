@@ -1,0 +1,14 @@
+{
+  "description": "The document for /mcp: resource is the address without a query.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "requestPath": "/.well-known/oauth-protected-resource/mcp",
+    "requestQuery": ""
+  },
+  "expected": {
+    "status": 200,
+    "document": {
+      "resource": "https://mcp.aiwcorpo.pl/mcp"
+    }
+  }
+}

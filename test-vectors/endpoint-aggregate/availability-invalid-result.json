@@ -1,0 +1,13 @@
+{
+  "description": "A body that is not a result of tools/list or does not match its schema.",
+  "kind": "availability",
+  "input": {
+    "read": {
+      "outcome": "invalid",
+      "elapsedMs": 40
+    }
+  },
+  "expected": {
+    "available": false
+  }
+}

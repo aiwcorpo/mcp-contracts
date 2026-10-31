@@ -1,0 +1,49 @@
+{
+  "description": "A server that did not answer in time is skipped like an unavailable one; the others are listed and the list does not wait for it.",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      },
+      {
+        "serverId": "mcp-gitlab",
+        "available": false,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ],
+        "readOutcome": {
+          "outcome": "ok",
+          "elapsedMs": 3500
+        }
+      }
+    ]
+  },
+  "expected": {
+    "visible": [
+      "jira__get_issue"
+    ]
+  }
+}

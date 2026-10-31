@@ -44,9 +44,9 @@
       "maxLength": 80
     },
     "EndpointFilterQuery": {
-      "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter. Reference: scripts/lib/endpoint-filter.mjs. Limits (at most 5 entries in systems, 100 in tools, 100 in exclude) are checked by the reference parser, not by this pattern. Appears without the leading '?'.",
+      "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter, no leading or trailing ampersand. Entries of systems are system ids, entries of tools are qualified tool names (<system>__<tool>, one double underscore), entries of exclude are either. Reference: scripts/lib/endpoint-filter.mjs. Sorting, absence of duplicates and the limits (at most 5 entries in systems, 100 in tools, 100 in exclude, 512 bytes in all) cannot be written as a pattern; the reference parser checks them and the vectors pin them (CC-186). Appears without the leading '?'.",
       "type": "string",
-      "pattern": "^(?:systems=[a-z][a-z0-9]*(?:,[a-z][a-z0-9]*)*)?(?:(?:^|&)tools=[a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*)*)?(?:(?:^|&)access=(?:read|write))?(?:(?:^|&)exclude=[a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*)*)?$",
+      "pattern": "^(?!.*&$)(?:systems=[a-z][a-z0-9]*(?:,[a-z][a-z0-9]*)*(?:&|$))?(?:tools=[a-z][a-z0-9]*__[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:,[a-z][a-z0-9]*__[a-z][a-z0-9]*(?:_[a-z0-9]+)*)*(?:&|$))?(?:access=(?:read|write)(?:&|$))?(?:exclude=(?:[a-z][a-z0-9]*__[a-z][a-z0-9]*(?:_[a-z0-9]+)*|[a-z][a-z0-9]*)(?:,(?:[a-z][a-z0-9]*__[a-z][a-z0-9]*(?:_[a-z0-9]+)*|[a-z][a-z0-9]*))*)?$",
       "minLength": 1,
       "maxLength": 512
     },

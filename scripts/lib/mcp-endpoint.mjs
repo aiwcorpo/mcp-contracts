@@ -14,8 +14,19 @@ export function clientConfigs(url) {
 }
 
 /**
- * `rawQuery` is the query of the BFF request (the four filter parameters, nothing else); `catalog` is the catalog of the
- * current user from C5: [{ name, risk, access: "granted" | "denied", disabled }]. Only granted, enabled tools are counted.
+ * CC-182: the BFF receives the four parameters as typed values of the OpenAPI operation, already decoded by the HTTP layer
+ * (`systems=jira%2Cgitlab` arrives as `jira,gitlab`), and composes the query itself: `name=value` joined with `&`, nothing
+ * encoded again. A decoded value that contains `&` or `=` would change the structure of the query, so it is written as
+ * `%26` / `%3D`, which the parser refuses: the filter is invalid, never a different one. `pairs` is URLSearchParams or a list
+ * of [name, value]. A parameter outside the four is refused before this (the mock and the BFF answer invalid_filter).
+ */
+export function composeQuery(pairs) {
+  return [...pairs].map(([name, value]) => `${name}=${value.replaceAll('&', '%26').replaceAll('=', '%3D')}`).join('&');
+}
+
+/**
+ * `rawQuery` is the query the BFF composed from the decoded values of its four parameters (`composeQuery`); `catalog` is the flat list the
+ * BFF builds from servers[].tools[] of GET /admin/v1/catalog (C5) for the current user: [{ name, risk, access: "granted" | "denied", disabled }]. Only granted, enabled tools are counted.
  */
 export function mcpEndpoint({ publicBaseUrl, rawQuery, catalog }) {
   let parsed;

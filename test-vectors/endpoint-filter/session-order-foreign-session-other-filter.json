@@ -1,0 +1,19 @@
+{
+  "description": "A session of another user is a plain 404 as for an unknown session, with no filter_mismatch, even though the filter differs.",
+  "kind": "session-order",
+  "input": {
+    "requestQuery": "systems=gitlab",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-b",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": null
+  }
+}

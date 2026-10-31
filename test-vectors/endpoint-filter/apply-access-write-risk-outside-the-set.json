@@ -1,0 +1,54 @@
+{
+  "description": "A risk outside READ_ONLY, UPDATE, DESTRUCTIVE is in neither group: access=write does not leave it (fail-closed, CC-186).",
+  "kind": "apply",
+  "input": {
+    "query": "access=write",
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "confluence__update_page",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__legacy_tool",
+        "risk": "UNKNOWN"
+      },
+      {
+        "name": "jira__lowercase_tool",
+        "risk": "read_only"
+      }
+    ]
+  },
+  "expected": {
+    "canonical": "access=write",
+    "visible": [
+      "confluence__update_page",
+      "gitlab__update_project",
+      "jira__create_issue",
+      "jira__delete_issue"
+    ]
+  }
+}

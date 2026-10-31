@@ -1105,13 +1105,17 @@ paths:
       summary: Address of the aggregate MCP endpoint for a filter, with client configuration (CC-175).
       description: |
         Replaces the saved links of 4.x: nothing is stored. The wizard sends the filter chosen by the user as the query
-        parameters `systems`, `tools`, `access` and `exclude` (same syntax and limits as the query of `/mcp`, CC-170); the BFF
-        normalizes them once, with the rules of the gateway (`test-vectors/endpoint-filter/`), so the portal has a single
-        source of the canonical address. The answer has the address `<publicBaseUrl>/mcp` plus `?` and the canonical filter
+        parameters `systems`, `tools`, `access` and `exclude` (same syntax and limits as the query of `/mcp`, CC-170). The
+        BFF receives them as typed parameters of this operation, already decoded by the HTTP layer (a client that sends a comma
+        as `%2C`, as the generated Angular client does, delivers `jira,gitlab`), and composes the query itself:
+        `name=value` joined with `&`, nothing encoded again (CC-182, `composeQuery` in `scripts/lib/mcp-endpoint.mjs`). A
+        value that still contains `%` after decoding (the client sent `%25`) is an invalid filter, as is a value with `&` or `=`.
+        The BFF then normalizes the composed query once, with the rules of the gateway (`test-vectors/endpoint-filter/`), so the
+        portal has a single source of the canonical address. The answer has the address `<publicBaseUrl>/mcp` plus `?` and the canonical filter
         (no `?` without a filter), ready-made client configurations built from `publicBaseUrl` (never from the request) and
         `toolCount`, the number of tools that the filter leaves visible among the tools of the catalog of the current user that
-        are `granted` and not `disabled` (the BFF counts it from `GET /admin/v1/catalog` of C5 and no new gateway operation is
-        needed). `toolCount` serves the warning about the size of the list; the `tools/list` of the gateway is the authority,
+        are `granted` and not `disabled` (the BFF counts it from `GET /admin/v1/catalog` of C5, flattening `servers[].tools[]`, and no new gateway
+        operation is needed). `toolCount` serves the warning about the size of the list; the `tools/list` of the gateway is the authority,
         because it also takes unavailable servers and the policy decision of the moment into account. A query parameter that is not
         one of the four, a repeated one and an invalid value are `400 invalid_request` with `reason: invalid_filter`; the answer
         reveals nothing about the user's tools. A filter naming something that does not exist or that the user cannot call is
@@ -1278,7 +1282,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group (CC-142). The result of a row comes from the reason of the last event of the call (mapping in CC-165, scripts/lib/activity-calls.mjs). A UI must not offer request_access on the result alone, because the C10 error access_denied carries no requiredEntitlements. ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). The result of a row comes from the reason of the last event of the call (mapping in CC-165, scripts/lib/activity-calls.mjs). A UI must not offer request_access on the result alone, because the C10 error access_denied carries no requiredEntitlements. ok is result ok. denied covers denied_not_granted, denied_filter_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]

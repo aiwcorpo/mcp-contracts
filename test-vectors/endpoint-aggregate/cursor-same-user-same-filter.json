@@ -1,0 +1,19 @@
+{
+  "description": "A cursor given back by the user it was issued to, with the same filter, a minute later. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "cursor",
+  "input": {
+    "issuedFor": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "presentedBy": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "mutation": "none",
+    "afterSeconds": 60
+  },
+  "expected": {
+    "valid": true
+  }
+}

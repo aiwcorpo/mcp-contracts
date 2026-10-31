@@ -1,0 +1,19 @@
+{
+  "description": "The filter is compared after normalization. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "cursor",
+  "input": {
+    "issuedFor": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "presentedBy": {
+      "sub": "user-a",
+      "query": "ACCESS=read&systems=jira"
+    },
+    "mutation": "none",
+    "afterSeconds": 60
+  },
+  "expected": {
+    "valid": true
+  }
+}

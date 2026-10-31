@@ -1,0 +1,33 @@
+{
+  "description": "The order is that of CC-169 (ServerId, then tool name), not plain sorting of the qualified names: system a sorts before a1 although \"a1__x\" < \"a__x\".",
+  "kind": "page",
+  "input": {
+    "tools": [
+      {
+        "name": "a1__x",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "a__x",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "a__y",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "b__x",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "afterName": "a__x",
+    "pageSize": 2
+  },
+  "expected": {
+    "tools": [
+      "a__y",
+      "a1__x"
+    ],
+    "nextCursorAfter": "a1__x"
+  }
+}

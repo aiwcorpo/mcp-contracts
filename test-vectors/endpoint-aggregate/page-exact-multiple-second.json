@@ -1,0 +1,42 @@
+{
+  "description": "The second page of the same list.",
+  "kind": "page",
+  "input": {
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "afterName": "gitlab__update_project",
+    "pageSize": 3
+  },
+  "expected": {
+    "tools": [
+      "jira__create_issue",
+      "jira__delete_issue",
+      "jira__get_issue"
+    ],
+    "nextCursorAfter": null
+  }
+}

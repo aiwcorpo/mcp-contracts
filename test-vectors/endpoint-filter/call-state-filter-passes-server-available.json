@@ -1,0 +1,56 @@
+{
+  "description": "The filter leaves the tool, everything works: the call goes to the server.",
+  "kind": "call-state",
+  "input": {
+    "query": "systems=jira",
+    "tool": "jira__get_issue",
+    "mayCall": [
+      "confluence__get_page",
+      "confluence__update_page",
+      "gitlab__get_project",
+      "gitlab__update_project",
+      "jira__create_issue",
+      "jira__delete_issue",
+      "jira__get_issue"
+    ],
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "confluence__update_page",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "state": {
+      "toolEnabled": true,
+      "serverAvailable": true,
+      "connected": true
+    }
+  },
+  "expected": {
+    "canonical": "systems=jira",
+    "outcome": "allowed"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "There is no document for /v/ (CC-177): the usual 404.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "requestPath": "/.well-known/oauth-protected-resource/v/team-a-dev/mcp",
+    "requestQuery": ""
+  },
+  "expected": {
+    "status": 404,
+    "body": {
+      "error": "not_found_or_denied",
+      "message": "The resource does not exist or you do not have access to it."
+    }
+  }
+}

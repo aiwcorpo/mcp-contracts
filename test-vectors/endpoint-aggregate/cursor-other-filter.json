@@ -1,0 +1,23 @@
+{
+  "description": "A cursor used with another filter. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "cursor",
+  "input": {
+    "issuedFor": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "presentedBy": {
+      "sub": "user-a",
+      "query": "systems=jira"
+    },
+    "mutation": "none",
+    "afterSeconds": 60
+  },
+  "expected": {
+    "valid": false,
+    "error": {
+      "code": -32602,
+      "message": "Invalid cursor"
+    }
+  }
+}
