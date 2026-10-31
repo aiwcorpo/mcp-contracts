@@ -15,7 +15,7 @@
     <parent>
         <groupId>pl.aiwcorpo.mcp</groupId>
         <artifactId>mcp-contracts-parent</artifactId>
-        <version>5.1.0</version>
+        <version>5.1.1-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
