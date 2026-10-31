@@ -4,6 +4,52 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## Niewydane - propozycja 5.1.0 (poprawki po przeglądzie 5.0.0; wydanie wstrzymane do decyzji o numerze)
+
+Przegląd 5.0.0 (Opus, 2026-10-31) znalazł sprzeczności i luki w CC-169 ... CC-177; decyzje człowieka z tego samego dnia dały CC-178 ... CC-187. Nikt jeszcze 5.0.0 nie wdrożył, ale artefakty `5.0.0` są w `~/.m2` i w `release/` i są niezmienne.
+Bajty `cedar/mcp.cedarschema` bez zmian (SHA-256 jak w 5.0.0, `51d71b2d...`): paczki polityk zbudowane pod 5.0.0 zostają ważne. **Numer wersji nie jest ustalony:** część zmian jest według tabeli SemVer (README, "Wersjonowanie") zaostrzeniem walidacji albo zmianą oczekiwań, czyli major (lista niżej). Co zrobić, rozstrzyga człowiek (STATUS.md, "Po 5.0.0").
+
+### Nowe (addytywne)
+
+- **Stronicowanie `tools/list` (CC-181):** 100 narzędzi na stronę, `nextCursor`, kursor nieprzezroczysty, uwierzytelniony HMAC, związany z `sub` i filtrem, ważny 15 minut; zły kursor to zawsze `-32602` i powód audytu `invalid_cursor`. Listy do 100 narzędzi wyglądają jak w 5.0.0.
+- **Limit czasu `tools/list` na serwer (CC-180):** `MCP_TOOLS_LIST_TIMEOUT`, domyślnie 3 s; serwer po limicie jest pomijany jak niedostępny; definicja "niedostępny".
+- **Wektory:** `endpoint-filter/call-state-*` (14), `session-order-*` (7), `apply-*-risk-outside-the-set` (3); `endpoint-aggregate/availability-*`, `page-*`, `cursor-*`, `list-slow-server-skipped`, `list-changed-definition-changed-and-approved`; `mcp-endpoint/http-*` (4); nowy katalog `oauth-metadata/` (6).
+- **Referencje JS:** `callDecision(filter, tool, mayCall, state)`, `sessionDecision`, `serverAvailable`, `page`, `issueCursor`, `readCursor`, `composeQuery`, `protectedResourceMetadata`.
+- **Java:** `PolicyLint.impossible(Schema, PolicySet)`, opcja `--schema` w `PolicyLintCli`; `guava` w zakresie `provided` w `mcp-policy-bundle` (tylko do odczytu ostrzeżeń walidatora; konsument nie dostaje nowego artefaktu).
+
+### Doprecyzowania i poprawki
+
+1. **`tools/call` na `/mcp` (CC-178):** najpierw `mayCall` (rejestr plus decyzja Cedar na poziomie narzędzia, niezależna od dostępności), potem filtr (`not_found_or_denied`, audyt `filter_scope`, bez względu na stan serwera), dopiero potem `tool_disabled`, `upstream_unavailable`, `credential_required`. Filtr poprzedza bramkę potwierdzenia `DESTRUCTIVE`;
+   wywołanie wycięte nie unieważnia oczekującego potwierdzenia. W 5.0.0 README i CC-169 przeczyły CC-170 i referencji.
+2. **`list_changed` przesunięte na M6 (CC-179):** gateway deklaruje `listChanged: false`, nie wysyła powiadomień, `GET` na `/mcp` to `405` (`Allow: POST, DELETE`). Referencja i wektory `list-changed-*` zostają jako materiał dla M6.
+3. **Sesja (CC-184):** kolejność token, składnia (`400`), `sub` sesji (cudza albo nieznana: `404` bez `filter_mismatch`), trasa (`404`, `filter_mismatch`), filtr (`404`, `filter_mismatch`); `Mcp-Session-Id` z `_meta` to żądanie sesyjne; wiązanie porządkuje audyt i nie jest barierą.
+4. **BFF (CC-182):** `getMcpEndpoint` dostaje wartości typowane w OpenAPI, zdekodowane przez HTTP, i sam składa query; `%2C` jest poprawny, zdekodowane `%`, `&`, `=` w wartości to zły filtr; mock MSW odrzuca `%` i powtórzone parametry.
+5. **Lint (CC-183):** `PolicyLintCli` i `PolicyLint.impossible` kończą się błędem przy "policy is impossible"; odbiorca paczki bez zaostrzenia.
+6. **Limit 512 bajtów (CC-185):** to on ogranicza `tools=`, nie 100 narzędzi (16 nazw po 30 znaków).
+7. **Filtr (CC-186):** Java `EndpointFilter.allows` nie przepuszcza ryzyka spoza zbioru przy `access=write`; ścisły wzorzec `EndpointFilterQuery`; pole `filter` w audycie tylko na gatewayu i czterech zdarzeniach, nie przy `invalid_filter`; opis pola nie twierdzi już, że to wyłącznie nazwy istniejących systemów.
+8. **Tekst i wektory (CC-187):** `denied_link_scope` w opisie `ActivityCall.result`, `filter_scope` w aktywności użytkownika, wektor `list-changed-definition-approved-outside-filter`, klient gubiący query dostaje pełną listę bez błędu (ciche poszerzenie widoku, nie uprawnień), metadane `oauth-protected-resource/mcp`, cztery sprzeczności wewnątrz CC.
+
+### Niezgodne wstecz względem 5.0.0 według tabeli SemVer
+
+Zaostrzenie walidacji albo zmiana oczekiwanego zachowania: CC-179 (`listChanged` z `true` na `false`, usunięty wymóg powiadomień), CC-178 i CC-184 (inny wynik w scenariuszach, które 5.0.0 zostawiało sprzeczne albo otwarte), CC-182 (mock MSW odrzuca teraz `%` i powtórzony parametr),
+CC-183 (`PolicyLintCli` kończy się błędem tam, gdzie kończył się sukcesem), CC-186 (wzorzec `EndpointFilterQuery`, warunki schematu audytu, wynik `EndpointFilter.allows` dla ryzyka spoza zbioru), CC-187 (zmiana wejścia wektora `list-changed-definition-approved-outside-filter`).
+Oczekiwania istniejących wektorów `endpoint-filter/`, `endpoint-aggregate/list-*` i `mcp-endpoint/` bez zmian poza ostatnim wektorem i opisem `invalid-percent-encoding`. Paczka polityk, JWT i bajty schematu Cedar bez zmian.
+
+### Migracja
+
+**ws-05 gateway:** (a) kolejność `tools/call` z CC-178 w `McpGatewayService` (dziś `link_scope` po samym istnieniu narzędzia, `McpGatewayService.java:331-332`); (b) limit czasu odczytu `tools/list` i równoległy fan-out (CC-180); (c) stronicowanie i kursor (CC-181), klucz kursora współdzielony przez instancje;
+(d) kolejność kontroli sesji (CC-184), sesja z `Mcp-Session-Id` i `_meta` jako sesyjna, `filter_mismatch` także dla trasy; (e) `listChanged: false`, `GET` to `405` z `Allow`, bez `subscriptions/listen` i kanału zdarzeń; (f) metadane `oauth-protected-resource/mcp` ignorują query;
+(g) **migracja aktywności** (luka 5.0.0): `ActivityAggregator.java:31` mapuje `link_scope` na `denied_link_scope`, a `ActivityService.java:22` ma `denied_link_scope` w zbiorze `denied`; po 5.0.0 obowiązują `filter_scope` i `denied_filter_scope` (CC-174). Kontrakt nie mówi, co z wierszami zapisanymi do 4.x z `link_scope` (otwarte pytanie w STATUS.md);
+(h) **sesje 4.x w Redisie** (luka 5.0.0): nie mają zapisanej trasy ani filtra, a CC-172 i CC-184 wymagają wiązania od `initialize`. Kontrakt nie mówi, jak potraktować sesję zapisaną przed aktualizacją (otwarte pytanie w STATUS.md).
+**ws-07 BFF:** (a) wartości typowane i `composeQuery` zamiast przekazywania surowego query (CC-182); (b) katalog dla `toolCount` to **płaska lista** zbudowana z `servers[].tools[]` odpowiedzi `GET /admin/v1/catalog` (C5), a wektory `mcp-endpoint/` pokazują płaską listę (luka 5.0.0).
+**ws-08 web:** licznik bajtów query w kreatorze zamiast limitu 100 narzędzi (CC-185); kreator nie wysyła zapytania, którego nie da się złożyć; próg ostrzeżenia o rozmiarze listy nadal nieustalony (pomiar M5), a powyżej 100 narzędzi klient musi iść za `nextCursor` (CC-181).
+**ws-09 polityki:** krok `PolicyLintCli` w potoku (CC-183). Do usunięcia z 5.0.0 (luka: CHANGELOG 5.0.0 mówił tylko o `virtual-server.cedar`): `.ci/java/src/main/java/pl/aiwcorpo/mcp/policies/PolicyChecks.java:117` woła usuniętą `PolicyLint.linkContextOutsideForbid` (błąd kompilacji po przejściu na 5.x), a `:167-222` (`linkLiftsForbid`, `readsLinkContext`, `presenceTest`) czytają usunięte `vsScopes` / `virtualServer`;
+testy `.ci/java/src/test/java/pl/aiwcorpo/mcp/policies/{ScopeScenarioTest,BundleTest,PolicyChecksTest,DecisionSuite}.java`, `tests/decisions/virtual-server.json`, `tests/decisions/{server-tools,credential-type}.json`, `tests/scopes/{jira,gitlab,confluence,opensearch,servicedesk}.json` i `tests/mutation-equivalents.txt` odwołują się do tych pól i trzeba je poprawić razem z regułami.
+**ws-10 e2e:** scenariusze z CC-178 (serwer leży przy filtrze, który wycina i który zostawia narzędzie; wyłączone narzędzie; brak połączenia; wycięte wywołanie `DESTRUCTIVE` przy oczekującym potwierdzeniu), CC-181 (ponad 100 narzędzi, obcy kursor, kursor z innym filtrem), CC-184 (trzy scenariusze kolejności, sesja na innej trasie), wolny serwer (CC-180); bez scenariusza `list_changed` (CC-179).
+Nadużycia z CC-170 (luka 5.0.0, nie były w migracji): filtr z 1000 wpisów (`400`, nie obcinanie), `exclude` narzędzia `DESTRUCTIVE` (nie zdejmuje bramki TOTP), filtr wskazujący system bez uprawnień użytkownika (ta sama odpowiedź co dla nieistniejącego, niezmiennik 8), `%` i `%2c` w query, kursor innego użytkownika.
+**ws-01 stos dev:** zmienna `MCP_TOOLS_LIST_TIMEOUT` w konfiguracji gateway'a; Redis pub/sub do powiadomień nie jest potrzebny (CC-179).
+**ws-02, ws-03, ws-04, ws-06:** bez zmian względem 5.0.0.
+
 ## 5.0.0 - 2026-10-31
 
 Wydanie major M5, punkt A (`mcp-platform-plan/m5-plan.md`): jeden adres `/mcp` do całej platformy i filtr w query zamiast zapisanych linków. Wszystkie zmiany łamiące według tabeli SemVer z README, wydane razem, bo CC-169 ... CC-177 odwołują się do siebie.

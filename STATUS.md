@@ -7,6 +7,20 @@ SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 
 Walidacja 5.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 267 testów Node; `./mvnw clean verify`: 543 testy JUnit,
 w tym 327 mcp-cedar-entities, 59 mcp-policy-bundle, 157 mcp-manifest).
 
+## Po 5.0.0: poprawki po przeglądzie (gałąź `review-5.0.0-fixes`, niewydane)
+
+- CC-178 ... CC-187 `accepted` (decyzje człowieka 2026-10-31 po przeglądzie 5.0.0): kolejność `tools/call` (filtr przed stanem), `list_changed` na M6 i `GET` = `405`, limit czasu `tools/list` (3 s), stronicowanie `nextCursor`, BFF z wartościami typowanymi, lint "policy is impossible", kolejność kontroli sesji, limit 512 bajtów, poprawki L1 ... L9. Szczegóły: `CONTRACT_CHANGES.md`, `CHANGELOG.md` ("Niewydane").
+- Wersja w drzewie: nadal `5.0.1-SNAPSHOT`, bez tagu, bez `mvn install` i bez nowego tarballa. Bajty `cedar/mcp.cedarschema` bez zmian.
+- Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 270 testów Node; `./mvnw clean verify`: 579 testów JUnit, w tym 327 mcp-cedar-entities, 70 mcp-policy-bundle, 182 mcp-manifest); `PolicyLintCli` sprawdzony ręcznie (kod 1 dla `forbid` z nieistniejącym `vsScopes`, 0 dla `cedar/examples`).
+- **Decyzja o numerze (czeka na człowieka).** Addytywne: `nextCursor`, limit czasu, nowe wektory, `PolicyLint.impossible` (to wskazuje 5.1.0). Ale według tabeli SemVer co najmniej to jest major względem 5.0.0: `listChanged` z `true` na `false` (CC-179), zaostrzenie `PolicyLintCli` (CC-183), wzorzec `EndpointFilterQuery` i warunki schematu audytu oraz wynik `EndpointFilter.allows` (CC-186),
+  mock MSW odrzucający `%` (CC-182), zmiana wejścia jednego istniejącego wektora (CC-187), inny wynik `tools/call` i sesji w scenariuszach, które 5.0.0 zostawiało sprzeczne (CC-178, CC-184). Nikt nie wdrożył 5.0.0, więc praktyczny koszt jest zerowy, ale polecenie było: przy niezgodności wstecznej zatrzymać wydanie.
+  Opcje: (a) 5.1.0 z wyjątkiem SemVer opisanym w README, jak 4.0.1 i 4.1.0 (rekomendacja: dochodzą funkcje kontraktu, a niezgodności dotyczą wersji, której nikt nie używa); (b) 6.0.0 zgodnie z tabelą; (c) odrzucić część zaostrzeń (CC-183, CC-186), żeby reszta była czystym minorem. Po decyzji zostaje commit wydania w stylu 5.0.0 (wersje w pomach, `package.json`, `info.version`, `./mvnw install`, `npm run pack`, tag).
+- **Otwarte pytania:** (1) kolejność `upstream_unavailable` i `credential_required` nie była wprost w decyzji; przyjęto kolejność zapisu (`tool_disabled`, `upstream_unavailable`, `credential_required`), przypiętą wektorami; (2) rozmiar strony `tools/list` (100) i ważność kursora (15 minut jak w CC-095) to moje wartości; (3) nazwa i jednostka `MCP_TOOLS_LIST_TIMEOUT` (milisekundy);
+  (4) powód audytu dla sesji cudzej lub nieznanej (kontrakt go nie nazywa; sesja na innej trasie dostaje `filter_mismatch`); (5) co z sesjami 4.x w Redisie bez wiązania i z wierszami aktywności z `link_scope` zapisanymi przed aktualizacją; (6) czy narzędzie nigdy niezatwierdzone (oczekujące `new`) w `mayCall` daje `tool_disabled` (przyjęto, bo wpis rejestru w dowolnym stanie liczy się do `mayCall`);
+  (7) README (reguła 3 rejestru) mówi, że nieudany odczyt serwera "nie ukrywa wszystkich narzędzi", a CC-169 i CC-180 pomijają serwer na liście: pogodzone przez rozróżnienie "pominięty na tej liście" od "stan rejestru", ale wymaga potwierdzenia ws-05.
+- Rozstrzygnięte sprzeczności CC (L9): CC-173 "nie ma czego przenosić" (zamiast "przenosi ws-09"), `systems` równe systemowi trasy, klucze `clientConfigs` zostają (`claudeCode`, `copilot`, `codex`), CC-175 zgodne z CC-177.
+- Poza repozytorium (do planu, nie do wydania): `mcp-platform-plan/01-contracts.md` nadal opisuje linki (M5 przeglądu).
+
 ## 5.0.0 (wydane 2026-10-31)
 
 - CC-169 ... CC-177 `accepted` (decyzje człowieka 2026-10-31 po PoC OAuth z query w Claude Code): zbiorczy `/mcp`, filtr w query (`access=write` rozłączne z `read`), OAuth wariant V2 (zasób bez query, `aud = mcp-gateway`),
