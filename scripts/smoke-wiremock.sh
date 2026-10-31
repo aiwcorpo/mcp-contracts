@@ -42,7 +42,6 @@ expect 401 -X POST "$B/v1/credentials/resolve" -d '{"system":"jira"}'
 expect 422 -X PUT "$B/v1/connections/jira/secret" -H 'Authorization: Bearer test' -H 'Prefer: example=secret_invalid' -d '{"secret":"x"}'
 expect 204 -X POST "$B/v1/admin/users/6f1c2a9e/purge"
 expect 200 "$A/admin/v1/catalog" -H 'Authorization: Bearer test'
-expect 201 -X POST "$A/admin/v1/virtual-servers" -H 'Authorization: Bearer test' -d '{}'
 expect 409 -X POST "$A/admin/v1/registry/servers/mcp-jira/tools/update_issue/approve" -H 'Authorization: Bearer test' -H 'Prefer: example=hash_mismatch' -d '{}'
 expect 200 -X PUT "$A/admin/v1/registry/servers/mcp-jira" -d '{}'
 echo "WireMock smoke test passed"

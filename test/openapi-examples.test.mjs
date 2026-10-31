@@ -149,7 +149,7 @@ test('gateway-admin.v1.yaml: registry examples keep change and approvedInVersion
 test('result groups of the activity filter (CC-142)', async () => {
   const { resultGroup } = await import('../scripts/lib/activity-calls.mjs');
   assert.equal(resultGroup('ok'), 'ok');
-  for (const r of ['denied_not_granted', 'denied_link_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited']) assert.equal(resultGroup(r), 'denied', r);
+  for (const r of ['denied_not_granted', 'denied_filter_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited']) assert.equal(resultGroup(r), 'denied', r);
   for (const r of ['error', 'credential_required']) assert.equal(resultGroup(r), 'error', r);
   for (const r of ['confirmed', 'expired', 'confirmation_pending', 'confirmation_failed', 'superseded', 'blocked_by_pending', 'cancelled']) assert.equal(resultGroup(r), 'confirmation', r);
 });

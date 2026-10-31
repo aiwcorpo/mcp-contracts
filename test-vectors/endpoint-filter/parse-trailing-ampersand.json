@@ -1,0 +1,16 @@
+{
+  "description": "Trailing ampersand.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira&"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "empty_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

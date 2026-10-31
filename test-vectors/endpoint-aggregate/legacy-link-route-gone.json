@@ -1,0 +1,17 @@
+{
+  "description": "The route of saved links no longer exists (CC-177): 404 not_found_or_denied in the usual shape, no audit event, whatever the token.",
+  "kind": "legacy-route",
+  "input": {
+    "method": "POST",
+    "path": "/v/team-a-dev/mcp",
+    "token": "valid"
+  },
+  "expected": {
+    "status": 404,
+    "body": {
+      "error": "not_found_or_denied",
+      "message": "The resource does not exist or you do not have access to it."
+    },
+    "audit": null
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "description": "A server leaves the list as unavailable.",
+  "kind": "list-changed",
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

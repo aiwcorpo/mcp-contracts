@@ -1,0 +1,48 @@
+{
+  "description": "No right and a filter that would remove it anyway: not_granted, not filter_scope.",
+  "kind": "call",
+  "input": {
+    "query": "systems=jira",
+    "tool": "confluence__update_page",
+    "mayCall": [
+      "confluence__get_page",
+      "gitlab__get_project",
+      "gitlab__update_project",
+      "jira__create_issue",
+      "jira__delete_issue",
+      "jira__get_issue"
+    ],
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "canonical": "systems=jira",
+    "outcome": "denied",
+    "errorCode": "not_found_or_denied",
+    "auditReason": "not_granted"
+  }
+}

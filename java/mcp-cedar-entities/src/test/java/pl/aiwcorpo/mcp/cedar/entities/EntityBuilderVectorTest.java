@@ -59,13 +59,6 @@ class EntityBuilderVectorTest {
     }
 
     @Test
-    void vscFieldsMustHoldOneToFiftyIds() {
-        assertThrows(EntityBuilderException.class, () -> VirtualServerScope.fromClaims("x", Map.of("jiraProjects", List.of())));
-        List<String> many = java.util.stream.IntStream.range(0, 51).mapToObj(i -> "P" + i).toList();
-        assertThrows(EntityBuilderException.class, () -> VirtualServerScope.fromClaims("x", Map.of("jiraProjects", many)));
-    }
-
-    @Test
     void longOverflowIsABuilderError() {
         Caller caller = Caller.of("u", "u", List.of(), "claude-code");
         ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read", List.of());
@@ -75,11 +68,9 @@ class EntityBuilderVectorTest {
     }
 
     @Test
-    void queryConstraintCombinesLinkAndMapping() {
-        Caller caller = Caller.of("u", "u", List.of("mcp-jira-proj-ABC", "mcp-jira-proj-DEF"), "claude-code")
-                .withVirtualServer(VirtualServerScope.fromResourceDefaults("l", Map.of("Jira::Project", List.of("ABC"))));
+    void queryConstraintComesFromTheMapping() {
+        Caller caller = Caller.of("u", "u", List.of("mcp-jira-proj-ABC", "mcp-jira-proj-DEF"), "claude-code");
         QueryConstraint c = VectorInputs.builder("cedar/examples/static-entities.json").queryConstraint(caller, "Jira::Project");
-        assertEquals(List.of("ABC"), List.copyOf(c.virtualServer().orElseThrow()));
         assertEquals(List.of("ABC", "DEF"), List.copyOf(c.granted()));
         assertTrue(new EntityBuilder().queryConstraint(caller, "Jira::Project").granted().isEmpty());
     }
@@ -117,17 +108,6 @@ class EntityBuilderVectorTest {
         var e = assertThrows(EntityBuilderException.class, () ->
                 new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", 47.5)));
         assertEquals(EntityBuilderException.Code.INVALID_ARGUMENT, e.code());
-    }
-
-    @Test
-    void gatewayMapsResourceDefaultsToVsc() {
-        VirtualServerScope link = VirtualServerScope.fromResourceDefaults("team-a",
-                Map.of("Jira::Project", List.of("DEF", "ABC"), "OpenSearch::Index", List.of("logs-team-a")));
-        assertEquals(List.of("jiraProjects", "opensearchIndexPrefixes"), List.copyOf(link.vsScopes().keySet()));
-        assertEquals(List.of("ABC", "DEF"), List.copyOf(link.vsScopes().get("jiraProjects")));
-        var e = assertThrows(EntityBuilderException.class, () ->
-                VirtualServerScope.fromResourceDefaults("x", Map.of("Jira::Issue", List.of("ABC-1"))));
-        assertEquals(EntityBuilderException.Code.INTERNAL_ERROR, e.code());
     }
 
     @Test

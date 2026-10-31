@@ -1,0 +1,23 @@
+{
+  "description": "The challenge points at the metadata of the aggregate endpoint /mcp (CC-171, V2).",
+  "input": {
+    "reason": "expired",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/mcp"
+  },
+  "expected": {
+    "status": 401,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": "Bearer resource_metadata=\"https://mcp.aiwcorpo.pl/.well-known/oauth-protected-resource/mcp\""
+    },
+    "absentHeaders": [
+      "Retry-After",
+      "Set-Cookie"
+    ],
+    "body": {
+      "error": "unauthenticated",
+      "message": "Authentication required."
+    }
+  }
+}

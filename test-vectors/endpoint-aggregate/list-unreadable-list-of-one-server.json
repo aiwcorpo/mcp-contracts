@@ -1,0 +1,46 @@
+{
+  "description": "A damaged tools/list of one server does not invalidate the rest.",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      },
+      {
+        "serverId": "mcp-opensearch",
+        "available": false,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "opensearch__search_index",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ],
+        "listError": "unreadable"
+      }
+    ]
+  },
+  "expected": {
+    "visible": [
+      "jira__get_issue"
+    ]
+  }
+}

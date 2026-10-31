@@ -1,0 +1,16 @@
+{
+  "description": "The same parameter twice.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira&systems=gitlab"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "repeated_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

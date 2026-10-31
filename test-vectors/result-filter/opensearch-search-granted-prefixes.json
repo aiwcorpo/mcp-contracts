@@ -1,0 +1,68 @@
+{
+  "description": "OpenSearch search: the index pattern is limited to granted prefixes, and results from other indices are dropped.",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "policies": "cedar/examples",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000008",
+      "usr": "osreader",
+      "grp": [
+        "mcp-opensearch-read",
+        "mcp-opensearch-idx-logs-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-opensearch",
+      "system": "opensearch",
+      "name": "search",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "index",
+          "type": "OpenSearch::Index"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10",
+      "attrs": {
+        "name": "logs-team-a-2026.10",
+        "tags": []
+      }
+    },
+    {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-b-2026.10",
+      "attrs": {
+        "name": "logs-team-b-2026.10",
+        "tags": []
+      }
+    },
+    {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-ab",
+      "attrs": {
+        "name": "logs-team-ab",
+        "tags": []
+      }
+    }
+  ],
+  "expected": {
+    "kept": [
+      "logs-team-a-2026.10"
+    ],
+    "queryConstraints": {
+      "OpenSearch::Index": {
+        "granted": [
+          "logs-team-a"
+        ]
+      }
+    }
+  }
+}

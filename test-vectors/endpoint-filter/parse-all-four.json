@@ -1,0 +1,24 @@
+{
+  "description": "All four parameters.",
+  "kind": "parse",
+  "input": {
+    "query": "exclude=gitlab&tools=jira__get_issue,jira__create_issue&access=write&systems=jira"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=jira&tools=jira__create_issue,jira__get_issue&access=write&exclude=gitlab",
+    "filter": {
+      "systems": [
+        "jira"
+      ],
+      "tools": [
+        "jira__create_issue",
+        "jira__get_issue"
+      ],
+      "access": "write",
+      "exclude": [
+        "gitlab"
+      ]
+    }
+  }
+}

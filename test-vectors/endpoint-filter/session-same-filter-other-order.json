@@ -1,0 +1,11 @@
+{
+  "description": "The same filter spelled differently matches (comparison after normalization).",
+  "kind": "session",
+  "input": {
+    "initializeQuery": "systems=jira,gitlab&access=read",
+    "requestQuery": "ACCESS=read&systems=gitlab,jira,gitlab"
+  },
+  "expected": {
+    "match": true
+  }
+}

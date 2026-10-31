@@ -1,0 +1,20 @@
+{
+  "description": "A system the platform does not know is a valid entry; it is skipped when the list is computed (invariant 8).",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira,nosuchsystem"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=jira,nosuchsystem",
+    "filter": {
+      "systems": [
+        "jira",
+        "nosuchsystem"
+      ],
+      "tools": null,
+      "access": null,
+      "exclude": null
+    }
+  }
+}

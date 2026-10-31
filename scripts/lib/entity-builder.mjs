@@ -15,7 +15,7 @@ export function validId(type, kind, id) {
 }
 
 const SCOPE_FIELDS = ['jiraProjects', 'confluenceSpaces', 'gitlabGroups', 'opensearchIndexPrefixes', 'servicedeskQueues'];
-// Scope field of principal.scopes / vsScopes for each grantable flat resource type.
+// Scope field of principal.scopes for each grantable flat resource type.
 const SCOPE_FIELD_BY_TYPE = {
   'Jira::Project': 'jiraProjects',
   'Confluence::Space': 'confluenceSpaces',
@@ -23,7 +23,6 @@ const SCOPE_FIELD_BY_TYPE = {
   'OpenSearch::Index': 'opensearchIndexPrefixes',
   'ServiceDesk::Queue': 'servicedeskQueues',
 };
-const TYPE_BY_SCOPE_FIELD = Object.fromEntries(Object.entries(SCOPE_FIELD_BY_TYPE).map(([t, f]) => [f, t]));
 // Types a mapping in entities/static.json may grant (CC-037). Confluence::Page grants a page tree.
 export const SCOPE_TYPES = [...Object.keys(SCOPE_FIELD_BY_TYPE), 'Confluence::Page'];
 // context.refs fields whose ids are grantable flat scopes and therefore become ResourceScope entities.
@@ -57,7 +56,6 @@ const CLASSIFICATION = {
 export const normalizeClassification = (value) => value.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '').replace(/[A-Z]/g, (c) => c.toLowerCase());
 const RISKS = new Set(['READ_ONLY', 'UPDATE', 'DESTRUCTIVE']);
 const ACTIONS = new Set(['read', 'update', 'delete', 'admin']);
-const MAX_VSC_ITEMS = 50;
 
 export class BuilderError extends Error {
   constructor(code, message) {
@@ -111,18 +109,6 @@ export function scopeMapping(staticEntities) {
   return mapping;
 }
 
-/** Gateway side of CC-027: resourceDefaults of a link -> the vsc claim of the internal JWT. */
-export function vscFromResourceDefaults(resourceDefaults = {}) {
-  const vsc = {};
-  for (const [type, ids] of Object.entries(resourceDefaults)) {
-    const field = SCOPE_FIELD_BY_TYPE[type];
-    if (!field) throw new BuilderError('internal_error', `resourceDefaults type ${type} cannot narrow`);
-    for (const id of ids) if (!validId(type, 'scope', id)) throw new BuilderError('internal_error', `invalid ${type} scope id`);
-    vsc[field] = sortedSet([...(vsc[field] ?? []), ...ids]);
-  }
-  return vsc;
-}
-
 function argumentIds(argumentName, value) {
   if (value === undefined || value === null) return [];
   if (typeof value === 'string') return [value];
@@ -147,28 +133,6 @@ function buildContext({ caller, tool, arguments: args = {}, credentialType }) {
   if (credentialType !== undefined) {
     if (!CREDENTIAL_TYPES.has(credentialType)) throw new BuilderError('internal_error', `unknown credentialType ${credentialType}`);
     context.credentialType = credentialType;
-  }
-  if ((caller.vs === undefined) !== (caller.vsc === undefined)) {
-    throw new BuilderError('internal_error', 'vs and vsc must be present together');
-  }
-  if (caller.vs !== undefined) {
-    context.virtualServer = caller.vs;
-    for (const [field, ids] of Object.entries(caller.vsc)) {
-      if (!SCOPE_FIELDS.includes(field)) throw new BuilderError('internal_error', `vsc field ${field} unknown`);
-      if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_VSC_ITEMS) {
-        throw new BuilderError('internal_error', `vsc field ${field} must hold 1..${MAX_VSC_ITEMS} ids`);
-      }
-      for (const id of ids) {
-        if (!validId(TYPE_BY_SCOPE_FIELD[field], 'scope', id)) throw new BuilderError('internal_error', `vsc field ${field}: invalid id`);
-      }
-    }
-    const fields = SCOPE_FIELDS.filter((f) => f in caller.vsc);
-    if (fields.length > 0) {
-      context.vsScopes = {};
-      for (const field of fields) {
-        context.vsScopes[field] = scopeRefs(caller.vsc[field].map((id) => scopeId(TYPE_BY_SCOPE_FIELD[field], id)));
-      }
-    }
   }
   if (caller.mfa !== undefined) {
     if (!Number.isInteger(caller.mfa) || caller.mfa < 0) throw new BuilderError('invalid_argument', 'mfa age must be >= 0');

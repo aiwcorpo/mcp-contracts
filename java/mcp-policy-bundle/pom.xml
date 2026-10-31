@@ -3,7 +3,7 @@
   pl.aiwcorpo.mcp:mcp-policy-bundle - reference receiver of policy bundles (C7, CC-026, CC-028, CC-040, CC-041,
   CC-044, CC-045). Verifies and loads a bundle from bytes: Ed25519 signature with a key per channel, revision
   consistency and monotonicity, hardened tar reading, overrides content rules, Cedar strict validation, the
-  vsScopes-only-in-forbid lint and the scope mapping of entities/static.json. Fetching latest.json and the files is
+  permit lint and the scope mapping of entities/static.json. Fetching latest.json and the files is
   left to the component (gateway, starter). No Spring.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -14,7 +14,7 @@
     <parent>
         <groupId>pl.aiwcorpo.mcp</groupId>
         <artifactId>mcp-contracts-parent</artifactId>
-        <version>4.1.1-SNAPSHOT</version>
+        <version>5.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 

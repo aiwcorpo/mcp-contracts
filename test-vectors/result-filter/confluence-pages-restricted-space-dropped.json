@@ -1,0 +1,95 @@
+{
+  "description": "Confluence page search: reads are not limited by the grant of a space, so pages of ENG and OPS are kept and the page of a restricted space is dropped.",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "policies": "cedar/examples",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000009",
+      "usr": "confluencereader",
+      "grp": [
+        "mcp-confluence-read",
+        "mcp-confluence-space-ENG"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-confluence",
+      "system": "confluence",
+      "name": "get_page",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "pageId",
+          "type": "Confluence::Page"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "Confluence::Page",
+      "id": "1001",
+      "attrs": {
+        "id": "1001"
+      },
+      "parent": {
+        "type": "Confluence::Space",
+        "id": "ENG",
+        "attrs": {
+          "key": "ENG",
+          "labels": []
+        }
+      }
+    },
+    {
+      "type": "Confluence::Page",
+      "id": "2002",
+      "attrs": {
+        "id": "2002"
+      },
+      "parent": {
+        "type": "Confluence::Space",
+        "id": "OPS",
+        "attrs": {
+          "key": "OPS",
+          "labels": []
+        }
+      }
+    },
+    {
+      "type": "Confluence::Page",
+      "id": "3003",
+      "attrs": {
+        "id": "3003"
+      },
+      "parent": {
+        "type": "Confluence::Space",
+        "id": "ENG",
+        "attrs": {
+          "key": "ENG",
+          "labels": [
+            "restricted"
+          ]
+        }
+      }
+    }
+  ],
+  "expected": {
+    "kept": [
+      "1001",
+      "2002"
+    ],
+    "queryConstraints": {
+      "Confluence::Page": {
+        "granted": []
+      },
+      "Confluence::Space": {
+        "granted": [
+          "ENG"
+        ]
+      }
+    }
+  }
+}

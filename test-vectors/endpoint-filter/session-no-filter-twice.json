@@ -1,0 +1,11 @@
+{
+  "description": "Neither request has a filter.",
+  "kind": "session",
+  "input": {
+    "initializeQuery": "",
+    "requestQuery": ""
+  },
+  "expected": {
+    "match": true
+  }
+}

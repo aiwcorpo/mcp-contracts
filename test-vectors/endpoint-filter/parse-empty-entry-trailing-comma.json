@@ -1,0 +1,16 @@
+{
+  "description": "Trailing comma.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira,"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "empty_entry",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

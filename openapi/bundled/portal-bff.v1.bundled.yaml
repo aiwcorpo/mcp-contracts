@@ -2,15 +2,16 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 4.1.1-SNAPSHOT
+  version: 5.0.0-SNAPSHOT
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
     (HttpOnly, Secure, SameSite=Lax) created by the OIDC login run by the BFF; the frontend never sees tokens.
     The frontend (Angular) is served from the same origin: portal and gateway share one public domain behind a
-    reverse proxy (CC-089): `/` web, `/api` this BFF, `/s/`, `/v/` and `/.well-known/oauth-protected-resource*`
-    the gateway. The proxy removes the `Cookie` header on the gateway routes, never rewrites `X-Request-Id`, and
-    the web application defines no route starting with `/api`, `/s/`, `/v/` or `/.well-known/`. Public URLs
+    reverse proxy (CC-089): `/` web, `/api` this BFF, `/mcp`, `/s/` and `/.well-known/oauth-protected-resource*`
+    the gateway (`/v/` may still be sent to the gateway, which answers 404; the saved links are gone, CC-175, CC-177).
+    The proxy removes the `Cookie` header on the gateway routes, never rewrites `X-Request-Id`, and
+    the web application defines no route starting with `/api`, `/mcp`, `/s/`, `/v/` or `/.well-known/`. Public URLs
     in responses (`url`, `clientConfigs`) come from the `publicBaseUrl` configuration, never from the request.
     CSRF follows the Angular convention:
     the BFF sets the cookie `__Host-XSRF-TOKEN` (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain; the
@@ -47,7 +48,7 @@ tags:
   - name: confirmations
   - name: authenticator
   - name: access-requests
-  - name: virtual-servers
+  - name: mcp-endpoint
   - name: activity
   - name: admin
 paths:
@@ -1162,170 +1163,109 @@ paths:
                     error: not_requestable
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
-  /api/v1/virtual-servers:
+  /api/v1/me/mcp-endpoint:
     get:
       tags:
-        - virtual-servers
-      operationId: listMyVirtualServers
-      summary: My virtual servers with ready-made client configuration snippets.
+        - mcp-endpoint
+      operationId: getMcpEndpoint
+      summary: Address of the aggregate MCP endpoint for a filter, with client configuration (CC-175).
+      description: |
+        Replaces the saved links of 4.x: nothing is stored. The wizard sends the filter chosen by the user as the query
+        parameters `systems`, `tools`, `access` and `exclude` (same syntax and limits as the query of `/mcp`, CC-170); the BFF
+        normalizes them once, with the rules of the gateway (`test-vectors/endpoint-filter/`), so the portal has a single
+        source of the canonical address. The answer has the address `<publicBaseUrl>/mcp` plus `?` and the canonical filter
+        (no `?` without a filter), ready-made client configurations built from `publicBaseUrl` (never from the request) and
+        `toolCount`, the number of tools that the filter leaves visible among the tools of the catalog of the current user that
+        are `granted` and not `disabled` (the BFF counts it from `GET /admin/v1/catalog` of C5 and no new gateway operation is
+        needed). `toolCount` serves the warning about the size of the list; the `tools/list` of the gateway is the authority,
+        because it also takes unavailable servers and the policy decision of the moment into account. A query parameter that is not
+        one of the four, a repeated one and an invalid value are `400 invalid_request` with `reason: invalid_filter`; the answer
+        reveals nothing about the user's tools. A filter naming something that does not exist or that the user cannot call is
+        not an error (CC-170, invariant 8). Nothing is audited here: the filter is a convenience and not a permission.
       security:
         - session: []
+      parameters:
+        - name: systems
+          in: query
+          required: false
+          description: Systems without the `mcp-` prefix, comma separated.
+          schema:
+            type: string
+            maxLength: 512
+          example: jira,gitlab
+        - name: tools
+          in: query
+          required: false
+          description: Client-visible tool names `<system>__<tool>`, comma separated.
+          schema:
+            type: string
+            maxLength: 512
+          example: jira__get_issue
+        - name: access
+          in: query
+          required: false
+          description: "`read` leaves READ_ONLY tools, `write` leaves UPDATE and DESTRUCTIVE tools; absent means both."
+          schema:
+            type: string
+            maxLength: 5
+          example: read
+        - name: exclude
+          in: query
+          required: false
+          description: Systems or tool names to remove, comma separated; an entry with a double underscore is a tool.
+          schema:
+            type: string
+            maxLength: 512
+          example: jira__delete_issue
       responses:
         "200":
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
-          description: Proxy of C5 plus clientConfigs.
+          description: Normalized address, client configurations and the number of tools.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PortalVirtualServer"
+                $ref: "#/components/schemas/McpEndpoint"
               examples:
-                one:
+                whole_platform:
                   value:
-                    - slug: team-a-dev
-                      displayName: Team A development
-                      tools:
-                        - jira__search_issues
-                        - jira__get_issue
-                      url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-                      clientConfigs:
-                        claudeCode: claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-                        copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"}}}'
-                        codex: |
-                          [mcp_servers.team-a-dev]
-                          url = "https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "503":
-          $ref: "#/components/responses/UpstreamUnavailable"
-    post:
-      tags:
-        - virtual-servers
-      operationId: createMyVirtualServer
-      summary: Create a virtual server (proxy to C5).
-      security:
-        - session: []
-          csrf: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/VirtualServerCreate"
-            examples:
-              team_a:
-                value:
-                  slug: team-a-dev
-                  displayName: Team A development
-                  tools:
-                    - jira__search_issues
-                    - jira__get_issue
-      responses:
-        "201":
-          headers:
-            X-Request-Id:
-              $ref: "#/components/headers/RequestId"
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PortalVirtualServerCreated"
-              examples:
-                created:
-                  value:
-                    slug: team-a-dev
-                    url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
+                    url: https://mcp.aiwcorpo.pl/mcp
+                    toolCount: 41
                     clientConfigs:
-                      claudeCode: claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-                      copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"}}}'
+                      claudeCode: claude mcp add --transport http aiwcorpo-mcp "https://mcp.aiwcorpo.pl/mcp"
+                      copilot: '{"servers":{"aiwcorpo-mcp":{"type":"http","url":"https://mcp.aiwcorpo.pl/mcp"}}}'
                       codex: |
-                        [mcp_servers.team-a-dev]
-                        url = "https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"
+                        [mcp_servers.aiwcorpo-mcp]
+                        url = "https://mcp.aiwcorpo.pl/mcp"
+                jira_read_only:
+                  value:
+                    url: https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read
+                    filter: systems=jira&access=read
+                    toolCount: 9
+                    clientConfigs:
+                      claudeCode: claude mcp add --transport http aiwcorpo-mcp "https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read"
+                      copilot: '{"servers":{"aiwcorpo-mcp":{"type":"http","url":"https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read"}}}'
+                      codex: |
+                        [mcp_servers.aiwcorpo-mcp]
+                        url = "https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read"
         "400":
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
-          description: Malformed request (a resourceDefaults that is not an object is invalid_request), or a non-empty resourceDefaults (resource narrowing is dormant, CC-085; checked first, before the content is validated; the BFF checks the field itself and does not call the gateway).
+          description: A query parameter that is not a valid filter (invalid_filter).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/InvalidFilter"
               examples:
-                invalid_request:
+                invalid_filter:
                   value:
                     error: invalid_request
-                resource_defaults_unsupported:
-                  value:
-                    error: resource_defaults_unsupported
+                    reason: invalid_filter
+                    message: The filter is not valid.
         "401":
           $ref: "#/components/responses/Unauthenticated"
-        "403":
-          headers:
-            X-Request-Id:
-              $ref: "#/components/headers/RequestId"
-          description: CSRF token invalid, or a tool is not available to the user (access_denied).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              examples:
-                access_denied:
-                  value:
-                    error: access_denied
-                csrf_invalid:
-                  value:
-                    error: csrf_invalid
-        "409":
-          headers:
-            X-Request-Id:
-              $ref: "#/components/headers/RequestId"
-          description: Slug already used (slug_taken), or the user already has the maximum number of virtual servers (virtual_server_limit_reached; limit per user is gateway configuration, default 50). The wizard answers "delete an unused link" to the second (CC-119).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-              examples:
-                slug_taken:
-                  value:
-                    error: slug_taken
-                virtual_server_limit_reached:
-                  value:
-                    error: virtual_server_limit_reached
-        "503":
-          $ref: "#/components/responses/UpstreamUnavailable"
-  /api/v1/virtual-servers/{slug}:
-    parameters:
-      - name: slug
-        in: path
-        required: true
-        schema:
-          $ref: "#/components/schemas/VirtualServerSlug"
-        example: team-a-dev
-    delete:
-      tags:
-        - virtual-servers
-      operationId: deleteMyVirtualServer
-      summary: Delete my virtual server (proxy to C5).
-      security:
-        - session: []
-          csrf: []
-      responses:
-        "204":
-          headers:
-            X-Request-Id:
-              $ref: "#/components/headers/RequestId"
-          description: Deleted.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "403":
-          $ref: "#/components/responses/CsrfInvalid"
-        "404":
-          $ref: "#/components/responses/NotFound"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/activity:
@@ -1457,7 +1397,7 @@ paths:
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
                       ts: 2026-10-26T20:00:00.123Z
                       client: claude-code
-                      virtualServer: team-a-dev
+                      filter: systems=jira&access=read
                       tool: jira__get_issue
                       risk: READ_ONLY
                       resource:
@@ -1509,7 +1449,7 @@ paths:
                       ts: 2026-10-26T19:20:00.000Z
                       tool: gitlab__get_project
                       risk: READ_ONLY
-                      result: denied_link_scope
+                      result: denied_filter_scope
                       errorCode: not_found_or_denied
         "400":
           $ref: "#/components/responses/BadRequest"
@@ -2229,58 +2169,49 @@ components:
         codex:
           type: string
       additionalProperties: false
-    PortalVirtualServer:
-      allOf:
-        - $ref: "#/components/schemas/VirtualServerFields"
+    McpEndpoint:
       type: object
+      description: Result of getMcpEndpoint (CC-175).
       required:
+        - url
+        - toolCount
         - clientConfigs
       properties:
-        clientConfigs:
-          $ref: "#/components/schemas/ClientConfigs"
-      unevaluatedProperties: false
-    VirtualServerFields:
-      type: object
-      description: Same fields as C5 VirtualServer.
-      required:
-        - slug
-        - displayName
-        - tools
-        - url
-      properties:
-        slug:
-          $ref: "#/components/schemas/VirtualServerSlug"
-        displayName:
-          type: string
-        tools:
-          type: array
-          uniqueItems: true
-          items:
-            $ref: "#/components/schemas/QualifiedToolName"
-        resourceDefaults:
-          $ref: "#/components/schemas/ResourceDefaults"
         url:
           type: string
           format: uri
-    PortalVirtualServerCreated:
-      type: object
-      required:
-        - slug
-        - url
-        - clientConfigs
-      properties:
-        slug:
-          $ref: "#/components/schemas/VirtualServerSlug"
-        url:
-          type: string
-          format: uri
+          description: "`<publicBaseUrl>/mcp` and, when there is a filter, `?` and its canonical form."
+        filter:
+          description: Canonical filter (CC-170); absent when no filter was given.
+          $ref: "#/components/schemas/EndpointFilterQuery"
+        toolCount:
+          type: integer
+          minimum: 0
+          description: Tools of the user's catalog (granted, not disabled) that the filter leaves visible; an estimate, the tools/list of the gateway is the authority.
         clientConfigs:
           $ref: "#/components/schemas/ClientConfigs"
       additionalProperties: false
+    InvalidFilter:
+      type: object
+      description: 400 of getMcpEndpoint for a filter that does not parse (same error and reason as the gateway, CC-170).
+      required:
+        - error
+        - reason
+      properties:
+        error:
+          const: invalid_request
+        reason:
+          const: invalid_filter
+        message:
+          type: string
+          maxLength: 500
+        requestId:
+          $ref: "#/components/schemas/RequestId"
+      additionalProperties: false
     ReturnPath:
       type: string
-      description: Relative path inside the portal, optionally with a query. No percent-encoding at all (portal paths do not need it), no backslash, no absolute or protocol-relative URL, so no number of decoding passes can turn it into //host (open redirect, CC-032). The BFF redirects only to the validated value as is, without decoding it. Since 3.0.0 (CC-099) the path must not start with a prefix that the reverse proxy sends to the BFF or the gateway (`/api`, `/s`, `/v`, `/.well-known`, each as a whole segment, so `/apiary` is fine), because a redirect after login or OAuth would land on an endpoint instead of in the SPA; and it must not contain a `.` or `..` segment (before the query), which a browser would resolve to such a prefix. The semicolon is not allowed either (path parameters such as `/api;x` or `/..;/api` are read as `/api` and `/..` by common servlet containers).
-      pattern: ^(?![^?]*/\.\.?(?:[/?]|$))(?!/(?:api|s|v|\.well-known)(?:[/?]|$))/(?!/)[A-Za-z0-9._~!$&'()*+,=:@/?-]*$
+      description: Relative path inside the portal, optionally with a query. No percent-encoding at all (portal paths do not need it), no backslash, no absolute or protocol-relative URL, so no number of decoding passes can turn it into //host (open redirect, CC-032). The BFF redirects only to the validated value as is, without decoding it. Since 3.0.0 (CC-099) the path must not start with a prefix that the reverse proxy sends to the BFF or the gateway (`/api`, `/mcp`, `/s`, `/v`, `/.well-known`, each as a whole segment, so `/apiary` and `/mcp-docs` are fine; `/mcp` is the aggregate endpoint of the gateway since 5.0.0, CC-169, and `/v` stays reserved because the proxy may still send it to the gateway for its 404, CC-177), because a redirect after login or OAuth would land on an endpoint instead of in the SPA; and it must not contain a `.` or `..` segment (before the query), which a browser would resolve to such a prefix. The semicolon is not allowed either (path parameters such as `/api;x` or `/..;/api` are read as `/api` and `/..` by common servlet containers).
+      pattern: ^(?![^?]*/\.\.?(?:[/?]|$))(?!/(?:api|mcp|s|v|\.well-known)(?:[/?]|$))/(?!/)[A-Za-z0-9._~!$&'()*+,=:@/?-]*$
       maxLength: 512
     RequestId:
       description: UUIDv7 request id (C2 rid, X-Request-Id).
@@ -2422,7 +2353,7 @@ components:
         disabled:
           type: boolean
           default: false
-          description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts) (CC-081). A disabled tool cannot be added to a virtual server (POST /virtual-servers answers 403 access_denied).
+          description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts) (CC-081).
         requiresConfirmation:
           type: boolean
           default: false
@@ -2645,104 +2576,12 @@ components:
             - invalid_code
             - enrollment_invalid
       additionalProperties: false
-    VirtualServerSlug:
-      description: Virtual server slug; used in the URL path /v/<slug>/mcp (C5).
+    EndpointFilterQuery:
+      description: "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter. Reference: scripts/lib/endpoint-filter.mjs. Limits (at most 5 entries in systems, 100 in tools, 100 in exclude) are checked by the reference parser, not by this pattern. Appears without the leading '?'."
       type: string
-      pattern: ^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$
-    JiraProjectKey:
-      description: "Jira Data Center project key: first character an upper-case letter, then upper-case letters, digits or underscore (Jira project key format rules; hyphens not supported). Length 2..10 (Jira default maximum project key size; configurable in Jira, a larger limit needs a contract change)."
-      type: string
-      pattern: ^[A-Z][A-Z0-9_]{1,9}$
-    JiraProjectKeys:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: "#/components/schemas/JiraProjectKey"
-    ConfluenceSpaceKey:
-      description: "Confluence Data Center space key of a global space: letters and digits only. Personal spaces (~user) cannot be granted or narrowed."
-      type: string
-      pattern: ^[A-Za-z0-9]{1,255}$
-    ConfluenceSpaceKeys:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: "#/components/schemas/ConfluenceSpaceKey"
-    GitLabGroupPath:
-      description: "Full path of a GitLab group: 1..20 segments separated by / (subgroups nest up to 20 levels). A segment has only letters, digits, _, . and -, starts and ends with a letter or digit and has no consecutive special characters; the path does not end in .git or .atom (GitLab reserved names / path rules)."
-      type: string
-      pattern: ^(?!.*\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){0,19}$
-      maxLength: 1024
-    GitLabGroupPaths:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: "#/components/schemas/GitLabGroupPath"
-    OpenSearchIndexPrefix:
-      description: "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'. One anchored expression without an alternation at the top level, so that it satisfies the input-schema-bounded rule when a tool uses it as a contractPattern (CC-139); it matches the same strings as before."
-      type: string
-      pattern: ^(?:[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]|[a-z0-9])$
-    OpenSearchIndexPrefixes:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: "#/components/schemas/OpenSearchIndexPrefix"
-    ServiceDeskQueueId:
-      description: "Queue id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version."
-      type: string
-      pattern: ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$
-    ServiceDeskQueueIds:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: "#/components/schemas/ServiceDeskQueueId"
-    ResourceDefaults:
-      type: object
-      description: Dormant (CC-085); the gateway answers 400 resource_defaults_unsupported for a non-empty value, absent or {} is accepted. Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). Ids follow the per-system patterns of common.schema.json (OpenSearch::Index takes index prefixes). At most 50 ids per type keep the internal JWT small.
-      properties:
-        Jira::Project:
-          $ref: "#/components/schemas/JiraProjectKeys"
-        Confluence::Space:
-          $ref: "#/components/schemas/ConfluenceSpaceKeys"
-        GitLab::Group:
-          $ref: "#/components/schemas/GitLabGroupPaths"
-        OpenSearch::Index:
-          $ref: "#/components/schemas/OpenSearchIndexPrefixes"
-        ServiceDesk::Queue:
-          $ref: "#/components/schemas/ServiceDeskQueueIds"
-      additionalProperties: false
-    VirtualServerCreate:
-      type: object
-      required:
-        - slug
-        - displayName
-        - tools
-      properties:
-        slug:
-          $ref: "#/components/schemas/VirtualServerSlug"
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 100
-        tools:
-          type: array
-          minItems: 1
-          uniqueItems: true
-          items:
-            $ref: "#/components/schemas/QualifiedToolName"
-        resourceDefaults:
-          description: Dormant (CC-085). The gateway answers 400 resource_defaults_unsupported for a non-empty value; absent or {} is accepted.
-          $ref: "#/components/schemas/ResourceDefaults"
-      additionalProperties: false
+      pattern: ^(?:systems=[a-z][a-z0-9]*(?:,[a-z][a-z0-9]*)*)?(?:(?:^|&)tools=[a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*)*)?(?:(?:^|&)access=(?:read|write))?(?:(?:^|&)exclude=[a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*)*)?$
+      minLength: 1
+      maxLength: 512
     ComponentId:
       description: Identifier of a platform component, e.g. mcp-gateway, mcp-credential-broker, mcp-jira.
       type: string
@@ -2798,8 +2637,9 @@ components:
           type: string
           maxLength: 255
           description: Client id (azp), e.g. claude-code; the UI maps it to a display name.
-        virtualServer:
-          $ref: "#/components/schemas/VirtualServerSlug"
+        filter:
+          description: Normalized filter of the address the call was made on (CC-174); absent when the address had no filter.
+          $ref: "#/components/schemas/EndpointFilterQuery"
         tool:
           $ref: "#/components/schemas/QualifiedToolName"
         risk:
@@ -2812,7 +2652,7 @@ components:
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
           description: |
-            Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
+            Final state of the call. Known values: ok, error, denied_not_granted, denied_filter_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
             expired, confirmation_failed, superseded, blocked_by_pending, cancelled. A client must show an unknown value as a generic label.
         wrongCodeCount:
@@ -3060,7 +2900,6 @@ components:
             - admin_change
             - authentication
             - authenticator
-            - virtual_server_change
         sub:
           type: string
           minLength: 1
@@ -3075,8 +2914,9 @@ components:
         client:
           type: string
           maxLength: 255
-        virtualServer:
-          $ref: "#/components/schemas/VirtualServerSlug"
+        filter:
+          description: Normalized query of the endpoint filter of the request (CC-170, CC-174), only when the request carried one; absent without a filter. Made of system and tool names only, so it is neither a secret nor personal data. Carried by the gateway on tool_call, policy_decision, confirmation and credential_resolve; never by authentication, by servers or by the broker (they do not receive the filter, correlation is by requestId).
+          $ref: "#/components/schemas/EndpointFilterQuery"
         server:
           $ref: "#/components/schemas/ServerId"
         tool:
@@ -3108,7 +2948,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, subject_token_invalid, credential_type_mismatch, risk_lowered_by_admin, user_purged, unused_cleanup, definition_changed, tool_not_served, definition_submitted, link_scope, policy_unavailable, policy_error. credential_type_mismatch: on the gateway (event credential_resolve, outcome error, errorCode internal_error; credentialType is the type the broker returned) the broker returned a type that is not in the set of types the gateway configuration allows for the system; on a server (event policy_decision or tool_call) the type in X-MCP-Credential-Type, sent by the gateway with X-MCP-Credential, is not in the set of the server's accepted credential types, is missing or is not one of the four types, or the server has none configured, and the check comes before Cedar, the grant probe and the resolvers: decision deny, outcome error, errorCode internal_error, the client learns nothing more (CC-166). For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied; the gateway records it on the tool_call event of the call it had allowed, decision allow, outcome denied, errorCode access_denied, which is the normative shape for the activity row, CC-165) and system_not_configured (the system is not configured in the broker, CC-158, outcome error) and subject_token_invalid (the subject token of a token exchange has the wrong audience, has expired or belongs to another sub than the internal JWT, CC-157, outcome denied). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). For event virtual_server_change the offboarding purge of the gateway records user_purged for every removed link, and both purges (broker and gateway) emit one admin_change with reason user_purged and outcome ok for every call, also when nothing was removed and for an unknown sub, so that a call of mcp-offboarding always leaves a trace (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool, client and virtualServer from the internal JWT). For event virtual_server_change (gateway, CC-116; before 3.0.0 these were admin_change, CC-107): vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied, and upstream_unavailable when a store behind the operation is down (the list of tools of a link is not a field of this schema; CC-142). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: link_scope (the tool or resource lies outside the virtual server link, decision deny), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133) upstream_unavailable (on tool_call or policy_decision: a store behind the check, such as the counter of the limits, did not answer and the request was refused, CC-167) and tool_not_served (the approved tool is missing from the tools the server serves, so it is hidden and refused with errorCode tool_disabled, CC-161). definition_changed and tool_not_served are recorded on every refused call (not once per read) and when a read finds the difference there is no separate event. A failed read of the server's tools/list is not evidence of either: the gateway keeps its last successful read, and a call that needs a fresh read that fails is refused as upstream_unavailable without a call to the server. On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway and of the broker. For the registry, with reasons definition_registered (the pipeline registered a manifest and the definition was approved by that call: a READ_ONLY tool, CC-133), definition_submitted (the registration left a new or changed UPDATE or DESTRUCTIVE tool pending approval, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and risk_lowered_by_admin (an administrator approved a risk lower than the floor with acceptRiskLowering; one event instead of definition_approved, with risk set to the new risk, CC-167), tool_removed (a tool left the registered manifest). For definition_approved the sub is the administrator; for user_purged it is the purged user, and the calling identity (the certificate CN mcp-offboarding) is not a field of this schema. Other reasons are not defined. The vs_* reasons are not emitted with admin_change since 3.0.0. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, subject_token_invalid, credential_type_mismatch, risk_lowered_by_admin, user_purged, unused_cleanup, definition_changed, tool_not_served, definition_submitted, filter_scope, invalid_filter, filter_mismatch, policy_unavailable, policy_error. credential_type_mismatch: on the gateway (event credential_resolve, outcome error, errorCode internal_error; credentialType is the type the broker returned) the broker returned a type that is not in the set of types the gateway configuration allows for the system; on a server (event policy_decision or tool_call) the type in X-MCP-Credential-Type, sent by the gateway with X-MCP-Credential, is not in the set of the server's accepted credential types, is missing or is not one of the four types, or the server has none configured, and the check comes before Cedar, the grant probe and the resolvers: decision deny, outcome error, errorCode internal_error, the client learns nothing more (CC-166). For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied; the gateway records it on the tool_call event of the call it had allowed, decision allow, outcome denied, errorCode access_denied, which is the normative shape for the activity row, CC-165) and system_not_configured (the system is not configured in the broker, CC-158, outcome error) and subject_token_invalid (the subject token of a token exchange has the wrong audience, has expired or belongs to another sub than the internal JWT, CC-157, outcome denied). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). Both offboarding purges (broker and gateway) emit one admin_change with reason user_purged and outcome ok for every call, also when nothing was removed and for an unknown sub, so that a call of mcp-offboarding always leaves a trace (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool and client from the internal JWT). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: filter_scope (the tool exists and the user may call it, but the endpoint filter of the request leaves it out, decision deny, outcome denied, errorCode not_found_or_denied, CC-170), invalid_filter (the query of the request does not parse or exceeds a limit, policy_decision, decision deny, outcome error, without errorCode, CC-170), filter_mismatch (the filter of the request differs from the filter bound to the MCP session, policy_decision, decision deny, outcome denied, CC-172), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133) upstream_unavailable (on tool_call or policy_decision: a store behind the check, such as the counter of the limits, did not answer and the request was refused, CC-167) and tool_not_served (the approved tool is missing from the tools the server serves, so it is hidden and refused with errorCode tool_disabled, CC-161). definition_changed and tool_not_served are recorded on every refused call (not once per read) and when a read finds the difference there is no separate event. A failed read of the server's tools/list is not evidence of either: the gateway keeps its last successful read, and a call that needs a fresh read that fails is refused as upstream_unavailable without a call to the server. On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway and of the broker. For the registry, with reasons definition_registered (the pipeline registered a manifest and the definition was approved by that call: a READ_ONLY tool, CC-133), definition_submitted (the registration left a new or changed UPDATE or DESTRUCTIVE tool pending approval, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and risk_lowered_by_admin (an administrator approved a risk lower than the floor with acceptRiskLowering; one event instead of definition_approved, with risk set to the new risk, CC-167), tool_removed (a tool left the registered manifest). For definition_approved the sub is the administrator; for user_purged it is the purged user, and the calling identity (the certificate CN mcp-offboarding) is not a field of this schema. Other reasons are not defined. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
@@ -3148,18 +2988,7 @@ components:
             required:
               - outcome
               - reason
-        - description: "Virtual server changes (CC-116) always say how they ended (outcome) and why (reason: vs_created, vs_deleted, slug_taken, not_granted, invalid_request, virtual_server_limit, not_found_or_denied)."
-          if:
-            properties:
-              event:
-                const: virtual_server_change
-            required:
-              - event
-          then:
-            required:
-              - outcome
-              - reason
-        - description: "Rejected authentication (CC-071, CC-120): emitted by a receiver of the internal JWT (server, broker) and by the gateway for the token of the AI client (C1). Closed list of fields (propertyNames): everything that comes from the claims of the unverified token (sub, username, client, tool, risk, resource, virtualServer, policyRevision, credentialType) is forbidden, and so is any part of the token. Carries the rejection code in reason."
+        - description: "Rejected authentication (CC-071, CC-120): emitted by a receiver of the internal JWT (server, broker) and by the gateway for the token of the AI client (C1). Closed list of fields (propertyNames): everything that comes from the claims of the unverified token (sub, username, client, tool, risk, resource, filter, policyRevision, credentialType) is forbidden, and so is any part of the token. Carries the rejection code in reason."
           if:
             properties:
               event:

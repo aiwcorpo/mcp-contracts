@@ -1,0 +1,16 @@
+{
+  "description": "No percent-encoding at all.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=%6aira"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "percent_encoding",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "A second equals sign inside a value.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=a=b"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "malformed_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

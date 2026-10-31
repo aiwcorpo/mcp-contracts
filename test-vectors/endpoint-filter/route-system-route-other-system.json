@@ -1,0 +1,18 @@
+{
+  "description": "/s/mcp-jira/mcp with systems=gitlab is an error.",
+  "kind": "route",
+  "input": {
+    "route": "/s/mcp-jira/mcp",
+    "routeSystem": "jira",
+    "query": "systems=gitlab"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "systems_not_route_system",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

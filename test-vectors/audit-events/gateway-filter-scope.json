@@ -1,0 +1,26 @@
+{
+  "description": "Tool that the user may call and the filter of the address leaves out: policy_decision with reason filter_scope (CC-170, CC-174).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "policy_decision",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "filter": "systems=gitlab",
+    "server": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "decision": "deny",
+    "reason": "filter_scope",
+    "policyRevision": "20261026120000-a1b2c3d",
+    "outcome": "denied",
+    "errorCode": "not_found_or_denied",
+    "argsLength": 12
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "description": "A new policy revision that changes nothing for this session: no notification.",
+  "kind": "list-changed",
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      }
+    ]
+  },
+  "expected": {
+    "notify": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Neither a system nor a tool (no double underscore, underscore in the name).",
+  "kind": "parse",
+  "input": {
+    "query": "exclude=jira_get"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "invalid_entry",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

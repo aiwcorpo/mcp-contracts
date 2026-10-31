@@ -1,0 +1,17 @@
+{
+  "description": "access=read.",
+  "kind": "parse",
+  "input": {
+    "query": "access=read"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "access=read",
+    "filter": {
+      "systems": null,
+      "tools": null,
+      "access": "read",
+      "exclude": null
+    }
+  }
+}

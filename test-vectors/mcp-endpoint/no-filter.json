@@ -1,0 +1,63 @@
+{
+  "description": "No filter: the address is /mcp, there is no filter field, and every granted, enabled tool is counted.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "rawQuery": "",
+    "catalog": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE",
+        "access": "denied",
+        "disabled": false
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE",
+        "access": "denied",
+        "disabled": false
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "jira__search_issues",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": true
+      }
+    ]
+  },
+  "expected": {
+    "status": 200,
+    "body": {
+      "url": "https://mcp.aiwcorpo.pl/mcp",
+      "toolCount": 4,
+      "clientConfigs": {
+        "claudeCode": "claude mcp add --transport http aiwcorpo-mcp \"https://mcp.aiwcorpo.pl/mcp\"",
+        "copilot": "{\"servers\":{\"aiwcorpo-mcp\":{\"type\":\"http\",\"url\":\"https://mcp.aiwcorpo.pl/mcp\"}}}",
+        "codex": "[mcp_servers.aiwcorpo-mcp]\nurl = \"https://mcp.aiwcorpo.pl/mcp\"\n"
+      }
+    }
+  }
+}

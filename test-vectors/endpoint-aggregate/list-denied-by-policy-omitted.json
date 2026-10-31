@@ -1,0 +1,38 @@
+{
+  "description": "A tool the policy decision denies for the current token is not listed.",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          },
+          {
+            "name": "jira__delete_issue",
+            "risk": "DESTRUCTIVE",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": false
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "visible": [
+      "jira__get_issue"
+    ]
+  }
+}

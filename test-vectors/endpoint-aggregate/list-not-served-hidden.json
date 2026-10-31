@@ -1,0 +1,38 @@
+{
+  "description": "An approved tool the server does not serve is hidden (tool_not_served).",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE",
+            "approved": true,
+            "enabled": true,
+            "served": false,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "visible": [
+      "jira__get_issue"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "description": "The filter works on the risk of the approved entry: a tool whose risk was raised to UPDATE leaves access=read.",
+  "kind": "apply",
+  "input": {
+    "query": "access=read",
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "confluence__update_page",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "canonical": "access=read",
+    "visible": [
+      "confluence__get_page",
+      "jira__get_issue"
+    ]
+  }
+}

@@ -13,7 +13,7 @@ public final class ResourceIds {
     public enum Kind {
         /** Ids in tool arguments and of resolved resources. */
         RESOURCE,
-        /** Grantable or narrowable scope ids: static.json mapping, vsc claim, resourceDefaults. */
+        /** Grantable scope ids: the static.json mapping. */
         SCOPE
     }
 

@@ -1,0 +1,16 @@
+{
+  "description": "A system id starts with a letter.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=1jira"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "invalid_entry",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

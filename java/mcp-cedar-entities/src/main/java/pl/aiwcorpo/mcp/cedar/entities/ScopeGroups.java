@@ -14,7 +14,7 @@ import java.util.TreeSet;
  */
 public final class ScopeGroups {
 
-    /** Fields of {@code principal.scopes} and {@code context.vsScopes}, in schema order. */
+    /** Fields of {@code principal.scopes}, in schema order. */
     public static final List<String> SCOPE_FIELDS = List.of(
             "jiraProjects", "confluenceSpaces", "gitlabGroups", "opensearchIndexPrefixes", "servicedeskQueues");
 
@@ -29,16 +29,11 @@ public final class ScopeGroups {
     }
 
     /**
-     * @param resourceType a type from {@code resourceDefaults} (C5)
-     * @return the {@code vsScopes} field it narrows, empty if the type cannot narrow
+     * @param resourceType a grantable resource type
+     * @return the {@code principal.scopes} field that holds its scope ids, empty if the type is not grantable
      */
-    public static Optional<String> vsScopeField(String resourceType) {
+    public static Optional<String> scopeField(String resourceType) {
         return Optional.ofNullable(FIELD_BY_SCOPE_TYPE.get(resourceType));
-    }
-
-    /** @return the resource type narrowed by a {@code vsScopes} field, empty for an unknown field */
-    public static Optional<String> typeOfScopeField(String field) {
-        return FIELD_BY_SCOPE_TYPE.entrySet().stream().filter(e -> e.getValue().equals(field)).map(Map.Entry::getKey).findFirst();
     }
 
     /**

@@ -1,0 +1,24 @@
+{
+  "description": "The token is checked before the filter: a bad query without a valid token gets the same 401 challenge (CC-170, CC-171).",
+  "input": {
+    "reason": "missing_token",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/mcp",
+    "requestQuery": "system=jira"
+  },
+  "expected": {
+    "status": 401,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": "Bearer resource_metadata=\"https://mcp.aiwcorpo.pl/.well-known/oauth-protected-resource/mcp\""
+    },
+    "absentHeaders": [
+      "Retry-After",
+      "Set-Cookie"
+    ],
+    "body": {
+      "error": "unauthenticated",
+      "message": "Authentication required."
+    }
+  }
+}

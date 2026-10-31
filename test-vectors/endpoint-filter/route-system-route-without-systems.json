@@ -1,0 +1,13 @@
+{
+  "description": "/s/mcp-jira/mcp without systems.",
+  "kind": "route",
+  "input": {
+    "route": "/s/mcp-jira/mcp",
+    "routeSystem": "jira",
+    "query": "access=read"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "access=read"
+  }
+}

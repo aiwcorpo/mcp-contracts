@@ -62,16 +62,15 @@ test('MSW: mutating call with matching cookie and header succeeds', async () => 
   assert.equal(body.url, undefined);
 });
 
-test('MSW: non-empty resourceDefaults is rejected (CC-085)', async () => {
-  const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}`, 'Content-Type': 'application/json' };
-  const base = { slug: 'team-a-dev', displayName: 'Team A', tools: ['jira__get_issue'] };
-  const rejected = await fetch(`${BASE}/api/v1/virtual-servers`, { method: 'POST', headers, body: JSON.stringify({ ...base, resourceDefaults: { 'Jira::Project': ['ABC'] } }) });
+test('MSW: getMcpEndpoint answers the default example and rejects a parameter outside the filter (CC-175)', async () => {
+  const ok = await fetch(`${BASE}/api/v1/me/mcp-endpoint?systems=jira&access=read`);
+  assert.equal(ok.status, 200);
+  assert.match((await ok.json()).url, /\/mcp$/);
+  const rejected = await fetch(`${BASE}/api/v1/me/mcp-endpoint?system=jira`);
   assert.equal(rejected.status, 400);
-  assert.equal((await rejected.json()).error, 'resource_defaults_unsupported');
-  for (const extra of [{}, { resourceDefaults: {} }]) {
-    const ok = await fetch(`${BASE}/api/v1/virtual-servers`, { method: 'POST', headers, body: JSON.stringify({ ...base, ...extra }) });
-    assert.equal(ok.status, 201);
-  }
+  const body = await rejected.json();
+  assert.equal(body.error, 'invalid_request');
+  assert.equal(body.reason, 'invalid_filter');
 });
 
 test('MSW: every response carries X-Request-Id (CC-087)', async () => {

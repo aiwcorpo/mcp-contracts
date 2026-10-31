@@ -1,0 +1,13 @@
+{
+  "description": "/mcp takes any systems.",
+  "kind": "route",
+  "input": {
+    "route": "/mcp",
+    "routeSystem": null,
+    "query": "systems=jira,gitlab"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=gitlab,jira"
+  }
+}

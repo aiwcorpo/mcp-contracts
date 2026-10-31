@@ -1,0 +1,26 @@
+{
+  "description": "definition_approved: a new tool appears in the list of the session.",
+  "kind": "list-changed",
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

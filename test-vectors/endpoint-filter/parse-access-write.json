@@ -1,0 +1,17 @@
+{
+  "description": "access=write.",
+  "kind": "parse",
+  "input": {
+    "query": "access=write"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "access=write",
+    "filter": {
+      "systems": null,
+      "tools": null,
+      "access": "write",
+      "exclude": null
+    }
+  }
+}

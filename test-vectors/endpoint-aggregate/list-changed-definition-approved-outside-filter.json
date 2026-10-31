@@ -1,0 +1,22 @@
+{
+  "description": "The same event, but the filter of the session cuts the tool: no notification.",
+  "kind": "list-changed",
+  "input": {
+    "query": "systems=gitlab",
+    "before": [
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "after": [
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "notify": false
+  }
+}

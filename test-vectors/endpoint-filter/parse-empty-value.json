@@ -1,0 +1,16 @@
+{
+  "description": "systems= is not \"all systems\".",
+  "kind": "parse",
+  "input": {
+    "query": "systems="
+  },
+  "expected": {
+    "valid": false,
+    "cause": "empty_value",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "description": "An unknown tool is skipped like a tool without access.",
+  "kind": "apply",
+  "input": {
+    "query": "tools=jira__get_issue,jira__no_such_tool",
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "confluence__update_page",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "canonical": "tools=jira__get_issue,jira__no_such_tool",
+    "visible": [
+      "jira__get_issue"
+    ]
+  }
+}

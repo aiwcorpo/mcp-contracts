@@ -1,0 +1,16 @@
+{
+  "description": "access takes read or write.",
+  "kind": "parse",
+  "input": {
+    "query": "access=rw"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "invalid_access",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

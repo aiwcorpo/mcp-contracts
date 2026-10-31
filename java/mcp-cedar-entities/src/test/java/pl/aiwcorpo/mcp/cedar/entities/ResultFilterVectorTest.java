@@ -45,11 +45,6 @@ class ResultFilterVectorTest {
         while (constraints.hasNext()) {
             var entry = constraints.next();
             QueryConstraint constraint = builder.queryConstraint(caller, entry.getKey());
-            JsonNode vs = entry.getValue().get("virtualServer");
-            Optional<List<String>> expectedVs = vs.isNull() ? Optional.empty()
-                    : Optional.of(JSON.convertValue(vs, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() { }));
-            assertEquals(expectedVs, constraint.virtualServer().map(List::copyOf), file::toString);
-            assertEquals(entry.getValue().get("virtualServerType").asText(), constraint.virtualServerType(), file::toString);
             assertEquals(JSON.convertValue(entry.getValue().get("granted"), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() { }),
                     List.copyOf(constraint.granted()), file::toString);
         }

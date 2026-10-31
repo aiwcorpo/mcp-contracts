@@ -5,6 +5,9 @@
 export const RETRY_AFTER_SECONDS = 10;
 const INFRASTRUCTURE = new Set(['jwks_unavailable']);
 
+// resourcePath is the path of the route without a query. The query of the request (the filter of /mcp, CC-170) is not an
+// argument on purpose: the identifier of the protected resource is <publicBaseUrl>/mcp without a query, and so is
+// resource_metadata (CC-171, variant V2). Vectors may carry requestQuery to show that it changes nothing.
 export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourcePath, retryAfterSeconds = RETRY_AFTER_SECONDS }) {
   // CC-156: a request over a limit that is not a tool call. The client waits; it does not log in again, so no challenge,
   // and no X-RateLimit-* header, which would reveal the settings.

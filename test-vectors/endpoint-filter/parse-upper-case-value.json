@@ -1,0 +1,17 @@
+{
+  "description": "A value with upper case letters is not an error; it is lower-cased.",
+  "kind": "parse",
+  "input": {
+    "query": "access=READ"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "access=read",
+    "filter": {
+      "systems": null,
+      "tools": null,
+      "access": "read",
+      "exclude": null
+    }
+  }
+}

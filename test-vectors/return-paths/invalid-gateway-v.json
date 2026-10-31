@@ -1,5 +1,5 @@
 {
-  "description": "Gateway route of a virtual server.",
+  "description": "Former gateway route of saved links; the proxy may still send /v/ to the gateway, which answers 404 (CC-177).",
   "value": "/v/team-a-dev/mcp",
   "expected": {
     "valid": false

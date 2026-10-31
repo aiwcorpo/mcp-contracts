@@ -1,0 +1,16 @@
+{
+  "description": "A typo such as system= is an error, not a lost filter (fail-closed).",
+  "kind": "parse",
+  "input": {
+    "query": "system=jira"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "unknown_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

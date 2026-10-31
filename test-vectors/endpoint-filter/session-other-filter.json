@@ -1,0 +1,16 @@
+{
+  "description": "Another filter in the same session: 404 and filter_mismatch.",
+  "kind": "session",
+  "input": {
+    "initializeQuery": "systems=jira",
+    "requestQuery": "systems=gitlab"
+  },
+  "expected": {
+    "match": false,
+    "response": {
+      "status": 404,
+      "body": "as for an unknown session"
+    },
+    "auditReason": "filter_mismatch"
+  }
+}

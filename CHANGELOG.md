@@ -4,6 +4,50 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 5.0.0 - 2026-10-31
+
+Wydanie major M5, punkt A (`mcp-platform-plan/m5-plan.md`): jeden adres `/mcp` do całej platformy i filtr w query zamiast zapisanych linków. Wszystkie zmiany łamiące według tabeli SemVer z README, wydane razem, bo CC-169 ... CC-177 odwołują się do siebie.
+Decyzje człowieka z 2026-10-31 po PoC OAuth z query w Claude Code (V2, `access=write` rozłączne z `read`, filtr jawny, `filter_scope`, operacja BFF, `/v/` usunięte od razu). Zmieniają się bajty `cedar/mcp.cedarschema`
+(SHA-256 `51d71b2dbb7f61fd2593cf4c2f1a2373dea06e8b4431425a3f1aa24fa10a0ba5`, poprzednio `902b2540...`): biblioteki, paczki polityk i serwery przechodzą razem. Nowe CC: CC-169 ... CC-177.
+
+### Zmiany łamiące (względem 4.1.0)
+
+1. **Schemat Cedar (CC-173):** `context.virtualServer`, `context.vsScopes` i typ `VsScopes` znikają. Paczki zbudowane pod 4.x dają `schema_mismatch`. Polityka, która czyta te pola bez ochrony `has`, nie przechodzi walidacji (`policy_invalid`);
+   `cedar/examples/virtual-server.cedar` zostaje usunięty (paczki zbudowane z przykładów mają inne bajty i inny skrót).
+2. **Wewnętrzny JWT (CC-173):** claimy `vs` i `vsc` nie istnieją (`unevaluatedProperties: false`), token z którymkolwiek to `401 invalid_claims`. `VirtualServerSlug` znika z `common.schema.json`.
+3. **Java (CC-173):** `mcp-cedar-entities`: znikają `VirtualServerScope`, `Caller.withVirtualServer` i składnik `virtualServer` rekordu `Caller` (konstruktor kanoniczny ma o jeden argument mniej), `QueryConstraint(resourceType, granted)`, `ScopeGroups.typeOfScopeField`,
+   `ScopeGroups.vsScopeField` zmienia nazwę na `scopeField`. `mcp-policy-bundle`: znikają `PolicyLint.linkContextOutsideForbid`, `PolicyLint.LINK_CONTEXT` i `BundleRejectedException.Reason.LINK_CONTEXT_IN_PERMIT`; nowa `PolicyLint.templates`.
+4. **C5 (CC-175):** znikają `GET|POST /admin/v1/virtual-servers`, `DELETE /admin/v1/virtual-servers/{slug}`, schematy `VirtualServer*`, `ResourceDefaults` (i pomocnicze `JiraProjectKeys` itd.), tag `virtual-servers`, kody `slug_taken`, `virtual_server_limit_reached`
+   i `resource_defaults_unsupported`. `ActivityCall.virtualServer` zastąpione przez `filter`. `POST /admin/v1/users/{sub}/purge` zostaje, bez części "linki".
+5. **C12 (CC-175):** znikają `GET|POST /api/v1/virtual-servers`, `DELETE /api/v1/virtual-servers/{slug}`, `PortalVirtualServer*`, `VirtualServerFields`; nowa operacja `getMcpEndpoint` (`GET /api/v1/me/mcp-endpoint`) i schematy `McpEndpoint`, `InvalidFilter`. `ActivityCall.virtualServer` -> `filter`.
+6. **Audyt C8 (CC-174):** znika pole `virtualServer` i `event: virtual_server_change` z powodami `vs_created`, `vs_deleted`, `slug_taken`, `virtual_server_limit`; powód `link_scope` zastąpiony przez `filter_scope`; nowe powody `invalid_filter`, `filter_mismatch`;
+   nowe pole `filter` (`EndpointFilterQuery`). Wynik aktywności `denied_link_scope` -> `denied_filter_scope`. Zdarzenia brokera nie niosą już `virtualServer`.
+7. **`ReturnPath` (CC-169):** `/mcp` jest zarezerwowane obok `/api`, `/s`, `/v`, `/.well-known`; `/f/` nie jest.
+8. **Wektory:** usunięte `jwt/valid-virtual-server-*`, `jwt/vs-*` i `vsc-*` (zastąpione przez `valid-mfa` i `removed-vs*`), `entity-builder/` (6 plików), `policy-decisions/gw-vs-*` i `srv-vs-*` (16), `result-filter/*-through-link` i pochodne (przepisane bez linku), `audit-events/` (7 plików linków),
+   `activity-calls/aggregation-denied-link-scope`, `bundles/main-permit-reads-*` (zastąpione przez `main-policy-reads-removed-virtual-server`, `main-forbid-reads-removed-vsscopes` i `main-forbid-guarded-by-has-removed-vsscopes-accepted`),
+   `gateway-authentication/rejected-on-virtual-server-route`. Wszystkie `bundles/files/*` mają nowe bajty (nowy schemat i zestaw przykładów); `policy-store/*` ma nowe `archiveSha256`; `return-paths/invalid-gateway-v` ma nowy opis.
+
+### Nowe w 5.0.0
+
+- **Adres `/mcp` (CC-169):** wszystkie narzędzia, które użytkownik może teraz wywołać; stała kolejność; system bez połączenia widoczny (`credential_required` przy wywołaniu); serwer niedostępny pominięty. `/v/` to `404 not_found_or_denied` bez audytu (CC-177).
+- **Filtr w query (CC-170):** `systems`, `tools`, `access=read|write` (rozłączne), `exclude`; jedna postać kanoniczna, limity (512 B, 5/100/100), `400 invalid_request` z `reason: invalid_filter` (`EndpointFilterError`); referencja `scripts/lib/endpoint-filter.mjs`, Java `EndpointFilter` w `mcp-manifest`.
+- **OAuth (CC-171, V2):** zasób `<publicBaseUrl>/mcp` bez query, `resource_metadata` bez query, `aud = mcp-gateway`. Przyjęte ryzyko: potwierdzone tylko dla Claude Code (README).
+- **Sesja (CC-172):** filtr związany z sesją MCP, inny filtr to `404` i `filter_mismatch`.
+- **Powiadomienia (CC-176):** `notifications/tools/list_changed`; zmiana połączenia konta nie jest wyzwalaczem.
+- **Wektory:** `endpoint-filter/` (82), `endpoint-aggregate/` (25), `mcp-endpoint/` (11), `gateway-authentication/rejected-on-aggregate-endpoint*`, `audit-events/` z `filter`, `activity-calls/aggregation-denied-filter-scope`.
+
+Migracja:
+**ws-05 gateway:** trasa `/mcp` i filtr (parser według wektorów albo klasa `EndpointFilter`), agregacja list i routing po prefiksie, `400 invalid_filter` po sprawdzeniu tokenu, wiązanie filtra z sesją w Redisie (`filter_mismatch`), `list_changed`, metadane `oauth-protected-resource/mcp` bez query;
+usunąć trasę `/v/` (odpowiedź `404`), kontroler, repozytorium i tabelę `virtual_servers` (migracja Flyway), limit `MCP_VIRTUAL_SERVERS_MAX_PER_USER` i część "linki" w `purge`; przestać wystawiać `vs` i `vsc`; zdarzenia z polem `filter` i powodami `filter_scope`, `invalid_filter`, `filter_mismatch`;
+`EntityBuilder` bez `withVirtualServer`; nowe bajty schematu Cedar. Wejść razem z ws-02, bo serwery odrzucają token z `vs` i `vsc`, a stary gateway je wystawia.
+**ws-02 starter / ws-03 szablon / ws-04 serwery:** zależność `5.0.0`; odbiornik JWT bez `vs`/`vsc`; `Caller` bez składnika `virtualServer`, `QueryConstraint(resourceType, granted)` (zapytania serwera bez zawężenia linku); nowe bajty schematu Cedar (test skrótu); zdarzenia startera bez `virtualServer`.
+**ws-06 broker:** zależność `5.0.0`; zdarzenia `authenticator` bez `virtualServer`; `purge` bez zmian po stronie brokera.
+**ws-07 BFF:** usunąć proxy linków (`/api/v1/virtual-servers*`), dodać `GET /api/v1/me/mcp-endpoint` (filtr normalizowany regułami gatewaya, `toolCount` z katalogu C5, `clientConfigs` z `publicBaseUrl`, adres w cudzysłowie w poleceniu `claude mcp add`); aktywność z polem `filter` i wynikiem `denied_filter_scope`.
+**ws-08 web:** kreator bez zapisu (adres z `getMcpEndpoint`), lista "moje linki" znika; kolumna `filter` w aktywności, etykieta dla `denied_filter_scope`; ostrzeżenie o rozmiarze listy z `toolCount`; trasy SPA nie mogą zaczynać się od `/mcp`.
+**ws-09 polityki:** usunąć `virtual-server.cedar` i reguły czytające `virtualServer` / `vsScopes` (także z ochroną `has`, które niczego już nie zawężają); przebudować paczki pod nowy schemat.
+**ws-10 e2e:** scenariusze: jedna sesja z narzędziami dwóch systemów, OAuth z filtrem i bez, odświeżenie tokenu, zmiana filtra w sesji, `/v/` = 404, `list_changed` po zatwierdzeniu narzędzia, prompt injection między systemami; asercje audytu z `filter`.
+**ws-01 stos dev:** nginx: `/mcp` do gatewaya z nagłówkami `nosniff` i CSP, `/.well-known/oauth-protected-resource/mcp`; Keycloak: mapper audience `mcp-gateway`; Redis współdzielony przez instancje (wiązanie sesji); `mcpdev.py` i seed bez linków.
+
 ## 4.1.0 - 2026-10-29
 
 Wydanie minor z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): podłoga ryzyka liczy wpis oczekujący (CC-167). Bajty `mcp.cedarschema` bez zmian (SHA-256 jak w 4.0.0). Nowe CC: CC-165 ... CC-168.

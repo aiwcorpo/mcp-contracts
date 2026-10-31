@@ -1,0 +1,17 @@
+{
+  "description": "A prefix that is no system.",
+  "kind": "routing",
+  "input": {
+    "name": "nosuch__get_project",
+    "knownSystems": [
+      "jira",
+      "confluence",
+      "gitlab",
+      "servicedesk",
+      "opensearch"
+    ]
+  },
+  "expected": {
+    "error": "not_found_or_denied"
+  }
+}

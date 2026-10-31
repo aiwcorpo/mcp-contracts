@@ -1,0 +1,18 @@
+{
+  "description": "The forbid of the removed virtual-server.cedar guards the read with has: it validates against the new schema and can never match, so it narrows nothing (CC-173). ws-09 deletes such rules.",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026151800-9e6a55b",
+    "url": "policies-20261026151800-9e6a55b.tar.gz",
+    "sigUrl": "policies-20261026151800-9e6a55b.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026151800-9e6a55b.tar.gz",
+  "signature": "files/policies-20261026151800-9e6a55b.tar.gz.sig",
+  "publicKey": "keys/test-policy-bundle.public.pem",
+  "loadedRevision": "20261026130000-b2c3d4e",
+  "expected": {
+    "accept": true
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
+}

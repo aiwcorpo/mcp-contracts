@@ -1,0 +1,13 @@
+{
+  "description": "/s/mcp-jira/mcp with systems=jira.",
+  "kind": "route",
+  "input": {
+    "route": "/s/mcp-jira/mcp",
+    "routeSystem": "jira",
+    "query": "systems=jira"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=jira"
+  }
+}

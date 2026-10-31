@@ -93,8 +93,8 @@ await add('valid-second-kid', 'Signed with active key B; both kids of the JWKS m
 await add('valid-within-skew', 'Verified 29 s after exp; inside the 30 s clock skew.', {
   token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000004' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: { now: iso(T0 + 60 + 29) }, valid: true });
-await add('valid-virtual-server-mfa', 'Call through a virtual server: vs with its narrowing vsc (CC-027) and mfa.', {
-  token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] }, mfa: 120, tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000005' }), 'test-gateway-jwt-a'),
+await add('valid-mfa', 'DESTRUCTIVE call with the mfa claim (seconds since the last MFA authentication).', {
+  token: await sign(userClaims({ mfa: 120, tool: 'delete_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000005' }), 'test-gateway-jwt-a'),
   request: toolsCall('delete_issue'), valid: true });
 await add('valid-tools-call-input-responses', 'Retry of tools/call with inputResponses after an InputRequiredResult (MRTR, MCP 2026-07-28): an ordinary tools/call with a fresh token and tool == params.name (CC-069).', {
   token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000061' }), 'test-gateway-jwt-a'),
@@ -103,9 +103,6 @@ await add('valid-broker', 'User variant sent to the credential broker for resolv
   token: await sign(userClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000006' }), 'test-gateway-jwt-a'),
   request: http('POST', '/v1/credentials/resolve'),
   verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
-await add('valid-virtual-server-without-narrowing', 'Link that only lists tools: vsc is an empty object.', {
-  token: await sign(userClaims({ vs: 'my-tools', vsc: {}, jti: '0192d1b2-7c3a-7f00-9a11-000000000007' }), 'test-gateway-jwt-a'),
-  request: toolsCall('get_issue'), valid: true });
 for (const [suffix, request, jti] of [
   ['initialize', rpc('initialize', USER_RID), '40'],
   ['tools-list', rpc('tools/list', USER_RID), '41'],
@@ -277,14 +274,14 @@ await add('dev-kid-rejected-without-devstack-profile', 'allowTestKeys alone (a u
 await add('valid-dev-kid-in-dev-mode', 'The same token accepted in dev mode: the devstack profile and allowTestKeys together (CC-137).', {
   token: await signWithDevKey(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000092' })),
   request: toolsCall('get_issue'), verifierOverrides: { jwks: 'keys/dev-gateway-jwks.json', allowTestKeys: true, devstackProfile: true }, valid: true });
-await add('vsc-invalid-id', 'vsc id outside the Jira project key pattern; it would otherwise reach a JQL query (CC-056).', {
-  token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC) OR project in (HR'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000054' }), 'test-gateway-jwt-a'),
-  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
-await add('vs-without-vsc', 'vs claim without its narrowing; a server could not apply the link (CC-027).', {
+await add('removed-vs-claim', 'vs (slug of a saved link) no longer exists in the claims; a token that carries it is rejected as invalid_claims (CC-173).', {
   token: await sign(userClaims({ vs: 'team-a-dev', jti: '0192d1b2-7c3a-7f00-9a11-000000000047' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
-await add('vsc-without-vs', 'Narrowing without the virtual server slug.', {
+await add('removed-vsc-claim', 'vsc (narrowing of a saved link) no longer exists in the claims; rejected as invalid_claims (CC-173).', {
   token: await sign(userClaims({ vsc: { jiraProjects: ['ABC'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000048' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('removed-vs-and-vsc-claims', 'A token of a 4.x gateway that went through a link: vs together with vsc; rejected as invalid_claims (CC-173).', {
+  token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000054' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
 await add('service-variant-with-tool', 'Claims of the service variant plus a tool claim; matches neither variant.', {
   token: await sign(serviceClaims({ tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000034' }), 'test-gateway-jwt-a'),

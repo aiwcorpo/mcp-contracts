@@ -1,0 +1,73 @@
+{
+  "description": "Systems are sorted by ServerId and tools by name, whatever order the registry gives them in.",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      },
+      {
+        "serverId": "mcp-confluence",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "confluence__get_page",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      },
+      {
+        "serverId": "mcp-gitlab",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "visible": [
+      "confluence__get_page",
+      "gitlab__get_project",
+      "jira__create_issue",
+      "jira__get_issue"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "description": "tools/call goes to mcp-<system> by the prefix of the name.",
+  "kind": "routing",
+  "input": {
+    "name": "gitlab__get_project",
+    "knownSystems": [
+      "jira",
+      "confluence",
+      "gitlab",
+      "servicedesk",
+      "opensearch"
+    ]
+  },
+  "expected": {
+    "serverId": "mcp-gitlab",
+    "tool": "get_project"
+  }
+}

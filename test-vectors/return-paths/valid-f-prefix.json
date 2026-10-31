@@ -1,0 +1,7 @@
+{
+  "description": "A filter in the path does not exist (CC-171, variant V2); /f/ is not reserved.",
+  "value": "/f/help",
+  "expected": {
+    "valid": true
+  }
+}

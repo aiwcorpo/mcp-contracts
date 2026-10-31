@@ -1,0 +1,16 @@
+{
+  "description": "Parameter without a value.",
+  "kind": "parse",
+  "input": {
+    "query": "systems"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "malformed_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

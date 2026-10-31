@@ -1,15 +1,16 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 4.1.1-SNAPSHOT
+  version: 5.0.0-SNAPSHOT
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
     (HttpOnly, Secure, SameSite=Lax) created by the OIDC login run by the BFF; the frontend never sees tokens.
     The frontend (Angular) is served from the same origin: portal and gateway share one public domain behind a
-    reverse proxy (CC-089): `/` web, `/api` this BFF, `/s/`, `/v/` and `/.well-known/oauth-protected-resource*`
-    the gateway. The proxy removes the `Cookie` header on the gateway routes, never rewrites `X-Request-Id`, and
-    the web application defines no route starting with `/api`, `/s/`, `/v/` or `/.well-known/`. Public URLs
+    reverse proxy (CC-089): `/` web, `/api` this BFF, `/mcp`, `/s/` and `/.well-known/oauth-protected-resource*`
+    the gateway (`/v/` may still be sent to the gateway, which answers 404; the saved links are gone, CC-175, CC-177).
+    The proxy removes the `Cookie` header on the gateway routes, never rewrites `X-Request-Id`, and
+    the web application defines no route starting with `/api`, `/mcp`, `/s/`, `/v/` or `/.well-known/`. Public URLs
     in responses (`url`, `clientConfigs`) come from the `publicBaseUrl` configuration, never from the request.
     CSRF follows the Angular convention:
     the BFF sets the cookie `__Host-XSRF-TOKEN` (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain; the
@@ -46,7 +47,7 @@ tags:
   - name: confirmations
   - name: authenticator
   - name: access-requests
-  - name: virtual-servers
+  - name: mcp-endpoint
   - name: activity
   - name: admin
 paths:
@@ -1097,161 +1098,106 @@ paths:
                     error: not_requestable
         '503':
           $ref: '#/components/responses/UpstreamUnavailable'
-  /api/v1/virtual-servers:
+  /api/v1/me/mcp-endpoint:
     get:
-      tags: [virtual-servers]
-      operationId: listMyVirtualServers
-      summary: My virtual servers with ready-made client configuration snippets.
+      tags: [mcp-endpoint]
+      operationId: getMcpEndpoint
+      summary: Address of the aggregate MCP endpoint for a filter, with client configuration (CC-175).
+      description: |
+        Replaces the saved links of 4.x: nothing is stored. The wizard sends the filter chosen by the user as the query
+        parameters `systems`, `tools`, `access` and `exclude` (same syntax and limits as the query of `/mcp`, CC-170); the BFF
+        normalizes them once, with the rules of the gateway (`test-vectors/endpoint-filter/`), so the portal has a single
+        source of the canonical address. The answer has the address `<publicBaseUrl>/mcp` plus `?` and the canonical filter
+        (no `?` without a filter), ready-made client configurations built from `publicBaseUrl` (never from the request) and
+        `toolCount`, the number of tools that the filter leaves visible among the tools of the catalog of the current user that
+        are `granted` and not `disabled` (the BFF counts it from `GET /admin/v1/catalog` of C5 and no new gateway operation is
+        needed). `toolCount` serves the warning about the size of the list; the `tools/list` of the gateway is the authority,
+        because it also takes unavailable servers and the policy decision of the moment into account. A query parameter that is not
+        one of the four, a repeated one and an invalid value are `400 invalid_request` with `reason: invalid_filter`; the answer
+        reveals nothing about the user's tools. A filter naming something that does not exist or that the user cannot call is
+        not an error (CC-170, invariant 8). Nothing is audited here: the filter is a convenience and not a permission.
       security:
         - session: []
+      parameters:
+        - name: systems
+          in: query
+          required: false
+          description: Systems without the `mcp-` prefix, comma separated.
+          schema:
+            type: string
+            maxLength: 512
+          example: jira,gitlab
+        - name: tools
+          in: query
+          required: false
+          description: Client-visible tool names `<system>__<tool>`, comma separated.
+          schema:
+            type: string
+            maxLength: 512
+          example: jira__get_issue
+        - name: access
+          in: query
+          required: false
+          description: '`read` leaves READ_ONLY tools, `write` leaves UPDATE and DESTRUCTIVE tools; absent means both.'
+          schema:
+            type: string
+            maxLength: 5
+          example: read
+        - name: exclude
+          in: query
+          required: false
+          description: Systems or tool names to remove, comma separated; an entry with a double underscore is a tool.
+          schema:
+            type: string
+            maxLength: 512
+          example: jira__delete_issue
       responses:
         '200':
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Proxy of C5 plus clientConfigs.
+          description: Normalized address, client configurations and the number of tools.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PortalVirtualServer'
+                $ref: '#/components/schemas/McpEndpoint'
               examples:
-                one:
+                whole_platform:
                   value:
-                    - slug: team-a-dev
-                      displayName: Team A development
-                      tools: [jira__search_issues, jira__get_issue]
-                      url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-                      clientConfigs:
-                        claudeCode: claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-                        copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"}}}'
-                        codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"\n"
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        "503":
-          $ref: "#/components/responses/UpstreamUnavailable"
-    post:
-      tags: [virtual-servers]
-      operationId: createMyVirtualServer
-      summary: Create a virtual server (proxy to C5).
-      security:
-        - session: []
-          csrf: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: 'gateway-admin.v1.yaml#/components/schemas/VirtualServerCreate'
-            examples:
-              team_a:
-                value:
-                  slug: team-a-dev
-                  displayName: Team A development
-                  tools: [jira__search_issues, jira__get_issue]
-      responses:
-        '201':
-          headers:
-            X-Request-Id:
-              $ref: '#/components/headers/RequestId'
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PortalVirtualServerCreated'
-              examples:
-                created:
-                  value:
-                    slug: team-a-dev
-                    url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
+                    url: https://mcp.aiwcorpo.pl/mcp
+                    toolCount: 41
                     clientConfigs:
-                      claudeCode: claude mcp add --transport http team-a-dev https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-                      copilot: '{"servers":{"team-a-dev":{"type":"http","url":"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp"}}}'
-                      codex: "[mcp_servers.team-a-dev]\nurl = \"https://mcp.aiwcorpo.pl/v/team-a-dev/mcp\"\n"
+                      claudeCode: claude mcp add --transport http aiwcorpo-mcp "https://mcp.aiwcorpo.pl/mcp"
+                      copilot: '{"servers":{"aiwcorpo-mcp":{"type":"http","url":"https://mcp.aiwcorpo.pl/mcp"}}}'
+                      codex: "[mcp_servers.aiwcorpo-mcp]\nurl = \"https://mcp.aiwcorpo.pl/mcp\"\n"
+                jira_read_only:
+                  value:
+                    url: https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read
+                    filter: systems=jira&access=read
+                    toolCount: 9
+                    clientConfigs:
+                      claudeCode: claude mcp add --transport http aiwcorpo-mcp "https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read"
+                      copilot: '{"servers":{"aiwcorpo-mcp":{"type":"http","url":"https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read"}}}'
+                      codex: "[mcp_servers.aiwcorpo-mcp]\nurl = \"https://mcp.aiwcorpo.pl/mcp?systems=jira&access=read\"\n"
         '400':
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Malformed request (a resourceDefaults that is not an object is invalid_request), or a non-empty resourceDefaults (resource narrowing is dormant, CC-085; checked first, before the content is validated; the BFF checks the field itself and does not call the gateway).
+          description: A query parameter that is not a valid filter (invalid_filter).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/InvalidFilter'
               examples:
-                invalid_request:
+                invalid_filter:
                   value:
                     error: invalid_request
-                resource_defaults_unsupported:
-                  value:
-                    error: resource_defaults_unsupported
+                    reason: invalid_filter
+                    message: The filter is not valid.
         '401':
           $ref: '#/components/responses/Unauthenticated'
-        '403':
-          headers:
-            X-Request-Id:
-              $ref: '#/components/headers/RequestId'
-          description: CSRF token invalid, or a tool is not available to the user (access_denied).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                access_denied:
-                  value:
-                    error: access_denied
-                csrf_invalid:
-                  value:
-                    error: csrf_invalid
-        '409':
-          headers:
-            X-Request-Id:
-              $ref: '#/components/headers/RequestId'
-          description: Slug already used (slug_taken), or the user already has the maximum number of virtual servers (virtual_server_limit_reached; limit per user is gateway configuration, default 50). The wizard answers "delete an unused link" to the second (CC-119).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                slug_taken:
-                  value:
-                    error: slug_taken
-                virtual_server_limit_reached:
-                  value:
-                    error: virtual_server_limit_reached
-        "503":
-          $ref: "#/components/responses/UpstreamUnavailable"
-  /api/v1/virtual-servers/{slug}:
-    parameters:
-      - name: slug
-        in: path
-        required: true
-        schema:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-        example: team-a-dev
-    delete:
-      tags: [virtual-servers]
-      operationId: deleteMyVirtualServer
-      summary: Delete my virtual server (proxy to C5).
-      security:
-        - session: []
-          csrf: []
-      responses:
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '204':
-          headers:
-            X-Request-Id:
-              $ref: '#/components/headers/RequestId'
-          description: Deleted.
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/CsrfInvalid'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        "503":
-          $ref: "#/components/responses/UpstreamUnavailable"
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
   /api/v1/activity:
     get:
       tags: [activity]
@@ -1375,7 +1321,7 @@ paths:
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
                       ts: '2026-10-26T20:00:00.123Z'
                       client: claude-code
-                      virtualServer: team-a-dev
+                      filter: 'systems=jira&access=read'
                       tool: jira__get_issue
                       risk: READ_ONLY
                       resource:
@@ -1427,7 +1373,7 @@ paths:
                       ts: '2026-10-26T19:20:00.000Z'
                       tool: gitlab__get_project
                       risk: READ_ONLY
-                      result: denied_link_scope
+                      result: denied_filter_scope
                       errorCode: not_found_or_denied
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -2091,43 +2037,37 @@ components:
         codex:
           type: string
       additionalProperties: false
-    PortalVirtualServer:
-      allOf:
-        - $ref: '#/components/schemas/VirtualServerFields'
+    McpEndpoint:
       type: object
-      required: [clientConfigs]
+      description: Result of getMcpEndpoint (CC-175).
+      required: [url, toolCount, clientConfigs]
       properties:
-        clientConfigs:
-          $ref: '#/components/schemas/ClientConfigs'
-      unevaluatedProperties: false
-    VirtualServerFields:
-      type: object
-      description: Same fields as C5 VirtualServer.
-      required: [slug, displayName, tools, url]
-      properties:
-        slug:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-        displayName:
-          type: string
-        tools:
-          type: array
-          uniqueItems: true
-          items:
-            $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
-        resourceDefaults:
-          $ref: 'gateway-admin.v1.yaml#/components/schemas/ResourceDefaults'
         url:
           type: string
           format: uri
-    PortalVirtualServerCreated:
-      type: object
-      required: [slug, url, clientConfigs]
-      properties:
-        slug:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-        url:
-          type: string
-          format: uri
+          description: '`<publicBaseUrl>/mcp` and, when there is a filter, `?` and its canonical form.'
+        filter:
+          description: Canonical filter (CC-170); absent when no filter was given.
+          $ref: '../schemas/common.schema.json#/$defs/EndpointFilterQuery'
+        toolCount:
+          type: integer
+          minimum: 0
+          description: Tools of the user's catalog (granted, not disabled) that the filter leaves visible; an estimate, the tools/list of the gateway is the authority.
         clientConfigs:
           $ref: '#/components/schemas/ClientConfigs'
+      additionalProperties: false
+    InvalidFilter:
+      type: object
+      description: 400 of getMcpEndpoint for a filter that does not parse (same error and reason as the gateway, CC-170).
+      required: [error, reason]
+      properties:
+        error:
+          const: invalid_request
+        reason:
+          const: invalid_filter
+        message:
+          type: string
+          maxLength: 500
+        requestId:
+          $ref: '../schemas/common.schema.json#/$defs/RequestId'
       additionalProperties: false

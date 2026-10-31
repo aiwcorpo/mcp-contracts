@@ -1,0 +1,20 @@
+{
+  "description": "Qualified tool names.",
+  "kind": "parse",
+  "input": {
+    "query": "tools=jira__get_issue,gitlab__get_project"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "tools=gitlab__get_project,jira__get_issue",
+    "filter": {
+      "systems": null,
+      "tools": [
+        "gitlab__get_project",
+        "jira__get_issue"
+      ],
+      "access": null,
+      "exclude": null
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "An encoded comma would give a second spelling of the same address.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=gitlab%2cjira"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "percent_encoding",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

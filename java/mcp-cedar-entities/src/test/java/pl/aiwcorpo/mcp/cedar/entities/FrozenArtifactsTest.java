@@ -20,13 +20,13 @@ import org.junit.jupiter.api.Test;
 class FrozenArtifactsTest {
 
     /**
-     * Bundles carry the schema byte for byte (CC-059), so every 2.x component must ship the same file; any change,
-     * even to the header comment or line endings, makes bundles of other 2.x components fail with schema_mismatch.
+     * Bundles carry the schema byte for byte (CC-059), so every 5.x component must ship the same file; any change,
+     * even to the header comment or line endings, makes bundles of other 5.x components fail with schema_mismatch.
      */
-    private static final String MCP_CEDARSCHEMA_SHA256 = "902b254090cc7bd5b8f4ff3fa26b76850f516e9d07da0f9faed1729deb1412f7";
+    private static final String MCP_CEDARSCHEMA_SHA256 = "51d71b2dbb7f61fd2593cf4c2f1a2373dea06e8b4431425a3f1aa24fa10a0ba5";
 
     @Test
-    void cedarSchemaIsFrozenForTheWhole2xLine() throws Exception {
+    void cedarSchemaIsFrozenForTheWhole5xLine() throws Exception {
         byte[] file = Files.readAllBytes(ContractFiles.resolve("cedar/mcp.cedarschema"));
         assertEquals(MCP_CEDARSCHEMA_SHA256, sha256(file));
         assertEquals(MCP_CEDARSCHEMA_SHA256, sha256(McpCedarSchema.text().getBytes(StandardCharsets.UTF_8)));

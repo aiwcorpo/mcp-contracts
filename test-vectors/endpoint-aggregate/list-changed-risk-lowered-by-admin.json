@@ -1,0 +1,26 @@
+{
+  "description": "risk_lowered_by_admin: a tool that access=read cut becomes READ_ONLY and enters the list.",
+  "kind": "list-changed",
+  "input": {
+    "query": "access=read",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "description": "Aggregate endpoint with a filter in the query.",
+  "value": "/mcp?systems=jira&access=read",
+  "expected": {
+    "valid": false
+  }
+}

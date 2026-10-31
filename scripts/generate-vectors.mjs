@@ -412,9 +412,9 @@ const auditBase = {
 const audit = (name, description, event, valid) =>
   write('audit-events', `${name}.json`, { description, expected: { valid }, event });
 
-audit('gateway-tool-call-allowed', 'Gateway, allowed tool call through a virtual server.', {
+audit('gateway-tool-call-allowed', 'Gateway, allowed tool call on an endpoint with a filter (CC-174).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
-  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', virtualServer: 'team-a-dev',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=jira&access=read',
   clientRequestId: 'client-req-17', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', decision: 'allow',
   policyRevision: '20261026120000-a1b2c3d', credentialType: 'user-secret', outcome: 'ok', errorCode: null, latencyMs: 42, argsLength: 118,
 }, true);
@@ -485,12 +485,34 @@ audit('gateway-limit-store-unavailable', 'The counter of the limits does not ans
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
   tool: 'get_issue', risk: 'READ_ONLY', decision: 'deny', reason: 'upstream_unavailable', outcome: 'error', errorCode: 'upstream_unavailable', argsLength: 20,
 }, true);
-audit('gateway-link-scope', 'Tool outside the virtual server link: policy_decision with reason link_scope (CC-142).', {
+audit('gateway-filter-scope', 'Tool that the user may call and the filter of the address leaves out: policy_decision with reason filter_scope (CC-170, CC-174).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
-  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', virtualServer: 'team-a-dev', server: 'mcp-jira',
-  tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'link_scope', policyRevision: '20261026120000-a1b2c3d',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=gitlab', server: 'mcp-jira',
+  tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'filter_scope', policyRevision: '20261026120000-a1b2c3d',
   outcome: 'denied', errorCode: 'not_found_or_denied', argsLength: 12,
 }, true);
+audit('gateway-invalid-filter', 'A query that is not a filter: policy_decision with reason invalid_filter, outcome error, no filter field (nothing could be normalized, CC-170).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code',
+  decision: 'deny', reason: 'invalid_filter', policyRevision: '20261026120000-a1b2c3d', outcome: 'error',
+}, true);
+audit('gateway-filter-mismatch', 'The filter of a request differs from the filter bound to the session (CC-172); filter is the normalized filter of the request.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=gitlab',
+  decision: 'deny', reason: 'filter_mismatch', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied',
+}, true);
+audit('invalid-filter-field-not-canonical', 'filter is the canonical form: parameters in the fixed order (CC-170).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', filter: 'access=read&systems=jira',
+}, false);
+audit('invalid-filter-field-percent-encoded', 'filter has no percent-encoding.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', filter: 'systems=gitlab%2cjira',
+}, false);
+audit('invalid-filter-field-too-long', 'filter is at most 512 characters.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', filter: `exclude=${'a'.repeat(510)}`,
+}, false);
+audit('invalid-field-virtual-server', 'virtualServer was removed in 5.0.0 together with saved links (CC-174).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', virtualServer: 'team-a-dev',
+}, false);
 audit('broker-authenticator-seed-missing', 'The seed of a registered authenticator is gone from the secret store; the registration is reset (CC-142).', {
   ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', reason: 'authenticator_seed_missing', outcome: 'error', errorCode: 'upstream_unavailable',
@@ -523,7 +545,7 @@ audit('broker-authenticator-registered', 'Authenticator registration activated; 
 }, true);
 audit('broker-authenticator-verify-ok', 'Code verified for a destructive call; tool and client come from the internal JWT (CC-094).', {
   ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authenticator',
-  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', virtualServer: 'team-a-dev', tool: 'delete_issue',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', tool: 'delete_issue',
   decision: 'allow', reason: 'totp_verified', outcome: 'ok',
 }, true);
 audit('broker-authenticator-verify-replayed', 'A code of a step that was already used.', {
@@ -607,22 +629,8 @@ audit('gateway-confirmation-authenticator-disabled', 'The code could not be used
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'confirmation',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'authenticator_disabled', outcome: 'denied', errorCode: 'confirmation_required',
 }, true);
-audit('gateway-virtual-server-created', 'A link was created (CC-116: its own event instead of admin_change).', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'virtual_server_change',
-  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', virtualServer: 'team-a-dev', reason: 'vs_created', outcome: 'ok',
-}, true);
-audit('gateway-virtual-server-limit', 'Creation refused at the per-user limit of links.', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'virtual_server_change',
-  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', reason: 'virtual_server_limit', outcome: 'denied',
-}, true);
-audit('invalid-virtual-server-change-without-reason', 'A link change says why (CC-116).', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'virtual_server_change', outcome: 'ok',
-}, false);
-audit('invalid-virtual-server-change-without-outcome', 'A link change says how it ended (CC-116).', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'virtual_server_change', reason: 'vs_deleted',
-}, false);
-audit('invalid-event-virtual-server', 'Only the value virtual_server_change exists.', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'virtual_server', reason: 'vs_created', outcome: 'ok',
+audit('invalid-event-virtual-server-change', 'virtual_server_change was removed in 5.0.0 together with saved links (CC-174).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'virtual_server_change', reason: 'vs_created', outcome: 'ok',
 }, false);
 audit('gateway-authentication-denied-admin-client-certificate', 'Client certificate rejected on the admin port /admin/v1 (wrong CN or not from the internal CA, CC-125).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'authentication',
@@ -703,8 +711,8 @@ audit('invalid-authentication-with-username', 'username comes from the claims of
 audit('invalid-authentication-with-policy-revision', 'policyRevision comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', policyRevision: '20261026120000-a1b2c3d',
 }, false);
-audit('invalid-authentication-with-virtual-server', 'virtualServer comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
-  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', virtualServer: 'team-a-dev',
+audit('invalid-authentication-with-filter', 'filter comes from the request before the token is verified and is not allowed in event authentication (CC-071, CC-174).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'authentication', reason: 'bad_signature', outcome: 'denied', filter: 'systems=jira',
 }, false);
 audit('invalid-authentication-outcome-ok', 'event authentication exists only for rejections (CC-071).', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'expired', outcome: 'ok',
@@ -805,7 +813,11 @@ returnPath('invalid-api', 'A redirect after login must not land on a BFF endpoin
 returnPath('invalid-api-exact', 'The bare /api prefix.', '/api', false);
 returnPath('invalid-api-query', '/api followed by a query is still the BFF.', '/api?x=1', false);
 returnPath('invalid-gateway-s', 'Gateway route of a whole server.', '/s/mcp-jira/mcp', false);
-returnPath('invalid-gateway-v', 'Gateway route of a virtual server.', '/v/team-a-dev/mcp', false);
+returnPath('invalid-gateway-v', 'Former gateway route of saved links; the proxy may still send /v/ to the gateway, which answers 404 (CC-177).', '/v/team-a-dev/mcp', false);
+returnPath('invalid-gateway-mcp', 'Aggregate endpoint of the gateway (CC-169).', '/mcp', false);
+returnPath('invalid-gateway-mcp-with-filter', 'Aggregate endpoint with a filter in the query.', '/mcp?systems=jira&access=read', false);
+returnPath('valid-mcp-docs', '/mcp-docs only starts with the letters mcp; it is not the /mcp prefix.', '/mcp-docs', true);
+returnPath('valid-f-prefix', 'A filter in the path does not exist (CC-171, variant V2); /f/ is not reserved.', '/f/help', true);
 returnPath('invalid-well-known', 'RFC 9728 metadata is served by the gateway.', '/.well-known/oauth-protected-resource', false);
 returnPath('invalid-dot-segment-to-api', 'A browser resolves /./api/... to /api/...; the dot segment would bypass the prefix check.', '/./api/v1/me', false);
 returnPath('invalid-dot-dot-segment-to-api', 'A browser resolves /catalog/../api/... to /api/....', '/catalog/../api/v1/me', false);
@@ -1017,14 +1029,18 @@ for (const reason of ['missing_token', 'malformed', 'bad_signature', 'unknown_ki
   gatewayAuth(`rejected-${reason.replaceAll('_', '-')}`, `Token rejected with reason ${reason}: 401 with the resource_metadata challenge only; the reason is not revealed (it goes to the audit event).`,
     { reason, publicBaseUrl: BASE, resourcePath: '/s/mcp-jira' }, unauthenticated('/s/mcp-jira'));
 }
-gatewayAuth('rejected-on-virtual-server-route', 'The challenge points at the metadata of the route the client used.',
-  { reason: 'expired', publicBaseUrl: BASE, resourcePath: '/v/team-a-dev' }, unauthenticated('/v/team-a-dev'));
+gatewayAuth('rejected-on-aggregate-endpoint', 'The challenge points at the metadata of the aggregate endpoint /mcp (CC-171, V2).',
+  { reason: 'expired', publicBaseUrl: BASE, resourcePath: '/mcp' }, unauthenticated('/mcp'));
+gatewayAuth('rejected-on-aggregate-endpoint-with-filter', 'The filter is in the address of the request only: resource_metadata is the same without a query (CC-171, V2).',
+  { reason: 'expired', publicBaseUrl: BASE, resourcePath: '/mcp', requestQuery: 'systems=jira&access=read' }, unauthenticated('/mcp'));
+gatewayAuth('rejected-on-aggregate-endpoint-with-invalid-filter', 'The token is checked before the filter: a bad query without a valid token gets the same 401 challenge (CC-170, CC-171).',
+  { reason: 'missing_token', publicBaseUrl: BASE, resourcePath: '/mcp', requestQuery: 'system=jira' }, unauthenticated('/mcp'));
 gatewayAuth('jwks-unavailable', 'The IdP key set cannot be fetched and no usable copy exists: 503 upstream_unavailable (fail-closed, the token is not accepted), no WWW-Authenticate (a client must not log in again), Retry-After 10 s, no-store.',
   { reason: 'jwks_unavailable', publicBaseUrl: BASE, resourcePath: '/s/mcp-jira' },
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '10' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The identity provider keys are temporarily unavailable. Try again in a few seconds.' } });
 gatewayAuth('jwks-unavailable-configured-retry-after', 'Retry-After is the configured back-off of the key fetch (1 to 60 s), here 30.',
-  { reason: 'jwks_unavailable', publicBaseUrl: BASE, resourcePath: '/v/team-a-dev', retryAfterSeconds: 30 },
+  { reason: 'jwks_unavailable', publicBaseUrl: BASE, resourcePath: '/mcp', retryAfterSeconds: 30 },
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '30' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The identity provider keys are temporarily unavailable. Try again in a few seconds.' } });
 
@@ -1034,7 +1050,7 @@ gatewayAuth('rate-limited', 'An MCP request that is not a tool call (tools/list,
     absentHeaders: ['WWW-Authenticate', 'Set-Cookie', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: 12 } });
 gatewayAuth('rate-limited-at-least-one-second', 'A wait shorter than a second is rounded up: Retry-After and retryAfterSeconds are at least 1 (CC-156).',
-  { reason: 'rate_limited', publicBaseUrl: BASE, resourcePath: '/v/team-a-dev', retryAfterSeconds: 0.2 },
+  { reason: 'rate_limited', publicBaseUrl: BASE, resourcePath: '/mcp', requestQuery: 'access=read', retryAfterSeconds: 0.2 },
   { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '1' },
     absentHeaders: ['WWW-Authenticate', 'Set-Cookie', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: 1 } });
@@ -1234,9 +1250,9 @@ aggregation('cancelled', 'The owner cancelled after one wrong code: result cance
 aggregation('blocked-by-pending', 'Refused because the preview of another pending DESTRUCTIVE call is open (CC-127): result blocked_by_pending.', [
   gw(20, '2026-10-26T20:00:30.000Z', { ...deleteBase, event: 'confirmation', decision: 'deny', reason: 'pending_exists', outcome: 'denied', errorCode: 'confirmation_blocked' }),
 ], { ...callRow, ts: '2026-10-26T20:00:30.000Z', requestId: RID(20), result: 'blocked_by_pending', errorCode: 'confirmation_blocked' });
-aggregation('denied-link-scope', 'Tool outside the link: denied_link_scope, no confirmation fields.', [
-  gw(17, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-gitlab', tool: 'get_project', risk: 'READ_ONLY', virtualServer: 'team-a-dev', decision: 'deny', reason: 'link_scope', outcome: 'denied', errorCode: 'not_found_or_denied' }),
-], { requestId: RID(17), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', virtualServer: 'team-a-dev', tool: 'gitlab__get_project', risk: 'READ_ONLY', result: 'denied_link_scope', errorCode: 'not_found_or_denied' });
+aggregation('denied-filter-scope', 'Tool left out by the filter of the address: denied_filter_scope, no confirmation fields; the row shows the filter (CC-174).', [
+  gw(17, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-gitlab', tool: 'get_project', risk: 'READ_ONLY', filter: 'systems=jira', decision: 'deny', reason: 'filter_scope', outcome: 'denied', errorCode: 'not_found_or_denied' }),
+], { requestId: RID(17), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', filter: 'systems=jira', tool: 'gitlab__get_project', risk: 'READ_ONLY', result: 'denied_filter_scope', errorCode: 'not_found_or_denied' });
 aggregation('denied-not-granted', 'No entitlement: denied_not_granted.', [
   gw(18, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-jira', tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: 'access_denied' }),
 ], { requestId: RID(18), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__create_issue', risk: 'UPDATE', result: 'denied_not_granted', errorCode: 'access_denied' });
@@ -1704,10 +1720,10 @@ mainCase(6, 'tar-oversized-entry', 'One entry larger than 4 MiB after decompress
 mainCase(7, 'tar-ustar-prefix', 'Long entry name split into the ustar prefix and name fields; the reader joins them.',
   (r) => buildBundle(r, shaOf(r), [...examplePolicies.slice(1),
     [`${'very-long-file-name-'.repeat(4)}call-tool.cedar`, examplePolicies[0][1], { prefix: 'policies/split' }]]), null);
-mainCase(14, 'main-permit-reads-virtual-server', 'A permit rule reads context.virtualServer; the slug is chosen by the user, so a link could grant (CC-058).',
+mainCase(14, 'main-policy-reads-removed-virtual-server', 'A permit rule reads context.virtualServer, which the schema no longer has (CC-173): the policy does not validate.',
   (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/bad-slug.cedar',
-    '@id("slug-grants")\npermit (principal, action == Action::"call", resource is Tool)\nwhen { context has virtualServer && context.virtualServer == "magic" };\n']]),
-  'link_context_in_permit');
+    '@id("slug-grants")\npermit (principal, action == Action::"call", resource is Tool)\nwhen { context.virtualServer == "magic" };\n']]),
+  'policy_invalid');
 mainCase(15, 'main-static-entities-other-type', 'static.json contains a User entity; only UserGroup entities are allowed (CC-059).',
   (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: staticEntitiesText.trimEnd().replace(/\]$/,
     ',\n  {"uid": {"type": "User", "id": "b1a7c0de-0000-4000-8000-000000000005"}, "attrs": {"username": "x", "client": "claude-code", "scopes": {"jiraProjects": [], "confluenceSpaces": [], "gitlabGroups": [], "opensearchIndexPrefixes": [], "servicedeskQueues": []}}, "parents": []}\n]\n') }),
@@ -1722,10 +1738,14 @@ mainCase(17, 'main-schema-mismatch', 'schema.cedarschema differs from the schema
     ...examplePolicies,
     ['entities/static.json', staticEntitiesText],
   ]), 'schema_mismatch');
-mainCase(8, 'main-permit-reads-vsscopes', 'A permit rule reads context.vsScopes; a link could then grant (CC-041).',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/bad-vs.cedar',
-    '@id("vs-grants")\npermit (principal, action, resource is Jira::Issue)\nwhen { context has vsScopes && context.vsScopes has jiraProjects && context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
-  'link_context_in_permit');
+mainCase(8, 'main-forbid-reads-removed-vsscopes', 'A forbid rule reads context.vsScopes without a guard, and the schema no longer has it (CC-173): even a forbid does not validate.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/vs-narrow.cedar',
+    '@id("vs-narrow-jira-issue")\nforbid (principal, action, resource is Jira::Issue)\nwhen { !context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
+  'policy_invalid');
+mainCase(18, 'main-forbid-guarded-by-has-removed-vsscopes-accepted', 'The forbid of the removed virtual-server.cedar guards the read with has: it validates against the new schema and can never match, so it narrows nothing (CC-173). ws-09 deletes such rules.',
+  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/vs-narrow.cedar',
+    '@id("vs-narrow-jira-issue")\nforbid (principal, action, resource is Jira::Issue)\nwhen { context has vsScopes && context.vsScopes has jiraProjects && !context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
+  null);
 mainCase(9, 'main-static-entities-invalid-mapping', 'static.json maps a group to a parent that is not a ResourceScope (CC-037).',
   (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{},"parents":[{"type":"UserGroup","id":"mcp-y"}]}]\n' }),
   'static_entities_invalid');

@@ -1,0 +1,16 @@
+{
+  "description": "Empty segment between ampersands.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira&&access=read"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "empty_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

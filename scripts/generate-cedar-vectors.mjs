@@ -2,7 +2,7 @@
 // Expected decisions are written here by hand; the Java tests evaluate them with cedar-java.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { build as buildEntities, BuilderError, pathPrefixes, vscFromResourceDefaults } from './lib/entity-builder.mjs';
+import { build as buildEntities, BuilderError, pathPrefixes } from './lib/entity-builder.mjs';
 
 const SUB = {
   reader: 'b1a7c0de-0000-4000-8000-000000000001',
@@ -73,9 +73,6 @@ const tools = {
 
 const project = (key, category = '') => ({ type: 'Jira::Project', id: key, attrs: { key, category } });
 const issue = (key, projectKey, category) => ({ type: 'Jira::Issue', id: key, attrs: { key }, parent: project(projectKey, category) });
-const vs = (slug, resourceDefaults) => ({ slug, ...(resourceDefaults && { resourceDefaults }) });
-// The gateway puts the link into the internal JWT as vs + vsc (CC-027); both builders read only the claims.
-const viaVs = (user, link) => ({ caller: { ...user, vs: link.slug, vsc: vscFromResourceDefaults(link.resourceDefaults) } });
 
 // Scope mapping of the example bundle (CC-037); vectors refer to it by path.
 const STATIC_PATH = 'cedar/examples/static-entities.json';
@@ -137,20 +134,8 @@ builderVector('refs-two-arguments-same-type', 'Two arguments of the same type ar
   { caller: users.writer(), tool: tools.moveIssue, arguments: { issueKey: 'ABC-1', fromProject: 'ABC', toProject: 'DEF' } });
 builderVector('tool-without-refs', 'Tool with no resourceRefs: refs is an empty record.', 'gateway',
   { caller: users.reader(), tool: tools.listProjects, arguments: { anything: 'ignored' } });
-builderVector('virtual-server-scopes', 'Virtual server resourceDefaults become context.vsScopes.', 'gateway', {
-  ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'], 'OpenSearch::Index': ['logs-team-a'], 'GitLab::Group': ['team-a'] })),
-  tool: tools.createIssue, arguments: { projectKey: 'ABC' } });
-builderVector('virtual-server-without-defaults', 'Virtual server with only a tool list: virtualServer set, no vsScopes.', 'gateway',
-  { ...viaVs(users.reader(), vs('my-tools')), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
-builderVector('vsc-without-vs', 'vsc claim without vs: inconsistent input, denied (the JWT receiver already rejects it).', 'gateway',
-  { caller: { ...users.reader(), vsc: { jiraProjects: ['ABC'] } }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
-builderVector('vs-without-vsc', 'vs claim without vsc: inconsistent input, denied.', 'gateway',
-  { caller: { ...users.reader(), vs: 'team-a-dev' }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('tool-unknown-risk', 'Registry entry with a risk outside READ_ONLY, UPDATE, DESTRUCTIVE: denied, a typo must not bypass risk rules.', 'gateway',
   { caller: users.destroyer({ mfa: 60 }), tool: { ...tools.deleteIssue, risk: 'DESTRUCTlVE' }, arguments: { issueKey: 'ABC-1' } });
-builderVector('server-virtual-server', 'Server: narrowing comes from the vsc claim, so a server can apply the link (CC-027).', 'server', {
-  ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.getIssue, arguments: { issueKey: 'DEF-5' },
-  resource: issue('DEF-5', 'DEF', 'Software') });
 builderVector('mfa-age', 'mfa claim becomes principal.mfaAge and context.mfaAge.', 'gateway',
   { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('credential-type-service-account', 'The caller of the builder knows the credential type of the call (for the gateway, the answer of the broker): context.credentialType (CC-136).', 'gateway',
@@ -238,8 +223,6 @@ builderVector('resolved-resource-invalid-id-data-stream', 'Resolver returned a d
   resource: { type: 'OpenSearch::Index', id: '.ds-logs-000001', attrs: { name: '.ds-logs-000001', tags: [] } } });
 builderVector('refs-opensearch-index-leading-dot', 'Index argument naming a hidden system index (CC-074).', 'gateway',
   { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: '.security' } });
-builderVector('vsc-invalid-id', 'vsc id outside the Jira key pattern.', 'gateway',
-  { caller: { ...users.reader(), vs: 'team-a-dev', vsc: { jiraProjects: ['ABC) OR project in (HR'] } }, tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('tool-unknown-resource-type', 'resourceRefs with a type outside the model: denied.', 'gateway',
   { caller: users.reader(), tool: tool('jira', 'get_board', 'READ_ONLY', 'read', [{ argument: 'boardId', type: 'Jira::Board' }]), arguments: { boardId: '7' } });
 
@@ -292,21 +275,6 @@ decision('gw-destructive-without-group', 'DESTRUCTIVE with fresh MFA but only re
 decision('gw-unknown-tool', 'Tool absent from the registry: no Tool entity, every policy errors or does not match, deny.', 'gateway',
   { caller: users.reader(), tool: tool('jira', 'drop_project', 'READ_ONLY', 'read'), arguments: {} }, deny(),
   { covers: ['unknown_tool'], mutate: (b) => { b.entities = b.entities.filter((e) => e.uid.type !== 'Tool'); } });
-decision('gw-vs-narrows-project', 'Virtual server limited to ABC; user may write in DEF but not through this link.', 'gateway',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.createIssue, arguments: { projectKey: 'DEF' } },
-  deny('vs-narrow-call-jira-project'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
-decision('gw-vs-inside-narrowing', 'Same link, project ABC inside the narrowing.', 'gateway',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.createIssue, arguments: { projectKey: 'ABC' } },
-  allow('jira-call-update'), { covers: ['virtual_server_narrowing'] });
-decision('gw-vs-narrows-reads', 'Narrowing applies to reads too: search over ABC and DEF through an ABC-only link.', 'gateway',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.searchIssues, arguments: { projectKeys: ['ABC', 'DEF'] } },
-  deny('vs-narrow-call-jira-project'), { covers: ['virtual_server_narrowing'] });
-decision('gw-vs-other-type-not-narrowed', 'Link narrows Confluence spaces only; Jira projects are not narrowed by it.', 'gateway',
-  { ...viaVs(users.writer2(), vs('docs', { 'Confluence::Space': ['ENG'] })), tool: tools.createIssue, arguments: { projectKey: 'DEF' } },
-  allow('jira-call-update'), { covers: ['virtual_server_narrowing'] });
-decision('gw-vs-cannot-grant', 'A link never grants: user without groups through a link that lists ABC.', 'gateway',
-  { ...viaVs(users.nobody(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } },
-  deny(), { covers: ['virtual_server_narrowing', 'no_group'] });
 decision('gw-search-read-any-project', 'Reads are not scope-limited at the gateway; the system enforces the user\'s own rights.', 'gateway',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC', 'HR'] } }, allow('jira-call-read'));
 decision('gw-gitlab-read-allowed', 'GitLab reader.', 'gateway',
@@ -345,10 +313,6 @@ decision('srv-update-without-write-group', 'Server: update without mcp-jira-writ
 decision('srv-delete-in-scope', 'Server: delete in scope with mcp-jira-destructive.', 'server',
   { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') },
   allow('jira-delete-issue-in-scope'));
-decision('srv-vs-narrows-issue', 'Server: read DEF-5 through a link limited to ABC.', 'server',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.getIssue, arguments: { issueKey: 'DEF-5' },
-    resource: issue('DEF-5', 'DEF', 'Software') },
-  deny('vs-narrow-jira-issue'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
 const group = (groupPath) => ({ type: 'GitLab::Group', id: groupPath, attrs: { path: groupPath } });
 const projectIn = (projectPath) => ({ type: 'GitLab::Project', id: projectPath, attrs: { path: projectPath },
   parent: group(projectPath.slice(0, projectPath.lastIndexOf('/'))) });
@@ -383,17 +347,9 @@ decision('srv-confluence-page-outside-tree', 'Server: page 2000 in another tree 
   { caller: editor(), tool: tools.updatePage, arguments: { pageId: '2000' },
     resource: { type: 'Confluence::Page', id: '2000', attrs: { id: '2000', ancestorIds: ['1999'] }, parent: { type: 'Confluence::Space', id: 'HB', attrs: { key: 'HB', labels: [] } } } },
   deny(), { covers: ['scope_hierarchy'] });
-decision('gw-vs-search-without-project-passes-gateway', 'Search without project keys through a link limited to ABC passes the gateway (nothing to compare); the server must narrow the query and filter results (CC-036).', 'gateway',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.searchIssues, arguments: { text: 'outage' } },
-  allow('jira-call-read'), { covers: ['virtual_server_narrowing', 'search_results'] });
-decision('srv-vs-search-result-outside-link', 'Server, result filtering: issue DEF-9 returned by the search is outside the link and is dropped.', 'server',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.searchIssues, arguments: { text: 'outage' },
-    resource: issue('DEF-9', 'DEF', 'Software') },
-  deny('vs-narrow-jira-issue'), { covers: ['virtual_server_narrowing', 'search_results', 'forbid_overrides_permit'] });
-decision('srv-vs-search-result-inside-link', 'Server, result filtering: issue ABC-7 is kept.', 'server',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.searchIssues, arguments: { text: 'outage' },
-    resource: issue('ABC-7', 'ABC', 'Software') },
-  allow('jira-read'), { covers: ['virtual_server_narrowing', 'search_results'] });
+decision('gw-search-without-project-passes-gateway', 'Search without project keys passes the gateway (nothing to compare); the server must limit the query and filter results (CC-036).', 'gateway',
+  { caller: users.writer2(), tool: tools.searchIssues, arguments: { text: 'outage' } },
+  allow('jira-call-read'), { covers: ['search_results'] });
 decision('srv-gitlab-update-in-scope', 'Server: GitLab project in group team-a.', 'server', {
   caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/app' },
   resource: { type: 'GitLab::Project', id: 'team-a/app', attrs: { path: 'team-a/app' }, parent: { type: 'GitLab::Group', id: 'team-a', attrs: { path: 'team-a' } } },
@@ -428,38 +384,10 @@ const gitlabProject = (projectPath) => {
 
 decision('gw-confluence-read-allowed', 'Confluence reader calls a READ_ONLY Confluence tool.', 'gateway',
   { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'OPS' } }, allow('confluence-call-read'));
-decision('gw-vs-narrows-confluence-space', 'Link limited to space ENG; tool names space OPS.', 'gateway',
-  { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.searchSpace, arguments: { spaceKey: 'OPS' } },
-  deny('vs-narrow-call-confluence-space'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
-decision('gw-vs-narrows-servicedesk-queue', 'Link limited to queue 42; tool names queue 7.', 'gateway',
-  { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.listQueueTickets, arguments: { queueId: 7 } },
-  deny('vs-narrow-call-servicedesk-queue'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
 decision('srv-confluence-read-allowed', 'Server: page in a normal space.', 'server',
   { caller: users.confluenceReader(), tool: tools.getPage, arguments: { pageId: '1001' }, resource: page('1001', 'ENG') }, allow('confluence-read'));
-decision('srv-vs-narrows-confluence-page', 'Server: page in OPS through a link limited to ENG.', 'server',
-  { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.getPage, arguments: { pageId: '2002' },
-    resource: page('2002', 'OPS') },
-  deny('vs-narrow-confluence-page'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
 decision('srv-servicedesk-read-allowed', 'Server: ticket in queue 42.', 'server',
   { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-read'));
-decision('srv-vs-narrows-servicedesk-ticket', 'Server: ticket in queue 7 through a link limited to queue 42.', 'server',
-  { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.getTicket, arguments: { ticketId: 777 },
-    resource: ticket('777', '7'), credentialType: 'user-secret' },
-  deny('vs-narrow-servicedesk-ticket'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
-decision('srv-vs-narrows-gitlab-project', 'Server: project of team-b through a link limited to group team-a.', 'server',
-  { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: { projectPath: 'team-b/app' },
-    resource: gitlabProject('team-b/app') },
-  deny('vs-narrow-gitlab-project'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
-decision('srv-vs-inside-gitlab-group', 'Server: project of team-a through the same link.', 'server',
-  { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: { projectPath: 'team-a/app' },
-    resource: gitlabProject('team-a/app') },
-  allow('gitlab-read'), { covers: ['virtual_server_narrowing'] });
-decision('srv-vs-narrows-opensearch-index', 'Server: index of another team through a link limited to prefix logs-team-a.', 'server',
-  { ...viaVs(caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-logs-team-a', 'mcp-opensearch-idx-logs-team-b']),
-    vs('team-a-logs', { 'OpenSearch::Index': ['logs-team-a'] })), tool: tools.searchIndex, arguments: { index: 'logs-team-b-2026.10' },
-    resource: { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } } },
-  deny('vs-narrow-opensearch-index'), { covers: ['virtual_server_narrowing', 'forbid_overrides_permit'] });
-
 // Write groups of Confluence, service desk and OpenSearch, and update on a Confluence space (CC-148).
 decision('gw-confluence-update-allowed', 'Confluence writer calls an UPDATE tool.', 'gateway',
   { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '1001' } }, allow('confluence-call-update'));
@@ -517,53 +445,47 @@ const resultFilter = (name, description, input, items, kept, queryConstraints) =
   write('result-filter', name, { description, staticEntities: STATIC_PATH, policies: 'cedar/examples', input, items,
     expected: { kept, queryConstraints } });
 
-resultFilter('jira-search-through-link',
-  'Search through a link limited to ABC: the server limits the JQL to the intersection and drops every returned issue outside the link, Restricted ones and ones it cannot evaluate.',
-  { ...viaVs(users.writer2(), vs('team-a-dev', { 'Jira::Project': ['ABC'] })), tool: tools.searchIssues, arguments: { text: 'outage' } },
+resultFilter('jira-search-granted-projects',
+  'Jira search: the server drops every returned issue that is Restricted or that it cannot evaluate (no category on its project); issues of granted projects are kept.',
+  { caller: users.writer2(), tool: tools.searchIssues, arguments: { text: 'outage' } },
   [issue('ABC-7', 'ABC', 'Software'), issue('DEF-9', 'DEF', 'Software'), issue('HR-1', 'HR', 'Restricted'),
     { type: 'Jira::Issue', id: 'ABC-8', attrs: { key: 'ABC-8' } }],
-  ['ABC-7'],
-  { 'Jira::Project': { virtualServer: ['ABC'], virtualServerType: 'Jira::Project', granted: ['ABC', 'DEF'] } });
-resultFilter('opensearch-search-without-link',
+  ['ABC-7', 'DEF-9'],
+  { 'Jira::Project': { granted: ['ABC', 'DEF'] } });
+resultFilter('opensearch-search-granted-prefixes',
   'OpenSearch search: the index pattern is limited to granted prefixes, and results from other indices are dropped.',
   { caller: users.osReader(), tool: tools.searchIndex, arguments: {} },
   [{ type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } },
     { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } },
     { type: 'OpenSearch::Index', id: 'logs-team-ab', attrs: { name: 'logs-team-ab', tags: [] } }],
   ['logs-team-a-2026.10'],
-  { 'OpenSearch::Index': { virtualServer: null, virtualServerType: 'OpenSearch::Index', granted: ['logs-team-a'] } });
-resultFilter('gitlab-projects-through-link',
-  'GitLab project list through a link limited to group team-a: subgroup projects are kept, other groups and team-ab are dropped.',
-  { ...viaVs(users.gitlabReader(), vs('team-a-code', { 'GitLab::Group': ['team-a'] })), tool: tools.getProject, arguments: {} },
-  [projectIn('team-a/app'), projectIn('team-a/sub/svc'), projectIn('team-b/app'), projectIn('team-ab/app')],
-  ['team-a/app', 'team-a/sub/svc'],
-  { 'GitLab::Group': { virtualServer: ['team-a'], virtualServerType: 'GitLab::Group', granted: [] } });
+  { 'OpenSearch::Index': { granted: ['logs-team-a'] } });
 resultFilter('gitlab-projects-in-restricted-subtree',
   'GitLab project list: projects below a restricted group are dropped at any depth (CC-129), the others are kept.',
   { caller: users.gitlabReader(), tool: tools.getProject, arguments: {} },
   [gitlabProjectWith('team-a/app', 'team-a', { 'team-a': [] }), gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: ['restricted'], 'hr/payroll': [] }),
     gitlabProjectWith('hr/app', 'hr', { hr: ['restricted'] })],
   ['team-a/app'],
-  { 'GitLab::Group': { virtualServer: null, virtualServerType: 'GitLab::Group', granted: [] } });
-resultFilter('confluence-pages-through-link',
-  'Confluence page search through a link limited to space ENG: the page query is narrowed by space; pages of OPS and of a restricted space are dropped.',
-  { ...viaVs(users.confluenceReader(), vs('eng-docs', { 'Confluence::Space': ['ENG'] })), tool: tools.getPage, arguments: {} },
+  { 'GitLab::Group': { granted: [] } });
+resultFilter('confluence-pages-restricted-space-dropped',
+  'Confluence page search: reads are not limited by the grant of a space, so pages of ENG and OPS are kept and the page of a restricted space is dropped.',
+  { caller: users.confluenceReader(), tool: tools.getPage, arguments: {} },
   [page('1001', 'ENG'), page('2002', 'OPS'), page('3003', 'ENG', ['restricted'])],
-  ['1001'],
-  { 'Confluence::Page': { virtualServer: ['ENG'], virtualServerType: 'Confluence::Space', granted: [] },
-    'Confluence::Space': { virtualServer: ['ENG'], virtualServerType: 'Confluence::Space', granted: ['ENG'] } });
-resultFilter('servicedesk-tickets-through-link',
-  'Service desk ticket list through a link limited to queue 42.',
-  { ...viaVs(users.sdReader(), vs('support', { 'ServiceDesk::Queue': ['42'] })), tool: tools.getTicket, arguments: {} },
+  ['1001', '2002'],
+  { 'Confluence::Page': { granted: [] },
+    'Confluence::Space': { granted: ['ENG'] } });
+resultFilter('servicedesk-tickets-by-grant',
+  'Service desk ticket list for a user granted queue 42.',
+  { caller: users.sdReader(), tool: tools.getTicket, arguments: {} },
   [ticket('501', '42'), ticket('777', '7')],
   ['501'],
-  { 'ServiceDesk::Queue': { virtualServer: ['42'], virtualServerType: 'ServiceDesk::Queue', granted: ['42'] } });
+  { 'ServiceDesk::Queue': { granted: ['42'] } });
 resultFilter('opensearch-no-grants',
   'User with mcp-opensearch-read but no mapped index prefix: granted is empty, so the server must not query at all; any returned index is dropped.',
   { caller: caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-unmapped']), tool: tools.searchIndex, arguments: {} },
   [{ type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } }],
   [],
-  { 'OpenSearch::Index': { virtualServer: null, virtualServerType: 'OpenSearch::Index', granted: [] } });
+  { 'OpenSearch::Index': { granted: [] } });
 
 // ---------- every value of every resourceRef (CC-061) ----------
 outDir('resource-checks');
@@ -586,7 +508,7 @@ resultFilter('jira-project-without-category', 'An element whose project the reso
   { caller: users.reader(), tool: tools.searchIssues, arguments: {} },
   [issue('ABC-7', 'ABC', 'Software'), { type: 'Jira::Issue', id: 'ABC-8', attrs: { key: 'ABC-8' }, parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' } } }],
   ['ABC-7'],
-  { 'Jira::Project': { virtualServer: null, virtualServerType: 'Jira::Project', granted: [] } });
+  { 'Jira::Project': { granted: [] } });
 decision('srv-transfer-target-outside-scope', 'Server, transfer_project: the target group team-b is evaluated on its own and denied (CC-061).', 'server',
   { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' }, resource: group('team-b') },
   deny(), { covers: ['scope_hierarchy', 'every_resource_ref'] });

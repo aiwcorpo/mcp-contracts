@@ -1,0 +1,16 @@
+{
+  "description": "A narrower filter is a different filter too.",
+  "kind": "session",
+  "input": {
+    "initializeQuery": "systems=jira",
+    "requestQuery": "systems=jira&access=read"
+  },
+  "expected": {
+    "match": false,
+    "response": {
+      "status": 404,
+      "body": "as for an unknown session"
+    },
+    "auditReason": "filter_mismatch"
+  }
+}

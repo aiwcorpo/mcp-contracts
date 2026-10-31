@@ -1,5 +1,5 @@
 {
-  "description": "Gateway, allowed tool call through a virtual server.",
+  "description": "Gateway, allowed tool call on an endpoint with a filter (CC-174).",
   "expected": {
     "valid": true
   },
@@ -12,7 +12,7 @@
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "username": "jkowalski",
     "client": "claude-code",
-    "virtualServer": "team-a-dev",
+    "filter": "systems=jira&access=read",
     "clientRequestId": "client-req-17",
     "server": "mcp-jira",
     "tool": "get_issue",

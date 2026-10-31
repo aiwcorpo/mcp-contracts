@@ -2,7 +2,7 @@
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
 schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **4.1.0** (po 4.0.1; 4.0.0 było majorem z pakietem kontraktowym M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
+generują z tego klientów, mocki i testy kontraktowe. Wersja **5.0.0** (major M5: jeden adres `/mcp` z filtrem w query zamiast zapisanych linków, CC-169 ... CC-177; po 4.1.0 i 4.0.1; 4.0.0 było majorem z pakietem kontraktowym M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
 zostało wydane osobno); zmiany w
 [`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
 startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
@@ -10,7 +10,7 @@ startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
 wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-067 w 2.0.0,
-CC-068 ... CC-077 w 2.1.0, CC-035 odrzucone.
+CC-068 ... CC-077 w 2.1.0, CC-035 odrzucone; CC-169 ... CC-177 w 5.0.0.
 
 ## Co jest gdzie
 
@@ -19,6 +19,7 @@ CC-068 ... CC-077 w 2.1.0, CC-035 odrzucone.
 | C2 wewnętrzny JWT | `schemas/internal-jwt.schema.json`, wektory `test-vectors/jwt/` |
 | C4 Credential Broker | `openapi/credential-broker.v1.yaml`, zdarzenie C4.3 `schemas/credential-invalidated-event.schema.json` |
 | C5 Gateway admin | `openapi/gateway-admin.v1.yaml` |
+| Adres `/mcp` i filtr (C1, C5) | sekcja "Jeden adres do całej platformy", `scripts/lib/endpoint-filter.mjs`, `java/mcp-manifest` (`EndpointFilter`), `test-vectors/endpoint-filter/`, `test-vectors/endpoint-aggregate/` |
 | C6 manifest serwera | `schemas/server-manifest.schema.json`, wektory `test-vectors/manifests/`, `test-vectors/definition-hash/` |
 | C7 paczka polityk | `schemas/policy-bundle-manifest.schema.json`, `schemas/policy-bundle-latest.schema.json`, wektory `test-vectors/bundles/` |
 | C7 model Cedar | `cedar/mcp.cedarschema`, `cedar/examples/*.cedar`, `cedar/entity-builder.md` |
@@ -47,6 +48,7 @@ mcp-contracts/
 │   ├── servicedesk-service-account/  # reguła kolejek konta serwisowego (CC-076)
 │   ├── credential-type-header/  # typ poświadczenia: nagłówek a konfiguracja serwera (CC-166)
 │   ├── query-rendering/     # zapytania serwera ze struktury (CC-160)
+│   ├── endpoint-filter/  endpoint-aggregate/  mcp-endpoint/  # filtr w query /mcp, lista i routing, odpowiedź BFF (CC-169 ... CC-176)
 │   ├── entity-builder/      # wejście buildera -> encje i kontekst Cedar
 │   └── policy-decisions/    # żądanie Cedar -> decyzja i polityki rozstrzygające
 ├── mocks/wiremock/          # stuby C4 i C5 (generowane)
@@ -54,7 +56,7 @@ mcp-contracts/
 ├── java/mcp-contracts/      # moduł Maven: jar z zasobami + jar test-vectors (pom, bez kodu)
 ├── java/mcp-cedar-entities/ # moduł Maven: entity builder + testy JUnit (Cedar, wektory decyzji, filtr wyników)
 ├── java/mcp-policy-bundle/  # moduł Maven: odbiorca paczek polityk, PolicyStore, lint + testy na wektorach paczek
-├── java/mcp-manifest/       # moduł Maven: RFC 8785, definitionHash, reguły manifestu + testy na wektorach
+├── java/mcp-manifest/       # moduł Maven: RFC 8785, definitionHash, reguły manifestu, EndpointFilter + testy na wektorach
 ├── spectral-functions/      # reguła Spectral dla x-allowed-client-cn
 ├── scripts/                 # generatory i verify-all.sh
 └── test/                    # testy Node (lint, schematy, wektory, mocki)
@@ -74,9 +76,11 @@ Od 2.0.0 obowiązuje ścisły SemVer według tabeli powyżej. Wydania 1.1.0 i 1.
 oznaczone jako minor; broker (ws-06), BFF (ws-07) i frontend (ws-08) zależą od 1.1.0, więc pełna lista zmian
 niezgodnych względem 1.1.0 i ich wpływ na konsumentów są w `CHANGELOG.md` przy 2.0.0.
 
-Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defaults_unsupported`) jest zaostrzeniem
+Wyjątek w 2.2.0/2.2.1: CC-085 (`resourceDefaults` uśpione, `400 resource_defaults_unsupported`; od 5.0.0 pole nie istnieje, CC-173) jest zaostrzeniem
 walidacji wydanym jako minor na decyzję człowieka (brak konsumentów); w 2.2.1 usunięto odpowiedź `400
 expires_at_invalid` dodaną w 2.2.0 (CC-084, brak konsumentów). Szczegóły w `CHANGELOG.md`.
+
+5.0.0 jest majorem zgodnym z tabelą: usunięte operacje, pola i wartości enum (CC-173 ... CC-175, CC-177), nowe bajty schematu Cedar (SHA-256 `51d71b2dbb7f61fd2593cf4c2f1a2373dea06e8b4431425a3f1aa24fa10a0ba5`, poprzednio `902b2540...`), zmienione oczekiwania wektorów. Migracja per komponent: `CHANGELOG.md` ("5.0.0").
 
 Wyjątek: w 4.1.0 podłoga ryzyka liczy także wpis oczekujący (CC-167): `PUT` z niższym ryzykiem niż zgłoszone wcześniej, nawet tylko jako oczekujące, przechodził w 4.0.x, a teraz to narzędzie czeka na administratora (`pending_approval`, `riskLowered`, ukryte);
 według tej tabeli to zaostrzenie walidacji, czyli major. Wydane jako minor na decyzję człowieka (2026-10-29), jak 4.0.1, bo jest to doprecyzowanie reguły z 4.0.0 ("obniżenie `risk` zawsze 422"),
@@ -112,13 +116,13 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:4.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:4.1.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:4.1.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:4.1.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:4.1.0` (jar + javadoc) | `definitionHash` (RFC 8785) i reguły manifestu C6 | starter (generowanie), gateway (rejestracja) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:4.1.0` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-4.1.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-4.1.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:5.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:5.0.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:5.0.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:5.0.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:5.0.0` (jar + javadoc) | `definitionHash` (RFC 8785), reguły manifestu C6 i `EndpointFilter` (filtr w query `/mcp`, CC-170) | starter (generowanie), gateway (rejestracja, filtr), BFF (filtr) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:5.0.0` (pom) | rodzic modułów | instalowany razem z nimi |
+| `release/aiwcorpo-mcp-contracts-5.0.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-5.0.0.tgz` |
 
 W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
 załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
@@ -127,8 +131,8 @@ przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private":
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/4.1.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-4.1.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/5.0.0/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-5.0.0.tgz
 ```
 
 ```xml
@@ -158,7 +162,7 @@ obiekty cedar-java, które cedar-java trzyma jako mutowalne (nie modyfikuj ich).
 mapowanie zakresów i jest bezpieczny wątkowo; po załadowaniu nowej paczki tworzy się nowy builder.
 
 **Zgodność API (CC-039):** publiczne rekordy (`Caller`, `ToolDescriptor`, `ResourceRef`,
-`VirtualServerScope`, `ResolvedResource`, `CedarRequest`, `QueryConstraint`) i typy cedar-java w sygnaturach
+`ResolvedResource`, `CedarRequest`, `QueryConstraint`; od 5.0.0 bez `VirtualServerScope`, bez `Caller.withVirtualServer` i bez pól `virtualServer` w `QueryConstraint`, CC-173) i typy cedar-java w sygnaturach
 są częścią API. Dodanie składnika rekordu albo przejście na nową wersję major cedar-java to nowa wersja major
 biblioteki.
 
@@ -179,8 +183,7 @@ i Windows x86_64; nie ma wersji dla musl, więc obrazy Alpine nie zadziałają (
 ```java
 EntityBuilder builder = new EntityBuilder(loadedBundle.scopeMapping());   // mapowanie z entities/static.json
 Caller caller = Caller.of(claims.sub(), claims.usr(), claims.grp(), claims.azp())
-        .withMfaAge(120)
-        .withVirtualServer(VirtualServerScope.fromClaims(claims.vs(), claims.vsc())); // tylko gdy są vs i vsc
+        .withMfaAge(120);
 ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read",
         List.of(new ResourceRef("issueKey", "Jira::Issue")));
 
@@ -201,8 +204,7 @@ item -> resolvedResourceOf(item))` zostawia tylko elementy dozwolone przez polit
 także przy błędzie oceny).
 
 `EntityBuilderException` (kod `INVALID_ARGUMENT` albo `INTERNAL_ERROR`, `wireCode()` = kod C10) oznacza
-odmowę wywołania. Gateway tworzy claim `vsc` przez
-`VirtualServerScope.fromResourceDefaults(slug, resourceDefaults).vsScopes()`. `McpCedarSchema.schema()` daje
+odmowę wywołania. `McpCedarSchema.schema()` daje
 schemat tej wersji kontraktów; do oceny polityk używaj schematu z załadowanej paczki.
 
 ## mcp-policy-bundle (odbiorca paczek polityk)
@@ -232,8 +234,7 @@ Kolejność kontroli: `latest.json` (CC-026), klucz (identyfikator `test-*` i op
 tylko z `allowTestKeys`, CC-044; identyfikator `dev-*` tylko w trybie dev, czyli z `allowTestKeys` i `withDevstackProfile(true)`, CC-137), podpis Ed25519, archiwum (`TarReader`: prefiks ustar, sumy kontrolne, tylko pliki zwykłe i katalogi, bez nazw
 absolutnych, `.`/`..` i duplikatów, limity 1000 wpisów, 4 MiB na plik, 16 MiB razem), `manifest.json` i zgodność
 rewizji, zawartość (overrides: tylko `manifest.json` i `policies/**`, CC-028), rewizja ściśle wyższa w ramach
-kanału, polityki (bez szablonów, bez `permit` w overrides, `vsScopes` i `virtualServer` tylko w `forbid`, CC-041,
-CC-058), schemat bajtowo równy `cedar/mcp.cedarschema` (`schema_mismatch`, CC-059), walidacja strict (overrides
+kanału, polityki (bez szablonów, bez `permit` w overrides; od 5.0.0 bez lintu `vsScopes` i `virtualServer`, bo tych pól nie ma w schemacie, CC-173), schemat bajtowo równy `cedar/mcp.cedarschema` (`schema_mismatch`, CC-059), walidacja strict (overrides
 schematem paczki głównej, CC-040), `static.json` wyłącznie encje `UserGroup` i mapowanie zakresów (CC-037, CC-059).
 
 Rozmiar archiwum przed dekompresją nie jest sprawdzany przez moduł: komponent ogranicza pobieranie (np. do
@@ -261,8 +262,8 @@ archiwum; rewizja minimalna z konfiguracji obowiązuje zawsze; brak lub uszkodzo
 audytu i działa według minimum.
 
 Lint dla potoku ws-09: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides]
-policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd). Sprawdza, że `context.vsScopes` i
-`context.virtualServer` występują tylko w `forbid` (CC-041, CC-058).
+policies/` (kod wyjścia 0 = czysto, 1 = naruszenia, 2 = błąd). Zgłasza szablony, a z `--overrides` każdy `permit`. Od 5.0.0 nie sprawdza już `context.vsScopes`
+i `context.virtualServer` (CC-173): polityka, która czyta je bez ochrony `has`, nie przechodzi walidacji schematu w odbiorcy.
 
 ## Port IGA (C13)
 
@@ -304,9 +305,9 @@ i bajty schematu).
 Identyfikatory każdego typu zasobu mają wzorzec zgodny z dokumentacją systemu (CC-056, tabela w
 `cedar/entity-builder.md` sekcja 9, `schemas/common.schema.json` `ResourceIdPatterns`, w Javie `ResourceIds`).
 Nazwy indeksów OpenSearch zaczynają się od litery lub cyfry, więc indeksy ukryte i systemowe (`.security`, `.ds-*`) nie
-przechodzą (CC-074). Niepasujące identyfikatory są odrzucane w `resourceDefaults`, `vsc`, argumentach narzędzi, zasobach z resolvera
+przechodzą (CC-074). Niepasujące identyfikatory są odrzucane w argumentach narzędzi, zasobach z resolvera
 i mapowaniu zakresów. Walidatory JSON Schema w Javie często dopasowują wzorzec przez `Matcher.find()`, przy którym
-`$` przepuszcza końcowe `\n` (`"ABC\n"`); gateway (ws-05) przy zapisie `ResourceDefaults` i odbiorcy `vsc` wołają
+`$` przepuszcza końcowe `\n` (`"ABC\n"`); komponenty, które walidują identyfikatory samym schematem JSON, wołają
 dodatkowo `ResourceIds.isValid`, które dopasowuje całość. Serwer mimo to cytuje identyfikatory w JQL/CQL i buduje wzorce OpenSearch w postaci
 `p,p-*`.
 
@@ -458,7 +459,7 @@ Portal i gateway mają jeden publiczny origin za reverse proxy:
 | --- | --- |
 | `/` | aplikacja web (fallback tras SPA na `index.html`) |
 | `/api` | BFF (także callback OIDC BFF: `redirect_uri` pod `/api`) |
-| `/s/`, `/v/` | gateway (MCP) |
+| `/mcp`, `/s/` | gateway (MCP); `/v/` zostało usunięte, gateway odpowiada na nie `404` (CC-177) |
 | `/.well-known/oauth-protected-resource*` | gateway (RFC 9728, wariant ze ścieżką leży w korzeniu domeny) |
 
 Zasady: adres publiczny (`url`, `clientConfigs`, `resource_metadata`) pochodzi z konfiguracji `publicBaseUrl`, nigdy z
@@ -468,19 +469,55 @@ nagłówek `Cookie` na trasach gateway'a, a gateway nie przekazuje `Cookie` dale
 `X-MCP-*`, `X-PAT-*`, `Authorization`, `X-Request-Id` dochodzi `Cookie`). Odpowiedzi gateway'a dla klientów MCP to
 wyłącznie `application/json` i `text/event-stream`, także dla błędów (404, 405, 406, 5xx) i niezależnie od
 `Accept`: gateway nigdy nie odpowiada `text/html` na trasach publicznych. Proxy dokłada na **każdej** trasie gateway'a
-(`/s/`, `/v/`, `/.well-known/oauth-protected-resource*`) `X-Content-Type-Options: nosniff` i `Content-Security-Policy:
+(`/mcp`, `/s/`, `/.well-known/oauth-protected-resource*`) `X-Content-Type-Options: nosniff` i `Content-Security-Policy:
 default-src 'none'; sandbox`, na każdej odpowiedzi, także 4xx/5xx z upstreamu i własnych stronach błędów (nginx:
 `add_header ... always`). Odpowiedzi tych tras nie niosą `Set-Cookie` (proxy go usuwa), BFF nie wysyła nagłówków CORS
 (ten sam origin), a proxy przekazuje znormalizowaną ścieżkę i nie wystawia przez trasy publiczne ani `/admin/v1/*`,
 ani JWKS gateway'a (osobny listener; `/s/../admin/v1/...` i `%2e%2e` dają 404). Proxy nie nadpisuje `X-Request-Id`
-z BFF. Angular Router nie definiuje tras zaczynających się od `/api`, `/s/`, `/v/`, `/.well-known/`.
+z BFF. Angular Router nie definiuje tras zaczynających się od `/api`, `/mcp`, `/s/`, `/v/`, `/.well-known/`. `/f/` nie jest zarezerwowane (CC-171).
 
-## Zawężenie zasobów jest uśpione (CC-085)
+## Jeden adres do całej platformy (CC-169 ... CC-177)
 
-Kreator linków nie zawęża zasobów. `resourceDefaults` zostaje w schematach, ale gateway (C5) i BFF (C12) odpowiadają
-`400 resource_defaults_unsupported` dla niepustej wartości; brak pola lub `{}` jest przyjęte, a odpowiedzi nigdy go
-nie zawierają. Kolejność kontroli: najpierw obecność niepustego obiektu (`resource_defaults_unsupported`), dopiero
-potem jego zawartość; wartość, która nie jest obiektem, to `400 invalid_request`. Mechanika `vsc` (C2), `context.vsScopes` (Cedar) i wektory na niej oparte są bez zmian.
+Od 5.0.0 nie ma zapisanych linków (`/v/<slug>/mcp`), tabeli `virtual_servers`, API linków (C5 i C12), limitu `MCP_VIRTUAL_SERVERS_MAX_PER_USER`, claimów `vs` i `vsc`, `context.virtualServer` i `context.vsScopes` w Cedar, pola `resourceDefaults`
+ani zdarzenia `virtual_server_change`. Zawężanie zasobów w adresie nie istnieje; gdyby wróciło, wróci jako nowy CC z nowym claimem (np. `rsc`), nie ze starego `vsc` (CC-173).
+
+**Adresy.** `<publicBaseUrl>/mcp` zwraca w `tools/list` wszystkie narzędzia, które użytkownik może teraz wywołać, ze wszystkich systemów: część wspólną zatwierdzonych, włączonych, obsługiwanych przez serwer i zgodnych z zatwierdzoną
+definicją narzędzi z decyzją Cedar dla bieżącego tokenu (lista jest liczona przy każdym `tools/list`, nie zapisana; niezmiennik 5 bez zmian). Nazwy to `<system>__<narzędzie>`, a `tools/call` gateway kieruje po prefiksie do `mcp-<system>`; nie ma routera opartego na modelu.
+`<publicBaseUrl>/s/<serverId>/mcp` zostaje (jeden system; `systems` w filtrze musi być tam puste albo równe systemowi trasy, inaczej `400`). System bez połączenia konta ma narzędzia widoczne, a wywołanie daje `credential_required` z `connectUrl`;
+serwer niedostępny albo z niezgodną definicją jest pomijany na liście (`upstream_unavailable` albo `tool_disabled` przy wywołaniu), a uszkodzona lista jednego serwera nie unieważnia pozostałych. Kolejność listy jest stała: system według `ServerId`, w systemie nazwa narzędzia (bajtowo).
+`initialize` zwraca ten sam `serverInfo` dla każdej postaci adresu. `/v/` odpowiada `404 not_found_or_denied` bez zdarzenia audytu, bez względu na token; kod przejściowy ani okres deprecjacji nie istnieją (CC-177). Wektory: `test-vectors/endpoint-aggregate/`.
+
+**Filtr w query (CC-170).** `systems=` (id systemu bez `mcp-`), `tools=` (`<system>__<narzędzie>`), `access=read|write`, `exclude=` (wpis z `__` to narzędzie, inny to system). Wynik widoczny dla modelu to zbiór z `/mcp` przecięty z filtrem:
+`systems` AND `tools` AND `access` AND NOT `exclude`; `tools` zawęża i niczego nie dodaje. `access=read` to narzędzia o ryzyku zatwierdzonego wpisu `READ_ONLY`, `access=write` to `UPDATE` i `DESTRUCTIVE` (zbiory rozłączne; brak parametru to oba).
+Filtr działa na `risk` z rejestru, nie na `action` z manifestu serwera. Postać kanoniczna: parametry w kolejności `systems`, `tools`, `access`, `exclude`, wartości małymi literami, posortowane bajtowo, bez duplikatów, przecinek niekodowany, np. `systems=gitlab,jira&access=read`.
+Wielkość liter w nazwach i wartościach nie ma znaczenia przy odczycie. `400` (`{"error":"invalid_request","reason":"invalid_filter"}`, schemat `EndpointFilterError`, bez `WWW-Authenticate`) dają: nieznany parametr (literówka `system=` nie może po cichu zdjąć filtra), parametr powtórzony, pusta wartość lub pusty wpis, `%` w query
+(także zakodowany przecinek `%2c`), znak spoza `[A-Za-z0-9_,=&]`, wpis niezgodny ze składnią, `access` inne niż `read` i `write`, więcej niż 5 wpisów `systems`, 100 `tools` albo 100 `exclude` (po usunięciu duplikatów) oraz query dłuższe niż 512 bajtów.
+Najpierw sprawdzany jest token (bez ważnego tokenu odpowiedź to `401` z wyzwaniem, także przy złym filtrze), potem filtr. Wpis składniowo poprawny, ale nieistniejący, bez uprawnień, wyłączony, oczekujący na zatwierdzenie albo z pominiętego serwera jest pomijany tak samo jak narzędzie bez dostępu (niezmiennik 8):
+bez `400` i bez różnicy w odpowiedzi. Pusta część wspólna to `initialize` bez błędu i `{"tools": []}`. `tools/call` na narzędzie spoza wyniku to `not_found_or_denied`; audyt ma `reason: filter_scope`, gdy użytkownik ma prawo do narzędzia, a odcina je filtr, w pozostałych przypadkach powody dotychczasowe (`not_granted` itd.).
+Filtr tylko zawęża: nigdy nie przyznaje, klient może go pominąć albo zmienić, więc nie jest granicą bezpieczeństwa. Referencja: `scripts/lib/endpoint-filter.mjs`, klasa Java `pl.aiwcorpo.mcp.manifest.EndpointFilter` (moduł `mcp-manifest`), wektory `test-vectors/endpoint-filter/`.
+
+**OAuth (CC-171, wariant V2).** Identyfikator zasobu to `<publicBaseUrl>/mcp` bez query; `WWW-Authenticate: Bearer resource_metadata="<publicBaseUrl>/.well-known/oauth-protected-resource/mcp"` też bez query, a filtr jest tylko w adresie żądania MCP. Dokument metadanych ma `resource: <publicBaseUrl>/mcp`;
+zapytanie o metadane z query dostaje ten sam dokument. `aud` tokenu pozostaje `mcp-gateway`, a gateway nie porównuje `aud` z adresem. Podstawa: test z 2026-10-31: Keycloak 26.8.1 odrzuca `resource` z query, a Claude Code z V2 zalogował się, odświeżył token po 27 minutach i zachował filtr.
+**Przyjęte ryzyko:** V2 potwierdzone tylko dla Claude Code. Klient, który odrzuca `resource` bez query albo nie zachowuje query przy odświeżeniu tokenu, nie zadziała z filtrem do czasu dodania trasy `/f/` (nowy CC); `/mcp` bez filtra zadziała z każdym klientem zgodnym z RFC 9728.
+
+**Sesja (CC-172).** Gdy protokół ma sesję (`Mcp-Session-Id`), znormalizowany filtr z `initialize` jest zapisany przy sesji, a każde następne żądanie sesji (także `GET` strumienia i `DELETE`) musi mieć ten sam znormalizowany filtr; inny filtr, jego dodanie albo brak
+to `404` jak dla nieznanej sesji (nie zdradza, że sesja istnieje), zdarzenie `policy_decision` deny z `reason: filter_mismatch`. Sesja nie przechodzi między użytkownikami ani trasami. Bez sesji (MCP 2026-07-28, CC-070) filtr obowiązuje per żądanie. Przy HA wiązanie leży w Redisie razem z sesjami.
+
+**Audyt i aktywność (CC-174).** Zdarzenia gateway'a `tool_call`, `policy_decision`, `confirmation` i `credential_resolve` mają opcjonalne pole `filter` (postać kanoniczna, najwyżej 512 znaków, tylko gdy żądanie miało filtr); `authentication`, serwery i broker go nie mają
+(korelacja po `requestId`). Pole `virtualServer` zniknęło z C8 i C12. Powody: `filter_scope` (zastępuje `link_scope`; reguła SIEM na starą nazwę przestanie pasować), `invalid_filter` (`policy_decision`, wynik `error`, bez pola `filter`), `filter_mismatch`.
+Wiersz aktywności ma `filter` zamiast nazwy linku i wynik `denied_filter_scope` (grupa `denied`).
+
+**Kreator w portalu (CC-175).** Nic nie jest zapisywane. `GET /api/v1/me/mcp-endpoint?systems=&tools=&access=&exclude=` (C12) zwraca znormalizowany adres, `clientConfigs` zbudowane z `publicBaseUrl` (nigdy z żądania) i `toolCount`: liczbę narzędzi z katalogu użytkownika (`granted`, nie `disabled`), które filtr zostawia.
+`toolCount` służy do ostrzeżenia o rozmiarze listy; `tools/list` gatewaya jest rozstrzygający. Zły filtr to `400 invalid_request` z `reason: invalid_filter`. Adres w poleceniu `claude mcp add` jest w cudzysłowie, bo zawiera `&`. Wektory: `test-vectors/mcp-endpoint/`.
+`POST /admin/v1/users/{sub}/purge` gatewaya zostaje (oczekujące potwierdzenia, ślady kodów, sesje MCP w Redisie, cache poświadczeń); traci tylko część "linki".
+
+**Powiadomienia (CC-176).** Gateway deklaruje `capabilities.tools.listChanged: true` i wysyła puste `notifications/tools/list_changed` do otwartych strumieni sesji (GET SSE; w wariancie bezstanowym przez `subscriptions/listen`), gdy zmienia się wynik `tools/list` tej sesji (po filtrze):
+zatwierdzenie, wyłączenie, włączenie, zmiana definicji albo usunięcie narzędzia w rejestrze, zmiana grup użytkownika albo `policyRevision` (wykrywana przy odświeżeniu tokenu albo żądaniu), wejście lub wyjście serwera ze stanu "pomijany". **Zmiana połączenia konta nie jest wyzwalaczem** (lista się nie zmienia, zmienia się wynik wywołania).
+Najwyżej jedno powiadomienie na sesję na sekundę, bez audytu; przy HA zdarzenia idą wspólnym kanałem między instancjami. Wektory: `endpoint-aggregate/list-changed-*`.
+
+**Rozmiar listy i zasięg prompt injection.** Pięć systemów to kilkadziesiąt narzędzi, dwadzieścia systemów kilkaset; opisy narzędzi zużywają kontekst modelu i pogarszają wybór, więc powyżej progu, który wyznaczy pomiar M5, zalecany jest filtr `systems=` i `access=read`.
+Jedna sesja sięga do wszystkich systemów użytkownika, więc tekst z jednego systemu (np. strona Confluence z wstrzykniętym poleceniem) może skłonić model do zapisu w innym. Uprawnienia się nie zmieniają (per użytkownik, DESTRUCTIVE z kodem TOTP, `UntrustedText`), ale zasięg rośnie;
+filtr ogranicza zasięg, nie jest granicą bezpieczeństwa.
 
 ## Zapis tokenu (CC-090)
 
@@ -502,9 +539,7 @@ dacie (CC-084).
   `/admin/v1`, nie w handshake TLS (dotyczy też brokera i startera).
 - **Metryki (CC-108):** `/actuator/prometheus` czyta scraper z certyfikatem clientAuth z CA wewnętrznego i CN `mcp-prometheus`
   (lista CN w konfiguracji komponentu; certyfikat z `gen-certs.sh` w ws-01).
-- **Audyt zmian linków (CC-107):** `admin_change` z `reason` ze słownika `vs_created`, `vs_deleted`, `slug_taken`,
-  `not_granted`, `invalid_request`, `virtual_server_limit`, `not_found_or_denied` (opis pola `reason` w C8). Lista narzędzi
-  linku wymaga nowego pola w schemacie C8 i jest w grupie A (poza 2.2.4).
+- **Audyt zmian linków (CC-107):** historyczne; zdarzenie `virtual_server_change` i jego powody zniknęły w 5.0.0 razem z linkami (CC-174).
 - **Wygasanie (CC-103):** `expiring` i `expiresAt` dotyczą tylko `user-secret` z podaną datą; `user-oauth` ma
   `expiresAt: null`.
 - **Struktura wyniku (CC-112):** narzędzie z `outputSchema` zwraca `structuredContent` zgodny ze schematem; `UntrustedText`
@@ -647,15 +682,14 @@ narzędzia, którego aktualna definicja jest inna. Reguły:
 - **Offboarding to trzy niezależne, idempotentne wywołania**, w dowolnej kolejności (zalecana: najpierw IdP/IGA, żeby tokeny przestały
   się odnawiać): usunięcie grup w IdP/IGA, `POST /v1/admin/users/{sub}/purge` brokera (C4) i `POST /admin/v1/users/{sub}/purge`
   gateway'a (C5), oba z certyfikatu `mcp-offboarding`, bez tokenu. Broker usuwa połączenia i sekrety (wszystkie wersje), przepływy
-  OAuth, rejestrację Authenticatora i wiersz blokady, i publikuje `credential.invalidated`; gateway usuwa linki, oczekujące
-  potwierdzenia, sesje MCP w Redisie i cache poświadczeń. Audyt: `connection_change`/`user_purged`, `authenticator`/`authenticator_removed`,
-  `virtual_server_change`/`user_purged`.
+  OAuth, rejestrację Authenticatora i wiersz blokady, i publikuje `credential.invalidated`; gateway usuwa oczekujące
+  potwierdzenia, sesje MCP w Redisie i cache poświadczeń (do 4.x także linki). Audyt: `connection_change`/`user_purged`, `authenticator`/`authenticator_removed`.
 - **Sesje portalu** kończy back-channel logout z IdP (nie ma osobnego endpointu), a token klienta MCP wygasa najdalej po 60 minutach (C1).
   **Okno przyjęte przez człowieka (2026-10-29):** po `purge` nie blokujemy `sub`; token wydany wcześniej działa do wygaśnięcia, więc przez
   najwyżej 60 minut odchodzący może jeszcze użyć systemu, który nie wymaga jego połączenia (konto serwisowe Service Desku). `purge` powtórzony
   po wylogowaniu jest bezpieczny i zalecany (otwarty przepływ OAuth mógł utworzyć połączenie po pierwszym).
 - **Ślad w audycie:** każde wywołanie `purge` (broker i gateway) zostawia jedno zdarzenie `admin_change` z powodem `user_purged`, także gdy nic nie było
-  do usunięcia i dla nieznanego `sub` (odpowiedź `204` jest ta sama); do tego zdarzenia per połączenie i per link.
+  do usunięcia i dla nieznanego `sub` (odpowiedź `204` jest ta sama); do tego zdarzenia per połączenie.
 - **Czyszczenie nieużywanych połączeń.** Po okresie bez użycia (konfiguracja brokera, domyślnie 180 dni) broker usuwa połączenie;
   audyt `connection_change` z powodem `unused_cleanup`. Wcześniej portal oznacza je jako wygasające (bez przypomnień).
 
@@ -673,7 +707,7 @@ Wartości limitów to konfiguracja komponentu, nie kontrakt. Kontrakt mówi tylk
 - **Audyt:** `tool_call` (dla `tools/call`) albo `policy_decision` z `decision: deny`, `outcome: denied`, `errorCode: rate_limited`
   i powodem `rate_limited_user`, `rate_limited_client` albo `rate_limited_tool` (klient nie dowiaduje się, który limit, administrator tak).
   Gateway może agregować nadmiar jak przy CC-125. W `activity/calls` wiersz ma wynik `rate_limited` (grupa filtra `denied`). Wynik wiersza wynika z powodu ostatniego zdarzenia (CC-165): `rate_limited_*` -> `rate_limited`, `definition_changed` i `tool_not_served`
-  -> `tool_disabled`, `exchange_denied` -> `denied_not_granted`, a dla `tool_call` z `outcome` innym niż `ok` także `not_granted`, `link_scope`, `policy_forbid`, `step_up_required`
+  -> `tool_disabled`, `exchange_denied` -> `denied_not_granted`, a dla `tool_call` z `outcome` innym niż `ok` także `not_granted`, `filter_scope` (do 4.x `link_scope`), `policy_forbid`, `step_up_required`
   (wcześniej taki wiersz miał wynik `error`). Portal nie proponuje `request_access` na podstawie samego `result`: C10 `access_denied` nie niesie `requiredEntitlements`.
 - **Redis niedostępny:** limity w gateway'u fail-closed. Gdy licznik nie odpowiada, `tools/call` daje C10 `upstream_unavailable`, a inne żądania MCP HTTP `503` z ciałem
   `{"error":"upstream_unavailable","message":...}` (kształt C10), `Retry-After` jak w CC-124, bez `WWW-Authenticate` i bez `Set-Cookie` (CC-167); gateway nie przepuszcza ruchu bez liczenia.
@@ -902,16 +936,16 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 
 | Katalog | Liczba | Co sprawdza |
 | --- | --- | --- |
-| `jwt/` | 60 | odbiorca C2: 23 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, `vs`/`vsc`, token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
+| `jwt/` | 59 | odbiorca C2: 22 poprawne, 37 odrzuceń (podpis, `kid`, klucz testowy i `kid` z prefiksem `dev-` (CC-137), `alg`, `iss`, `aud`, `exp` ze skew, `iat`, czas życia, `jti`, wariant serwisowy, obecność i zgodność `tool`, `rid` != `X-Request-Id`, claimy `vs`/`vsc` odrzucone jako `invalid_claims` (CC-173), token IdP, metody MCP 2026-07-28, wariant serwisowy poza listą, wywołania `authenticator` brokera z `tool`) |
 | `manifests/` | 56 | manifest C6: schemat (w tym wymagane `title`), reguły semantyczne, zamknięty i ograniczony `inputSchema`, przeliczony `definitionHash` |
 | `definition-hash/` | 12 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 113 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, `virtual_server_change` |
+| `audit-events/` | 115 | zdarzenia C8, w tym zakaz argumentów, sekretów, kodów, ziarna i `otpauthUri`, znaków sterujących i bidi, odrzucone uwierzytelnienie (CC-071, CC-125), `authenticator`, pole `filter` (CC-174), usunięte `virtualServer` i `virtual_server_change` jako odrzucone |
 | `tool-errors/` | 33 | każdy kod C10 + przypadki odrzucane (dwa kształty `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
-| `bundles/` | 43 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, lint `vsScopes`, walidacja, mapowanie zakresów |
-| `return-paths/` | 31 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known` i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
-| `entity-builder/` | 48 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
-| `policy-decisions/` | 94 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie przez link |
-| `result-filter/` | 8 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
+| `bundles/` | 44 | paczki C7: podpis, klucz testowy, rollback, `overrides`, `latest.json`, bezpieczeństwo tar, usunięte `vsScopes` i `virtualServer` (CC-173), walidacja, mapowanie zakresów |
+| `return-paths/` | 35 | `returnPath` C4/C12 (CC-032), od 3.0.0 bez prefiksów `/api`, `/s`, `/v`, `/.well-known`, od 5.0.0 także `/mcp` (CC-169; `/f/` wolne) i segmentów `.`/`..` oraz średnika, który serwery czytają jak parametr ścieżki (CC-099) |
+| `entity-builder/` | 42 | wejście buildera (z mapowaniem zakresów) -> encje i kontekst Cedar |
+| `policy-decisions/` | 79 | decyzje Cedar na politykach z `cedar/examples`, w tym hierarchia zakresów i wyszukiwanie |
+| `result-filter/` | 7 | filtrowanie wyników i ograniczenie zapytania (CC-036) |
 | `resource-ids/` | 10 | wzorce identyfikatorów per system (CC-056), w tym OpenSearch bez wiodącej kropki (CC-074) |
 | `untrusted-text/` | 8 | kształt `UntrustedText` (CC-072) |
 | `confirmation-binding/` | 77 | pierwsze wywołanie i ponowienie z kodem: oczekujące wywołanie, jedna operacja `DESTRUCTIVE`, mapowanie wyniku brokera (CC-091, CC-126, CC-127) |
@@ -920,11 +954,14 @@ do testowego IdP, `POST /api/v1/auth/logout` 204. Wyłączenie:
 | `activity-calls/` | 53 | `ActivityCall` i agregacja zdarzeń jednego wywołania w wiersz (CC-095) |
 | `gateway-authentication-decision/` | 12 | wybór powodu i statusu 401/503 ze stanu kopii kluczy, `kid` i odświeżenia (CC-124) |
 | `activity-cursor/` | 9 | kursor `/activity/calls`: HMAC, związanie z `sub`, ważność 15 min (CC-095); klucz testowy, NOT FOR PRODUCTION |
-| `gateway-authentication/` | 16 | 401 z `resource_metadata`, 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
+| `gateway-authentication/` | 18 | 401 z `resource_metadata` (także dla `/mcp` z filtrem i bez query w wyzwaniu, CC-171), 503 bez `WWW-Authenticate` i z `Retry-After` (CC-124) albo 429 z `Retry-After` i ciałem `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | akcje katalogu portalu per status, w tym `request_access` bez `requiredEntitlements` i `view_request` przy oczekującym wniosku (CC-083, CC-113) |
 | `query-rendering/` | 26 | zapytania serwera ze struktury: JQL i CQL z wrogimi wartościami, wzorzec i rozwiązanie nazw indeksów OpenSearch (CC-160) |
 | `credential-type-header/` | 13 | nagłówek `X-MCP-Credential-Type` a konfiguracja serwera: zgodność, rozjazd, brak, nieznana wartość (CC-166) |
 | `servicedesk-service-account/` | 6 | kolejka konta serwisowego oceniana na wartości z systemu (CC-076) |
+| `endpoint-filter/` | 82 | filtr w query `/mcp` (CC-170, CC-172): składnia i normalizacja, trasa `/s/`, zbiór widoczny, `tools/call` pod filtrem, wiązanie z sesją, ciało `400` |
+| `endpoint-aggregate/` | 25 | lista `/mcp` jako część wspólna, kolejność, routing po prefiksie, `list_changed`, `/v/` jako `404` (CC-169, CC-176, CC-177) |
+| `mcp-endpoint/` | 11 | odpowiedź BFF `GET /api/v1/me/mcp-endpoint`: adres, `clientConfigs`, `toolCount`, `400` (CC-175) |
 
 Formaty:
 
@@ -980,8 +1017,7 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
   klucze testowe także po skrócie SPKI, niezależnie od identyfikatora w konfiguracji; odbiorcy C2 powinni robić to
   samo z kluczami z `test-vectors/keys/test-gateway-jwks.json`. Wektory mają `allowTestKeys: true` i osobne
   przypadki odrzucenia.
-- Paczka polityk (ws-09) musi zawężać linki dla wszystkich pięciu typów z `resourceDefaults` i ich typów
-  podrzędnych (CC-029), czytać `vsScopes` i `virtualServer` tylko w `forbid` (CC-041, CC-058) i dostarczać mapowanie zakresów w
+- Paczka polityk (ws-09) nie czyta `vsScopes` ani `virtualServer` (nie ma ich w schemacie od 5.0.0, CC-173) i dostarcza mapowanie zakresów w
   `entities/static.json` (CC-037).
 - Serwery z narzędziami wyszukiwania i list ograniczają zapytanie i filtrują wyniki (CC-036,
   `cedar/entity-builder.md` sekcja 8).

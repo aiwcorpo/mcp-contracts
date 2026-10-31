@@ -41,8 +41,6 @@
     "kept": [],
     "queryConstraints": {
       "OpenSearch::Index": {
-        "virtualServer": null,
-        "virtualServerType": "OpenSearch::Index",
         "granted": []
       }
     }

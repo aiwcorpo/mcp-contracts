@@ -1,0 +1,7 @@
+{
+  "description": "Aggregate endpoint of the gateway (CC-169).",
+  "value": "/mcp",
+  "expected": {
+    "valid": false
+  }
+}

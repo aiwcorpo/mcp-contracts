@@ -144,11 +144,9 @@ public final class EntityBuilder {
     }
 
     /**
-     * What a search or list query must be limited to for one grantable resource type (CC-036): the ids of the
-     * virtual server narrowing (if the call goes through a link that narrows this type) and the ids granted to the
-     * user by the scope mapping. The server adds the narrowing to the backend query (JQL, CQL, index pattern, group
-     * filter) and, where the backend does not enforce the user's own rights (OpenSearch), also the granted ids.
-     * The query limit does not replace result filtering.
+     * What a search or list query must be limited to for one grantable resource type (CC-036): the ids granted to
+     * the user by the scope mapping. The server adds them to the backend query (index pattern) where the backend does
+     * not enforce the user's own rights (OpenSearch). The query limit does not replace result filtering.
      *
      * @param resourceType one of {@link ResourceScopes#GRANTABLE_TYPES}
      */
@@ -156,10 +154,6 @@ public final class EntityBuilder {
         if (!ResourceScopes.GRANTABLE_TYPES.contains(resourceType)) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "not a grantable resource type: " + resourceType);
         }
-        // A link narrows Confluence spaces, so a page query is narrowed through its space.
-        String narrowingType = "Confluence::Page".equals(resourceType) ? "Confluence::Space" : resourceType;
-        Optional<SortedSet<String>> narrowing = caller.virtualServer()
-                .flatMap(link -> ScopeGroups.vsScopeField(narrowingType).map(link.vsScopes()::get));
         TreeSet<String> granted = new TreeSet<>();
         for (String group : mcpGroups(caller)) {
             for (String scope : scopeMapping.scopesOf(group)) {
@@ -168,7 +162,7 @@ public final class EntityBuilder {
                 }
             }
         }
-        return new QueryConstraint(resourceType, narrowing, narrowingType, granted);
+        return new QueryConstraint(resourceType, granted);
     }
 
     private static CedarRequest result(Caller caller, EntityUID action, EntityUID resource, Map<String, Value> context,
@@ -192,17 +186,6 @@ public final class EntityBuilder {
         if (credentialType != null) {
             context.put("credentialType", new PrimString(credentialType));
         }
-        caller.virtualServer().ifPresent(link -> {
-            context.put("virtualServer", new PrimString(link.slug()));
-            if (!link.vsScopes().isEmpty()) {
-                Map<String, Value> vsScopes = new LinkedHashMap<>();
-                link.vsScopes().forEach((field, ids) -> {
-                    String type = ScopeGroups.typeOfScopeField(field).orElseThrow();
-                    vsScopes.put(field, scopeSet(ids.stream().map(id -> ResourceScopes.id(type, id)).toList()));
-                });
-                context.put("vsScopes", new CedarMap(vsScopes));
-            }
-        });
         if (caller.mfaAgeSeconds().isPresent() && caller.mfaAgeSeconds().getAsLong() < 0) {
             throw invalid("mfa age must be >= 0");
         }
@@ -319,7 +302,7 @@ public final class EntityBuilder {
             Set<EntityUID> groupParents = new LinkedHashSet<>();
             for (String scope : scopes) {
                 groupParents.add(uid("ResourceScope", scope));
-                ScopeGroups.vsScopeField(ResourceScopes.typeOf(scope).orElse(""))
+                ScopeGroups.scopeField(ResourceScopes.typeOf(scope).orElse(""))
                         .ifPresent(field -> byField.get(field).add(scope));
             }
             EntityUID groupUid = uid("UserGroup", group);

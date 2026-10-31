@@ -1,0 +1,30 @@
+{
+  "description": "The account connected a system: the list is the same, only the result of a call changes (credential_required -> ok). No notification (CC-176).",
+  "kind": "list-changed",
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "notify": false
+  }
+}

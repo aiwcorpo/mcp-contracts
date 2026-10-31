@@ -1,0 +1,17 @@
+{
+  "description": "A prefix and no tool.",
+  "kind": "routing",
+  "input": {
+    "name": "jira__",
+    "knownSystems": [
+      "jira",
+      "confluence",
+      "gitlab",
+      "servicedesk",
+      "opensearch"
+    ]
+  },
+  "expected": {
+    "error": "not_found_or_denied"
+  }
+}

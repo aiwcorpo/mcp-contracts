@@ -1,0 +1,16 @@
+{
+  "description": "Hyphen is not in the alphabet of system and tool names.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira-cloud"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "forbidden_character",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

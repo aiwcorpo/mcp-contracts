@@ -104,7 +104,7 @@
       "properties": {
         "error": {
           "const": "tool_disabled",
-          "description": "Only when an administrator disabled the tool or its server, or its definition waits for approval. A tool that is not in the tool list of the virtual server (link) used for the call is not_found_or_denied (CC-118)."
+          "description": "Only when an administrator disabled the tool or its server, or its definition waits for approval. A tool that the endpoint filter of the request leaves out is not_found_or_denied (CC-118, CC-170)."
         },
         "message": {
           "$ref": "#/$defs/Message"
@@ -246,7 +246,7 @@
       ],
       "properties": {
         "error": {
-          "description": "Also the answer for a tool outside the tool list of the virtual server (link) used for the call, so that the link does not reveal tools it does not contain (CC-118, invariant 8), and for a resource that does not exist, that the user may not see or that lies outside the link, including a service desk queue outside the link (CC-146). The check of the grant comes before the building of any entity, so that no other error reveals the resource.",
+          "description": "Also the answer for a tool that the endpoint filter of the request leaves out, so that the filter does not reveal which tools exist (CC-118, CC-170, invariant 8), and for a resource that does not exist, that the user may not see or that lies outside the scope granted by policy, including a service desk queue outside the grant (CC-146). The check of the grant comes before the building of any entity, so that no other error reveals the resource.",
           "const": "not_found_or_denied"
         },
         "message": {

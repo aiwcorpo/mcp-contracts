@@ -1,0 +1,102 @@
+{
+  "description": "Jira search: the server drops every returned issue that is Restricted or that it cannot evaluate (no category on its project); issues of granted projects are kept.",
+  "staticEntities": "cedar/examples/static-entities.json",
+  "policies": "cedar/examples",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000003",
+      "usr": "writer2",
+      "grp": [
+        "mcp-jira-read",
+        "mcp-jira-write",
+        "mcp-jira-proj-ABC",
+        "mcp-jira-proj-DEF"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "search_issues",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "projectKeys",
+          "type": "Jira::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "text": "outage"
+    }
+  },
+  "items": [
+    {
+      "type": "Jira::Issue",
+      "id": "ABC-7",
+      "attrs": {
+        "key": "ABC-7"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "ABC",
+        "attrs": {
+          "key": "ABC",
+          "category": "Software"
+        }
+      }
+    },
+    {
+      "type": "Jira::Issue",
+      "id": "DEF-9",
+      "attrs": {
+        "key": "DEF-9"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "DEF",
+        "attrs": {
+          "key": "DEF",
+          "category": "Software"
+        }
+      }
+    },
+    {
+      "type": "Jira::Issue",
+      "id": "HR-1",
+      "attrs": {
+        "key": "HR-1"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "HR",
+        "attrs": {
+          "key": "HR",
+          "category": "Restricted"
+        }
+      }
+    },
+    {
+      "type": "Jira::Issue",
+      "id": "ABC-8",
+      "attrs": {
+        "key": "ABC-8"
+      }
+    }
+  ],
+  "expected": {
+    "kept": [
+      "ABC-7",
+      "DEF-9"
+    ],
+    "queryConstraints": {
+      "Jira::Project": {
+        "granted": [
+          "ABC",
+          "DEF"
+        ]
+      }
+    }
+  }
+}

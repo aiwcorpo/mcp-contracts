@@ -117,61 +117,6 @@
           "minLength": 1,
           "maxLength": 255
         },
-        "vs": {
-          "$ref": "common.schema.json#/$defs/VirtualServerSlug"
-        },
-        "vsc": {
-          "description": "Narrowing of the virtual server (CC-027): resourceDefaults of the link mapped to the vsScopes fields of the Cedar model. Present exactly when vs is present; {} when the link does not narrow resources. Servers build context.vsScopes from it.",
-          "type": "object",
-          "properties": {
-            "jiraProjects": {
-              "type": "array",
-              "items": {
-                "$ref": "common.schema.json#/$defs/JiraProjectKey"
-              },
-              "uniqueItems": true,
-              "minItems": 1,
-              "maxItems": 50
-            },
-            "confluenceSpaces": {
-              "type": "array",
-              "items": {
-                "$ref": "common.schema.json#/$defs/ConfluenceSpaceKey"
-              },
-              "uniqueItems": true,
-              "minItems": 1,
-              "maxItems": 50
-            },
-            "gitlabGroups": {
-              "type": "array",
-              "items": {
-                "$ref": "common.schema.json#/$defs/GitLabGroupPath"
-              },
-              "uniqueItems": true,
-              "minItems": 1,
-              "maxItems": 50
-            },
-            "opensearchIndexPrefixes": {
-              "type": "array",
-              "items": {
-                "$ref": "common.schema.json#/$defs/OpenSearchIndexPrefix"
-              },
-              "uniqueItems": true,
-              "minItems": 1,
-              "maxItems": 50
-            },
-            "servicedeskQueues": {
-              "type": "array",
-              "items": {
-                "$ref": "common.schema.json#/$defs/ServiceDeskQueueId"
-              },
-              "uniqueItems": true,
-              "minItems": 1,
-              "maxItems": 50
-            }
-          },
-          "additionalProperties": false
-        },
         "tool": {
           "description": "Server-side name of the tool being called. Present exactly for tools/call (and for the broker resolve and authenticator calls that serve it); absent for initialize, server/discover, subscriptions/listen, tools/list, ping and GET /mcp-manifest (CC-038, CC-069).",
           "$ref": "common.schema.json#/$defs/ToolName"
@@ -182,15 +127,7 @@
           "minimum": 0
         }
       },
-      "unevaluatedProperties": false,
-      "dependentRequired": {
-        "vs": [
-          "vsc"
-        ],
-        "vsc": [
-          "vs"
-        ]
-      }
+      "unevaluatedProperties": false
     },
     "ServiceClaims": {
       "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping and GET /mcp-manifest (CC-069, CC-070).",

@@ -1,0 +1,25 @@
+{
+  "description": "Answer to a query that is not a valid filter: 400 in the shape of EndpointFilterError, after the check of the token, with no WWW-Authenticate; it does not depend on the state of any system.",
+  "kind": "error-response",
+  "input": {
+    "query": "system=jira",
+    "token": "valid"
+  },
+  "expected": {
+    "status": 400,
+    "absentHeaders": [
+      "WWW-Authenticate"
+    ],
+    "body": {
+      "error": "invalid_request",
+      "reason": "invalid_filter",
+      "message": "The query of the address is not a valid filter."
+    },
+    "audit": {
+      "event": "policy_decision",
+      "decision": "deny",
+      "outcome": "error",
+      "reason": "invalid_filter"
+    }
+  }
+}

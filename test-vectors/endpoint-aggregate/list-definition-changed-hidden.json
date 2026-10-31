@@ -1,0 +1,38 @@
+{
+  "description": "A tool whose definition at the server differs from the approved one is hidden (tool_disabled on a call).",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": false,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "visible": [
+      "jira__get_issue"
+    ]
+  }
+}

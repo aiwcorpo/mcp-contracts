@@ -1,0 +1,20 @@
+{
+  "description": "Values are sorted bytewise.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira,gitlab"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=gitlab,jira",
+    "filter": {
+      "systems": [
+        "gitlab",
+        "jira"
+      ],
+      "tools": null,
+      "access": null,
+      "exclude": null
+    }
+  }
+}

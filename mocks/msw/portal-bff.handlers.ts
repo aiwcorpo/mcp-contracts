@@ -26,6 +26,7 @@ const MUTATING = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 /** Name of the CSRF cookie (CC-055); the header stays X-XSRF-TOKEN. */
 export const XSRF_COOKIE = '__Host-XSRF-TOKEN';
 const RETURN_PATH = new RegExp(RETURN_PATH_PATTERN, 'u');
+const MCP_ENDPOINT_PARAMETERS = ['systems', 'tools', 'access', 'exclude'];
 
 // The BFF answers 400 for a returnPath outside the C4/C12 pattern (CC-032); the mock does the same so that the
 // frontend sees the error case.
@@ -99,17 +100,10 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
       if (await invalidReturnPath(operation.operationId, request)) {
         return errorResponse('invalid_request', 400);
       }
-      if (operation.operationId === 'createMyVirtualServer') {
-        // The BFF first looks at whether a non-empty object was sent, then at its content (CC-085); a value that is
-        // not an object is a malformed request.
-        const body = (await request.clone().json().catch(() => null)) as { resourceDefaults?: unknown } | null;
-        const defaults = body?.resourceDefaults;
-        if (defaults !== undefined) {
-          if (defaults === null || typeof defaults !== 'object' || Array.isArray(defaults)) {
-            return errorResponse('invalid_request', 400);
-          }
-          if (Object.keys(defaults).length > 0) return errorResponse('resource_defaults_unsupported', 400);
-        }
+      if (operation.operationId === 'getMcpEndpoint') {
+        // A parameter outside the four is an invalid filter and not a lost one, as on the gateway (CC-170).
+        const unknown = [...new URL(request.url).searchParams.keys()].some((name) => !MCP_ENDPOINT_PARAMETERS.includes(name));
+        if (unknown) return toResponse(pickExample(operation, 'example=invalid_filter'));
       }
       const extra: Record<string, string> = operation.operationId === 'getMe'
         ? { 'Set-Cookie': `${XSRF_COOKIE}=${MOCK_XSRF_TOKEN}; Path=/; Secure; SameSite=Strict` }

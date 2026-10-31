@@ -1,0 +1,16 @@
+{
+  "description": "An unknown parameter next to a valid one.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira&format=json"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "unknown_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

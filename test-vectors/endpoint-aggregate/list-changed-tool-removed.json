@@ -1,0 +1,26 @@
+{
+  "description": "tool_removed: the tool leaves the registry.",
+  "kind": "list-changed",
+  "input": {
+    "query": "systems=jira",
+    "before": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      }
+    ],
+    "after": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

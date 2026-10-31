@@ -1,0 +1,19 @@
+{
+  "description": "Parameters come in the fixed order systems, tools, access, exclude.",
+  "kind": "parse",
+  "input": {
+    "query": "access=read&systems=jira"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=jira&access=read",
+    "filter": {
+      "systems": [
+        "jira"
+      ],
+      "tools": null,
+      "access": "read",
+      "exclude": null
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Six systems are over the limit of 5.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=a,b,c,d,e,f"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "too_many_entries",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

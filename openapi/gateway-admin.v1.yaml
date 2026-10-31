@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 4.1.1-SNAPSHOT
-  summary: Contract C5 of the MCP platform (catalog, virtual servers, registry, read-only confirmation preview).
+  version: 5.0.0-SNAPSHOT
+  summary: Contract C5 of the MCP platform (catalog, registry, activity, read-only confirmation preview).
   description: |
     Callers and their authentication:
 
@@ -14,10 +14,12 @@ info:
 
     Tool names in this API are client-visible names `<system>__<tool>`, except under
     `/admin/v1/registry/servers/{serverId}/tools/{tool}` where `{tool}` is the server-side name from the manifest.
-    Endpoints for MCP clients are `<publicBaseUrl>/s/<serverId>/mcp` and `<publicBaseUrl>/v/<slug>/mcp`
-    (C1 token with aud=mcp-gateway; not described here because they speak MCP, not REST). The portal and the
-    gateway share one public origin behind a reverse proxy (CC-089): `/` web, `/api` BFF, `/s/`, `/v/` and
-    `/.well-known/oauth-protected-resource*` gateway. `publicBaseUrl` is configuration, never derived from the
+    Endpoints for MCP clients are `<publicBaseUrl>/mcp` (all tools of the user, CC-169) and `<publicBaseUrl>/s/<serverId>/mcp`
+    (one system); both take the filter `systems`, `tools`, `access`, `exclude` in the query (CC-170, README "Jeden adres do całej platformy").
+    They use a C1 token with aud=mcp-gateway and are not described here because they speak MCP, not REST. The saved links
+    `/v/<slug>/mcp` no longer exist (CC-175, CC-177): the gateway answers 404 `not_found_or_denied` with no audit event.
+    The portal and the gateway share one public origin behind a reverse proxy (CC-089): `/` web, `/api` BFF, `/mcp`, `/s/`
+    and `/.well-known/oauth-protected-resource*` gateway (`/v/` may still be sent to the gateway for its 404). `publicBaseUrl` is configuration, never derived from the
     `Host` or `X-Forwarded-Host` of a request. The gateway answers MCP clients only with `application/json` and
     `text/event-stream` on every route, errors included and whatever `Accept` says (never `text/html`), and does
     not forward the `Cookie` header; the proxy adds `X-Content-Type-Options: nosniff` and `Content-Security-Policy:
@@ -33,7 +35,6 @@ servers:
     description: Internal admin endpoint (TLS, mTLS required).
 tags:
   - name: catalog
-  - name: virtual-servers
   - name: registry
   - name: activity
   - name: confirmations
@@ -100,128 +101,6 @@ paths:
                             disabled: true
         '401':
           $ref: '#/components/responses/Unauthenticated'
-  /admin/v1/virtual-servers:
-    get:
-      tags: [virtual-servers]
-      operationId: listVirtualServers
-      x-allowed-client-cn: [mcp-portal-bff]
-      summary: Virtual servers (links) owned by the current user.
-      security:
-        - mtls: []
-          bffUserToken: []
-      responses:
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '200':
-          description: Links of the current user.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/VirtualServer'
-              examples:
-                one_link:
-                  value:
-                    - slug: team-a-dev
-                      displayName: Team A development
-                      tools: [jira__search_issues, jira__get_issue]
-                      url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-    post:
-      tags: [virtual-servers]
-      operationId: createVirtualServer
-      x-allowed-client-cn: [mcp-portal-bff]
-      summary: Create a virtual server owned by the current user.
-      description: |
-        A virtual server only narrows. The gateway rejects tools the user may not call (403) and evaluates
-        policy again on every call, so a link never keeps a permission the user has lost.
-      security:
-        - mtls: []
-          bffUserToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VirtualServerCreate'
-            examples:
-              team_a:
-                value:
-                  slug: team-a-dev
-                  displayName: Team A development
-                  tools: [jira__search_issues, jira__get_issue]
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VirtualServerCreated'
-              examples:
-                created:
-                  value:
-                    slug: team-a-dev
-                    url: https://mcp.aiwcorpo.pl/v/team-a-dev/mcp
-        '400':
-          description: Malformed request, or a non-empty resourceDefaults (resource narrowing is dormant, CC-085).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                invalid_request:
-                  value:
-                    error: invalid_request
-                resource_defaults_unsupported:
-                  value:
-                    error: resource_defaults_unsupported
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          description: At least one tool is not available to the user (access_denied).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                access_denied:
-                  value:
-                    error: access_denied
-        '409':
-          description: Slug already used (slug_taken), or the user already has the maximum number of virtual servers (virtual_server_limit_reached; limit per user is gateway configuration, default 50) (CC-119).
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                slug_taken:
-                  value:
-                    error: slug_taken
-                virtual_server_limit_reached:
-                  value:
-                    error: virtual_server_limit_reached
-  /admin/v1/virtual-servers/{slug}:
-    parameters:
-      - $ref: '#/components/parameters/Slug'
-    delete:
-      tags: [virtual-servers]
-      operationId: deleteVirtualServer
-      x-allowed-client-cn: [mcp-portal-bff]
-      summary: Delete a virtual server; owner only.
-      security:
-        - mtls: []
-          bffUserToken: []
-      responses:
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '204':
-          description: Deleted.
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '404':
-          $ref: '#/components/responses/NotFound'
   /admin/v1/registry/servers:
     get:
       tags: [registry]
@@ -884,7 +763,7 @@ paths:
                       sub: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                       username: jkowalski
                       client: claude-code
-                      virtualServer: team-a-dev
+                      filter: 'systems=jira&access=read'
                       server: mcp-jira
                       tool: get_issue
                       risk: READ_ONLY
@@ -931,7 +810,7 @@ paths:
         - name: result
           in: query
           required: false
-          description: Result group (CC-142). The result of a row comes from the reason of the last event of the call (mapping in CC-165, scripts/lib/activity-calls.mjs). A UI must not offer request_access on the result alone, because the C10 error access_denied carries no requiredEntitlements. ok is result ok. denied covers denied_not_granted, denied_link_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
+          description: Result group (CC-142). The result of a row comes from the reason of the last event of the call (mapping in CC-165, scripts/lib/activity-calls.mjs). A UI must not offer request_access on the result alone, because the C10 error access_denied carries no requiredEntitlements. ok is result ok. denied covers denied_not_granted, denied_filter_scope, denied_policy, tool_disabled, step_up_required and rate_limited. error covers error and credential_required. confirmation covers every other result, that is pending, confirmed, expired, failed, superseded, blocked-by-pending and cancelled confirmations.
           schema:
             type: string
             enum: [ok, denied, error, confirmation]
@@ -974,7 +853,7 @@ paths:
                     - requestId: 0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f
                       ts: '2026-10-26T20:00:00.123Z'
                       client: claude-code
-                      virtualServer: team-a-dev
+                      filter: 'systems=jira&access=read'
                       tool: jira__get_issue
                       risk: READ_ONLY
                       resource:
@@ -1026,7 +905,7 @@ paths:
                       ts: '2026-10-26T19:20:00.000Z'
                       tool: gitlab__get_project
                       risk: READ_ONLY
-                      result: denied_link_scope
+                      result: denied_filter_scope
                       errorCode: not_found_or_denied
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1193,13 +1072,12 @@ paths:
       x-allowed-client-cn: [mcp-offboarding]
       summary: Remove everything the gateway keeps about a user (offboarding, CC-155).
       description: |
-        Caller: IGA/HR webhook with mTLS CN=mcp-offboarding, no bearer token. Idempotent. Removes the virtual servers
-        (links) of the user, the pending confirmations and their tombstones, the MCP sessions in Redis and the cached
-        credentials of the user. The activity records (`/admin/v1/activity`, `activity/calls`) are not removed: they stay
+        Caller: IGA/HR webhook with mTLS CN=mcp-offboarding, no bearer token. Idempotent. Removes the pending
+        confirmations of the user and their tombstones, the MCP sessions in Redis and the cached credentials of the user
+        (the saved links of 4.x no longer exist, CC-175). The activity records (`/admin/v1/activity`, `activity/calls`) are not removed: they stay
         until the end of their retention, 30 days by default, as evidence (CC-134). Audit: one admin_change event with
         reason user_purged and outcome ok for every call, also when there was nothing to remove and also for a `sub`
-        the gateway does not know (the answer is `204` either way), plus one virtual_server_change event with reason
-        user_purged for every removed link (CC-155). The event carries the `sub` of the purged user and no counts.
+        the gateway does not know (the answer is `204` either way) (CC-155). The event carries the `sub` of the purged user and no counts.
 
         **Accepted window (decision 2026-10-29).** The gateway does not block the `sub` after a purge: a token of an MCP client
         issued before it stays valid until it expires (at most 60 minutes, C1). Within that window a calling user can still use
@@ -1228,7 +1106,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '503':
-          description: Redis or the store of links did not answer; nothing is guaranteed removed, repeat the call.
+          description: Redis did not answer; nothing is guaranteed removed, repeat the call.
           content:
             application/json:
               schema:
@@ -1291,13 +1169,6 @@ components:
       bearerFormat: JWT
       description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin.
   parameters:
-    Slug:
-      name: slug
-      in: path
-      required: true
-      schema:
-        $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-      example: team-a-dev
     ServerId:
       name: serverId
       in: path
@@ -1429,7 +1300,7 @@ components:
         disabled:
           type: boolean
           default: false
-          description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts) (CC-081). A disabled tool cannot be added to a virtual server (POST /virtual-servers answers 403 access_denied).
+          description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts) (CC-081).
         requiresConfirmation:
           type: boolean
           default: false
@@ -1458,108 +1329,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CatalogServer'
-      additionalProperties: false
-    ResourceDefaults:
-      type: object
-      description: 'Dormant (CC-085); the gateway answers 400 resource_defaults_unsupported for a non-empty value, absent or {} is accepted. Narrowing per resource type (C5). Becomes the vsc claim and context.vsScopes in Cedar (cedar/entity-builder.md). Ids follow the per-system patterns of common.schema.json (OpenSearch::Index takes index prefixes). At most 50 ids per type keep the internal JWT small.'
-      properties:
-        Jira::Project:
-          $ref: '#/components/schemas/JiraProjectKeys'
-        Confluence::Space:
-          $ref: '#/components/schemas/ConfluenceSpaceKeys'
-        GitLab::Group:
-          $ref: '#/components/schemas/GitLabGroupPaths'
-        OpenSearch::Index:
-          $ref: '#/components/schemas/OpenSearchIndexPrefixes'
-        ServiceDesk::Queue:
-          $ref: '#/components/schemas/ServiceDeskQueueIds'
-      additionalProperties: false
-    JiraProjectKeys:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: '../schemas/common.schema.json#/$defs/JiraProjectKey'
-    ConfluenceSpaceKeys:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: '../schemas/common.schema.json#/$defs/ConfluenceSpaceKey'
-    GitLabGroupPaths:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: '../schemas/common.schema.json#/$defs/GitLabGroupPath'
-    OpenSearchIndexPrefixes:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: '../schemas/common.schema.json#/$defs/OpenSearchIndexPrefix'
-    ServiceDeskQueueIds:
-      type: array
-      minItems: 1
-      maxItems: 50
-      uniqueItems: true
-      items:
-        $ref: '../schemas/common.schema.json#/$defs/ServiceDeskQueueId'
-    VirtualServerCreate:
-      type: object
-      required: [slug, displayName, tools]
-      properties:
-        slug:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 100
-        tools:
-          type: array
-          minItems: 1
-          uniqueItems: true
-          items:
-            $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
-        resourceDefaults:
-          description: 'Dormant (CC-085). The gateway answers 400 resource_defaults_unsupported for a non-empty value; absent or {} is accepted.'
-          $ref: '#/components/schemas/ResourceDefaults'
-      additionalProperties: false
-    VirtualServerCreated:
-      type: object
-      required: [slug, url]
-      properties:
-        slug:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-        url:
-          type: string
-          format: uri
-          description: Public MCP endpoint <publicBaseUrl>/v/<slug>/mcp (CC-089).
-      additionalProperties: false
-    VirtualServer:
-      type: object
-      required: [slug, displayName, tools, url]
-      properties:
-        slug:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
-        displayName:
-          type: string
-        tools:
-          type: array
-          uniqueItems: true
-          items:
-            $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
-        resourceDefaults:
-          description: 'Dormant (CC-085); never present in responses.'
-          $ref: '#/components/schemas/ResourceDefaults'
-        url:
-          type: string
-          format: uri
-          description: Public MCP endpoint <publicBaseUrl>/v/<slug>/mcp (CC-089).
       additionalProperties: false
     RegistryToolStatus:
       type: string
@@ -1663,8 +1432,9 @@ components:
           type: string
           maxLength: 255
           description: Client id (azp), e.g. claude-code; the UI maps it to a display name.
-        virtualServer:
-          $ref: '../schemas/common.schema.json#/$defs/VirtualServerSlug'
+        filter:
+          description: Normalized filter of the address the call was made on (CC-174); absent when the address had no filter.
+          $ref: '../schemas/common.schema.json#/$defs/EndpointFilterQuery'
         tool:
           $ref: '../schemas/common.schema.json#/$defs/QualifiedToolName'
         risk:
@@ -1677,7 +1447,7 @@ components:
           pattern: '^[a-z][a-z0-9_]*$'
           maxLength: 64
           description: |
-            Final state of the call. Known values: ok, error, denied_not_granted, denied_link_scope, denied_policy,
+            Final state of the call. Known values: ok, error, denied_not_granted, denied_filter_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
             expired, confirmation_failed, superseded, blocked_by_pending, cancelled. A client must show an unknown value as a generic label.
         wrongCodeCount:

@@ -1,0 +1,27 @@
+{
+  "description": "No tools at all: an empty list, no error.",
+  "kind": "list",
+  "input": {
+    "servers": [
+      {
+        "serverId": "mcp-jira",
+        "available": true,
+        "hasConnection": true,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY",
+            "approved": true,
+            "enabled": true,
+            "served": true,
+            "definitionMatches": true,
+            "allowedByPolicy": false
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "visible": []
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "description": "The same query.",
+  "kind": "session",
+  "input": {
+    "initializeQuery": "systems=jira&access=read",
+    "requestQuery": "systems=jira&access=read"
+  },
+  "expected": {
+    "match": true
+  }
+}

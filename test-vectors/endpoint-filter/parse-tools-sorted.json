@@ -1,0 +1,20 @@
+{
+  "description": "Tool names are sorted bytewise too.",
+  "kind": "parse",
+  "input": {
+    "query": "tools=jira__get_issue,confluence__get_page"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "tools=confluence__get_page,jira__get_issue",
+    "filter": {
+      "systems": null,
+      "tools": [
+        "confluence__get_page",
+        "jira__get_issue"
+      ],
+      "access": null,
+      "exclude": null
+    }
+  }
+}

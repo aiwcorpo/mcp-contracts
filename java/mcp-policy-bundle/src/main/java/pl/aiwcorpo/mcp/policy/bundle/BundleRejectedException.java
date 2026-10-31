@@ -18,7 +18,6 @@ public final class BundleRejectedException extends Exception {
         ARCHIVE_INCOMPLETE,
         NOT_NEWER,
         PERMIT_IN_OVERRIDES,
-        LINK_CONTEXT_IN_PERMIT,
         POLICY_INVALID,
         SCHEMA_MISMATCH,
         STATIC_ENTITIES_INVALID,

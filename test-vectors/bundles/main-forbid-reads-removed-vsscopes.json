@@ -1,0 +1,19 @@
+{
+  "description": "A forbid rule reads context.vsScopes without a guard, and the schema no longer has it (CC-173): even a forbid does not validate.",
+  "channel": "main",
+  "latest": {
+    "revision": "20261026150800-fe5dbbc",
+    "url": "policies-20261026150800-fe5dbbc.tar.gz",
+    "sigUrl": "policies-20261026150800-fe5dbbc.tar.gz.sig"
+  },
+  "bundle": "files/policies-20261026150800-fe5dbbc.tar.gz",
+  "signature": "files/policies-20261026150800-fe5dbbc.tar.gz.sig",
+  "publicKey": "keys/test-policy-bundle.public.pem",
+  "loadedRevision": "20261026130000-b2c3d4e",
+  "expected": {
+    "accept": false,
+    "reason": "policy_invalid"
+  },
+  "publicKeyId": "test-policy-bundle",
+  "allowTestKeys": true
+}

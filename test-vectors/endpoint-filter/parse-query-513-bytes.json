@@ -1,0 +1,16 @@
+{
+  "description": "A query of 513 bytes is rejected.",
+  "kind": "parse",
+  "input": {
+    "query": "exclude=a00xxxxxxxxxxxxxxxxxxxxx,a01xxxxxxxxxxxxxxxxxxxxx,a02xxxxxxxxxxxxxxxxxxxxx,a03xxxxxxxxxxxxxxxxxxxxx,a04xxxxxxxxxxxxxxxxxxxxx,a05xxxxxxxxxxxxxxxxxxxxx,a06xxxxxxxxxxxxxxxxxxxxx,a07xxxxxxxxxxxxxxxxxxxxx,a08xxxxxxxxxxxxxxxxxxxxx,a09xxxxxxxxxxxxxxxxxxxxx,a10xxxxxxxxxxxxxxxxxxxxx,a11xxxxxxxxxxxxxxxxxxxxx,a12xxxxxxxxxxxxxxxxxxxxx,a13xxxxxxxxxxxxxxxxxxxxx,a14xxxxxxxxxxxxxxxxxxxxx,a15xxxxxxxxxxxxxxxxxxxxx,a16xxxxxxxxxxxxxxxxxxxxx,a17xxxxxxxxxxxxxxxxxxxxx,a18xxxxxxxxxxxxxxxxxxxxx,a19xxxxxxxxxxxxxxxxxxxxxyyyyyy"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "query_too_long",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

@@ -91,23 +91,14 @@ class PolicyBundleVectorTest {
     }
 
     @Test
-    void examplePoliciesPassTheLint() throws Exception {
+    void examplePoliciesHaveNoTemplatesAndNoRemovedLinkAttributes() throws Exception {
         Set<Policy> all = new HashSet<>();
         for (Path file : ContractFiles.list("cedar/examples", ".cedar")) {
             all.addAll(PolicySet.parsePolicies(ContractFiles.read(file)).policies);
         }
-        assertTrue(PolicyLint.linkContextOutsideForbid(new PolicySet(all)).isEmpty());
-    }
-
-    @Test
-    void lintIgnoresTextThatOnlyLooksLikeAccess() throws Exception {
-        PolicySet text = PolicySet.parsePolicies("""
-                permit (principal, action, resource) when { context.client == "context.vsScopes context.virtualServer" };
-                """);
-        assertTrue(PolicyLint.linkContextOutsideForbid(text).isEmpty());
-        PolicySet hasCheck = PolicySet.parsePolicies("""
-                permit (principal, action, resource) when { context has vsScopes };
-                """);
-        assertEquals(1, PolicyLint.linkContextOutsideForbid(hasCheck).size());
+        assertTrue(PolicyLint.templates(new PolicySet(all)).isEmpty());
+        assertTrue(ContractFiles.read(ContractFiles.resolve("cedar/mcp.cedarschema")).lines()
+                .filter(line -> !line.startsWith("//"))
+                .noneMatch(line -> line.contains("vsScopes") || line.contains("virtualServer")));
     }
 }

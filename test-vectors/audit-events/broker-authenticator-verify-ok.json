@@ -12,7 +12,6 @@
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "username": "jkowalski",
     "client": "claude-code",
-    "virtualServer": "team-a-dev",
     "tool": "delete_issue",
     "decision": "allow",
     "reason": "totp_verified",

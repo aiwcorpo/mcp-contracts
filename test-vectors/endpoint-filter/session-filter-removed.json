@@ -1,0 +1,16 @@
+{
+  "description": "No filter where the session has one.",
+  "kind": "session",
+  "input": {
+    "initializeQuery": "systems=jira",
+    "requestQuery": ""
+  },
+  "expected": {
+    "match": false,
+    "response": {
+      "status": 404,
+      "body": "as for an unknown session"
+    },
+    "auditReason": "filter_mismatch"
+  }
+}

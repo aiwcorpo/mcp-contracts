@@ -1,0 +1,16 @@
+{
+  "description": "A semicolon.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira;access=read"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "forbidden_character",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

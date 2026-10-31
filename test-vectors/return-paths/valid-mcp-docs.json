@@ -1,0 +1,7 @@
+{
+  "description": "/mcp-docs only starts with the letters mcp; it is not the /mcp prefix.",
+  "value": "/mcp-docs",
+  "expected": {
+    "valid": true
+  }
+}

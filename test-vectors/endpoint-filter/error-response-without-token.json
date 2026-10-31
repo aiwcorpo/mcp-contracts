@@ -1,0 +1,14 @@
+{
+  "description": "The token is checked first: without a valid token the answer is the 401 challenge even when the query is wrong, so an unauthenticated caller learns nothing about the syntax.",
+  "kind": "error-response",
+  "input": {
+    "query": "system=jira",
+    "token": "missing"
+  },
+  "expected": {
+    "status": 401,
+    "headers": {
+      "WWW-Authenticate": "Bearer resource_metadata=\"https://mcp.aiwcorpo.pl/.well-known/oauth-protected-resource/mcp\""
+    }
+  }
+}

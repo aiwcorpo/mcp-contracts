@@ -1,0 +1,16 @@
+{
+  "description": "A letter outside ASCII.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jirä"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "forbidden_character",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

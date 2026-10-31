@@ -12,6 +12,9 @@ import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } fr
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
 import { gatewayAuthenticationResponse, keyDecision } from '../scripts/lib/gateway-authentication.mjs';
+import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionMatches } from '../scripts/lib/endpoint-filter.mjs';
+import { listChangedNotification, routeCall, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
+import { mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 
 const ajv = createAjv();
 
@@ -329,4 +332,122 @@ test('credential type header vectors: a difference refuses the call (CC-166)', a
   const vectors = listJson('test-vectors', 'credential-type-header');
   assert.ok(vectors.length >= 13 && vectors.some((v) => v.data.expected.decision === 'continue') && vectors.some((v) => v.data.expected.decision === 'deny'));
   for (const { name, data } of vectors) assert.deepEqual(credentialTypeCheck(data.input), data.expected, name);
+});
+
+test('endpoint filter vectors: parsing, normalization, route, visible set, call and session rules (CC-170, CC-172)', () => {
+  const validQuery = schemaValidator(ajv, 'common.schema.json#/$defs/EndpointFilterQuery');
+  const validError = schemaValidator(ajv, 'common.schema.json#/$defs/EndpointFilterError');
+  const vectors = listJson('test-vectors', 'endpoint-filter');
+  const kinds = new Set(vectors.map((v) => v.data.kind));
+  assert.deepEqual([...kinds].sort(), ['apply', 'call', 'error-response', 'parse', 'route', 'session']);
+  assert.ok(vectors.length >= 70);
+  for (const { name, data } of vectors) {
+    const { input, expected } = data;
+    if (data.kind === 'parse' || data.kind === 'route') {
+      let result;
+      try {
+        const parsed = parseFilter(input.query);
+        if (data.kind === 'route') checkRoute(parsed.filter, input.routeSystem);
+        result = { valid: true, canonical: parsed.canonical, ...(data.kind === 'parse' && { filter: parsed.filter }) };
+      } catch (e) {
+        if (!(e instanceof InvalidFilter)) throw e;
+        result = { valid: false, cause: e.cause, response: { status: 400, error: 'invalid_request', reason: 'invalid_filter' } };
+      }
+      assert.deepEqual(result, expected, name);
+      if (expected.valid && expected.canonical !== '') {
+        assert.ok(validQuery(expected.canonical), `${name}: canonical form matches EndpointFilterQuery`);
+        assert.equal(parseFilter(expected.canonical).canonical, expected.canonical, `${name}: canonical form is a fixed point`);
+      }
+    } else if (data.kind === 'apply') {
+      const { filter } = parseFilter(input.query);
+      assert.deepEqual(applyFilter(filter, input.tools).map((t) => t.name), expected.visible, name);
+    } else if (data.kind === 'call') {
+      const { filter } = parseFilter(input.query);
+      assert.deepEqual({ canonical: parseFilter(input.query).canonical, ...callDecision(filter, input.tool, input.tools) }, expected, name);
+    } else if (data.kind === 'session') {
+      assert.equal(sessionMatches(input.initializeQuery, input.requestQuery), expected.match, name);
+    } else {
+      if (expected.status === 400) {
+        assert.ok(validError(expected.body), `${name}: ${formatErrors(validError.errors)}`);
+        assert.throws(() => parseFilter(input.query), InvalidFilter);
+      } else {
+        assert.equal(gatewayAuthenticationResponse({ reason: 'missing_token', publicBaseUrl: 'https://mcp.aiwcorpo.pl', resourcePath: '/mcp' }).headers['WWW-Authenticate'], expected.headers['WWW-Authenticate'], name);
+      }
+    }
+  }
+});
+
+test('the filter limits of CC-170 are reachable, and the tool limit is covered by the length limit', () => {
+  const nameOf = (i) => `a__b${i}`;
+  assert.throws(() => parseFilter(`tools=${Array.from({ length: 101 }, (_, i) => nameOf(i)).join(',')}`), (e) => e.cause === 'query_too_long');
+  assert.equal(parseFilter(`exclude=${Array.from({ length: 100 }, (_, i) => `a${i}`).join(',')}`).filter.exclude.length, 100);
+});
+
+test('the audit event and the activity row carry the filter in the canonical form (CC-174)', () => {
+  const validate = schemaValidator(ajv, 'audit-event.schema.json');
+  const base = { ts: '2026-10-28T10:00:00.123Z', requestId: '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f', component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call' };
+  for (const filter of ['systems=jira', 'systems=gitlab,jira&access=write&exclude=jira__delete_issue', 'tools=jira__get_issue']) {
+    assert.ok(validate({ ...base, filter }), filter);
+  }
+  for (const filter of ['', 'systems=', 'access=maybe', 'systems=jira&&access=read', 'ACCESS=read', 'systems=jira,gitlab&tools=jira__get_issue&access=read&exclude=a&x=1']) {
+    assert.ok(!validate({ ...base, filter }), filter);
+  }
+});
+
+test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169, CC-176, CC-177)', () => {
+  const vectors = listJson('test-vectors', 'endpoint-aggregate');
+  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['legacy-route', 'list', 'list-changed', 'routing']);
+  const validateError = schemaValidator(ajv, 'tool-error.schema.json');
+  for (const { name, data } of vectors) {
+    if (data.kind === 'list') {
+      assert.deepEqual(visibleTools(data.input.servers).map((t) => t.name), data.expected.visible, name);
+    } else if (data.kind === 'routing') {
+      assert.deepEqual(routeCall(data.input.name, data.input.knownSystems), data.expected, name);
+    } else if (data.kind === 'list-changed') {
+      assert.equal(listChangedNotification(parseFilter(data.input.query).filter, data.input.before, data.input.after), data.expected.notify, name);
+    } else {
+      assert.equal(data.expected.status, 404, name);
+      assert.ok(validateError(data.expected.body), `${name}: ${formatErrors(validateError.errors)}`);
+      assert.equal(data.expected.audit, null, `${name}: no audit event for a route that does not exist`);
+    }
+  }
+});
+
+test('mcp-endpoint vectors: the BFF answer for a filter (CC-175)', async () => {
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  const validateOk = ajv.compile(structuredClone(spec.components.schemas.McpEndpoint));
+  const validateInvalid = ajv.compile(structuredClone(spec.components.schemas.InvalidFilter));
+  const vectors = listJson('test-vectors', 'mcp-endpoint');
+  assert.ok(vectors.some((v) => v.data.expected.status === 200) && vectors.some((v) => v.data.expected.status === 400));
+  for (const { name, data } of vectors) {
+    assert.deepEqual(mcpEndpoint(data.input), data.expected, name);
+    const validate = data.expected.status === 200 ? validateOk : validateInvalid;
+    assert.ok(validate(data.expected.body), `${name}: ${formatErrors(validate.errors)}`);
+  }
+});
+
+test('the examples of getMcpEndpoint equal what the reference builds for their address', async () => {
+  const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
+  const examples = spec.paths['/api/v1/me/mcp-endpoint'].get.responses['200'].content['application/json'].examples;
+  for (const [name, { value }] of Object.entries(examples)) {
+    const query = value.url.includes('?') ? value.url.split('?')[1] : '';
+    const built = mcpEndpoint({ publicBaseUrl: 'https://mcp.aiwcorpo.pl', rawQuery: query, catalog: [] }).body;
+    assert.equal(value.url, built.url, name);
+    assert.deepEqual(value.clientConfigs, built.clientConfigs, name);
+    assert.equal(value.filter, built.filter, name);
+  }
+});
+
+test('internal JWT claims vs and vsc no longer exist (CC-173)', () => {
+  const claims = readJson('test-vectors', 'jwt', 'valid.json').claims;
+  const validate = schemaValidator(ajv, 'internal-jwt.schema.json');
+  assert.ok(validate(claims), formatErrors(validate.errors));
+  for (const extra of [{ vs: 'team-a-dev' }, { vsc: { jiraProjects: ['ABC'] } }, { vs: 'team-a-dev', vsc: {} }]) {
+    assert.ok(!validate({ ...claims, ...extra }), JSON.stringify(extra));
+  }
+});
+
+test('the Cedar schema has neither virtualServer nor vsScopes (CC-173)', () => {
+  const code = readFileSync(path('cedar', 'mcp.cedarschema'), 'utf8').split('\n').filter((line) => !line.trimStart().startsWith('//')).join('\n');
+  assert.ok(!/virtualServer|vsScopes|VsScopes/.test(code));
 });

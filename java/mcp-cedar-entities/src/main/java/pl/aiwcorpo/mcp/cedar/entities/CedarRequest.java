@@ -21,7 +21,7 @@ import java.util.Set;
  * @param principal {@code User::"<sub>"}
  * @param action {@code Action::"call"} on the gateway, {@code Action::"<tool action>"} on the server
  * @param resource {@code Tool::"<system>__<tool>"} or the resolved system resource
- * @param context C7 context: client, virtualServer, vsScopes, mfaAge, refs
+ * @param context C7 context: client, credentialType, mfaAge, refs
  * @param entities user, its groups, the resource and its parent, ordered by type then id
  */
 public record CedarRequest(

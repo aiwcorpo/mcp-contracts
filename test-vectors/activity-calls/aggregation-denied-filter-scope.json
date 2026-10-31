@@ -1,0 +1,33 @@
+{
+  "description": "Tool left out by the filter of the address: denied_filter_scope, no confirmation fields; the row shows the filter (CC-174).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e17",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "policy_decision",
+      "server": "mcp-gitlab",
+      "tool": "get_project",
+      "risk": "READ_ONLY",
+      "filter": "systems=jira",
+      "decision": "deny",
+      "reason": "filter_scope",
+      "outcome": "denied",
+      "errorCode": "not_found_or_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e17",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "filter": "systems=jira",
+    "tool": "gitlab__get_project",
+    "risk": "READ_ONLY",
+    "result": "denied_filter_scope",
+    "errorCode": "not_found_or_denied"
+  }
+}

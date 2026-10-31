@@ -43,6 +43,35 @@
       "pattern": "^(jira|confluence|gitlab|servicedesk|opensearch)__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
       "maxLength": 80
     },
+    "EndpointFilterQuery": {
+      "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter. Reference: scripts/lib/endpoint-filter.mjs. Limits (at most 5 entries in systems, 100 in tools, 100 in exclude) are checked by the reference parser, not by this pattern. Appears without the leading '?'.",
+      "type": "string",
+      "pattern": "^(?:systems=[a-z][a-z0-9]*(?:,[a-z][a-z0-9]*)*)?(?:(?:^|&)tools=[a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*)*)?(?:(?:^|&)access=(?:read|write))?(?:(?:^|&)exclude=[a-z][a-z0-9_]*(?:,[a-z][a-z0-9_]*)*)?$",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "EndpointFilterError": {
+      "description": "Body of the HTTP 400 that /mcp and /s/<serverId>/mcp answer for a query that is not a valid endpoint filter (CC-170): it comes after the check of the token, carries no WWW-Authenticate header and does not depend on the state of any system. It is an HTTP answer, not the content of a tool result, so it is not part of C10 (tool-error.schema.json) and 'invalid_request' is not an ErrorCode.",
+      "type": "object",
+      "required": [
+        "error",
+        "reason"
+      ],
+      "properties": {
+        "error": {
+          "const": "invalid_request"
+        },
+        "reason": {
+          "const": "invalid_filter"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "additionalProperties": false
+    },
     "Risk": {
       "type": "string",
       "enum": [
@@ -96,7 +125,7 @@
       ]
     },
     "ScopeResourceType": {
-      "description": "Resource types that can be narrowed by a virtual server (C5 resourceDefaults) and granted by scope groups (C9).",
+      "description": "Resource types that scope groups (C9) can grant.",
       "type": "string",
       "enum": [
         "Jira::Project",
@@ -132,11 +161,6 @@
       "description": "sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).",
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
-    },
-    "VirtualServerSlug": {
-      "description": "Virtual server slug; used in the URL path /v/<slug>/mcp (C5).",
-      "type": "string",
-      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
     },
     "ErrorCode": {
       "description": "Client-visible error codes (C10).",
@@ -257,7 +281,7 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
     },
     "ResourceIdPatterns": {
-      "description": "Which pattern applies to an id of each resource type: ids in tool arguments (refs) and resolved resources use 'resource', grants (static.json), vsc and resourceDefaults use 'scope'. Builders reject non-matching ids (refs: invalid_argument; other inputs: internal_error).",
+      "description": "Which pattern applies to an id of each resource type: ids in tool arguments (refs) and resolved resources use 'resource', grants (static.json) use 'scope'. Builders reject non-matching ids (refs: invalid_argument; other inputs: internal_error).",
       "const": {
         "Jira::Project": {
           "resource": "JiraProjectKey",

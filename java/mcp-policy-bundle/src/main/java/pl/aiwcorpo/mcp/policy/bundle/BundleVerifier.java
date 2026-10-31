@@ -37,8 +37,8 @@ import pl.aiwcorpo.mcp.policy.bundle.BundleRejectedException.Reason;
 
 /**
  * Verifies and loads policy bundles of one channel. Thread-safe. Order of checks: pointer, key id, signature,
- * archive, manifest, consistency of revisions, archive content, monotonic revision, policies (parse, permit and
- * vsScopes lint, strict validation), static entities and their scope mapping.
+ * archive, manifest, consistency of revisions, archive content, monotonic revision, policies (parse, permit
+ * lint, strict validation), static entities and their scope mapping.
  */
 public final class BundleVerifier {
 
@@ -126,7 +126,6 @@ public final class BundleVerifier {
         if (!policies.templates.isEmpty()) {
             throw new BundleRejectedException(Reason.POLICY_INVALID, "templates are not used by the platform");
         }
-        lintLinkContext(policies);
         String schemaText = text(files.get(SCHEMA));
         // The schema is pinned to this contracts version (CC-059): a bundle cannot reshape the model, e.g. let
         // ResourceScope entities nest and widen grants.
@@ -292,17 +291,6 @@ public final class BundleVerifier {
                     throw new BundleRejectedException(Reason.STATIC_ENTITIES_INVALID, "UserGroup parent " + parent.getType());
                 }
             }
-        }
-    }
-
-    private static void lintLinkContext(PolicySet policies) throws BundleRejectedException {
-        try {
-            List<String> violations = PolicyLint.linkContextOutsideForbid(policies);
-            if (!violations.isEmpty()) {
-                throw new BundleRejectedException(Reason.LINK_CONTEXT_IN_PERMIT, String.join("; ", violations));
-            }
-        } catch (InternalException e) {
-            throw new BundleRejectedException(Reason.POLICY_INVALID, "cannot inspect policies", e);
         }
     }
 

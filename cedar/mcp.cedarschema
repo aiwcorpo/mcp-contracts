@@ -1,5 +1,5 @@
-// Cedar model of the MCP platform (contract C7), mcp-contracts 4.0.0 (context.credentialType; 3.1.0 added
-// inheritedClassification on GitLab::Group and GitLab::Project; otherwise as 2.0.0).
+// Cedar model of the MCP platform (contract C7), mcp-contracts 5.0.0 (context.virtualServer and context.vsScopes removed, CC-173;
+// 4.0.0 added context.credentialType; 3.1.0 added inheritedClassification on GitLab::Group and GitLab::Project).
 //
 // Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
 // and policies must guard it with `has`.
@@ -7,7 +7,7 @@
 // Two evaluations use this schema (C7):
 //   gateway: principal User, Action::"call", resource Tool, context built from the tool's resourceRefs
 //   server:  principal User, Action::"read" | "update" | "delete" | "admin", resource = resolved system entity
-// How principal.scopes, context.vsScopes, context.refs and resource.scopes are derived is specified in
+// How principal.scopes, context.refs and resource.scopes are derived is specified in
 // cedar/entity-builder.md. Every system resource carries `scopes`: the ResourceScope ids of itself and all
 // its containers (project of an issue, every ancestor group path, every dash prefix of an index name, space
 // and ancestor pages of a page), so `principal in resource.scopes` covers subgroups and page trees.
@@ -29,19 +29,9 @@ type Scopes = {
   servicedeskQueues: Set<ResourceScope>,
 };
 
-// Narrowing of the virtual server, from the vsc claim (CC-027). An absent field means "this link does not
-// narrow this resource type". Policies may read vsScopes only in forbid rules (CC-041).
-type VsScopes = {
-  jiraProjects?: Set<ResourceScope>,
-  confluenceSpaces?: Set<ResourceScope>,
-  gitlabGroups?: Set<ResourceScope>,
-  opensearchIndexPrefixes?: Set<ResourceScope>,
-  servicedeskQueues?: Set<ResourceScope>,
-};
-
 // Identifiers taken only from tool arguments declared in resourceRefs (C6). A field is present exactly
 // when the tool declares a resourceRef of that type. Ids of grantable flat types become ResourceScope
-// entities so they compare with Scopes and VsScopes; the others stay plain strings.
+// entities so they compare with Scopes; the others stay plain strings.
 type Refs = {
   jiraProject?: Set<ResourceScope>,
   jiraIssue?: Set<String>,
@@ -61,8 +51,6 @@ type Refs = {
 // when it is missing (cedar/examples/credential-type.cedar).
 type RequestContext = {
   client: String,
-  virtualServer?: String,
-  vsScopes?: VsScopes,
   mfaAge?: Long,
   credentialType?: String,
   refs?: Refs,

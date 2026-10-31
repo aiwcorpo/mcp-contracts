@@ -3,7 +3,7 @@
   "input": {
     "reason": "jwks_unavailable",
     "publicBaseUrl": "https://mcp.aiwcorpo.pl",
-    "resourcePath": "/v/team-a-dev",
+    "resourcePath": "/mcp",
     "retryAfterSeconds": 30
   },
   "expected": {

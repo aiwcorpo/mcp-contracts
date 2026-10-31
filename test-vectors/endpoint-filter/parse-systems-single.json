@@ -1,0 +1,19 @@
+{
+  "description": "One system.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=jira",
+    "filter": {
+      "systems": [
+        "jira"
+      ],
+      "tools": null,
+      "access": null,
+      "exclude": null
+    }
+  }
+}

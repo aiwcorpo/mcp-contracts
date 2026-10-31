@@ -54,14 +54,6 @@ final class VectorInputs {
         List<String> groups = new ArrayList<>();
         c.get("grp").forEach(g -> groups.add(g.asText()));
         Caller caller = Caller.of(c.get("sub").asText(), c.get("usr").asText(), groups, c.get("azp").asText());
-        if (c.has("vs") != c.has("vsc")) {
-            // The Java API cannot represent half a link; this mirrors the JWT receiver rejecting such a token.
-            throw new EntityBuilderException(EntityBuilderException.Code.INTERNAL_ERROR, "vs and vsc must be present together");
-        }
-        if (c.has("vs")) {
-            Map<String, List<String>> vsc = JSON.convertValue(c.get("vsc"), new TypeReference<Map<String, List<String>>>() { });
-            caller = caller.withVirtualServer(VirtualServerScope.fromClaims(c.get("vs").asText(), vsc));
-        }
         if (c.has("mfa")) {
             caller = caller.withMfaAge(c.get("mfa").asLong());
         }

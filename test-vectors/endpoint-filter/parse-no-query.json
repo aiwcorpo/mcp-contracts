@@ -1,0 +1,17 @@
+{
+  "description": "No query: no filter, the canonical form is empty and the audit event has no filter field.",
+  "kind": "parse",
+  "input": {
+    "query": ""
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "",
+    "filter": {
+      "systems": null,
+      "tools": null,
+      "access": null,
+      "exclude": null
+    }
+  }
+}

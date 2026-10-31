@@ -9,13 +9,13 @@ biblioteka `pl.aiwcorpo.mcp:mcp-cedar-entities` (`java/mcp-cedar-entities`, CC-0
 wszystkie wektory. `scripts/lib/entity-builder.mjs` to druga, niezależna implementacja, z której generowane są
 wektory.
 
-Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037, CC-038, CC-056, CC-059, CC-061, CC-062, CC-065, CC-136, CC-146, CC-147, CC-149, CC-160.
+Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-036, CC-037, CC-038, CC-056, CC-059, CC-061, CC-062, CC-065, CC-136, CC-146, CC-147, CC-149, CC-160, CC-173.
 
 ## 1. Wejście
 
 | Pole | Skąd | Uwagi |
 | --- | --- | --- |
-| `caller.sub`, `usr`, `grp`, `azp`, `vs?`, `vsc?`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u; `vs` i `vsc` zawsze razem (CC-027) |
+| `caller.sub`, `usr`, `grp`, `azp`, `mfa?` | claimy C2 | nazwy jak w C2 także na gateway'u; od 5.0.0 nie ma `vs` ani `vsc` (CC-173) |
 | `tool.serverId`, `system`, `name`, `risk`, `action`, `resourceRefs` | zatwierdzony wpis rejestru (C5/C6) | gateway: z rejestru; starter: z własnego manifestu |
 | `arguments` | `params.arguments` z `tools/call` | bez `confirmation_code` (C11) |
 | `credentialType?` | gateway: typ domyślny systemu z konfiguracji (Cedar jest oceniany przed pytaniem brokera, więc typ faktycznie użyty nie jest jeszcze znany; system nie miesza `service-account` z typami użytkownika), podawane zawsze przed decyzją Cedar; serwer: typ domyślny to pierwszy z jego `accepted-credential-types`; nagłówek `X-MCP-Credential-Type` od gateway'a musi należeć do zbioru jego dozwolonych typów (brak, nieznana wartość albo wartość spoza zbioru przy żądaniu z `X-MCP-Credential` = odmowa `internal_error` przed Cedar, sondą grantu i resolverami, CC-166) | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
@@ -24,10 +24,8 @@ Model encji: `mcp.cedarschema`. Decyzje: CC-001, CC-006, CC-027, CC-036, CC-037,
 
 Gateway buduje `caller` z tokenu C1 tak samo, jak buduje claimy C2: `usr` = `preferred_username`,
 `azp` = `azp`, `grp` = `groups` z prefiksem `mcp-`, `mfa` = sekundy od `auth_time`, gdy `acr` jest na
-poziomie MFA (inaczej brak). Dla wywołania przez link gateway ustawia `vs` = slug i `vsc` = `resourceDefaults`
-linku przemapowane na pola `vsScopes` (tabela w sekcji 4; `{}`, gdy link nie zawęża zasobów; maks. 50
-identyfikatorów na pole; `VirtualServerScope.fromResourceDefaults`). Serwer czyta zawężenie wyłącznie z `vsc`
-(`VirtualServerScope.fromClaims`). Grupy muszą przychodzić bez ścieżki (Keycloak: mapper grup z
+poziomie MFA (inaczej brak). Filtr adresu (`/mcp?systems=...`, CC-170) nie jest wejściem buildera: zawęża listę i
+wywołanie na gateway'u przed Cedar, a serwer go nie dostaje (CC-173). Grupy muszą przychodzić bez ścieżki (Keycloak: mapper grup z
 `full.path=false`).
 
 ## 2. Mapowanie zakresów (dane paczki, CC-037)
@@ -145,20 +143,13 @@ sprawdzają `inheritedClassification` (`cedar/examples/forbid-restricted.cedar`)
 | Pole | Wartość |
 | --- | --- |
 | `client` | `azp` (zawsze) |
-| `virtualServer` | `vs`, tylko przy wywołaniu przez link |
-| `vsScopes` | z `vsc`, tylko gdy jest niepusty; każde pole to zbiór `ResourceScope` (`jiraProjects` -> `Jira::Project/<id>` itd.) |
 | `mfaAge` | `mfa`, tylko gdy claim jest |
 | `credentialType` | typ poświadczenia użytego w wywołaniu, tylko gdy wywołujący builder go zna (CC-136); wartość spoza czterech typów to `internal_error` |
 | `refs` | zawsze (może być `{}`) |
 
-`resourceDefaults` -> `vsc`: `Jira::Project` -> `jiraProjects`, `Confluence::Space` -> `confluenceSpaces`,
-`GitLab::Group` -> `gitlabGroups`, `OpenSearch::Index` -> `opensearchIndexPrefixes`, `ServiceDesk::Queue` ->
-`servicedeskQueues`. Brak pola znaczy, że link tego typu nie zawęża.
-
-`context.vsScopes` wolno czytać wyłącznie w regułach `forbid` (CC-041); paczka z `permit` czytającym `vsScopes`
-jest odrzucana. Paczka (ws-09) musi zawężać linki dla **każdego** z pięciu typów i ich typów podrzędnych
-(wzór: `cedar/examples/virtual-server.cedar`, `!context.vsScopes.<pole>.containsAny(resource.scopes)`);
-brak reguły cicho poszerza link.
+Od 5.0.0 kontekst nie niesie zawężenia z adresu: `virtualServer` i `vsScopes` zniknęły ze schematu (CC-173), więc paczka
+polityk, która je czyta (nawet w `forbid`), nie przechodzi walidacji schematu. Zawężenia zasobów, które robił link,
+nie ma; jeśli kiedyś wróci, wróci jako nowy CC z nowym claimem.
 
 ### `context.refs`
 
@@ -191,8 +182,7 @@ nie są dołączane (wystarczą krawędzie `parents`).
 ## 6. Błędy
 
 Każdy błąd buildera kończy się odmową wywołania: `invalid_argument` dla złego argumentu-identyfikatora (C10),
-`invalid_argument` także dla ujemnego wieku MFA (CC-065), `internal_error` dla niespójnych danych platformy: `vs` bez `vsc` lub odwrotnie, nieznane pole `vsc` albo pole
-z 0 lub ponad 50 identyfikatorami, nieobsługiwany typ w `resourceDefaults` lub `resourceRefs`, `risk` spoza
+`invalid_argument` także dla ujemnego wieku MFA (CC-065), `internal_error` dla niespójnych danych platformy: nieobsługiwany typ w `resourceRefs`, `risk` spoza
 `READ_ONLY`/`UPDATE`/`DESTRUCTIVE`, `action` spoza `read`/`update`/`delete`/`admin`, liczba poza zakresem
 Cedar `Long`, brak rodzica przy encji, która go wymaga.
 
@@ -218,12 +208,9 @@ zachowane elementy i ograniczenia zapytania (`queryConstraints`).
 Narzędzie zwracające wiele elementów (wyszukiwanie, lista) nie może polegać na ocenie bramki, bo bez
 argumentu-identyfikatora `refs` są puste. Serwer:
 
-1. Ogranicza zapytanie do systemu: `EntityBuilder.queryConstraint(caller, typ)` daje identyfikatory zawężenia
-   linku (`virtualServer`, typu `virtualServerType`) i identyfikatory przyznane przez mapowanie (`granted`).
-   Zawężenie linku trafia do zapytania zawsze; przyznane zakresy także tam, gdzie system nie egzekwuje uprawnień
-   użytkownika (OpenSearch). Oba warunki łączy AND.
-   - `virtualServer` puste: link nie zawęża tego typu (albo brak linku), bez warunku zawężenia. Dla
-     `Confluence::Page` zawężenie pochodzi z przestrzeni linku (`virtualServerType = Confluence::Space`).
+1. Ogranicza zapytanie do systemu: `EntityBuilder.queryConstraint(caller, typ)` daje identyfikatory przyznane
+   przez mapowanie (`granted`). Przyznane zakresy trafiają do zapytania tam, gdzie system nie egzekwuje uprawnień
+   użytkownika (OpenSearch).
    - `granted` puste: użytkownik nie ma żadnego zakresu tego typu. Tam, gdzie zapytanie jest ograniczane do
      zakresów (OpenSearch), serwer **nie wykonuje zapytania** i zwraca pustą listę; puste `granted` nigdy nie
      znaczy "bez filtra".
@@ -265,8 +252,7 @@ ruch i nie ujawnia liczby elementów spoza zakresu.
 
 Każdy identyfikator zasobu ma wzorzec zgodny z dokumentacją systemu (`schemas/common.schema.json`,
 `ResourceIdPatterns`; w Javie `ResourceIds`). Wzorzec obowiązuje w: argumentach narzędzi (`refs`, błąd
-`invalid_argument`), zasobach z resolvera (`internal_error`), `resourceDefaults` (C5, walidacja schematu),
-claimie `vsc` (C2, 401) i id zakresów w `static.json` (odrzucenie paczki).
+`invalid_argument`), zasobach z resolvera (`internal_error`), id zakresów w `static.json` (odrzucenie paczki).
 
 | Typ | Wzorzec | Źródło |
 | --- | --- | --- |
@@ -292,12 +278,12 @@ Ukryte i systemowe indeksy OpenSearch (`.nazwa`, w tym `.ds-*` strumieni danych)
 Odmowa dla zasobu ma jeden kod i jeden tekst, żeby jej treść ani moment nie zdradzały, czy zasób istnieje:
 
 1. `not_found_or_denied` ma w C10 jeden stały `message`: `The resource does not exist or you do not have access to it.`
-   Gateway używa tego samego tekstu dla narzędzia spoza linku (CC-118) i dla zasobu poza zakresem.
+   Gateway używa tego samego tekstu dla narzędzia, które odcina filtr adresu (CC-118, CC-170), i dla zasobu poza zakresem.
 2. Kolejność: najpierw grant. Użytkownik bez grantu na typ zasobu (żadna grupa nie daje zakresu tego typu i polityka nie
    przyznaje dostępu) dostaje `not_found_or_denied` **przed** budową encji, przed odczytem klasyfikacji i przed każdym
    wywołaniem systemu, które mogłoby się nie udać. Dzięki temu `internal_error` (np. brak wymaganej klasyfikacji) nie
    ujawnia istnienia zasobu osobie, która i tak go nie widzi.
-3. Kolejka service desku poza zakresem linku (argument `queueId` spoza `vsScopes`) to też `not_found_or_denied`,
+3. Kolejka service desku poza przyznanym zakresem (argument `queueId` spoza grantu) to też `not_found_or_denied`,
    nie `access_denied`; w kontrakcie `access_denied` zostaje dla narzędzi, nie dla zasobów.
 
 ## 10. Każda wartość każdego `resourceRef` (CC-061)

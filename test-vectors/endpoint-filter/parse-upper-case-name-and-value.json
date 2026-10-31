@@ -1,0 +1,20 @@
+{
+  "description": "Names and values are compared without regard to case.",
+  "kind": "parse",
+  "input": {
+    "query": "Systems=Jira,GitLab&ACCESS=Write"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=gitlab,jira&access=write",
+    "filter": {
+      "systems": [
+        "gitlab",
+        "jira"
+      ],
+      "tools": null,
+      "access": "write",
+      "exclude": null
+    }
+  }
+}

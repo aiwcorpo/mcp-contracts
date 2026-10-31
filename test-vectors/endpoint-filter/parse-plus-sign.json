@@ -1,0 +1,16 @@
+{
+  "description": "A plus sign.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira+gitlab"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "forbidden_character",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}

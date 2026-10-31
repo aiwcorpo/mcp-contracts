@@ -1,0 +1,21 @@
+{
+  "description": "The filter of a request differs from the filter bound to the session (CC-172); filter is the normalized filter of the request.",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "policy_decision",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "filter": "systems=gitlab",
+    "decision": "deny",
+    "reason": "filter_mismatch",
+    "policyRevision": "20261026120000-a1b2c3d",
+    "outcome": "denied"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "description": "systems narrows to the listed systems.",
+  "kind": "apply",
+  "input": {
+    "query": "systems=jira",
+    "tools": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "confluence__update_page",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE"
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ]
+  },
+  "expected": {
+    "canonical": "systems=jira",
+    "visible": [
+      "jira__create_issue",
+      "jira__delete_issue",
+      "jira__get_issue"
+    ]
+  }
+}

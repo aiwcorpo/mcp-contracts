@@ -10,7 +10,7 @@ const TERMINAL = new Set(['user_confirmed', 'user_confirmed_no_preview', 'attemp
 // Result of a row from the reason of its last event (CC-165). The reasons of the limits, of a changed or missing definition and of a refused
 // token exchange are refusals: they land in the group denied.
 const REASON_RESULT = {
-  not_granted: 'denied_not_granted', link_scope: 'denied_link_scope', policy_forbid: 'denied_policy', tool_disabled: 'tool_disabled',
+  not_granted: 'denied_not_granted', filter_scope: 'denied_filter_scope', policy_forbid: 'denied_policy', tool_disabled: 'tool_disabled',
   credential_required: 'credential_required', rate_limited: 'rate_limited', step_up_required: 'step_up_required',
   rate_limited_user: 'rate_limited', rate_limited_client: 'rate_limited', rate_limited_tool: 'rate_limited',
   definition_changed: 'tool_disabled', tool_not_served: 'tool_disabled', exchange_denied: 'denied_not_granted',
@@ -19,7 +19,7 @@ const REASON_RESULT = {
 // Filter group of the result query parameter of GET /activity/calls (CC-142).
 export function resultGroup(result) {
   if (result === 'ok') return 'ok';
-  if (['denied_not_granted', 'denied_link_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited'].includes(result)) return 'denied';
+  if (['denied_not_granted', 'denied_filter_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited'].includes(result)) return 'denied';
   if (['error', 'credential_required'].includes(result)) return 'error';
   return 'confirmation';
 }
@@ -33,7 +33,7 @@ export function aggregateCall(allEvents, now) {
   const first = events[0];
   const row = { requestId: first.requestId, ts: first.ts };
   if (first.client) row.client = first.client;
-  if (first.virtualServer) row.virtualServer = first.virtualServer;
+  if (first.filter) row.filter = first.filter;
   const withTool = events.find((e) => e.tool && e.server);
   if (withTool) row.tool = `${withTool.server.replace(/^mcp-/, '')}__${withTool.tool}`;
   const risk = events.find((e) => e.risk)?.risk;

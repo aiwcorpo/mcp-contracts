@@ -3,7 +3,8 @@
   "input": {
     "reason": "rate_limited",
     "publicBaseUrl": "https://mcp.aiwcorpo.pl",
-    "resourcePath": "/v/team-a-dev",
+    "resourcePath": "/mcp",
+    "requestQuery": "access=read",
     "retryAfterSeconds": 0.2
   },
   "expected": {

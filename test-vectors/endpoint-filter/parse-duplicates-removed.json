@@ -1,0 +1,20 @@
+{
+  "description": "Duplicates inside a list are removed.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=jira,jira,gitlab"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=gitlab,jira",
+    "filter": {
+      "systems": [
+        "gitlab",
+        "jira"
+      ],
+      "tools": null,
+      "access": null,
+      "exclude": null
+    }
+  }
+}

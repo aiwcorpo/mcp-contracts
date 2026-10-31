@@ -1,0 +1,20 @@
+{
+  "description": "An entry with a double underscore is a tool, any other entry is a system.",
+  "kind": "parse",
+  "input": {
+    "query": "exclude=jira__delete_issue,confluence"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "exclude=confluence,jira__delete_issue",
+    "filter": {
+      "systems": null,
+      "tools": null,
+      "access": null,
+      "exclude": [
+        "confluence",
+        "jira__delete_issue"
+      ]
+    }
+  }
+}

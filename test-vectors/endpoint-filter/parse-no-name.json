@@ -1,0 +1,16 @@
+{
+  "description": "Value without a name.",
+  "kind": "parse",
+  "input": {
+    "query": "=jira"
+  },
+  "expected": {
+    "valid": false,
+    "cause": "malformed_parameter",
+    "response": {
+      "status": 400,
+      "error": "invalid_request",
+      "reason": "invalid_filter"
+    }
+  }
+}
