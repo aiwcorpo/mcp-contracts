@@ -1,25 +1,19 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **5.0.0**, tag `v5.0.0` (CC-169 ... CC-177, M5 punkt A; praca dalej na `5.0.1-SNAPSHOT`); wcześniej **4.1.0**, tag `v4.1.0` (CC-165 ... CC-168); **4.0.1**, tag `v4.0.1`; **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **5.1.0**, tag `v5.1.0` (CC-178 ... CC-188, poprawki po przeglądzie 5.0.0; praca dalej na `5.1.1-SNAPSHOT`); wcześniej **5.0.0**, tag `v5.0.0` (CC-169 ... CC-177, M5 punkt A); **4.1.0**, tag `v4.1.0` (CC-165 ... CC-168); **4.0.1**, tag `v4.0.1`; **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
-Walidacja 5.0.0: `./scripts/verify-all.sh` zielony (`npm test`: 267 testów Node; `./mvnw clean verify`: 543 testy JUnit,
-w tym 327 mcp-cedar-entities, 59 mcp-policy-bundle, 157 mcp-manifest).
+Walidacja 5.1.0: `./scripts/verify-all.sh` zielony (`npm test`: 270 testów Node; `./mvnw clean verify`: 579 testów JUnit,
+w tym 327 mcp-cedar-entities, 70 mcp-policy-bundle, 182 mcp-manifest).
 
-## Po 5.0.0: poprawki po przeglądzie (gałąź `review-5.0.0-fixes`, niewydane)
+## 5.1.0 (wydane 2026-10-31)
 
-- CC-178 ... CC-187 `accepted` (decyzje człowieka 2026-10-31 po przeglądzie 5.0.0): kolejność `tools/call` (filtr przed stanem), `list_changed` na M6 i `GET` = `405`, limit czasu `tools/list` (3 s), stronicowanie `nextCursor`, BFF z wartościami typowanymi, lint "policy is impossible", kolejność kontroli sesji, limit 512 bajtów, poprawki L1 ... L9. Szczegóły: `CONTRACT_CHANGES.md`, `CHANGELOG.md` ("Niewydane").
-- Wersja w drzewie: nadal `5.0.1-SNAPSHOT`, bez tagu, bez `mvn install` i bez nowego tarballa. Bajty `cedar/mcp.cedarschema` bez zmian.
-- Walidacja: `./scripts/verify-all.sh` zielony (`npm test`: 270 testów Node; `./mvnw clean verify`: 579 testów JUnit, w tym 327 mcp-cedar-entities, 70 mcp-policy-bundle, 182 mcp-manifest); `PolicyLintCli` sprawdzony ręcznie (kod 1 dla `forbid` z nieistniejącym `vsScopes`, 0 dla `cedar/examples`).
-- **Decyzja o numerze (czeka na człowieka).** Addytywne: `nextCursor`, limit czasu, nowe wektory, `PolicyLint.impossible` (to wskazuje 5.1.0). Ale według tabeli SemVer co najmniej to jest major względem 5.0.0: `listChanged` z `true` na `false` (CC-179), zaostrzenie `PolicyLintCli` (CC-183), wzorzec `EndpointFilterQuery` i warunki schematu audytu oraz wynik `EndpointFilter.allows` (CC-186),
-  mock MSW odrzucający `%` (CC-182), zmiana wejścia jednego istniejącego wektora (CC-187), inny wynik `tools/call` i sesji w scenariuszach, które 5.0.0 zostawiało sprzeczne (CC-178, CC-184). Nikt nie wdrożył 5.0.0, więc praktyczny koszt jest zerowy, ale polecenie było: przy niezgodności wstecznej zatrzymać wydanie.
-  Opcje: (a) 5.1.0 z wyjątkiem SemVer opisanym w README, jak 4.0.1 i 4.1.0 (rekomendacja: dochodzą funkcje kontraktu, a niezgodności dotyczą wersji, której nikt nie używa); (b) 6.0.0 zgodnie z tabelą; (c) odrzucić część zaostrzeń (CC-183, CC-186), żeby reszta była czystym minorem. Po decyzji zostaje commit wydania w stylu 5.0.0 (wersje w pomach, `package.json`, `info.version`, `./mvnw install`, `npm run pack`, tag).
-- **Otwarte pytania:** (1) kolejność `upstream_unavailable` i `credential_required` nie była wprost w decyzji; przyjęto kolejność zapisu (`tool_disabled`, `upstream_unavailable`, `credential_required`), przypiętą wektorami; (2) rozmiar strony `tools/list` (100) i ważność kursora (15 minut jak w CC-095) to moje wartości; (3) nazwa i jednostka `MCP_TOOLS_LIST_TIMEOUT` (milisekundy);
-  (4) powód audytu dla sesji cudzej lub nieznanej (kontrakt go nie nazywa; sesja na innej trasie dostaje `filter_mismatch`); (5) co z sesjami 4.x w Redisie bez wiązania i z wierszami aktywności z `link_scope` zapisanymi przed aktualizacją; (6) czy narzędzie nigdy niezatwierdzone (oczekujące `new`) w `mayCall` daje `tool_disabled` (przyjęto, bo wpis rejestru w dowolnym stanie liczy się do `mayCall`);
-  (7) README (reguła 3 rejestru) mówi, że nieudany odczyt serwera "nie ukrywa wszystkich narzędzi", a CC-169 i CC-180 pomijają serwer na liście: pogodzone przez rozróżnienie "pominięty na tej liście" od "stan rejestru", ale wymaga potwierdzenia ws-05.
-- Rozstrzygnięte sprzeczności CC (L9): CC-173 "nie ma czego przenosić" (zamiast "przenosi ws-09"), `systems` równe systemowi trasy, klucze `clientConfigs` zostają (`claudeCode`, `copilot`, `codex`), CC-175 zgodne z CC-177.
-- Poza repozytorium (do planu, nie do wydania): `mcp-platform-plan/01-contracts.md` nadal opisuje linki (M5 przeglądu).
+- CC-178 ... CC-188 `accepted` (decyzje człowieka 2026-10-31 po przeglądzie 5.0.0): kolejność `tools/call` (filtr przed stanem), `list_changed` na M6 i `GET` = `405`, limit czasu `tools/list` (3 s), stronicowanie `nextCursor` (100, kursor 15 min), BFF z wartościami typowanymi, lint "policy is impossible", kolejność kontroli sesji, limit 512 bajtów, L1 ... L9, sesje 4.x nieuznawane i mapowanie `link_scope` przy odczycie (CC-188). Szczegóły: `CONTRACT_CHANGES.md`, `CHANGELOG.md` ("5.1.0").
+- Wyjątek SemVer (README, "Wersjonowanie"): kilka zmian jest według tabeli major względem 5.0.0 (CC-178, CC-179, CC-182, CC-183, CC-184, CC-186, CC-187); decyzja człowieka: 5.1.0, bo nikt nie wdrożył 5.0.0. Bajty `cedar/mcp.cedarschema` bez zmian.
+- Potwierdzone przez człowieka: strona 100, kursor 15 min, `MCP_TOOLS_LIST_TIMEOUT` w ms (3000), kolejność `tool_disabled`, `upstream_unavailable`, `credential_required`, narzędzie oczekujące daje `tool_disabled`, sesja na innej trasie `filter_mismatch`, CC-173 "nie ma czego przenosić".
+- Nowe: katalog wektorów `oauth-metadata/`, `PolicyLint.impossible`, opcja `--schema` w `PolicyLintCli`, `guava` (`provided`) w `mcp-policy-bundle`. Otwarte: powód audytu dla sesji cudzej lub nieznanej (brak nowego powodu); `mcp-platform-plan/01-contracts.md` nadal opisuje linki (poza repozytorium).
+- Wydane: artefakty `pl.aiwcorpo.mcp:*:5.1.0` w `~/.m2`, `release/aiwcorpo-mcp-contracts-5.1.0.tgz`, tag `v5.1.0`.
 
 ## 5.0.0 (wydane 2026-10-31)
 

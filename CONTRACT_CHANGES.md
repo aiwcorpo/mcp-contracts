@@ -3527,8 +3527,8 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 
 ---
 
-Poprawki po przeglądzie wydania 5.0.0 (Opus, 2026-10-31; nikt jeszcze 5.0.0 nie wdrożył). CC-178 ... CC-187 doprecyzowują i poprawiają CC-169 ... CC-177, zakres według decyzji człowieka z 2026-10-31.
-Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest według tabeli SemVer (README, "Wersjonowanie") zaostrzeniem, więc nie jest zgodna wstecz z 5.0.0 (STATUS.md, "Po 5.0.0"; CHANGELOG.md, "Niewydane").
+Poprawki po przeglądzie wydania 5.0.0 (Opus, 2026-10-31; nikt jeszcze 5.0.0 nie wdrożył). CC-178 ... CC-188 doprecyzowują i poprawiają CC-169 ... CC-177, zakres według decyzji człowieka z 2026-10-31.
+Wydanie 5.1.0 z wyjątkiem SemVer: część zmian jest według tabeli (README, "Wersjonowanie") zaostrzeniem, czyli majorem, ale poprawia wersję, której nikt nie wdrożył (README, wyjątek 5.1.0).
 
 ## CC-178 | C5/C10/README | `tools/call` na `/mcp`: filtr przed stanem narzędzia, serwera i konta
 
@@ -3545,9 +3545,9 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
   Dodatkowo: wyłączone narzędzie (przepuszczone i wycięte), brak połączenia konta (przepuszczone i wycięte), kolejność `tool_disabled` > `upstream_unavailable` > `credential_required`, brak prawa przy niedostępnym serwerze (`not_granted`), wywołanie `DESTRUCTIVE` wycięte przy oczekującym potwierdzeniu.
 - **Filtr poprzedza bramkę potwierdzenia `DESTRUCTIVE`:** wywołanie wycięte filtrem kończy się w kroku 2, więc nie tworzy, nie zużywa i nie unieważnia oczekującego potwierdzenia użytkownika (wektor `call-state-destructive-cut-keeps-pending-confirmation`). Klucz potwierdzenia (`sub`, `serverId`, narzędzie, skrót argumentów) nie zawiera filtra, więc to samo wywołanie przez adres bez filtra potwierdza się tym samym kodem.
 - **Pliki:** `scripts/lib/endpoint-filter.mjs` (`callDecision(filter, tool, mayCall, state)`), `scripts/generate-endpoint-vectors.mjs`, wektory `endpoint-filter/call-state-*` (14, Java ich nie wykonuje: to decyzja gateway'a), README ("Filtr w query"), `schemas/audit-event.schema.json` (opis `filter_scope`), poprawka zdań w CC-169 i CC-170.
-- **SemVer:** w 5.0.0 teksty były sprzeczne; wybór jednej wersji zmienia wynik referencji w scenariuszu niedostępnego lub wyłączonego narzędzia (wcześniej `not_found_or_denied`, teraz `upstream_unavailable` / `tool_disabled`). Wcześniejsze wektory `call-*` zachowują oczekiwania. Formalnie zmiana oczekiwanego zachowania; decyzja o numerze w STATUS.md.
+- **SemVer:** w 5.0.0 teksty były sprzeczne; wybór jednej wersji zmienia wynik referencji w scenariuszu niedostępnego lub wyłączonego narzędzia (wcześniej `not_found_or_denied`, teraz `upstream_unavailable` / `tool_disabled`). Wcześniejsze wektory `call-*` zachowują oczekiwania. Formalnie zmiana oczekiwanego zachowania; wyjątek SemVer w README.
 - **Wpływ:** ws-05 (kolejność w `McpGatewayService`; PoC ustawia dziś `link_scope` po samym istnieniu narzędzia), ws-10 (scenariusze: serwer leży przy filtrze, który wycina i który zostawia narzędzie; wyłączone narzędzie; brak połączenia; pending DESTRUCTIVE i wywołanie wycięte), ws-02/07/08/09 (brak).
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-179 | C5/C10 | `list_changed` przesunięte na M6; `GET` na `/mcp` to `405`
 
@@ -3557,9 +3557,9 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
 - **`GET`:** na `/mcp` i `/s/<serverId>/mcp` `GET` to `405 Method Not Allowed` z `Allow: POST, DELETE`, dla obu postaci protokołu. Jak każda odpowiedź tej trasy, `405` pada po sprawdzeniu tokenu (bez ważnego tokenu `401`). Reguła CC-172 o wiązaniu filtra dotyczy więc `POST` i `DELETE`;
   sprawdzenie filtra na strumieniu `GET` jest wymaganiem M6 razem z `list_changed`. Referencja `listChangedNotification` i wektory `endpoint-aggregate/list-changed-*` zostają jako materiał dla M6 i nie są wymagane od gateway'a.
 - **Pliki:** README ("Powiadomienia"), CC-172 i CC-176 (adnotacje), CHANGELOG.
-- **SemVer:** zdolność wymagana w 5.0.0 przestaje być wymagana, a deklarowana wartość `listChanged` zmienia się z `true` na `false`: według tabeli usunięcie; decyzja o numerze w STATUS.md.
+- **SemVer:** zdolność wymagana w 5.0.0 przestaje być wymagana, a deklarowana wartość `listChanged` zmienia się z `true` na `false`: według tabeli usunięcie; wyjątek SemVer w README.
 - **Wpływ:** ws-05 (bez `GET` SSE, `subscriptions/listen`, kanału zdarzeń między instancjami), ws-10 (brak scenariusza `list_changed`: klient po zatwierdzeniu narzędzia odświeża listę sam), ws-01 (Redis pub/sub nie jest potrzebny do tego), ws-02/07/08/09 (brak).
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-180 | C5/README | Limit czasu `tools/list` na serwer; definicja "serwer niedostępny"
 
@@ -3572,7 +3572,7 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
 - **Pliki:** `scripts/lib/endpoint-aggregate.mjs` (`serverAvailable`, `DEFAULT_TOOLS_LIST_TIMEOUT_MS`), wektory `endpoint-aggregate/availability-*` (7) i `list-slow-server-skipped`, README ("Adresy").
 - **SemVer:** nowy wymagany parametr konfiguracji gateway'a z wartością domyślną i doprecyzowana reguła pomijania: minor.
 - **Wpływ:** ws-05 (limit, równoległy odczyt, metryka pominięć), ws-01 (zmienna w konfiguracji stosu dev), ws-10 (scenariusz: wolny serwer nie wstrzymuje listy), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-181 | C5/README | Stronicowanie `tools/list`: `nextCursor`
 
@@ -3589,7 +3589,7 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
 - **Pliki:** `scripts/lib/endpoint-aggregate.mjs` (`page`, `issueCursor`, `readCursor`), wektory `endpoint-aggregate/page-*` (10) i `cursor-*` (10), `schemas/audit-event.schema.json` (`invalid_cursor`), README.
 - **SemVer:** nowa zdolność odpowiedzi (`nextCursor`) dla listy, która ma ponad 100 narzędzi: minor. Dla list do 100 narzędzi odpowiedź jest taka jak w 5.0.0.
 - **Wpływ:** ws-05 (stronicowanie, klucz kursora wspólny dla instancji, audyt), ws-10 (scenariusz: ponad 100 narzędzi, obcy kursor, kursor z innym filtrem), ws-01 (klucz kursora w konfiguracji), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-182 | C12/mock | Operacja `getMcpEndpoint`: wartości typowane w OpenAPI, BFF sam składa query
 
@@ -3600,9 +3600,9 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
 - **Sprzeczność z wektorem `invalid-percent-encoding`:** rozstrzygnięta. Wektor opisuje wartość zdekodowaną z `%` (wejście `rawQuery` to złożone query), więc oczekiwanie `400` zostaje; zmienia się tylko opis. Nowe wektory z polem `httpQuery` (query tak, jak je wysłał klient) pokazują, że `%2C` jest poprawny, a `%252C`, `%26` i `+` (spacja) nie.
 - **Mock MSW:** zwraca `400 invalid_filter` dla nazwy spoza czterech, powtórzonej nazwy i wartości zdekodowanej z `%`, `&` lub `=`; `%2C` w wartości przechodzi (test `mocks.test.mjs`).
 - **Pliki:** `scripts/lib/mcp-endpoint.mjs` (`composeQuery`), `mocks/msw/portal-bff.handlers.ts`, `openapi/portal-bff.v1.yaml` (opis operacji), wektory `mcp-endpoint/http-*` (4), opis `invalid-percent-encoding`, `test/vectors.test.mjs`, `test/mocks.test.mjs`.
-- **SemVer:** nowe wektory i opis to patch/minor, ale mock odrzuca teraz to, co wcześniej przepuszczał (`%`, powtórzony parametr), a to według tabeli zaostrzenie walidacji; decyzja o numerze w STATUS.md.
+- **SemVer:** nowe wektory i opis to patch/minor, ale mock odrzuca teraz to, co wcześniej przepuszczał (`%`, powtórzony parametr), a to według tabeli zaostrzenie walidacji; wyjątek SemVer w README.
 - **Wpływ:** ws-07 (BFF: typowane parametry, `composeQuery`, brak ponownego kodowania), ws-08 (klient generowany bez zmian, przecinek może być kodowany), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-183 | Cedar/potok ws-09 | Lint: polityka niemożliwa do spełnienia to błąd
 
@@ -3613,9 +3613,9 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
   i sprawdzenia każdego `has` na atrybucie spoza schematu. `forbid ... unless { context has x }` z nieistniejącym atrybutem pasuje do wszystkiego i blokuje wszystko, więc to fail-closed i nie jest zgłaszane. Test `PolicyLintImpossibleTest` przypina oba zachowania.
 - **Sprawdzone:** przykłady `cedar/examples/*.cedar` nie dają ostrzeżeń (test). Wg przeglądu `mcp-policies/policies/platform/virtual-server.cedar` daje je i ws-09 ma go usunąć (CC-173); pozostałe pliki i przykłady kontraktów były bez ostrzeżeń.
 - **Pliki:** `PolicyLint.java` (`impossible`), `PolicyLintCli.java`, `PolicyLintImpossibleTest.java`, `pom.xml` (guava w zakresie `provided`, wersja jak zależność uruchomieniowa cedar-java, tylko do odczytu ostrzeżeń; konsument nie dostaje nowego artefaktu).
-- **SemVer:** nowa metoda (minor), ale `PolicyLintCli` kończy się błędem tam, gdzie w 5.0.0 kończył się sukcesem: według tabeli zaostrzenie walidacji (decyzja o numerze w STATUS.md).
+- **SemVer:** nowa metoda (minor), ale `PolicyLintCli` kończy się błędem tam, gdzie w 5.0.0 kończył się sukcesem: według tabeli zaostrzenie walidacji (wyjątek SemVer w README).
 - **Wpływ:** ws-09 (krok potoku: `PolicyLintCli` na `policies/` i `overrides/`; usunięcie reguł z ochroną `has`), odbiorcy paczek bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-184 | C1/C5 | Kolejność kontroli żądania z sesją MCP; wiązanie porządkuje audyt
 
@@ -3633,12 +3633,12 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
   Odwrotna kolejność (sesja przed składnią) wymagałaby odczytu sesji przy śmieciowym żądaniu i nic by nie dawała.
 - **Trasa:** sesja użyta na innej trasie niż ta, na której powstała, to `404` z powodem audytu `filter_mismatch` (adres sesji to trasa i filtr; osobny powód nie powstaje). Opis powodu w `audit-event.schema.json` obejmuje trasę.
 - **`Mcp-Session-Id` razem z `_meta`:** żądanie z nagłówkiem sesji jest żądaniem sesyjnym i podlega krokom 2 do 5, bez względu na `_meta` (PoC szło wtedy ścieżką bezstanową i pomijało wiązanie). Powód: klient, który wysyła identyfikator sesji, oczekuje semantyki sesji; pominięcie wiązania zależałoby od pola, które klient dobiera.
-- **Audyt sesji cudzej i nieznanej:** `404` jak dla nieznanej sesji, bez nowego powodu; kontrakt nie nazywa powodu audytu dla nieznanej sesji (otwarte, patrz STATUS.md).
+- **Audyt sesji cudzej i nieznanej:** `404` jak dla nieznanej sesji, bez nowego powodu; kontrakt nie nazywa powodu audytu dla nieznanej sesji (nie nazwano nowego powodu).
 - **Wiązanie nie jest barierą bezpieczeństwa:** porządkuje audyt (jedna sesja, jeden filtr) i pilnuje, żeby pośrednik w jednym połączeniu nie zmieniał zasięgu bez nowego `initialize`. Klient po `404` i tak inicjuje nową sesję z innym filtrem albo bez, a uprawnienia wyznacza Cedar przy każdym wywołaniu (CC-170).
 - **Pliki:** `scripts/lib/endpoint-filter.mjs` (`sessionDecision`), wektory `endpoint-filter/session-order-*` (7), README ("Sesja"), `audit-event.schema.json`, CC-172 (adnotacja).
-- **SemVer:** reguła kolejności dla nowej trasy; zmienia odpowiedź w scenariuszach, które 5.0.0 zostawiało otwarte (cudza sesja z innym filtrem wcześniej mogła dać `filter_mismatch`): decyzja o numerze w STATUS.md.
+- **SemVer:** reguła kolejności dla nowej trasy; zmienia odpowiedź w scenariuszach, które 5.0.0 zostawiało otwarte (cudza sesja z innym filtrem wcześniej mogła dać `filter_mismatch`): wyjątek SemVer w README.
 - **Wpływ:** ws-05 (kolejność w `McpEndpoint`; `filter_mismatch` tylko dla własnej sesji), ws-10 (trzy scenariusze: zły filtr w cudzej sesji, cudza sesja z innym filtrem, własna sesja z innym filtrem; sesja na innej trasie; nagłówek sesji z `_meta`), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-185 | C5/C12/README | Limit 512 bajtów jest ograniczeniem wiążącym, nie 100 narzędzi
 
@@ -3648,7 +3648,7 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
 - **Pliki:** `openapi/portal-bff.v1.yaml` (opis), CC-177 (zdanie o przeniesieniu), README, `scripts/lib/endpoint-filter.mjs` (komentarz), test `the filter limits ... are reachable` bez zmian.
 - **SemVer:** poprawka opisu: patch.
 - **Wpływ:** ws-08 (licznik bajtów w kreatorze), ws-07 (komunikat `400` bez zmian), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-186 | C2/C8/Java | Filtr: ryzyko spoza zbioru, wzorzec `EndpointFilterQuery`, warunki pola `filter`, opis pola
 
@@ -3660,9 +3660,9 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
   - **L4:** zdanie "wyłącznie nazwy systemów i narzędzi" (CC-174) było nieprawdziwe: parser przepuszcza dowolny token o składni nazwy, np. `systems=ghpabc123def456`, i trafia on do audytu i aktywności. Opis pól `filter` mówi teraz, że wpisy mają składnię nazw, ale wybiera je klient i nie są sprawdzane z listą systemów platformy.
     Niezmiennik 7 trzyma, bo alfabet (małe litery, cyfry, `_`) i 512 bajtów ograniczają zawartość; opis przestaje twierdzić więcej.
 - **Pliki:** `EndpointFilter.java`, `EndpointFilterVectorTest.java`, `schemas/common.schema.json`, `schemas/audit-event.schema.json`, `openapi/gateway-admin.v1.yaml` (opis `filter` w `ActivityCall`), wektory, `test/vectors.test.mjs`.
-- **SemVer:** zaostrzenie walidacji (wzorzec, warunki schematu) i zmiana wyniku metody Javy dla ryzyka spoza zbioru: według tabeli major; decyzja o numerze w STATUS.md.
+- **SemVer:** zaostrzenie walidacji (wzorzec, warunki schematu) i zmiana wyniku metody Javy dla ryzyka spoza zbioru: według tabeli major; wyjątek SemVer w README.
 - **Wpływ:** ws-05 (zdarzenia ze `filter` tylko tam, gdzie wolno; zgodność z wzorcem), ws-07/08 (opis pola), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
 
 ## CC-187 | README/OpenAPI/wektory | Poprawki tekstu i wektorów po przeglądzie (L2, L3, L6, L7, L8, L9)
 
@@ -3676,6 +3676,15 @@ Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest w
 - **L9:** sprzeczności w tekście CC poprawione na miejscu: (a) CC-169: `systems` na trasie `/s/` ma być równy systemowi trasy (`jira` dla `mcp-jira`), nie "równy `serverId`"; (b) CC-173: "pokrycie przenosi ws-09" zastąpione "nie ma czego przenosić" (zgodnie z resztą wpisu i CC-177: link nie zawężał zasobów, `resourceDefaults` było uśpione od CC-085);
   (c) CC-175: `clientConfigs` ma klucze `claudeCode`, `copilot`, `codex` (nie "Claude Desktop, VS Code"); klucze zostają; (d) CC-175: "okres z CC-177" i "strona z migracją" zastąpione zgodnie z CC-177 (usunięcie od razu, bez ekranu migracji).
 - **Pliki:** `openapi/portal-bff.v1.yaml` i `bundled`, `scripts/lib/endpoint-aggregate.mjs`, `scripts/lib/gateway-authentication.mjs`, `scripts/generate-endpoint-vectors.mjs`, wektory, README, CONTRACT_CHANGES.md (CC-169, CC-170, CC-171, CC-173, CC-175).
-- **SemVer:** poprawki opisów: patch; zmiana oczekiwania istniejącego wektora `list-changed-*` (L6) według tabeli to major; decyzja o numerze w STATUS.md.
+- **SemVer:** poprawki opisów: patch; zmiana oczekiwania istniejącego wektora `list-changed-*` (L6) według tabeli to major; wyjątek SemVer w README.
 - **Wpływ:** ws-05 (metadane `/mcp` ignorują query), ws-10 (brak), pozostali bez zmian.
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
+
+## CC-188 | C5/C12 | Migracja po 5.0.0: sesje 4.x i wiersze aktywności sprzed aktualizacji
+
+- **Sesje 4.x w Redisie nie są uznawane (decyzja człowieka, 2026-10-31):** sesja zapisana przed aktualizacją nie ma trasy ani filtra, a CC-172 i CC-184 wymagają wiązania od `initialize`. Gateway traktuje ją jak nieznaną: `404` jak dla nieznanej sesji, bez `filter_mismatch`, klient inicjuje nową sesję. Nie ma migracji wpisów sesji.
+- **Wiersze aktywności z `link_scope` / `denied_link_scope` (decyzja człowieka, 2026-10-31):** przy odczycie (agregacja `activity/calls`) powód `link_scope` zdarzeń sprzed aktualizacji jest mapowany na wynik `denied_filter_scope`, a zapisany wynik `denied_link_scope` także czytany jako `denied_filter_scope` (grupa `denied`).
+  Dane nie są przepisywane, a zdarzenia audytu zostają nietknięte (w SIEM stara nazwa powodu zostaje w starych zdarzeniach). Mapowanie jest po stronie odczytu gateway'a (`ActivityAggregator`, `ActivityService`).
+- **Potwierdzone wartości domyślne:** strona `tools/list` 100 (CC-181), ważność kursora 15 minut, `MCP_TOOLS_LIST_TIMEOUT` w milisekundach (3000, CC-180), kolejność `tool_disabled`, `upstream_unavailable`, `credential_required` oraz `tool_disabled` dla narzędzia oczekującego (CC-178), `filter_mismatch` dla sesji na innej trasie (CC-184), CC-173 "nie ma czego przenosić" (CC-187).
+- **SemVer:** bez zmian schematów i wektorów; reguły dla wdrażających. **Wpływ:** ws-05 (odczyt sesji i aktywności), ws-10 (scenariusz: sesja 4.x po aktualizacji to `404` i nowa sesja; stary wiersz `link_scope` w aktywności), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
