@@ -3378,8 +3378,8 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 - **Problem:** nie ma adresu "do wszystkiego": gateway wystawia `/s/<serverId>/mcp` (jeden system) i `/v/<slug>/mcp` (zapisany link ze stałą listą narzędzi, bez narzędzi dodanych później).
 - **Zmiana:** `<publicBaseUrl>/mcp` bez parametrów zwraca w `tools/list` wszystkie narzędzia, które użytkownik może teraz wywołać, ze wszystkich systemów: część wspólna zatwierdzonych, włączonych i obsługiwanych narzędzi z decyzją Cedar dla bieżącego tokenu
   (niezmiennik 5 bez zmian; lista liczona przy każdym `tools/list`, nie zapisana). Nazwy `<system>__<narzędzie>` (`QualifiedToolName`), `tools/call` gateway kieruje po prefiksie do serwera `mcp-<system>`; bez routera opartego na modelu.
-  `/s/<serverId>/mcp` zostaje (filtr z CC-170 działa też tam, ale `systems` na tej trasie musi być pusty albo równy `serverId`; inny `systems` to `400 invalid_request`, `reason: invalid_filter`).
-  Zasady jak dziś w linkach: system bez połączenia konta ma narzędzia widoczne, a wywołanie daje `credential_required` z `connectUrl`; serwer niedostępny albo z niezgodną definicją jest pomijany na liście (`tool_disabled` / `upstream_unavailable` przy wywołaniu);
+  `/s/<serverId>/mcp` zostaje (filtr z CC-170 działa też tam, ale `systems` na tej trasie musi być pusty albo równy systemowi trasy, czyli `serverId` bez prefiksu `mcp-` (`jira` dla `mcp-jira`); inny `systems` to `400 invalid_request`, `reason: invalid_filter`).
+  Zasady jak dziś w linkach: system bez połączenia konta ma narzędzia widoczne, a wywołanie daje `credential_required` z `connectUrl`; serwer niedostępny albo z niezgodną definicją jest pomijany na liście (`upstream_unavailable` / `tool_disabled` przy wywołaniu, o ile filtr narzędzia nie wycina: kolejność w CC-178; limit czasu i definicja niedostępności w CC-180; stronicowanie długiej listy w CC-181);
   jedna uszkodzona lista jednego serwera nie unieważnia pozostałych. Kolejność listy: stała (system według `ServerId`, w systemie nazwa narzędzia), żeby klient nie widział przetasowań.
   `initialize` zwraca ten sam `serverInfo` dla każdej postaci adresu; wariant serwisowy JWT (CC-002) dla `initialize` / `tools/list` do serwerów bez zmian.
 - **README:** nowa sekcja "Jeden adres do całej platformy" (rozmiar listy: 5 systemów to kilkadziesiąt narzędzi, 20 systemów kilkaset; opisy narzędzi zużywają kontekst modelu; zalecenie filtra `systems=` i `access=read` powyżej progu, który wyznaczy pomiar M5)
@@ -3410,7 +3410,7 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
   Błąd: `400` z ciałem `{"error": "invalid_request", "reason": "invalid_filter"}` (nowy schemat `EndpointFilterError` w `common.schema.json`: to odpowiedź HTTP, nie wynik narzędzia, więc `invalid_request` nie wchodzi do `ErrorCode` C10 ani do `tool-error.schema.json`; nie ujawnia stanu systemów, bo zależy wyłącznie od składni żądania), bez `WWW-Authenticate`, zdarzenie `policy_decision` deny / `outcome: error`, `reason: invalid_filter` (bez `errorCode` i bez pola `filter`: nie było czego znormalizować). `400` przed weryfikacją tokenu nie istnieje: najpierw token (CC-152 bez zmian), potem filtr.
 - **Nieznany system, nieznane lub niedostępne narzędzie w filtrze (niezmiennik 8):** wpis składniowo poprawny, ale nieistniejący, bez uprawnień, wyłączony, oczekujący na zatwierdzenie albo z serwera pominiętego jako niedostępny jest pomijany tak samo jak narzędzie bez dostępu:
   ani `400`, ani różnica w odpowiedzi (kształt, kolejność, liczba pozycji nie zdradzają, który powód zadziałał). `tools/call` na narzędzie spoza wyniku to `not_found_or_denied` (jak CC-118), audyt `reason: filter_scope` gdy narzędzie istnieje i użytkownik ma do niego prawo, a wycina je filtr, w pozostałych przypadkach powody dzisiejsze (`not_granted` itd.).
-  Odróżnienie `filter_scope` od `not_granted` w audycie jest widoczne tylko w SIEM, nie dla klienta.
+  Odróżnienie `filter_scope` od `not_granted` jest widoczne w SIEM i w wierszu aktywności samego użytkownika (`denied_filter_scope`, CC-174), nie dla klienta MCP, który w obu przypadkach dostaje to samo `not_found_or_denied` (CC-187). Kolejność względem stanu narzędzia, serwera i konta: CC-178.
 - **Pusta część wspólna:** `initialize` działa, `tools/list` zwraca `{"tools": []}` (bez błędu i bez wskazówki, który powód zadziałał); `tools/call` zawsze `not_found_or_denied`. Portal w kreatorze może policzyć pustą część wspólną po swojej stronie (z własnej listy narzędzi), gateway tego nie ujawnia.
 - **Filtr to zawężenie:** nigdy nie przyznaje (niezmiennik 5); klient może go pominąć (zostaje `/mcp`) lub zmienić, więc nie jest granicą bezpieczeństwa; to samo uprawnienie wyznacza Cedar przy każdym wywołaniu z bieżącego tokenu. Konsekwencja dla polityk: brak reguł zależnych od filtra (CC-173).
 - **Pliki:** `scripts/lib/endpoint-filter.mjs` (referencja: parsowanie, normalizacja, przecięcie), nowy katalog wektorów `test-vectors/endpoint-filter/` (normalizacja: kolejność, duplikaty, wielkość liter, limity, `%2c`, nieznany parametr; semantyka: nieznany system, nieznane narzędzie, `exclude`, `access`, pusta część wspólna, `/s/` z `systems`),
@@ -3425,11 +3425,11 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 - **Problem:** RFC 9728 buduje adres metadanych z identyfikatora zasobu i wymaga, by pole `resource` metadanych było identyczne z identyfikatorem, z którego adres zbudowano; identyfikator może mieć query. Klient MCP może (a) zachować query w adresie metadanych i w `resource`,
   (b) obciąć query, (c) zbudować inny adres. Dziś `WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource<ścieżka trasy>"` i `aud` tokenu = `mcp-gateway` jedno dla wszystkich tras (`01-contracts.md`, C1); IdP nie dostaje `resource` od klienta w sposób, na którym gateway polega.
 - **Decyzja człowieka (2026-10-31): wariant V2.** Identyfikator zasobu to `<publicBaseUrl>/mcp` bez query; `WWW-Authenticate: Bearer resource_metadata="<publicBaseUrl>/.well-known/oauth-protected-resource/mcp"` bez query; dokument metadanych ma `resource: <publicBaseUrl>/mcp`; filtr jest tylko w adresie żądania MCP.
-  Gateway przyjmuje dowolny poprawny filtr na `/mcp` (jeden dokument metadanych, jedna rejestracja klienta OAuth). Zapytanie o metadane z query zwraca ten sam dokument (query jest ignorowane). Podstawa: test człowieka 2026-10-31. Keycloak 26.8.1 odrzuca `resource` z query, a Claude Code z V2 zalogował się,
+  Gateway przyjmuje dowolny poprawny filtr na `/mcp` (jeden dokument metadanych, jedna rejestracja klienta OAuth). Zapytanie o metadane z query zwraca ten sam dokument (query jest ignorowane; wektory `oauth-metadata/`, CC-187). Podstawa: test człowieka 2026-10-31. Keycloak 26.8.1 odrzuca `resource` z query, a Claude Code z V2 zalogował się,
   odświeżył token po 27 minutach i zachował filtr (`initialize` i `tools/list` po odświeżeniu z tym samym filtrem).
   - **V1 (query w identyfikatorze, znak w znak): odrzucony.** Keycloak 26.8.1 nie przyjmuje `resource` z query, więc klient trzymający query w `resource` nie dostałby tokenu.
   - **V3 (filtr w ścieżce `/f/...`): odrzucony.** Trasa `/f/` nie istnieje i nie jest zarezerwowana (`/f/...` jest zwykłą ścieżką portalu, wektor `return-paths/valid-f-prefix`).
-- **Przyjęte ryzyko (do README, "Jeden adres do całej platformy"):** V2 jest potwierdzone tylko dla Claude Code. Klient, który odrzuca `resource` bez query albo nie zachowuje query przy odświeżeniu tokenu, nie zadziała z filtrem do czasu dodania trasy `/f/` (wtedy nowy CC i nowa wersja; `/mcp` bez filtra działa z każdym klientem zgodnym z RFC 9728).
+- **Przyjęte ryzyko (do README, "Jeden adres do całej platformy"):** V2 jest potwierdzone tylko dla Claude Code. Klient, który odrzuca `resource` bez query albo nie zachowuje query przy odświeżeniu tokenu, nie zadziała z filtrem do czasu dodania trasy `/f/` (wtedy nowy CC i nowa wersja; `/mcp` bez filtra działa z każdym klientem zgodnym z RFC 9728). Klient, który po prostu gubi query, łączy się z `/mcp` bez filtra i dostaje pełną listę bez błędu: to ciche poszerzenie widoku, nie uprawnień (CC-187).
 - **`resource` / `aud` w tokenie:** `aud` pozostaje `mcp-gateway` (mapper audience w Keycloak) niezależnie od adresu; gateway nie porównuje `aud` z adresem żądania. Filtr nie jest granicą bezpieczeństwa (CC-170), więc brak wiązania tokenu z filtrem niczego nie osłabia.
   Wariant `aud` = identyfikator zasobu (RFC 8707) odrzucony: wymagałby od IdP przyjęcia dowolnego `resource`. `01-contracts.md` (C1) nie wymaga zmiany: `aud` jest tam już `mcp-gateway`.
 - **Odpowiedzi `401`:** `resource_metadata` wskazuje metadane trasy bez query (dla `/mcp`: `.../oauth-protected-resource/mcp`; dla `/s/...` jak dotąd). Kolejność: najpierw token, potem filtr (żądanie bez ważnego tokenu dostaje `401` także przy złym filtrze, więc klient zawsze dostaje metadane i nieuwierzytelniony nie bada składni).
@@ -3441,11 +3441,11 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 
 ## CC-172 | C1/C5 | Filtr związany z sesją MCP
 
-- **Zmiana:** gdy protokół ma sesję (`Mcp-Session-Id`), znormalizowany filtr z żądania `initialize` jest zapisany przy sesji, a każde następne żądanie sesji (w tym `GET` strumienia i `DELETE`) musi mieć ten sam znormalizowany filtr (porównanie po normalizacji z CC-170,
+- **Zmiana:** gdy protokół ma sesję (`Mcp-Session-Id`), znormalizowany filtr z żądania `initialize` jest zapisany przy sesji, a każde następne żądanie sesji (w tym `DELETE`; `GET` strumienia gateway nie wystawia, CC-179) musi mieć ten sam znormalizowany filtr (porównanie po normalizacji z CC-170,
   nie surowego tekstu); inny filtr, brak filtra przy sesji z filtrem albo filtr przy sesji bez to `404` z ciałem jak dla nieznanej sesji (bez ujawniania, że sesja istnieje), zdarzenie `policy_decision` deny, `reason: filter_mismatch`.
   Sesja nie przechodzi między użytkownikami (`sub` w sesji, jak dziś) ani między trasami (`/mcp` vs `/s/...`). Powód: klient albo pośrednik w jednym połączeniu nie zmienia zasięgu bez nowego `initialize`, a audyt jednej sesji ma jeden filtr.
   Dla protokołu bez sesji (MCP 2026-07-28, wariant bezstanowy, CC-070) nie ma co wiązać: filtr obowiązuje per żądanie, każde żądanie niesie adres, a gateway nie trzyma stanu; reguła sesji nie dotyczy.
-  HA (M5-B): wiązanie trzymane w tym samym magazynie co sesje (Redis), nie w pamięci instancji; utrata wpisu sesji (restart, wygaśnięcie) to `404` jak dziś i klient inicjuje nową sesję.
+  HA (M5-B): wiązanie trzymane w tym samym magazynie co sesje (Redis), nie w pamięci instancji; utrata wpisu sesji (restart, wygaśnięcie) to `404` jak dziś i klient inicjuje nową sesję. Kolejność kontroli (token, składnia, `sub` sesji, trasa, filtr), sesja na innej trasie i `Mcp-Session-Id` z `_meta`: CC-184; wiązanie porządkuje audyt i nie jest barierą bezpieczeństwa.
 - **Pliki:** README (sekcja o `/mcp`), `schemas/audit-event.schema.json` (reason `filter_mismatch`), wektory `test-vectors/endpoint-filter/session-*` (ten sam filtr w innej kolejności = zgodny; inny, dodany i usunięty filtr = odrzucenie; filtr jest porównywany po normalizacji), ciało `404` takie jak dziś dla nieznanej sesji (ws-05 potwierdza kod przy wdrożeniu).
 - **SemVer:** nowa kontrola dla nowej trasy: minor w pakiecie major.
 - **Wpływ:** ws-05 (sesje i magazyn, kod `filter_mismatch`), ws-01 (Redis współdzielony przez 2 instancje), ws-10 (scenariusz: zmiana filtra w sesji), ws-07/08, ws-09, ws-02 (brak).
@@ -3464,7 +3464,7 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
   Jeśli takie zawężenie wróci, wraca jako nowy CC z nowym claimem (np. `rsc`), nie ze starego `vsc`.
 - **Wariant odrzucony B (kontekst filtra w Cedar):** `context.filter` (hash albo lista systemów) dostępny w `forbid`. Odrzucony: pozwala politykom zależeć od wartości sterowanej przez klienta (zawsze może go pominąć), co jest złudzeniem kontroli; reguły `forbid` zależne od filtra nie dają niczego ponad zwykłe `forbid` na zasobie.
 - **Pliki:** `schemas/internal-jwt.schema.json`, `schemas/common.schema.json`, `cedar/mcp.cedarschema`, `cedar/examples/virtual-server.cedar` (usunięcie), `cedar/entity-builder.md`, `java/mcp-cedar-entities/*` (`VirtualServerScope`, `ScopeGroups`, `Caller`, `CedarRequest`, `EntityBuilder`, `QueryConstraint` – usunięcie pól), `java/mcp-policy-bundle/*` (`PolicyLint`, `BundleVerifier`, `PolicyLintCli`),
-  wektory: `jwt/` (5 plików z `vs`/`vsc`: usunięcie albo zamiana w odrzucenie `invalid_claims`), `entity-builder/` (6 plików), `policy-decisions/` (16 plików `gw-vs-*` / `srv-vs-*`: usunięcie, a pokrycie zawężenia zasobów przez `forbid` przenosi ws-09 do zwykłych reguł), `result-filter/` (8 plików "through-link" i pochodne: przepisanie bez `vsScopes`; filtr wyników zostaje, odpada tylko wejście linku),
+  wektory: `jwt/` (5 plików z `vs`/`vsc`: usunięcie albo zamiana w odrzucenie `invalid_claims`), `entity-builder/` (6 plików), `policy-decisions/` (16 plików `gw-vs-*` / `srv-vs-*`: usunięcie; nie ma czego przenosić do ws-09, bo link nie zawężał zasobów: `resourceDefaults` było uśpione od CC-085, a `vsc` nie miało nadawcy), `result-filter/` (8 plików "through-link" i pochodne: przepisanie bez `vsScopes`; filtr wyników zostaje, odpada tylko wejście linku),
   `bundles/` (3 pliki; `main-permit-reads-*` stają się wektorami "schemat odrzuca pole"), `README` (tabele wektorów i liczności), `types/`, `test/*.test.mjs`, testy Java (`EntityBuilderVectorTest`, `PolicyBundleVectorTest`, `ResultFilterVectorTest`).
 - **SemVer:** usunięcie claimów i atrybutów kontekstu: major.
 - **Wpływ:** ws-02 (starter: odbiornik JWT bez `vs`/`vsc`, `EntityBuilder` bez `withVirtualServer`, nowe bajty schematu Cedar, odrzucenie tokenu z `vs`/`vsc`), ws-05 (gateway przestaje wystawiać `vs`/`vsc`), ws-09 (usunąć reguły `forbid` czytające `virtualServer` / `vsScopes`, przebudować paczki pod nowy schemat; zawężenia zasobów, które dziś robi link, nie istnieją, więc nie ma czego przenosić),
@@ -3473,8 +3473,8 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 
 ## CC-174 | C8/C12 | Audyt i aktywność: `virtualServer` zastąpiony przez znormalizowany filtr
 
-- **Zmiana:** pole `virtualServer` w `audit-event.schema.json` znika (i z zapytań / odpowiedzi C12). W jego miejsce gateway dodaje opcjonalne `filter`: znormalizowane query z CC-170 (najwyżej 512 znaków, wzorzec `EndpointFilterQuery`), tylko gdy żądanie niosło filtr; brak filtra = brak pola. Wartość składa się wyłącznie z nazw systemów i narzędzi, więc nie jest sekretem ani danymi osobowymi
-  (niezmiennik 7 bez zmian: nic poza nazwami). Decyzja człowieka (2026-10-31): filtr jawny. Pozwala agregować w SIEM po systemie, pokazać wiersz w aktywności i porównać sesje; skrót (`filterHash`, np. 16 znaków SHA-256 znormalizowanego query) odrzucony jako nieczytelny.
+- **Zmiana:** pole `virtualServer` w `audit-event.schema.json` znika (i z zapytań / odpowiedzi C12). W jego miejsce gateway dodaje opcjonalne `filter`: znormalizowane query z CC-170 (najwyżej 512 znaków, wzorzec `EndpointFilterQuery`), tylko gdy żądanie niosło filtr; brak filtra = brak pola. Wartość składa się wyłącznie z wpisów o składni nazw systemów i narzędzi (wybiera je klient, parser nie sprawdza ich z listą platformy: CC-186), więc nie jest sekretem ani danymi osobowymi
+  (niezmiennik 7 bez zmian: nic poza takimi wpisami). Decyzja człowieka (2026-10-31): filtr jawny. Pozwala agregować w SIEM po systemie, pokazać wiersz w aktywności i porównać sesje; skrót (`filterHash`, np. 16 znaków SHA-256 znormalizowanego query) odrzucony jako nieczytelny.
   Pole `filter` niesie tylko gateway (zdarzenia `tool_call`, `policy_decision`, `confirmation`, `credential_resolve`; `authentication` NIE: zamknięta lista pól odrzuconego uwierzytelnienia zostaje, tam nic z niezweryfikowanego żądania). Serwery i broker nie dostają filtra (CC-173), więc ich zdarzenia go nie mają; korelacja po `requestId`.
   Zdarzenia broker `authenticator` / TOTP, które dziś kopiują `virtualServer` z JWT, tracą pole bez zastąpienia.
 - **Słownik:** `event: virtual_server_change` i jego powody `vs_created`, `vs_deleted`, `slug_taken`, `virtual_server_limit` znikają (CC-175; `not_granted` i `invalid_request` zostają jako powody innych zdarzeń); `link_scope` zastąpiony przez `filter_scope` (CC-170), nowe `invalid_filter`, `filter_mismatch` (CC-172).
@@ -3491,13 +3491,13 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 - **Zmiana:** znikają `GET|POST /admin/v1/virtual-servers`, `DELETE /admin/v1/virtual-servers/{slug}` (C5) oraz `GET|POST|DELETE /api/me/virtual-servers*` (C12), schematy `VirtualServer*`, `PortalVirtualServer*`, tag `virtual-servers`, kody `slug_taken` / `virtual_server_limit`, limit `MCP_VIRTUAL_SERVERS_MAX_PER_USER`, tabela `virtual_servers`,
   sprzątanie linków w offboardingu (`POST /admin/v1/users/{sub}/purge` gatewaya zostaje: poza linkami usuwa oczekujące potwierdzenia, ślady kodów, sesje MCP w Redisie i cache poświadczeń; traci tylko część "linki" i zdarzenia `virtual_server_change`, a `admin_change` z `reason: user_purged` zostaje; CN `mcp-offboarding` bez zmian),
   `404` cudzego linku bez audytu (uwaga z testu M4) przestaje istnieć.
-  Kreator w portalu zostaje bez zapisu w bazie: użytkownik wybiera systemy, narzędzia, `read`/`write`, wykluczenia; kreator pokazuje adres i gotowe konfiguracje klientów (`clientConfigs`: Claude Code, Claude Desktop, VS Code, ...). Adres budowany przez jedną normalizację (CC-170): 
+  Kreator w portalu zostaje bez zapisu w bazie: użytkownik wybiera systemy, narzędzia, `read`/`write`, wykluczenia; kreator pokazuje adres i gotowe konfiguracje klientów (`clientConfigs`: klucze `claudeCode`, `copilot`, `codex`). Adres budowany przez jedną normalizację (CC-170): 
   decyzja człowieka (2026-10-31): operacja BFF `GET /api/v1/me/mcp-endpoint?<filtr>` (id `getMcpEndpoint`; ścieżka z prefiksem `/api/v1` jak reszta C12) zwraca znormalizowany adres, `clientConfigs` zbudowane z `publicBaseUrl` (nigdy z żądania) i liczbę narzędzi (`toolCount`, liczoną z katalogu użytkownika z C5: `granted` i nie `disabled`, po filtrze).
   To daje jedno źródło normalizacji (BFF używa reguł gatewaya) i licznik do ostrzeżenia o rozmiarze listy. Wariant "czysto kliencka funkcja w pakiecie `types`" odrzucony. Zły filtr to `400 invalid_request`, `reason: invalid_filter` (schemat `InvalidFilter`); brak nowej operacji gatewaya. Wektory `test-vectors/mcp-endpoint/`.
   Katalog narzędzi dla kreatora: istniejące operacje katalogu C12 (bez zmian).
 - **Pliki:** `openapi/gateway-admin.v1.yaml`, `openapi/portal-bff.v1.yaml`, `openapi/bundled/portal-bff.v1.bundled.yaml`, `mocks/wiremock/gateway-admin/mappings/{create,delete,list}VirtualServer*.json` (usunięcie), `mocks/msw/portal-bff.{handlers,examples}.ts`, README (sekcje o linkach, `clientConfigs`, offboarding, tabela wektorów), `test/mocks.test.mjs`, `scripts/lib/mcp-endpoint.mjs` (referencja), `scripts/smoke-wiremock.sh`; `types/` i `dist` powstają z OpenAPI.
 - **SemVer:** usunięcie operacji i schematów: major.
-- **Wpływ:** ws-05 (usunięcie kontrolera, repozytorium, migracji w Flyway: nowa migracja usuwa tabelę dopiero po okresie z CC-177), ws-07 (BFF: usunięcie proxy linków, ewentualna operacja `mcp-endpoint`, aktywność), ws-08 (kreator bez zapisu, lista "moje linki" znika; strona z migracją istniejących linków wg CC-177), ws-10 (testy linków -> scenariusze filtra), ws-01 (`mcpdev.py`, seed linków, jeśli istnieje), ws-02/09 (brak).
+- **Wpływ:** ws-05 (usunięcie kontrolera, repozytorium, migracji w Flyway: nowa migracja usuwa tabelę od razu, bez okresu przejściowego: CC-177), ws-07 (BFF: usunięcie proxy linków, ewentualna operacja `mcp-endpoint`, aktywność), ws-08 (kreator bez zapisu, lista "moje linki" znika; bez ekranu migracji linków: CC-177 usuwa je od razu), ws-10 (testy linków -> scenariusze filtra), ws-01 (`mcpdev.py`, seed linków, jeśli istnieje), ws-02/09 (brak).
 - **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.0.0
 
 ## CC-176 | C5/C10 | `notifications/tools/list_changed` dla `/mcp`
@@ -3510,7 +3510,7 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 - **Pliki:** README (sekcja o `/mcp`), wektory `test-vectors/endpoint-aggregate/list-changed-*` (zdarzenie -> czy powiadomienie), `schemas/tool-error.schema.json` bez zmian; opisy w `01-contracts.md` (C1 / C5).
 - **SemVer:** nowa zdolność (minor) w pakiecie major.
 - **Wpływ:** ws-05 (emisja, kanał między instancjami, łączenie zdarzeń), ws-01 (Redis w HA; klient testowy), ws-10 (scenariusz: zatwierdzenie narzędzia w trakcie sesji -> klient dostaje powiadomienie i nowe narzędzie), ws-07/08 (brak; opcjonalnie komunikat "odśwież klienta"), ws-02/09 (brak).
-- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.0.0
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.0.0; wymóg `listChanged: true` i powiadomień przesunięty na M6 przez CC-179
 
 ## CC-177 | C5/C12 | Migracja zapisanych linków `/v/<slug>/mcp`: usunięcie od razu
 
@@ -3519,8 +3519,163 @@ warianty odrzucone zostają w tekście z adnotacją "odrzucony". Wydanie 5.0.0 w
 - **Wariant B (deprecjacja przez jedno wydanie minor 5.x): odrzucony.** `/v/<slug>/mcp` dalej działa jako zawężenie tylko-do-odczytu zapisanej listy (jak dziś, ale tylko dla istniejących linków; `POST` zakazany; sama lista narzędzi linku = `tools=` w CC-170), odpowiedzi niosą `Deprecation: true` i `Sunset: <data>` (RFC 8594 / 9745),
   `claim vs/vsc` jest nadal wystawiany (więc CC-173 wchodzi dopiero w kolejnym major) albo gateway przestaje je wystawiać, a linki liczą zawężenie po stronie gatewaya (wtedy `vsc` i `resourceDefaults` znikają od razu: linki bez `resourceDefaults`, bo zawężanie zasobów jest uśpione od CC-085, więc konwersja jest bezstratna).
   Portal pokazuje "Twoje stare linki" z adresem zastępczym (`/mcp?tools=...`), usunięcie linku zostaje. Koszt: dwa tryby w gatewayu przez jedno wydanie i testy dla obu. Wariant B bez wystawiania `vs`/`vsc` jest zalecany, gdy w jakimkolwiek środowisku są linki w użyciu.
-- **Ręczne przeniesienie linku (bez kodu migracji, do instrukcji):** link o liście narzędzi T odpowiada adresowi `/mcp?tools=<T posortowane>` (limit 100 w CC-170; dłuższą listę trzeba zastąpić przez `systems`). Filtr jest równoważny linkowi tylko co do listy narzędzi; nazwa linku nie ma odpowiednika (utrata funkcji, wymieniona w planie M5).
+- **Ręczne przeniesienie linku (bez kodu migracji, do instrukcji):** link o liście narzędzi T odpowiada adresowi `/mcp?tools=<T posortowane>` (w praktyce rządzi limit 512 bajtów całego query, około 16 nazw po 30 znaków, CC-185; dłuższą listę trzeba zastąpić przez `systems` i `exclude`). Filtr jest równoważny linkowi tylko co do listy narzędzi; nazwa linku nie ma odpowiednika (utrata funkcji, wymieniona w planie M5).
 - **Pliki:** README (tabela jednej domeny, sekcja o migracji), `CHANGELOG.md` (migracja 5.0.0 per komponent), `openapi/gateway-admin.v1.yaml` (opis tras klienta), wektor `endpoint-aggregate/legacy-link-route-gone` (404 `not_found_or_denied`, bez audytu, bez względu na token); wektor `gateway-authentication/rejected-on-virtual-server-route` usunięty.
 - **SemVer:** major (pakiet).
 - **Wpływ:** ws-05 (usunięcie trasy i tabeli `virtual_servers`: `/v/` odpowiada 404), ws-07/08 (brak ekranu starych linków), ws-01 (seed i dokumentacja klienta), ws-10 (test `/v/` = 404), ws-09/ws-02 (brak poza CC-173).
 - **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.0.0
+
+---
+
+Poprawki po przeglądzie wydania 5.0.0 (Opus, 2026-10-31; nikt jeszcze 5.0.0 nie wdrożył). CC-178 ... CC-187 doprecyzowują i poprawiają CC-169 ... CC-177, zakres według decyzji człowieka z 2026-10-31.
+Wydanie z tym pakietem czeka na decyzję o numerze wersji: część zmian jest według tabeli SemVer (README, "Wersjonowanie") zaostrzeniem, więc nie jest zgodna wstecz z 5.0.0 (STATUS.md, "Po 5.0.0"; CHANGELOG.md, "Niewydane").
+
+## CC-178 | C5/C10/README | `tools/call` na `/mcp`: filtr przed stanem narzędzia, serwera i konta
+
+- **Problem:** CC-169 i README mówią, że niedostępny serwer albo niezgodna definicja daje przy wywołaniu `upstream_unavailable` / `tool_disabled`, a CC-170 i referencja `callDecision` mówią, że każde wywołanie narzędzia spoza listy to `not_found_or_denied`. Referencja liczyła zbiór `mayCall` z listy, która pomija niedostępne
+  serwery i wyłączone narzędzia, więc przy awarii serwera wywołanie dawało `not_found_or_denied` z powodem audytu `not_granted` (a przy filtrze, który i tak wycina narzędzie, `not_granted` zamiast `filter_scope`). Dwie implementacje (ws-05 i ws-10) zrobiłyby dwa różne zachowania.
+- **Decyzja człowieka (2026-10-31):** kolejność sprawdzeń `tools/call` od nazwy narzędzia:
+  1. nazwa nie wskazuje znanego systemu (`routeCall`) albo `mayCall` nie zawiera narzędzia: `not_found_or_denied`, powód audytu `not_granted`;
+  2. filtr: narzędzie poza wynikiem filtra to `not_found_or_denied`, powód `filter_scope` (użytkownik ma prawo, wycina je filtr);
+  3. tylko narzędzie, które filtr zostawia, dochodzi do kontroli stanu, w tej kolejności: `tool_disabled`, `upstream_unavailable`, `credential_required` (z `connectUrl`). Kolejność trzech kodów wynika z kolejności zapisu w decyzji, przypięta wektorami `call-state-order-*`;
+  4. dopiero potem decyzja Cedar z argumentami (zasoby: `policy_forbid`, `step_up_required`), bramka potwierdzenia `DESTRUCTIVE` i wywołanie serwera, w kolejności jak dotąd.
+- **`mayCall`:** zbiór narzędzi, dla których rejestr ma wpis (zatwierdzony, wyłączony, oczekujący albo zmieniony: stan nie ma znaczenia) i decyzja Cedar **na poziomie narzędzia** jest `allow`, czyli ta sama decyzja, która kwalifikuje narzędzie do `tools/list` (bez argumentów wywołania i bez zasobu). Nie zależy od dostępności serwera,
+  od tego, czy narzędzie jest włączone, ani od połączenia konta. Decyzja z argumentami (zasób, `refs`) zapada w kroku 4 i nie należy do `mayCall`. Dzięki temu stan serwera nie zmienia odpowiedzi dla narzędzia, które i tak jest poza filtrem ani dla narzędzia, do którego użytkownik nie ma prawa.
+- **Cztery kombinacje (wektory `call-state-*`):** filtr zostawia i serwer działa (`allowed`); filtr zostawia i serwer leży (`upstream_unavailable`); filtr wycina i serwer działa (`not_found_or_denied`, `filter_scope`); filtr wycina i serwer leży (to samo `not_found_or_denied`, `filter_scope`: stan serwera się nie ujawnia).
+  Dodatkowo: wyłączone narzędzie (przepuszczone i wycięte), brak połączenia konta (przepuszczone i wycięte), kolejność `tool_disabled` > `upstream_unavailable` > `credential_required`, brak prawa przy niedostępnym serwerze (`not_granted`), wywołanie `DESTRUCTIVE` wycięte przy oczekującym potwierdzeniu.
+- **Filtr poprzedza bramkę potwierdzenia `DESTRUCTIVE`:** wywołanie wycięte filtrem kończy się w kroku 2, więc nie tworzy, nie zużywa i nie unieważnia oczekującego potwierdzenia użytkownika (wektor `call-state-destructive-cut-keeps-pending-confirmation`). Klucz potwierdzenia (`sub`, `serverId`, narzędzie, skrót argumentów) nie zawiera filtra, więc to samo wywołanie przez adres bez filtra potwierdza się tym samym kodem.
+- **Pliki:** `scripts/lib/endpoint-filter.mjs` (`callDecision(filter, tool, mayCall, state)`), `scripts/generate-endpoint-vectors.mjs`, wektory `endpoint-filter/call-state-*` (14, Java ich nie wykonuje: to decyzja gateway'a), README ("Filtr w query"), `schemas/audit-event.schema.json` (opis `filter_scope`), poprawka zdań w CC-169 i CC-170.
+- **SemVer:** w 5.0.0 teksty były sprzeczne; wybór jednej wersji zmienia wynik referencji w scenariuszu niedostępnego lub wyłączonego narzędzia (wcześniej `not_found_or_denied`, teraz `upstream_unavailable` / `tool_disabled`). Wcześniejsze wektory `call-*` zachowują oczekiwania. Formalnie zmiana oczekiwanego zachowania; decyzja o numerze w STATUS.md.
+- **Wpływ:** ws-05 (kolejność w `McpGatewayService`; PoC ustawia dziś `link_scope` po samym istnieniu narzędzia), ws-10 (scenariusze: serwer leży przy filtrze, który wycina i który zostawia narzędzie; wyłączone narzędzie; brak połączenia; pending DESTRUCTIVE i wywołanie wycięte), ws-02/07/08/09 (brak).
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-179 | C5/C10 | `list_changed` przesunięte na M6; `GET` na `/mcp` to `405`
+
+- **Problem:** CC-176 wymagało nowej infrastruktury, której gateway nie ma (strumień `GET`, `subscriptions/listen`, punkt odniesienia listy w wariancie bezstanowym, los strumienia po wygaśnięciu tokenu), a CC-172 kazało sprawdzać filtr na `GET`, który dla klienta 2026-07-28 jest `405`.
+- **Decyzja człowieka (2026-10-31):** powiadomienia `notifications/tools/list_changed` przesunięte na M6. W tej wersji gateway deklaruje `capabilities.tools.listChanged: false` i nie wysyła powiadomień; klient odświeża listę przez `tools/list`. Kontrakt nie wymaga strumienia serwera ani `subscriptions/listen`.
+  CC-176 zostaje jako opis docelowy dla M6 (wyzwalacze, ograniczenia, HA) bez statusu wymagania w tej wersji.
+- **`GET`:** na `/mcp` i `/s/<serverId>/mcp` `GET` to `405 Method Not Allowed` z `Allow: POST, DELETE`, dla obu postaci protokołu. Jak każda odpowiedź tej trasy, `405` pada po sprawdzeniu tokenu (bez ważnego tokenu `401`). Reguła CC-172 o wiązaniu filtra dotyczy więc `POST` i `DELETE`;
+  sprawdzenie filtra na strumieniu `GET` jest wymaganiem M6 razem z `list_changed`. Referencja `listChangedNotification` i wektory `endpoint-aggregate/list-changed-*` zostają jako materiał dla M6 i nie są wymagane od gateway'a.
+- **Pliki:** README ("Powiadomienia"), CC-172 i CC-176 (adnotacje), CHANGELOG.
+- **SemVer:** zdolność wymagana w 5.0.0 przestaje być wymagana, a deklarowana wartość `listChanged` zmienia się z `true` na `false`: według tabeli usunięcie; decyzja o numerze w STATUS.md.
+- **Wpływ:** ws-05 (bez `GET` SSE, `subscriptions/listen`, kanału zdarzeń między instancjami), ws-10 (brak scenariusza `list_changed`: klient po zatwierdzeniu narzędzia odświeża listę sam), ws-01 (Redis pub/sub nie jest potrzebny do tego), ws-02/07/08/09 (brak).
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-180 | C5/README | Limit czasu `tools/list` na serwer; definicja "serwer niedostępny"
+
+- **Problem:** nie było limitu czasu odczytu `tools/list` serwera przy agregacji, więc jeden wolny serwer wstrzymywał całą listę `/mcp`, a "niedostępny" nie miało definicji.
+- **Decyzja człowieka (2026-10-31):** limit czasu na serwer, konfigurowalny, domyślnie **3 s** (`MCP_TOOLS_LIST_TIMEOUT`, w milisekundach, domyślnie `3000`; wartość niedodatnia zatrzymuje start gateway'a). Gateway odczytuje listy serwerów równolegle, więc czas odpowiedzi `tools/list` klienta to najwyżej limit plus narzut gateway'a, nie suma serwerów.
+  Serwer, który nie odpowie w limicie, jest pomijany jak niedostępny.
+- **Definicja "niedostępny" (dla jednego `tools/list`):** odczyt `tools/list` serwera, który to wywołanie musi wykonać (odświeżenie po TTL, najwyżej 60 s, README "Rejestr narzędzi", reguła 3), nie zakończył się poprawnym wynikiem w limicie: przekroczenie limitu, błąd połączenia lub TLS, status inny niż `200`,
+  treść niebędąca wynikiem JSON-RPC `tools/list` albo niezgodna ze schematem. Odczyt z pamięci podręcznej w granicach TTL nie wymaga wywołania, więc limit go nie dotyczy i serwer jest dostępny. Pominięcie dotyczy tylko tej listy: nie jest dowodem zmiany ani braku narzędzi, więc nie powstają `definition_changed` ani `tool_not_served`,
+  a rejestr się nie zmienia (reguła 3 rejestru bez zmian). Wywołanie narzędzia takiego serwera, które przechodzi filtr, daje `upstream_unavailable` (CC-178).
+- **Pliki:** `scripts/lib/endpoint-aggregate.mjs` (`serverAvailable`, `DEFAULT_TOOLS_LIST_TIMEOUT_MS`), wektory `endpoint-aggregate/availability-*` (7) i `list-slow-server-skipped`, README ("Adresy").
+- **SemVer:** nowy wymagany parametr konfiguracji gateway'a z wartością domyślną i doprecyzowana reguła pomijania: minor.
+- **Wpływ:** ws-05 (limit, równoległy odczyt, metryka pominięć), ws-01 (zmienna w konfiguracji stosu dev), ws-10 (scenariusz: wolny serwer nie wstrzymuje listy), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-181 | C5/README | Stronicowanie `tools/list`: `nextCursor`
+
+- **Problem:** brak reguły `nextCursor` przy kilkuset narzędziach (20 systemów); kontrakt nie mówił, jak dzielić długą listę.
+- **Zmiana:** `tools/list` na `/mcp` i `/s/<serverId>/mcp` zwraca najwyżej **100** narzędzi na stronę (`PAGE_SIZE`). Gdy po tej stronie są kolejne, odpowiedź ma `nextCursor`; ostatnia strona go nie ma (lista będąca wielokrotnością 100 kończy się stroną bez kursora, pusta lista to jedna strona `{"tools": []}`).
+  - **Kolejność:** stała z CC-169 (system według `ServerId`, w systemie nazwa narzędzia, bajtowo), liczona po zastosowaniu filtra i uprawnień przy każdym żądaniu. Kursor nazywa **ostatnie narzędzie poprzedniej strony**; następna strona to narzędzia ściśle po jego pozycji. Dzięki temu narzędzie dodane lub usunięte między stronami
+    niczego nie powtarza i nie pomija narzędzi, które zostają; zniknięcie narzędzia z kursora nie psuje kursora. Pozycja to para (`ServerId`, nazwa), nie samo porównanie nazw kwalifikowanych (`a1__x` < `a__x`, a system `a` jest przed `a1`: wektor `page-order-is-by-server-id`).
+  - **Kursor nieprzezroczysty i uwierzytelniony:** klient go nie interpretuje. Gateway wiąże go z `sub` użytkownika i ze znormalizowanym filtrem (porównanie po normalizacji), uwierzytelnia (HMAC-SHA-256 kluczem współdzielonym przez instancje, znacznik co najmniej 128 bitów, porównanie w stałym czasie) i honoruje 15 minut, jak kursor aktywności (CC-095).
+    Format w referencji (`issueCursor`, `readCursor`) to model: wektory przypinają tylko wynik.
+  - **Zły kursor:** kursor uszkodzony, zmieniony, przeterminowany, wydany innemu użytkownikowi albo dla innego filtra to zawsze ta sama odpowiedź JSON-RPC `-32602` (`Invalid cursor`), bez wskazania przyczyny i bez stanu systemów. Zdarzenie `policy_decision` deny, `outcome: error`, `reason: invalid_cursor` (nowy powód), bez `errorCode`.
+    Kursor niebędący napisem to ten sam błąd.
+  - **Kolejność względem CC-184:** kursor sprawdza się na końcu, po tokenie, składni, sesji, trasie i filtrze.
+- **Ryzyko:** klient, który nie idzie za `nextCursor`, widzi tylko pierwszą stronę. Dla takich klientów zalecany jest `systems=` i `access=read` (README, "Rozmiar listy"). Rozmiar strony jest stały w kontrakcie (nie jest konfigurowalny), żeby wektory i klienci zachowywali się tak samo.
+- **Pliki:** `scripts/lib/endpoint-aggregate.mjs` (`page`, `issueCursor`, `readCursor`), wektory `endpoint-aggregate/page-*` (10) i `cursor-*` (10), `schemas/audit-event.schema.json` (`invalid_cursor`), README.
+- **SemVer:** nowa zdolność odpowiedzi (`nextCursor`) dla listy, która ma ponad 100 narzędzi: minor. Dla list do 100 narzędzi odpowiedź jest taka jak w 5.0.0.
+- **Wpływ:** ws-05 (stronicowanie, klucz kursora wspólny dla instancji, audyt), ws-10 (scenariusz: ponad 100 narzędzi, obcy kursor, kursor z innym filtrem), ws-01 (klucz kursora w konfiguracji), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-182 | C12/mock | Operacja `getMcpEndpoint`: wartości typowane w OpenAPI, BFF sam składa query
+
+- **Problem:** wygenerowany klient Angulara koduje przecinek (`systems=jira%2Cgitlab`), a wektor `mcp-endpoint/invalid-percent-encoding` i parser wymagają `400` dla każdego `%`. Kontrakt nie mówił, czy BFF dostaje surowe query, czy wartości; mock sprawdzał tylko nazwy parametrów.
+- **Decyzja człowieka (2026-10-31):** BFF dostaje cztery parametry jako **wartości typowane w operacji OpenAPI**, już zdekodowane przez warstwę HTTP (`jira%2Cgitlab` przychodzi jako `jira,gitlab`), i **sam składa query**: `nazwa=wartość` łączone `&`, bez ponownego kodowania. Złożone query przechodzi przez ten sam parser co na gateway'u (CC-170).
+  Skutki: (a) przecinek zakodowany przez klienta jest poprawny; (b) wartość, która po zdekodowaniu nadal ma `%` (klient wysłał `%25`), jest zły filtr, jak na gateway'u; (c) wartość z `&` lub `=` (`%26`, `%3D`) nie dodaje parametru, tylko jest błędną wartością (`composeQuery` zapisuje je jako `%26` i `%3D`, które parser odrzuca);
+  (d) parametr spoza czterech i parametr powtórzony to `400 invalid_filter`, jak dotąd.
+- **Sprzeczność z wektorem `invalid-percent-encoding`:** rozstrzygnięta. Wektor opisuje wartość zdekodowaną z `%` (wejście `rawQuery` to złożone query), więc oczekiwanie `400` zostaje; zmienia się tylko opis. Nowe wektory z polem `httpQuery` (query tak, jak je wysłał klient) pokazują, że `%2C` jest poprawny, a `%252C`, `%26` i `+` (spacja) nie.
+- **Mock MSW:** zwraca `400 invalid_filter` dla nazwy spoza czterech, powtórzonej nazwy i wartości zdekodowanej z `%`, `&` lub `=`; `%2C` w wartości przechodzi (test `mocks.test.mjs`).
+- **Pliki:** `scripts/lib/mcp-endpoint.mjs` (`composeQuery`), `mocks/msw/portal-bff.handlers.ts`, `openapi/portal-bff.v1.yaml` (opis operacji), wektory `mcp-endpoint/http-*` (4), opis `invalid-percent-encoding`, `test/vectors.test.mjs`, `test/mocks.test.mjs`.
+- **SemVer:** nowe wektory i opis to patch/minor, ale mock odrzuca teraz to, co wcześniej przepuszczał (`%`, powtórzony parametr), a to według tabeli zaostrzenie walidacji; decyzja o numerze w STATUS.md.
+- **Wpływ:** ws-07 (BFF: typowane parametry, `composeQuery`, brak ponownego kodowania), ws-08 (klient generowany bez zmian, przecinek może być kodowany), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-183 | Cedar/potok ws-09 | Lint: polityka niemożliwa do spełnienia to błąd
+
+- **Problem:** `forbid` ochroniony `context has vsScopes && ...` przechodzi walidację schematu z ostrzeżeniem Cedar "policy is impossible", które weryfikator ignoruje (`validationPassed=true`). Dotyczy to klasy błędów: literówka w ochronie (`context has mfaAge_typo && ...`) wyłącza `forbid` równie cicho, a wyłączony `forbid` to cichy fail-open.
+- **Decyzja człowieka (2026-10-31):** `PolicyLintCli` i nowa metoda `PolicyLint.impossible(Schema, PolicySet)` kończą się błędem (kod wyjścia `1`) przy ostrzeżeniu "policy is impossible". Bramka jest w potoku ws-09. **Weryfikator odbiorcy (`BundleVerifier`) nie jest zaostrzany**: wektor `bundles/main-forbid-guarded-by-has-removed-vsscopes-accepted` zostaje (`accept: true`).
+  `PolicyLintCli` dostaje opcję `--schema <plik>`; bez niej używa `cedar/mcp.cedarschema` tej wersji.
+- **Ograniczenie:** Cedar ostrzega tylko wtedy, gdy walidator dowodzi, że warunek jest fałszywy dla każdego żądania zgodnego ze schematem. Warunek `(context has virtualServer) || principal has username` nie daje ostrzeżenia (jedna gałąź jest możliwa), więc lint go nie wyłapie; pełne pokrycie wymagałoby przejścia po drzewie składni
+  i sprawdzenia każdego `has` na atrybucie spoza schematu. `forbid ... unless { context has x }` z nieistniejącym atrybutem pasuje do wszystkiego i blokuje wszystko, więc to fail-closed i nie jest zgłaszane. Test `PolicyLintImpossibleTest` przypina oba zachowania.
+- **Sprawdzone:** przykłady `cedar/examples/*.cedar` nie dają ostrzeżeń (test). Wg przeglądu `mcp-policies/policies/platform/virtual-server.cedar` daje je i ws-09 ma go usunąć (CC-173); pozostałe pliki i przykłady kontraktów były bez ostrzeżeń.
+- **Pliki:** `PolicyLint.java` (`impossible`), `PolicyLintCli.java`, `PolicyLintImpossibleTest.java`, `pom.xml` (guava w zakresie `provided`, wersja jak zależność uruchomieniowa cedar-java, tylko do odczytu ostrzeżeń; konsument nie dostaje nowego artefaktu).
+- **SemVer:** nowa metoda (minor), ale `PolicyLintCli` kończy się błędem tam, gdzie w 5.0.0 kończył się sukcesem: według tabeli zaostrzenie walidacji (decyzja o numerze w STATUS.md).
+- **Wpływ:** ws-09 (krok potoku: `PolicyLintCli` na `policies/` i `overrides/`; usunięcie reguł z ochroną `has`), odbiorcy paczek bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-184 | C1/C5 | Kolejność kontroli żądania z sesją MCP; wiązanie porządkuje audyt
+
+- **Problem:** CC-172 mówiło "inny filtr to `404`", README "token, potem filtr, `400`"; brak wektora ze złym filtrem w sesji. Niedopowiedziane: sesja z `/mcp` użyta na `/s/...` oraz `Mcp-Session-Id` razem z `_meta`.
+- **Decyzja człowieka (2026-10-31), kolejność (token jest pierwszy, `401` bez ważnego tokenu):**
+
+  | Krok | Kontrola | Odpowiedź |
+  | --- | --- | --- |
+  | 1 | token (CC-152, CC-124) | `401` z wyzwaniem albo `503` |
+  | 2 | składnia query (CC-170) | `400 invalid_filter`; zależy tylko od bajtów żądania, sesja nie jest czytana, więc odpowiedź nie jest wyrocznią istnienia sesji |
+  | 3 | `sub` sesji | sesja cudza albo nieznana: `404` jak dla nieznanej sesji, **bez** `filter_mismatch` |
+  | 4 | trasa sesji (`/mcp` albo `/s/<serverId>/mcp`) | `404`, `filter_mismatch` |
+  | 5 | filtr znormalizowany równy filtrowi `initialize` | `404`, `filter_mismatch` |
+
+  Odwrotna kolejność (sesja przed składnią) wymagałaby odczytu sesji przy śmieciowym żądaniu i nic by nie dawała.
+- **Trasa:** sesja użyta na innej trasie niż ta, na której powstała, to `404` z powodem audytu `filter_mismatch` (adres sesji to trasa i filtr; osobny powód nie powstaje). Opis powodu w `audit-event.schema.json` obejmuje trasę.
+- **`Mcp-Session-Id` razem z `_meta`:** żądanie z nagłówkiem sesji jest żądaniem sesyjnym i podlega krokom 2 do 5, bez względu na `_meta` (PoC szło wtedy ścieżką bezstanową i pomijało wiązanie). Powód: klient, który wysyła identyfikator sesji, oczekuje semantyki sesji; pominięcie wiązania zależałoby od pola, które klient dobiera.
+- **Audyt sesji cudzej i nieznanej:** `404` jak dla nieznanej sesji, bez nowego powodu; kontrakt nie nazywa powodu audytu dla nieznanej sesji (otwarte, patrz STATUS.md).
+- **Wiązanie nie jest barierą bezpieczeństwa:** porządkuje audyt (jedna sesja, jeden filtr) i pilnuje, żeby pośrednik w jednym połączeniu nie zmieniał zasięgu bez nowego `initialize`. Klient po `404` i tak inicjuje nową sesję z innym filtrem albo bez, a uprawnienia wyznacza Cedar przy każdym wywołaniu (CC-170).
+- **Pliki:** `scripts/lib/endpoint-filter.mjs` (`sessionDecision`), wektory `endpoint-filter/session-order-*` (7), README ("Sesja"), `audit-event.schema.json`, CC-172 (adnotacja).
+- **SemVer:** reguła kolejności dla nowej trasy; zmienia odpowiedź w scenariuszach, które 5.0.0 zostawiało otwarte (cudza sesja z innym filtrem wcześniej mogła dać `filter_mismatch`): decyzja o numerze w STATUS.md.
+- **Wpływ:** ws-05 (kolejność w `McpEndpoint`; `filter_mismatch` tylko dla własnej sesji), ws-10 (trzy scenariusze: zły filtr w cudzej sesji, cudza sesja z innym filtrem, własna sesja z innym filtrem; sesja na innej trasie; nagłówek sesji z `_meta`), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-185 | C5/C12/README | Limit 512 bajtów jest ograniczeniem wiążącym, nie 100 narzędzi
+
+- **Problem:** CC-177 ("limit 100") i kreator zakładały, że do 100 narzędzi mieści się w adresie. Limit 512 bajtów całego query zadziała wcześniej: po `tools=` zostaje 506 bajtów, czyli 16 nazw po 30 znaków (31 nazw po 15). Kreator, który pozwala zaznaczyć więcej, dostaje `400` bez wyjaśnienia, a przeniesienie linku wg CC-177 pada tak samo.
+- **Zmiana (tekst, bez zmiany reguł parsera):** limit 100 wpisów w `tools` i `exclude` zostaje (górne ograniczenie po usunięciu duplikatów), ale praktyczną granicą są 512 bajtów. Opisy `getMcpEndpoint` (parametry `systems`, `tools`, `exclude`, odpowiedź `400`), CC-177 (ręczne przeniesienie linku) i README mówią o bajtach. Kreator (ws-08) pokazuje licznik bajtów
+  złożonego query i nie wysyła zapytania, którego nie da się złożyć; dłuższą listę narzędzi zastępuje się przez `systems` i `exclude`. Komentarz w referencji liczy to wprost.
+- **Pliki:** `openapi/portal-bff.v1.yaml` (opis), CC-177 (zdanie o przeniesieniu), README, `scripts/lib/endpoint-filter.mjs` (komentarz), test `the filter limits ... are reachable` bez zmian.
+- **SemVer:** poprawka opisu: patch.
+- **Wpływ:** ws-08 (licznik bajtów w kreatorze), ws-07 (komunikat `400` bez zmian), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-186 | C2/C8/Java | Filtr: ryzyko spoza zbioru, wzorzec `EndpointFilterQuery`, warunki pola `filter`, opis pola
+
+- **Zmiana:**
+  - **L1:** `EndpointFilter.allows` w Javie przepuszczała przy `access=write` narzędzie o ryzyku spoza zbioru `READ_ONLY`, `UPDATE`, `DESTRUCTIVE` (`UNKNOWN`, `read_only`, puste, `null`), a referencja JS nie. Teraz Java zachowuje się jak referencja: ryzyko spoza zbioru nie należy do żadnej grupy, więc ani `access=read`, ani `access=write` go nie zostawia
+    (bez `access` zostaje widoczne). Wektory `apply-*-risk-outside-the-set` (3) i test Javy.
+  - **L5:** wzorzec `EndpointFilterQuery` jest ścisły: parametry w stałej kolejności, bez początkowego i końcowego `&`, wpisy `tools` w postaci `<system>__<narzędzie>` (jeden `__`), wpisy `exclude` jako system albo narzędzie. Kolejność, brak duplikatów i limity nie wyrażają się wzorcem (sprawdza je referencja i wektory), co jest w opisie.
+    Schemat zdarzenia audytu zabrania pola `filter` poza gatewayem, poza zdarzeniami `tool_call`, `policy_decision`, `confirmation`, `credential_resolve` oraz przy `reason: invalid_filter`.
+  - **L4:** zdanie "wyłącznie nazwy systemów i narzędzi" (CC-174) było nieprawdziwe: parser przepuszcza dowolny token o składni nazwy, np. `systems=ghpabc123def456`, i trafia on do audytu i aktywności. Opis pól `filter` mówi teraz, że wpisy mają składnię nazw, ale wybiera je klient i nie są sprawdzane z listą systemów platformy.
+    Niezmiennik 7 trzyma, bo alfabet (małe litery, cyfry, `_`) i 512 bajtów ograniczają zawartość; opis przestaje twierdzić więcej.
+- **Pliki:** `EndpointFilter.java`, `EndpointFilterVectorTest.java`, `schemas/common.schema.json`, `schemas/audit-event.schema.json`, `openapi/gateway-admin.v1.yaml` (opis `filter` w `ActivityCall`), wektory, `test/vectors.test.mjs`.
+- **SemVer:** zaostrzenie walidacji (wzorzec, warunki schematu) i zmiana wyniku metody Javy dla ryzyka spoza zbioru: według tabeli major; decyzja o numerze w STATUS.md.
+- **Wpływ:** ws-05 (zdarzenia ze `filter` tylko tam, gdzie wolno; zgodność z wzorcem), ws-07/08 (opis pola), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
+
+## CC-187 | README/OpenAPI/wektory | Poprawki tekstu i wektorów po przeglądzie (L2, L3, L6, L7, L8, L9)
+
+- **L2:** opis `ActivityCall.result` w `portal-bff.v1.yaml` (i `bundled`) wymieniał `denied_link_scope`; teraz `denied_filter_scope`. Pozostałe trafienia `link_scope` w kontraktach to historia i wektory negatywne.
+- **L3:** `filter_scope` jest widoczny poza SIEM: wiersz aktywności użytkownika (`listMyActivityCalls`) ma wynik `denied_filter_scope`. Zdanie "widoczne tylko w SIEM" w CC-170 było nieścisłe. Niezmiennik 8 trzyma: wynik mówi tylko "masz prawo, filtr wyciął", a brak prawa i brak narzędzia dają to samo `denied_not_granted`,
+  więc wiersz nie zdradza istnienia cudzych narzędzi, a klient MCP dostaje w obu przypadkach identyczne `not_found_or_denied`.
+- **L6:** wektor `list-changed-definition-approved-outside-filter` miał identyczne `before` i `after`, więc niczego nie sprawdzał; `after` dostaje narzędzie spoza filtra. `listChangedNotification` porównuje nazwę, ryzyko i `definitionHash` (gdy podany), więc zmiana definicji przy tej samej nazwie daje powiadomienie
+  (wektor `list-changed-definition-changed-and-approved`). Funkcja i wektory to materiał dla M6 (CC-179).
+- **L7:** klient, który gubi query, łączy się z `/mcp` bez filtra i dostaje pełną listę bez błędu. To ciche poszerzenie **widoku**, nie uprawnień (Cedar rozstrzyga przy każdym wywołaniu). Poprawione zdanie "nie zadziała z filtrem" w README i CC-171; scenariusz z takim klientem nie był testowany na żywo.
+- **L8:** nowy katalog wektorów `oauth-metadata/` (6): dokument metadanych `/.well-known/oauth-protected-resource/mcp` ma `resource` równe `<publicBaseUrl>/mcp` bez query; zapytanie o dokument z query (także błędnym filtrem) dostaje ten sam dokument; trasa systemowa; `/v/` i nieznana trasa to `404`. Referencja `protectedResourceMetadata`.
+- **L9:** sprzeczności w tekście CC poprawione na miejscu: (a) CC-169: `systems` na trasie `/s/` ma być równy systemowi trasy (`jira` dla `mcp-jira`), nie "równy `serverId`"; (b) CC-173: "pokrycie przenosi ws-09" zastąpione "nie ma czego przenosić" (zgodnie z resztą wpisu i CC-177: link nie zawężał zasobów, `resourceDefaults` było uśpione od CC-085);
+  (c) CC-175: `clientConfigs` ma klucze `claudeCode`, `copilot`, `codex` (nie "Claude Desktop, VS Code"); klucze zostają; (d) CC-175: "okres z CC-177" i "strona z migracją" zastąpione zgodnie z CC-177 (usunięcie od razu, bez ekranu migracji).
+- **Pliki:** `openapi/portal-bff.v1.yaml` i `bundled`, `scripts/lib/endpoint-aggregate.mjs`, `scripts/lib/gateway-authentication.mjs`, `scripts/generate-endpoint-vectors.mjs`, wektory, README, CONTRACT_CHANGES.md (CC-169, CC-170, CC-171, CC-173, CC-175).
+- **SemVer:** poprawki opisów: patch; zmiana oczekiwania istniejącego wektora `list-changed-*` (L6) według tabeli to major; decyzja o numerze w STATUS.md.
+- **Wpływ:** ws-05 (metadane `/mcp` ignorują query), ws-10 (brak), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie: patrz STATUS.md
