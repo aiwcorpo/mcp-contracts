@@ -1,0 +1,51 @@
+{
+  "description": "The budget is per user: another user is not silenced by the first one.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 1,
+        "sub": "user-b",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-b",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "invalid_filter": 1
+    }
+  }
+}

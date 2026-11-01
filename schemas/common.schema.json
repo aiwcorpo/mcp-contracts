@@ -50,6 +50,24 @@
       "minLength": 1,
       "maxLength": 512
     },
+    "TransportLimitError": {
+      "description": "Body of the 400 or 414 that /mcp and /s/<serverId>/mcp answer when the query is longer than the transport accepts (the limit of the request line or of the headers, about 15 KB, depends on the deployment), CC-189. It comes from the layer in front of the filter, which never parsed the query, so it has no reason: invalid_filter is the answer for every query up to that limit (CC-170). Still fail-closed: the request is refused, never served without the filter.",
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "const": "invalid_request"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "additionalProperties": false
+    },
     "EndpointFilterError": {
       "description": "Body of the HTTP 400 that /mcp and /s/<serverId>/mcp answer for a query that is not a valid endpoint filter (CC-170): it comes after the check of the token, carries no WWW-Authenticate header and does not depend on the state of any system. It is an HTTP answer, not the content of a tool result, so it is not part of C10 (tool-error.schema.json) and 'invalid_request' is not an ErrorCode.",
       "type": "object",

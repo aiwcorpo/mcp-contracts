@@ -4,7 +4,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
 import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches } from './lib/endpoint-filter.mjs';
-import { issueCursor, listChangedNotification, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
+import { auditThrottle, issueCursor, listChangedNotification, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
 import { protectedResourceMetadata } from './lib/gateway-authentication.mjs';
 
@@ -230,6 +230,17 @@ filterOut('error-response', {
     audit: { event: 'policy_decision', decision: 'deny', outcome: 'error', reason: 'invalid_filter' },
   },
 });
+filterOut('error-response-over-transport-limit', {
+  description: 'A query longer than the transport accepts (about 15 KB, depends on the deployment) never reaches the filter: 400 or 414 in JSON with error invalid_request and no reason (CC-189). Up to that limit the answer is invalid_filter (see parse-query-513-bytes).',
+  kind: 'error-response',
+  input: { queryBytes: 20000, token: 'valid', query: `exclude=${'a'.repeat(19992)}` },
+  expected: {
+    statusOneOf: [400, 414],
+    absentHeaders: ['WWW-Authenticate'],
+    body: { error: 'invalid_request', message: 'The request is too large.' },
+    bodyHasReason: false,
+  },
+});
 filterOut('error-response-without-token', {
   description: 'The token is checked first: without a valid token the answer is the 401 challenge even when the query is wrong, so an unauthenticated caller learns nothing about the syntax.',
   kind: 'error-response',
@@ -341,6 +352,24 @@ cursorVector('filter-removed', 'A cursor issued under a filter and used without 
 cursorVector('tampered', 'A cursor that was changed.', owner, owner, { mutation: 'tampered' });
 cursorVector('malformed', 'A string that never was a cursor.', owner, owner, { mutation: 'malformed' });
 cursorVector('not-a-string', 'A cursor that is not a string.', owner, owner, { mutation: 'not-a-string' });
+
+// ---------- audit of repeatable refusals (CC-190) ----------
+
+const throttleVector = (name, description, events, intervalSeconds) => {
+  const input = intervalSeconds === undefined ? { events } : { events, intervalSeconds };
+  aggOut(`audit-throttle-${name}`, { description, kind: 'audit-throttle', input, expected: auditThrottle(events, intervalSeconds) });
+};
+throttleVector('flood-of-one-reason', 'A client that repeats a bad filter: one event in the first 10 seconds, every request is refused, the rest only counted.',
+  [0, 1, 2, 5, 9.9].map((t) => ({ t, sub: 'user-a', reason: 'invalid_filter' })));
+throttleVector('next-interval', 'After the interval a new event is due.', [0, 9, 10, 12].map((t) => ({ t, sub: 'user-a', reason: 'invalid_filter' })));
+throttleVector('per-reason', 'The budget is per reason: another reason of the same user is audited at once.', [
+  { t: 0, sub: 'user-a', reason: 'invalid_filter' }, { t: 1, sub: 'user-a', reason: 'filter_mismatch' },
+  { t: 2, sub: 'user-a', reason: 'invalid_cursor' }, { t: 3, sub: 'user-a', reason: 'filter_mismatch' }]);
+throttleVector('per-user', 'The budget is per user: another user is not silenced by the first one.', [
+  { t: 0, sub: 'user-a', reason: 'invalid_filter' }, { t: 1, sub: 'user-b', reason: 'invalid_filter' }, { t: 2, sub: 'user-a', reason: 'invalid_filter' }]);
+throttleVector('tools-call-not-found-or-denied', 'Repeated tools/call for a tool outside the list: the reasons not_granted and filter_scope are throttled like the others.', [
+  { t: 0, sub: 'user-a', reason: 'not_granted' }, { t: 1, sub: 'user-a', reason: 'not_granted' }, { t: 1, sub: 'user-a', reason: 'filter_scope' }, { t: 2, sub: 'user-a', reason: 'filter_scope' }]);
+throttleVector('configured-interval', 'The interval is configurable: 60 seconds here.', [0, 30, 59, 60].map((t) => ({ t, sub: 'user-a', reason: 'invalid_cursor' })), 60);
 
 const routeVectorAgg = (name, description, toolName) => {
   aggOut(`routing-${name}`, { description, kind: 'routing', input: { name: toolName, knownSystems: ['jira', 'confluence', 'gitlab', 'servicedesk', 'opensearch'] },

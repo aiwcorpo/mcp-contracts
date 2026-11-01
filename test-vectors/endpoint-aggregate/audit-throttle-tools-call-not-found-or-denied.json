@@ -1,0 +1,64 @@
+{
+  "description": "Repeated tools/call for a tool outside the list: the reasons not_granted and filter_scope are throttled like the others.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "not_granted"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "not_granted"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "filter_scope"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "filter_scope"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "filter_scope",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "filter_scope",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "not_granted": 1,
+      "filter_scope": 1
+    }
+  }
+}

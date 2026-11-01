@@ -1,0 +1,63 @@
+{
+  "description": "The budget is per reason: another reason of the same user is audited at once.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "filter_mismatch"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_cursor"
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "filter_mismatch"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "filter_mismatch",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "filter_mismatch",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "filter_mismatch": 1
+    }
+  }
+}

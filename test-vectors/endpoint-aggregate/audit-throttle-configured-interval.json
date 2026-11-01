@@ -1,0 +1,64 @@
+{
+  "description": "The interval is configurable: 60 seconds here.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_cursor"
+      },
+      {
+        "t": 30,
+        "sub": "user-a",
+        "reason": "invalid_cursor"
+      },
+      {
+        "t": 59,
+        "sub": "user-a",
+        "reason": "invalid_cursor"
+      },
+      {
+        "t": 60,
+        "sub": "user-a",
+        "reason": "invalid_cursor"
+      }
+    ],
+    "intervalSeconds": 60
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 30,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 59,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 60,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "rejected": true,
+        "audited": true
+      }
+    ],
+    "suppressed": {
+      "invalid_cursor": 2
+    }
+  }
+}

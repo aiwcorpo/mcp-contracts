@@ -4,6 +4,19 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 5.1.1 - 2026-11-01
+
+Patch z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): CC-189 i CC-190, decyzje człowieka z 2026-11-01. Bajty `cedar/mcp.cedarschema` bez zmian.
+
+- **Query ponad limit transportu (CC-189):** `400` albo `414` w JSON `{"error":"invalid_request"}`, bez `reason`; nowy schemat `TransportLimitError` w `common.schema.json`; `invalid_filter` obowiązuje do limitu transportu (około 15 KB). Wektor `endpoint-filter/error-response-over-transport-limit`.
+- **Audyt odrzuceń (CC-190):** `invalid_filter`, `filter_mismatch`, `invalid_cursor` i `tools/call` z `not_found_or_denied` (`not_granted`, `filter_scope`) najwyżej raz na użytkownika i powód w interwale (`MCP_RATE_LIMIT_AUDIT_INTERVAL`, 10 s, pamięć instancji); nadmiar w `mcp_audit_endpoint_suppressed_total{reason}`; odrzucenie zawsze działa. Referencja `auditThrottle`, wektory `endpoint-aggregate/audit-throttle-*` (6).
+
+Migracja:
+**ws-05 gateway (dokumentacja i kod):** ten sam mechanizm co `RateLimitAuditThrottle` dla czterech powodów (jeden licznik `mcp_audit_endpoint_suppressed_total{reason}`, nazwa do potwierdzenia); limit nagłówka serwera HTTP i odpowiedź `400`/`414` w JSON bez `reason` zbudowana poza filtrem.
+**ws-01 stos dev:** nginx: `large_client_header_buffers` i strona błędu `414`/`400` w JSON (z `nosniff` i CSP); alert na licznik pominięć.
+**ws-10 e2e (luki G3, G5, G12 z raportu ws-10; numeracja według raportu, kontrakt jej nie zna):** scenariusze: query 20 KB (`400`/`414`, bez `reason`, bez obsługi bez filtra), pętla złych filtrów, cudzych kursorów, sesji z innym filtrem i wywołań narzędzia spoza listy (jedno zdarzenie na użytkownika i powód w 10 s, wszystkie żądania odrzucone, licznik rośnie), drugi użytkownik nie jest wyciszony.
+**ws-02, ws-03, ws-04, ws-06, ws-07, ws-08, ws-09:** bez zmian.
+
 ## 5.1.0 - 2026-10-31
 
 Przegląd 5.0.0 (Opus, 2026-10-31) znalazł sprzeczności i luki w CC-169 ... CC-177; decyzje człowieka z tego samego dnia dały CC-178 ... CC-188. Nikt jeszcze 5.0.0 nie wdrożył, ale artefakty `5.0.0` są w `~/.m2` i w `release/` i są niezmienne.

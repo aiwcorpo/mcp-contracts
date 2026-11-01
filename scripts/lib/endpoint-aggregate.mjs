@@ -116,3 +116,26 @@ export function readCursor(cursor, { sub, canonicalFilter, now }) {
   if (position.filter !== canonicalFilter || typeof position.afterName !== 'string') return invalid;
   return { afterName: position.afterName };
 }
+
+export const DEFAULT_AUDIT_INTERVAL_SECONDS = 10;
+
+/**
+ * CC-190: audit of requests the gateway refuses for a reason the client can repeat at will (invalid_filter, filter_mismatch,
+ * invalid_cursor and a tools/call that is not_found_or_denied). Per user and reason one event in each interval; the rest only
+ * raise a counter. Same rule as RateLimitAuditThrottle of the gateway (CC-156): per instance, in memory, interval 10 s by
+ * default (MCP_RATE_LIMIT_AUDIT_INTERVAL). The refusal itself is never throttled, so every event has rejected: true.
+ * `events` is [{ t (seconds), sub, reason }] in time order.
+ */
+export function auditThrottle(events, intervalSeconds = DEFAULT_AUDIT_INTERVAL_SECONDS) {
+  const last = new Map();
+  const suppressed = {};
+  const decisions = events.map(({ t, sub, reason }) => {
+    const key = `${sub}\n${reason}`;
+    const at = last.get(key);
+    const emit = at === undefined || t - at >= intervalSeconds;
+    if (emit) last.set(key, t);
+    else suppressed[reason] = (suppressed[reason] ?? 0) + 1;
+    return { t, sub, reason, rejected: true, audited: emit };
+  });
+  return { decisions, suppressed };
+}

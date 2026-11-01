@@ -3688,3 +3688,29 @@ Wydanie 5.1.0 z wyjątkiem SemVer: część zmian jest według tabeli (README, "
 - **Potwierdzone wartości domyślne:** strona `tools/list` 100 (CC-181), ważność kursora 15 minut, `MCP_TOOLS_LIST_TIMEOUT` w milisekundach (3000, CC-180), kolejność `tool_disabled`, `upstream_unavailable`, `credential_required` oraz `tool_disabled` dla narzędzia oczekującego (CC-178), `filter_mismatch` dla sesji na innej trasie (CC-184), CC-173 "nie ma czego przenosić" (CC-187).
 - **SemVer:** bez zmian schematów i wektorów; reguły dla wdrażających. **Wpływ:** ws-05 (odczyt sesji i aktywności), ws-10 (scenariusz: sesja 4.x po aktualizacji to `404` i nowa sesja; stary wiersz `link_scope` w aktywności), pozostali bez zmian.
 - **Status:** accepted (decyzja: człowiek, 2026-10-31), wydanie 5.1.0
+
+---
+
+Poprawki 5.1.1 (decyzje człowieka, 2026-11-01, po przeglądzie ws-05 i ws-10): CC-189 i CC-190.
+
+## CC-189 | C5/C10 | Query ponad limit transportu: `400` albo `414` bez `reason`
+
+- **Problem:** CC-170 mówi, że query dłuższe niż 512 bajtów to `400 invalid_request`, `reason: invalid_filter`. Warstwa przed gatewayem (proxy, serwer HTTP) odrzuca jednak wcześniej zbyt długą linię żądania albo nagłówki (około 15 KB, zależnie od wdrożenia) i filtr nigdy nie widzi takiego query.
+- **Decyzja człowieka (2026-11-01):** query ponad limit transportu to `400` albo `414` (wybiera wdrożenie) z ciałem JSON `{"error": "invalid_request"}` (nowy schemat `TransportLimitError` w `common.schema.json`, `reason` zabronione), bez `reason: invalid_filter`. Fail-closed zachowany: żądanie jest odrzucone, nigdy obsłużone bez filtra.
+  `invalid_filter` obowiązuje do tego limitu (od 513 bajtów w górę aż do limitu transportu). Odpowiedź nadal bez `WWW-Authenticate`. Zdarzenie audytu z tej warstwy nie jest wymagane (gateway go nie widzi); jeśli powstaje, to `policy_decision` deny bez pola `filter`.
+- **Pliki:** `schemas/common.schema.json` (`TransportLimitError`), wektor `endpoint-filter/error-response-over-transport-limit`, README, `test/vectors.test.mjs`.
+- **SemVer:** nowa odpowiedź dla zakresu, który 5.1.0 opisywało jako `invalid_filter`, ale którego żaden gateway nie mógł obsłużyć; według tabeli zmiana oczekiwanej odpowiedzi, wydana jako patch na decyzję człowieka (wyjątek w README).
+- **Wpływ:** ws-05 (limit nagłówka i odpowiedź zbudowana na poziomie serwera), ws-01 (nginx: `large_client_header_buffers` i strona błędu `414`/`400` w JSON, z nagłówkami `nosniff` i CSP), ws-10 (scenariusz: query 20 KB), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-11-01), wydanie 5.1.1
+
+## CC-190 | C8/C5 | Ograniczanie częstotliwości zdarzeń audytu odrzuceń, które klient może powtarzać
+
+- **Problem:** klient może w pętli wysyłać zły filtr, cudzy kursor, sesję z innym filtrem albo `tools/call` na narzędzie spoza listy, a każde odrzucenie to zdarzenie audytu (CC-170, CC-172, CC-181, CC-184). To zalewa audyt (jak przy limitach, CC-125 i CC-156).
+- **Decyzja człowieka (2026-11-01):** zdarzenia `invalid_filter`, `filter_mismatch`, `invalid_cursor` oraz niepoprawnego `tools/call` (`not_found_or_denied` z powodami `not_granted` i `filter_scope`) są ograniczane częstotliwością **per użytkownik i powód**: jedno zdarzenie w każdym interwale, resztę liczy tylko licznik `mcp_audit_endpoint_suppressed_total{reason}`
+  (jak `mcp_audit_rate_limited_suppressed_total` i `mcp_audit_authentication_suppressed_total`). **Odrzucenie żądania działa zawsze**, niezależnie od tego, czy zdarzenie zapisano.
+- **Interwał (zgodnie z `RateLimitAuditThrottle` w `mcp-gateway`, odczyt):** jedno zdarzenie na parę (`sub`, powód) w interwale; interwał konfigurowalny `MCP_RATE_LIMIT_AUDIT_INTERVAL`, domyślnie **10 s**; stan w pamięci instancji (nie współdzielony, więc przy N instancjach najwyżej N zdarzeń na interwał); gdy mapa przekroczy 10 000 wpisów, wygasłe wpisy są usuwane; zdarzenie jest "należne", gdy pary nie było albo od ostatniego zapisu minął cały interwał (`>=`).
+  Nazwa licznika `mcp_audit_endpoint_suppressed_total` jest propozycją (gateway ma dziś licznik tylko dla limitów żądań); do potwierdzenia w ws-05.
+- **Pliki:** `scripts/lib/endpoint-aggregate.mjs` (`auditThrottle`), wektory `endpoint-aggregate/audit-throttle-*` (6), `schemas/audit-event.schema.json` (opis `reason`), README.
+- **SemVer:** audyt rejestruje mniej zdarzeń niż w 5.1.0 opisano; według tabeli zmiana zachowania, wydana jako patch na decyzję człowieka (wyjątek w README).
+- **Wpływ:** ws-05 (ten sam mechanizm co `RateLimitAuditThrottle` dla czterech powodów, licznik), ws-10 (asercje audytu: pętla złych filtrów daje jedno zdarzenie na 10 s i wszystkie odrzucenia), ws-01 (alert na licznik), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-11-01), wydanie 5.1.1

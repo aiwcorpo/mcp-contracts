@@ -13,7 +13,7 @@ import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
 import { gatewayAuthenticationResponse, keyDecision, protectedResourceMetadata } from '../scripts/lib/gateway-authentication.mjs';
 import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches } from '../scripts/lib/endpoint-filter.mjs';
-import { issueCursor, listChangedNotification, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
+import { auditThrottle, issueCursor, listChangedNotification, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 
 const ajv = createAjv();
@@ -337,6 +337,7 @@ test('credential type header vectors: a difference refuses the call (CC-166)', a
 test('endpoint filter vectors: parsing, normalization, route, visible set, call and session rules (CC-170, CC-172)', () => {
   const validQuery = schemaValidator(ajv, 'common.schema.json#/$defs/EndpointFilterQuery');
   const validError = schemaValidator(ajv, 'common.schema.json#/$defs/EndpointFilterError');
+  const validTransport = schemaValidator(ajv, 'common.schema.json#/$defs/TransportLimitError');
   const vectors = listJson('test-vectors', 'endpoint-filter');
   const kinds = new Set(vectors.map((v) => v.data.kind));
   assert.deepEqual([...kinds].sort(), ['apply', 'call', 'call-state', 'error-response', 'parse', 'route', 'session', 'session-order']);
@@ -373,7 +374,11 @@ test('endpoint filter vectors: parsing, normalization, route, visible set, call 
     } else if (data.kind === 'session-order') {
       assert.deepEqual(sessionDecision(input), expected, name);
     } else {
-      if (expected.status === 400) {
+      if (expected.statusOneOf) {
+        assert.ok(validTransport(expected.body), `${name}: ${formatErrors(validTransport.errors)}`);
+        assert.equal(expected.bodyHasReason, false, name);
+        assert.ok(Buffer.byteLength(input.query) >= 15 * 1024, `${name}: over the transport limit`);
+      } else if (expected.status === 400) {
         assert.ok(validError(expected.body), `${name}: ${formatErrors(validError.errors)}`);
         assert.throws(() => parseFilter(input.query), InvalidFilter);
       } else {
@@ -416,13 +421,17 @@ test('the filter field belongs to the gateway and to four events, and a rejected
 
 test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169, CC-176, CC-177)', () => {
   const vectors = listJson('test-vectors', 'endpoint-aggregate');
-  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'page', 'routing']);
+  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['audit-throttle', 'availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'page', 'routing']);
   const validateError = schemaValidator(ajv, 'tool-error.schema.json');
   for (const { name, data } of vectors) {
     if (data.kind === 'list') {
       assert.deepEqual(visibleTools(data.input.servers).map((t) => t.name), data.expected.visible, name);
     } else if (data.kind === 'routing') {
       assert.deepEqual(routeCall(data.input.name, data.input.knownSystems), data.expected, name);
+    } else if (data.kind === 'audit-throttle') {
+      const result = auditThrottle(data.input.events, data.input.intervalSeconds);
+      assert.deepEqual(result, data.expected, name);
+      assert.ok(result.decisions.every((d) => d.rejected), `${name}: the refusal itself is never throttled`);
     } else if (data.kind === 'availability') {
       assert.equal(serverAvailable(data.input.read, data.input.timeoutMs), data.expected.available, name);
     } else if (data.kind === 'page') {

@@ -1,0 +1,75 @@
+{
+  "description": "A client that repeats a bad filter: one event in the first 10 seconds, every request is refused, the rest only counted.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 5,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      },
+      {
+        "t": 9.9,
+        "sub": "user-a",
+        "reason": "invalid_filter"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 5,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 9.9,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "invalid_filter": 4
+    }
+  }
+}
