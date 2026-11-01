@@ -1,27 +1,25 @@
 {
-  "description": "Repeated tools/call for a tool outside the list: the reasons not_granted and filter_scope are throttled like the others.",
+  "description": "filter_scope is throttled per tool like not_granted.",
   "kind": "audit-throttle",
   "input": {
     "events": [
       {
         "t": 0,
         "sub": "user-a",
-        "reason": "not_granted"
+        "reason": "filter_scope",
+        "target": "jira__get_issue"
       },
       {
         "t": 1,
         "sub": "user-a",
-        "reason": "not_granted"
-      },
-      {
-        "t": 1,
-        "sub": "user-a",
-        "reason": "filter_scope"
+        "reason": "filter_scope",
+        "target": "jira__get_issue"
       },
       {
         "t": 2,
         "sub": "user-a",
-        "reason": "filter_scope"
+        "reason": "filter_scope",
+        "target": "jira__create_issue"
       }
     ]
   },
@@ -30,35 +28,38 @@
       {
         "t": 0,
         "sub": "user-a",
-        "reason": "not_granted",
+        "reason": "filter_scope",
+        "target": "jira__get_issue",
         "rejected": true,
         "audited": true
-      },
-      {
-        "t": 1,
-        "sub": "user-a",
-        "reason": "not_granted",
-        "rejected": true,
-        "audited": false
       },
       {
         "t": 1,
         "sub": "user-a",
         "reason": "filter_scope",
+        "target": "jira__get_issue",
         "rejected": true,
-        "audited": true
+        "audited": false
       },
       {
         "t": 2,
         "sub": "user-a",
         "reason": "filter_scope",
+        "target": "jira__create_issue",
         "rejected": true,
-        "audited": false
+        "audited": true
       }
     ],
     "suppressed": {
-      "not_granted": 1,
       "filter_scope": 1
-    }
+    },
+    "summaries": [
+      {
+        "t": 10,
+        "sub": "user-a",
+        "reason": "filter_scope",
+        "suppressedCount": 1
+      }
+    ]
   }
 }

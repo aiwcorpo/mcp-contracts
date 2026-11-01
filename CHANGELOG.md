@@ -4,6 +4,19 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 5.1.2 - 2026-11-01
+
+Patch z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): CC-191, poprawka CC-190 po przeglądzie. Bajty `cedar/mcp.cedarschema` bez zmian.
+
+- **Klucz ograniczania audytu (CC-191):** (`sub`, powód, cel) zamiast (`sub`, powód): wywołanie innego narzędzia, inny zły filtr albo inny kursor nie są wyciszane przez wabik. Limit 50 kluczy na użytkownika (`MCP_AUDIT_THROTTLE_MAX_TARGETS_PER_USER`), nadmiar dzieli klucz zbiorczy.
+- **Zdarzenie podsumowujące:** po zamknięciu okna para (`sub`, powód) dostaje jedno zdarzenie z nowym opcjonalnym polem `suppressedCount` (schemat audytu). Licznik `mcp_audit_endpoint_suppressed_total{reason}` zostaje.
+- Wektory `endpoint-aggregate/audit-throttle-*` przepisane (10), nowy `audit-events/gateway-audit-suppressed-summary`.
+
+Migracja:
+**ws-05 gateway:** kod trzeba dostosować: `RateLimitAuditThrottle` ma klucz (`sub`, powód) i tylko licznik; potrzebne: cel w kluczu (nazwa narzędzia albo skrót filtra, surowego query lub kursora), limit kluczy na `sub` z kluczem zbiorczym, zdarzenie podsumowujące z `suppressedCount` po oknie (czasomierz albo sprawdzenie przy kolejnym zdarzeniu grupy), konfiguracja limitu.
+**ws-10 e2e:** scenariusz: wabik na niewinne narzędzie nie ukrywa wywołania `jira__delete_issue`; po oknie jest zdarzenie z `suppressedCount`; ponad 50 wymyślonych narzędzi nie powiększa pamięci.
+**ws-01 stos dev:** alert na `suppressedCount`. **Pozostali:** bez zmian.
+
 ## 5.1.1 - 2026-11-01
 
 Patch z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): CC-189 i CC-190, decyzje człowieka z 2026-11-01. Bajty `cedar/mcp.cedarschema` bez zmian.

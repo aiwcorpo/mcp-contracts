@@ -496,6 +496,11 @@ audit('gateway-invalid-filter', 'A query that is not a filter: policy_decision w
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code',
   decision: 'deny', reason: 'invalid_filter', policyRevision: '20261026120000-a1b2c3d', outcome: 'error',
 }, true);
+audit('gateway-audit-suppressed-summary', 'Summary written when the window of a user and reason closes: how many refusals of that reason were left out of the audit (CC-191). The refusals themselves were not throttled.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code',
+  decision: 'deny', reason: 'not_granted', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'not_found_or_denied', suppressedCount: 17,
+}, true);
 audit('gateway-filter-mismatch', 'The filter of a request differs from the filter bound to the session (CC-172); filter is the normalized filter of the request.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=gitlab',

@@ -1,0 +1,108 @@
+{
+  "description": "A user who invents a new target on every request does not make the number of keys unbounded: over the limit (3 here) new targets share one key and are audited once per interval together.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t1"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t2"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t3"
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t4"
+      },
+      {
+        "t": 4,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t5"
+      },
+      {
+        "t": 5,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t6"
+      }
+    ],
+    "maxTargetsPerSub": 3
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t1",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t2",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t3",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t4",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 4,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t5",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 5,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "a__t6",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "not_granted": 2
+    },
+    "summaries": [
+      {
+        "t": 10,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "suppressedCount": 2
+      }
+    ]
+  }
+}

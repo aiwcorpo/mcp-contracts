@@ -6,17 +6,20 @@
       {
         "t": 0,
         "sub": "user-a",
-        "reason": "invalid_filter"
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
       },
       {
         "t": 1,
         "sub": "user-b",
-        "reason": "invalid_filter"
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
       },
       {
         "t": 2,
         "sub": "user-a",
-        "reason": "invalid_filter"
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
       }
     ]
   },
@@ -26,6 +29,7 @@
         "t": 0,
         "sub": "user-a",
         "reason": "invalid_filter",
+        "target": "q:3f9a",
         "rejected": true,
         "audited": true
       },
@@ -33,6 +37,7 @@
         "t": 1,
         "sub": "user-b",
         "reason": "invalid_filter",
+        "target": "q:3f9a",
         "rejected": true,
         "audited": true
       },
@@ -40,12 +45,21 @@
         "t": 2,
         "sub": "user-a",
         "reason": "invalid_filter",
+        "target": "q:3f9a",
         "rejected": true,
         "audited": false
       }
     ],
     "suppressed": {
       "invalid_filter": 1
-    }
+    },
+    "summaries": [
+      {
+        "t": 10,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "suppressedCount": 1
+      }
+    ]
   }
 }

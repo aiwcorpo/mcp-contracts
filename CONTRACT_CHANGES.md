@@ -3714,3 +3714,16 @@ Poprawki 5.1.1 (decyzje człowieka, 2026-11-01, po przeglądzie ws-05 i ws-10): 
 - **SemVer:** audyt rejestruje mniej zdarzeń niż w 5.1.0 opisano; według tabeli zmiana zachowania, wydana jako patch na decyzję człowieka (wyjątek w README).
 - **Wpływ:** ws-05 (ten sam mechanizm co `RateLimitAuditThrottle` dla czterech powodów, licznik), ws-10 (asercje audytu: pętla złych filtrów daje jedno zdarzenie na 10 s i wszystkie odrzucenia), ws-01 (alert na licznik), pozostali bez zmian.
 - **Status:** accepted (decyzja: człowiek, 2026-11-01), wydanie 5.1.1
+
+## CC-191 | C8/C5 | Klucz ograniczania audytu obejmuje cel; zdarzenie podsumowujące; limit kluczy
+
+- **Problem (przegląd CC-190):** klucz (`sub`, powód) pozwala jednemu wabikowi uciszyć inne cele: kto powtarza `tools/call` na niewinne narzędzie, przez 10 s ukrywa w audycie próbę wywołania innego (`jira__delete_issue`), a licznik samego powodu nie mówi, kto ani czego dotyczył.
+- **Decyzja człowieka (2026-11-01), poprawka CC-190:**
+  - **Klucz:** (`sub`, powód, cel). Cel to nazwa narzędzia dla odmów narzędzia (`not_granted`, `filter_scope`), a dla pozostałych skrót kanonicznego filtra (`filter_mismatch`), surowego query (`invalid_filter`: nie ma co normalizować) albo kursora (`invalid_cursor`). Skrót służy tylko jako klucz w pamięci i nie trafia do zdarzenia.
+  - **Limit kluczy na `sub`:** `MCP_AUDIT_THROTTLE_MAX_TARGETS_PER_USER`, domyślnie 50 aktywnych kluczy (zapisanych w ostatnim interwale). Nowy cel ponad limit dzieli jeden klucz zbiorczy `*` (jedno zdarzenie na interwał dla wszystkich takich celów razem), więc pamięć nie rośnie z wymyślanych nazw, a odmowa nadal działa.
+  - **Zdarzenie podsumowujące:** gdy okno pary (`sub`, powód) się zamyka (interwał po pierwszym zdarzeniu okna), gateway zapisuje jedno zdarzenie tego powodu z nowym polem `suppressedCount` (liczba pominiętych w oknie, wszystkie cele razem), jeśli coś pominięto. Licznik `mcp_audit_endpoint_suppressed_total{reason}` zostaje.
+  - Reszta CC-190 bez zmian: odrzucenie działa zawsze, interwał `MCP_RATE_LIMIT_AUDIT_INTERVAL` (10 s), pamięć instancji.
+- **Pliki:** `scripts/lib/endpoint-aggregate.mjs` (`auditThrottle` z celem, limitem i podsumowaniami), wektory `endpoint-aggregate/audit-throttle-*` (10, przepisane; w tym `other-tool-is-not-silenced`, `other-filter-is-not-silenced`, `number-of-keys-is-limited`, `summary-after-the-interval`), `schemas/audit-event.schema.json` (`suppressedCount`), wektor `audit-events/gateway-audit-suppressed-summary`, README.
+- **SemVer:** nowe pole opcjonalne i doprecyzowanie CC-190; wektory `audit-throttle-*` z 5.1.1 zmieniają wejście (cel) i oczekiwania; wyjątek w README.
+- **Wpływ:** ws-05 (kod gatewaya trzeba dostosować: `RateLimitAuditThrottle` ma dziś klucz (`sub`, powód), brak celu, limitu kluczy i podsumowania), ws-10 (wywołanie innego narzędzia nie jest wyciszane; podsumowanie po oknie), ws-01 (alert na licznik i na `suppressedCount`), pozostali bez zmian.
+- **Status:** accepted (decyzja: człowiek, 2026-11-01), wydanie 5.1.2

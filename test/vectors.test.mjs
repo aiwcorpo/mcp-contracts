@@ -429,9 +429,12 @@ test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169
     } else if (data.kind === 'routing') {
       assert.deepEqual(routeCall(data.input.name, data.input.knownSystems), data.expected, name);
     } else if (data.kind === 'audit-throttle') {
-      const result = auditThrottle(data.input.events, data.input.intervalSeconds);
+      const { events, ...options } = data.input;
+      const result = auditThrottle(events, options);
       assert.deepEqual(result, data.expected, name);
       assert.ok(result.decisions.every((d) => d.rejected), `${name}: the refusal itself is never throttled`);
+      const left = result.decisions.filter((d) => !d.audited).length;
+      assert.equal(result.summaries.reduce((n, x) => n + x.suppressedCount, 0), left, `${name}: every event left out is in a summary`);
     } else if (data.kind === 'availability') {
       assert.equal(serverAvailable(data.input.read, data.input.timeoutMs), data.expected.available, name);
     } else if (data.kind === 'page') {

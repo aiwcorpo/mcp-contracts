@@ -6,22 +6,26 @@
       {
         "t": 0,
         "sub": "user-a",
-        "reason": "invalid_filter"
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
       },
       {
         "t": 1,
         "sub": "user-a",
-        "reason": "filter_mismatch"
+        "reason": "filter_mismatch",
+        "target": "f:7c01"
       },
       {
         "t": 2,
         "sub": "user-a",
-        "reason": "invalid_cursor"
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
       },
       {
         "t": 3,
         "sub": "user-a",
-        "reason": "filter_mismatch"
+        "reason": "filter_mismatch",
+        "target": "f:7c01"
       }
     ]
   },
@@ -31,6 +35,7 @@
         "t": 0,
         "sub": "user-a",
         "reason": "invalid_filter",
+        "target": "q:3f9a",
         "rejected": true,
         "audited": true
       },
@@ -38,6 +43,7 @@
         "t": 1,
         "sub": "user-a",
         "reason": "filter_mismatch",
+        "target": "f:7c01",
         "rejected": true,
         "audited": true
       },
@@ -45,6 +51,7 @@
         "t": 2,
         "sub": "user-a",
         "reason": "invalid_cursor",
+        "target": "c:91ee",
         "rejected": true,
         "audited": true
       },
@@ -52,12 +59,21 @@
         "t": 3,
         "sub": "user-a",
         "reason": "filter_mismatch",
+        "target": "f:7c01",
         "rejected": true,
         "audited": false
       }
     ],
     "suppressed": {
       "filter_mismatch": 1
-    }
+    },
+    "summaries": [
+      {
+        "t": 11,
+        "sub": "user-a",
+        "reason": "filter_mismatch",
+        "suppressedCount": 1
+      }
+    ]
   }
 }

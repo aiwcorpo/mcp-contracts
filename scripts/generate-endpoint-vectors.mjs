@@ -353,23 +353,33 @@ cursorVector('tampered', 'A cursor that was changed.', owner, owner, { mutation:
 cursorVector('malformed', 'A string that never was a cursor.', owner, owner, { mutation: 'malformed' });
 cursorVector('not-a-string', 'A cursor that is not a string.', owner, owner, { mutation: 'not-a-string' });
 
-// ---------- audit of repeatable refusals (CC-190) ----------
+// ---------- audit of repeatable refusals (CC-190, CC-191) ----------
 
-const throttleVector = (name, description, events, intervalSeconds) => {
-  const input = intervalSeconds === undefined ? { events } : { events, intervalSeconds };
-  aggOut(`audit-throttle-${name}`, { description, kind: 'audit-throttle', input, expected: auditThrottle(events, intervalSeconds) });
+const throttleVector = (name, description, events, options) => {
+  const input = options === undefined ? { events } : { events, ...options };
+  aggOut(`audit-throttle-${name}`, { description, kind: 'audit-throttle', input, expected: auditThrottle(events, options) });
 };
-throttleVector('flood-of-one-reason', 'A client that repeats a bad filter: one event in the first 10 seconds, every request is refused, the rest only counted.',
-  [0, 1, 2, 5, 9.9].map((t) => ({ t, sub: 'user-a', reason: 'invalid_filter' })));
-throttleVector('next-interval', 'After the interval a new event is due.', [0, 9, 10, 12].map((t) => ({ t, sub: 'user-a', reason: 'invalid_filter' })));
+const ev = (t, reason, target, sub = 'user-a') => ({ t, sub, reason, target });
+throttleVector('flood-of-one-target', 'A client that repeats the same bad filter: one event in the first 10 seconds, every request is refused, the rest counted and summed up when the window closes.',
+  [0, 1, 2, 5, 9.9].map((t) => ev(t, 'invalid_filter', 'q:3f9a')));
+throttleVector('next-interval', 'After the interval a new event is due.', [0, 9, 10, 12].map((t) => ev(t, 'invalid_filter', 'q:3f9a')));
+throttleVector('other-tool-is-not-silenced', 'A decoy tools/call on one tool does not hide a call of another tool: the budget is per tool.', [
+  ev(0, 'not_granted', 'jira__delete_issue'), ev(1, 'not_granted', 'jira__delete_issue'), ev(2, 'not_granted', 'gitlab__delete_project'), ev(3, 'not_granted', 'gitlab__delete_project')]);
+throttleVector('other-filter-is-not-silenced', 'Two different bad filters of one user are two targets.', [
+  ev(0, 'invalid_filter', 'q:aaaa'), ev(1, 'invalid_filter', 'q:bbbb'), ev(2, 'invalid_filter', 'q:aaaa')]);
 throttleVector('per-reason', 'The budget is per reason: another reason of the same user is audited at once.', [
-  { t: 0, sub: 'user-a', reason: 'invalid_filter' }, { t: 1, sub: 'user-a', reason: 'filter_mismatch' },
-  { t: 2, sub: 'user-a', reason: 'invalid_cursor' }, { t: 3, sub: 'user-a', reason: 'filter_mismatch' }]);
+  ev(0, 'invalid_filter', 'q:3f9a'), ev(1, 'filter_mismatch', 'f:7c01'), ev(2, 'invalid_cursor', 'c:91ee'), ev(3, 'filter_mismatch', 'f:7c01')]);
 throttleVector('per-user', 'The budget is per user: another user is not silenced by the first one.', [
-  { t: 0, sub: 'user-a', reason: 'invalid_filter' }, { t: 1, sub: 'user-b', reason: 'invalid_filter' }, { t: 2, sub: 'user-a', reason: 'invalid_filter' }]);
-throttleVector('tools-call-not-found-or-denied', 'Repeated tools/call for a tool outside the list: the reasons not_granted and filter_scope are throttled like the others.', [
-  { t: 0, sub: 'user-a', reason: 'not_granted' }, { t: 1, sub: 'user-a', reason: 'not_granted' }, { t: 1, sub: 'user-a', reason: 'filter_scope' }, { t: 2, sub: 'user-a', reason: 'filter_scope' }]);
-throttleVector('configured-interval', 'The interval is configurable: 60 seconds here.', [0, 30, 59, 60].map((t) => ({ t, sub: 'user-a', reason: 'invalid_cursor' })), 60);
+  ev(0, 'invalid_filter', 'q:3f9a'), ev(1, 'invalid_filter', 'q:3f9a', 'user-b'), ev(2, 'invalid_filter', 'q:3f9a')]);
+throttleVector('filter-scope-per-tool', 'filter_scope is throttled per tool like not_granted.', [
+  ev(0, 'filter_scope', 'jira__get_issue'), ev(1, 'filter_scope', 'jira__get_issue'), ev(2, 'filter_scope', 'jira__create_issue')]);
+throttleVector('number-of-keys-is-limited', 'A user who invents a new target on every request does not make the number of keys unbounded: over the limit (3 here) new targets share one key and are audited once per interval together.', [
+  ev(0, 'not_granted', 'a__t1'), ev(1, 'not_granted', 'a__t2'), ev(2, 'not_granted', 'a__t3'), ev(3, 'not_granted', 'a__t4'), ev(4, 'not_granted', 'a__t5'), ev(5, 'not_granted', 'a__t6')],
+  { maxTargetsPerSub: 3 });
+throttleVector('summary-after-the-interval', 'The summary event per (user, reason) carries the number of events left out in the window, whatever their targets.', [
+  ev(0, 'not_granted', 'jira__delete_issue'), ev(1, 'not_granted', 'jira__delete_issue'), ev(2, 'not_granted', 'jira__delete_issue'), ev(3, 'not_granted', 'gitlab__delete_project'), ev(4, 'not_granted', 'gitlab__delete_project')]);
+throttleVector('no-summary-without-suppressed', 'Nothing was left out: no summary.', [ev(0, 'invalid_cursor', 'c:91ee'), ev(30, 'invalid_cursor', 'c:91ee')]);
+throttleVector('configured-interval', 'The interval is configurable: 60 seconds here.', [0, 30, 59, 60].map((t) => ev(t, 'invalid_cursor', 'c:91ee')), { intervalSeconds: 60 });
 
 const routeVectorAgg = (name, description, toolName) => {
   aggOut(`routing-${name}`, { description, kind: 'routing', input: { name: toolName, knownSystems: ['jira', 'confluence', 'gitlab', 'servicedesk', 'opensearch'] },

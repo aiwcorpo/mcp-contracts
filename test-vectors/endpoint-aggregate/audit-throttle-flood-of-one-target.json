@@ -1,0 +1,93 @@
+{
+  "description": "A client that repeats the same bad filter: one event in the first 10 seconds, every request is refused, the rest counted and summed up when the window closes.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
+      },
+      {
+        "t": 5,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
+      },
+      {
+        "t": 9.9,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 5,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 9.9,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:3f9a",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "invalid_filter": 4
+    },
+    "summaries": [
+      {
+        "t": 10,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "suppressedCount": 4
+      }
+    ]
+  }
+}

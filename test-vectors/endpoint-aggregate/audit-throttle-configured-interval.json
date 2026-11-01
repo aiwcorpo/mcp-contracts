@@ -6,22 +6,26 @@
       {
         "t": 0,
         "sub": "user-a",
-        "reason": "invalid_cursor"
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
       },
       {
         "t": 30,
         "sub": "user-a",
-        "reason": "invalid_cursor"
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
       },
       {
         "t": 59,
         "sub": "user-a",
-        "reason": "invalid_cursor"
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
       },
       {
         "t": 60,
         "sub": "user-a",
-        "reason": "invalid_cursor"
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
       }
     ],
     "intervalSeconds": 60
@@ -32,6 +36,7 @@
         "t": 0,
         "sub": "user-a",
         "reason": "invalid_cursor",
+        "target": "c:91ee",
         "rejected": true,
         "audited": true
       },
@@ -39,6 +44,7 @@
         "t": 30,
         "sub": "user-a",
         "reason": "invalid_cursor",
+        "target": "c:91ee",
         "rejected": true,
         "audited": false
       },
@@ -46,6 +52,7 @@
         "t": 59,
         "sub": "user-a",
         "reason": "invalid_cursor",
+        "target": "c:91ee",
         "rejected": true,
         "audited": false
       },
@@ -53,12 +60,21 @@
         "t": 60,
         "sub": "user-a",
         "reason": "invalid_cursor",
+        "target": "c:91ee",
         "rejected": true,
         "audited": true
       }
     ],
     "suppressed": {
       "invalid_cursor": 2
-    }
+    },
+    "summaries": [
+      {
+        "t": 60,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "suppressedCount": 2
+      }
+    ]
   }
 }

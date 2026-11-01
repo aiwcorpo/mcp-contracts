@@ -1,0 +1,42 @@
+{
+  "description": "Nothing was left out: no summary.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
+      },
+      {
+        "t": 30,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "target": "c:91ee"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "target": "c:91ee",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 30,
+        "sub": "user-a",
+        "reason": "invalid_cursor",
+        "target": "c:91ee",
+        "rejected": true,
+        "audited": true
+      }
+    ],
+    "suppressed": {},
+    "summaries": []
+  }
+}

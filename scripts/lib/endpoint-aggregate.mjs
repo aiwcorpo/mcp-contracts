@@ -118,24 +118,50 @@ export function readCursor(cursor, { sub, canonicalFilter, now }) {
 }
 
 export const DEFAULT_AUDIT_INTERVAL_SECONDS = 10;
+export const DEFAULT_MAX_TARGETS_PER_SUB = 50;
+const OVERFLOW_TARGET = '*';
 
 /**
- * CC-190: audit of requests the gateway refuses for a reason the client can repeat at will (invalid_filter, filter_mismatch,
- * invalid_cursor and a tools/call that is not_found_or_denied). Per user and reason one event in each interval; the rest only
- * raise a counter. Same rule as RateLimitAuditThrottle of the gateway (CC-156): per instance, in memory, interval 10 s by
- * default (MCP_RATE_LIMIT_AUDIT_INTERVAL). The refusal itself is never throttled, so every event has rejected: true.
- * `events` is [{ t (seconds), sub, reason }] in time order.
+ * CC-190, CC-191: audit of requests the gateway refuses for a reason the client can repeat at will (invalid_filter,
+ * filter_mismatch, invalid_cursor and a tools/call that is not_found_or_denied). One event in each interval per key
+ * (sub, reason, target). The target is the tool name for the refusals of a tool (not_granted, filter_scope) and a hash of the
+ * canonical filter (invalid_filter: of the raw query) or of the cursor for the others, so a decoy of one target does not silence
+ * another. The keys of one user are limited (`maxTargetsPerSub`, 50 by default); a new target over the limit shares the key
+ * `*`. When the window of a (sub, reason) group closes, one summary event with the number of events left out in that window
+ * is written; the counter by reason only says how many, the summary says whose. The refusal itself is never throttled, so
+ * every event has rejected: true. Per instance, in memory, interval 10 s by default (MCP_RATE_LIMIT_AUDIT_INTERVAL).
+ * `events` is [{ t (seconds), sub, reason, target }] in time order; `flushAt` closes the windows still open.
  */
-export function auditThrottle(events, intervalSeconds = DEFAULT_AUDIT_INTERVAL_SECONDS) {
+export function auditThrottle(events, { intervalSeconds = DEFAULT_AUDIT_INTERVAL_SECONDS, maxTargetsPerSub = DEFAULT_MAX_TARGETS_PER_SUB, flushAt } = {}) {
   const last = new Map();
+  const windows = new Map();
   const suppressed = {};
-  const decisions = events.map(({ t, sub, reason }) => {
-    const key = `${sub}\n${reason}`;
+  const summaries = [];
+  const closeWindows = (now) => {
+    for (const [group, w] of [...windows]) {
+      if (w.start + intervalSeconds <= now) {
+        if (w.count > 0) summaries.push({ t: w.start + intervalSeconds, sub: w.sub, reason: w.reason, suppressedCount: w.count });
+        windows.delete(group);
+      }
+    }
+  };
+  const decisions = events.map(({ t, sub, reason, target }) => {
+    closeWindows(t);
+    const group = `${sub}\n${reason}`;
+    const active = [...last].filter(([key, at]) => key.startsWith(`${sub}\n`) && t - at < intervalSeconds).map(([key]) => key);
+    let key = `${group}\n${target}`;
+    if (!last.has(key) && active.length >= maxTargetsPerSub) key = `${group}\n${OVERFLOW_TARGET}`;
     const at = last.get(key);
     const emit = at === undefined || t - at >= intervalSeconds;
-    if (emit) last.set(key, t);
-    else suppressed[reason] = (suppressed[reason] ?? 0) + 1;
-    return { t, sub, reason, rejected: true, audited: emit };
+    if (!windows.has(group)) windows.set(group, { sub, reason, start: t, count: 0 });
+    if (emit) {
+      last.set(key, t);
+    } else {
+      suppressed[reason] = (suppressed[reason] ?? 0) + 1;
+      windows.get(group).count += 1;
+    }
+    return { t, sub, reason, target, rejected: true, audited: emit };
   });
-  return { decisions, suppressed };
+  closeWindows(flushAt ?? (events.length ? events[events.length - 1].t + intervalSeconds : 0));
+  return { decisions, suppressed, summaries };
 }

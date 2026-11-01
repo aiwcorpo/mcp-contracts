@@ -1,0 +1,79 @@
+{
+  "description": "A decoy tools/call on one tool does not hide a call of another tool: the budget is per tool.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "jira__delete_issue"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "jira__delete_issue"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "gitlab__delete_project"
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "gitlab__delete_project"
+      }
+    ]
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "jira__delete_issue",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "jira__delete_issue",
+        "rejected": true,
+        "audited": false
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "gitlab__delete_project",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "gitlab__delete_project",
+        "rejected": true,
+        "audited": false
+      }
+    ],
+    "suppressed": {
+      "not_granted": 2
+    },
+    "summaries": [
+      {
+        "t": 10,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "suppressedCount": 2
+      }
+    ]
+  }
+}
