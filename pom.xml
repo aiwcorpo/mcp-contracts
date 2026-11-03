@@ -20,6 +20,29 @@
     <version>6.2.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Aiwcorpo MCP Platform :: Contracts (parent)</name>
+    <url>https://github.com/aiwcorpo/mcp-contracts</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/aiwcorpo/mcp-contracts</url>
+        <connection>scm:git:https://github.com/aiwcorpo/mcp-contracts.git</connection>
+    </scm>
+
+    <!-- Published from CI only (.github/workflows/release.yml); the server id "github" gets its credentials from settings.xml. -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages (aiwcorpo/mcp-contracts)</name>
+            <url>https://maven.pkg.github.com/aiwcorpo/mcp-contracts</url>
+        </repository>
+    </distributionManagement>
 
     <modules>
         <module>java/mcp-contracts</module>

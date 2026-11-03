@@ -1,6 +1,7 @@
-// Packs the npm tarball into release/. release/ keeps the tarballs of ALL releases, because consumers depend on
-// them by file path (file:../mcp-contracts/release/...). Nothing here deletes older tarballs, and the tarball of
-// a version that already has a git tag is never rewritten, so its bytes and integrity hash stay stable.
+// Packs the npm tarball into release/, a git-ignored directory. Tarballs are no longer committed: the published
+// package lives in GitHub Packages (see .github/workflows/release.yml). Local consumers that still depend on
+// file:../mcp-contracts/release/<name>.tgz keep working from the tarballs on disk. The tarball of a version that
+// already has a git tag is never rewritten, so its bytes and integrity hash stay stable.
 import { existsSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { path, readJson } from './lib/contracts.mjs';

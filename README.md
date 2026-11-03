@@ -1,11 +1,52 @@
 # mcp-contracts
 
 Maszynowa wersja kontraktów platformy MCP z `01-contracts.md`: OpenAPI 3.1, JSON Schema 2020-12,
-schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Inne repozytoria
-generują z tego klientów, mocki i testy kontraktowe. Wersja **5.0.0** (major M5: jeden adres `/mcp` z filtrem w query zamiast zapisanych linków, CC-169 ... CC-177; po 4.1.0 i 4.0.1; 4.0.0 było majorem z pakietem kontraktowym M4: rejestr i przypinanie definicji, IGA, offboarding, limity, token-exchange i konto serwisowe, środowisko dev; poprzednie wydanie 3.1.1) (1.2.1 nie
-zostało wydane osobno); zmiany w
-[`CHANGELOG.md`](CHANGELOG.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla gateway'a i
-startera) i `mcp-policy-bundle` (referencyjny odbiorca paczek polityk).
+schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i mocki. Zmiany w
+[`CHANGELOG.md`](CHANGELOG.md). Licencja: Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
+
+## Dla kogo i jak używać
+
+To biblioteka dla autorów komponentów platformy MCP (gateway, broker poświadczeń, portal, serwery MCP dla
+Jiry, Confluence, GitLaba, OpenSearch i service desku), nie produkt do uruchomienia. Inne repozytoria
+generują z niej klientów, mocki i testy kontraktowe. Artefakty są wydawane do GitHub Packages organizacji
+`aiwcorpo` (Maven i npm), z GitHub Actions po tagu `vX.Y.Z`. GitHub Packages wymaga uwierzytelnienia także
+do odczytu: token z uprawnieniem `read:packages`.
+
+Maven (`~/.m2/settings.xml`, serwer `github` z loginem GitHub i tokenem):
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/aiwcorpo/mcp-contracts</url>
+  </repository>
+</repositories>
+<dependencies>
+  <dependency>
+    <groupId>pl.aiwcorpo.mcp</groupId>
+    <artifactId>mcp-contracts</artifactId>
+    <version>6.2.1</version>
+  </dependency>
+  <dependency>
+    <groupId>pl.aiwcorpo.mcp</groupId>
+    <artifactId>mcp-contracts</artifactId>
+    <version>6.2.1</version>
+    <classifier>test-vectors</classifier>
+    <scope>test</scope>
+  </dependency>
+</dependencies>
+```
+
+npm (`.npmrc` projektu: `@aiwcorpo:registry=https://npm.pkg.github.com` i `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}`):
+
+```bash
+npm install --save-dev @aiwcorpo/mcp-contracts@6.2.1
+```
+
+Importy: `@aiwcorpo/mcp-contracts/msw`, `.../types/portal-bff`, `.../openapi/*`, `.../schemas/*`, `.../test-vectors/*`.
+Klucze prywatne testów nie wchodzą do paczki npm (zob. "Artefakty"). Zgłaszanie podatności: [`SECURITY.md`](SECURITY.md);
+wkład: [`CONTRIBUTING.md`](CONTRIBUTING.md). Moduły Java: `mcp-cedar-entities` (wspólny entity builder Cedar dla
+gateway'a i startera), `mcp-policy-bundle` (referencyjny odbiorca paczek polityk) i `mcp-manifest`.
 
 Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md), zatwierdza
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
@@ -114,10 +155,9 @@ Wyjątek: w 2.1.0 CC-071 (nowa wartość enum `event: "authentication"`) i CC-07
 OpenSearch) są według tej tabeli zmianami major, a wydane jako minor na wyraźną decyzję człowieka z 2026-10-27;
 skutki dla konsumentów opisuje `CHANGELOG.md`.
 
-`release/` przechowuje tarballe npm **wszystkich** wydań (konsumenci zależą od nich przez ścieżkę
-`file:../mcp-contracts/release/aiwcorpo-mcp-contracts-<wersja>.tgz`). Starych tarballi się nie usuwa, a
-tarballa wersji, która ma już tag, się nie nadpisuje (`npm run pack` tego odmawia), więc suma integralności w
-`package-lock.json` konsumenta pozostaje ważna.
+Tarballe npm nie są w gicie. `npm run pack` zapisuje je lokalnie do `release/` (katalog w `.gitignore`), a
+tarballa wersji, która ma już tag, nie nadpisuje (odmawia), więc suma integralności w `package-lock.json`
+konsumenta, który wskazuje taki plik, pozostaje ważna. Wydane wersje są w GitHub Packages.
 
 Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie wersji w `pom.xml`,
 `package.json` i polach `info.version`, tag `vX.Y.Z`. Paczka polityk wskazuje wersję kontraktów w
@@ -127,23 +167,25 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 
 | Artefakt | Zawartość | Użycie |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:6.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
-| `pl.aiwcorpo.mcp:mcp-contracts:6.2.0:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:6.2.0` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:6.2.0` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
-| `pl.aiwcorpo.mcp:mcp-manifest:6.2.0` (jar + javadoc) | `definitionHash` (RFC 8785), reguły manifestu C6 i `EndpointFilter` (filtr w query `/mcp`, CC-170) | starter (generowanie), gateway (rejestracja, filtr), BFF (filtr) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:6.2.0` (pom) | rodzic modułów | instalowany razem z nimi |
-| `release/aiwcorpo-mcp-contracts-6.2.0.tgz` (npm, `@aiwcorpo/mcp-contracts`) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install ../mcp-contracts/release/aiwcorpo-mcp-contracts-6.2.0.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:6.2.1` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` pod prefiksem classpath `mcp-contracts/` | może być w runtime (np. schemat Cedar, walidacja manifestu) |
+| `pl.aiwcorpo.mcp:mcp-contracts:6.2.1:test-vectors` (jar, klasyfikator) | `test-vectors/` łącznie z kluczami testowymi, pod `mcp-contracts/test-vectors/` | **tylko** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:6.2.1` (jar + javadoc) | entity builder Cedar (C7, C9) | gateway (ws-05) i starter (ws-02), runtime |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle:6.2.1` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
+| `pl.aiwcorpo.mcp:mcp-manifest:6.2.1` (jar + javadoc) | `definitionHash` (RFC 8785), reguły manifestu C6 i `EndpointFilter` (filtr w query `/mcp`, CC-170) | starter (generowanie), gateway (rejestracja, filtr), BFF (filtr) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:6.2.1` (pom) | rodzic modułów | instalowany razem z nimi |
+| `@aiwcorpo/mcp-contracts@6.2.1` (npm, GitHub Packages) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@6.2.1`; lokalnie `npm run pack` daje `release/aiwcorpo-mcp-contracts-<wersja>.tgz` |
 
-W Mavenie klucze testowe są tylko w jarze `test-vectors`, żeby komponent produkcyjny nie mógł przypadkiem
-załadować testowego JWKS z classpath. Paczka npm zawiera `test-vectors/` (w tym klucze) i jest
-przeznaczona do `devDependencies`; nie jest publikowana do rejestru (`"private": true`).
+W Mavenie klucze testowe (także prywatne, publiczne z założenia) są tylko w jarze `test-vectors`, żeby komponent
+produkcyjny nie mógł przypadkiem załadować testowego JWKS z classpath; testy odbiorców podpisują nimi tokeny i
+paczki, więc jar zostaje osobnym artefaktem z `<scope>test</scope>`. Paczka npm zawiera `test-vectors/` bez plików
+`*NOT-FOR-PRODUCTION*` (klucze prywatne); klucze publiczne i JWKS zostają, bo wektory ich używają do weryfikacji.
+Kto w testach Node potrzebuje kluczy prywatnych, bierze je z jaru `test-vectors` albo z repozytorium.
 
 Instalacja lokalna:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/6.2.0/
-npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-6.2.0.tgz
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/<wersja>/
+npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-<wersja>.tgz (poza gitem)
 ```
 
 ```xml
@@ -1109,7 +1151,7 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 1. Wersja dokładnie `X.Y.Z` w pomach, `package.json` i `info.version` OpenAPI; `./scripts/verify-all.sh` zielony (robi `./mvnw clean verify`
    i `scripts/check-jar-contents.mjs`: jary muszą zawierać dokładnie pliki drzewa źródeł).
 2. Sprawdzić, że w `~/.m2` nie ma jeszcze `X.Y.Z` (wydane wersje są niezmienne), commit `Release X.Y.Z`, tag `vX.Y.Z`.
-3. `npm run pack`, `./mvnw clean install`, commit tarballa, potem wersja `X.Y.(Z+1)-SNAPSHOT`.
+3. Wypchnięcie tagu uruchamia `.github/workflows/release.yml` (weryfikacja, `npm publish`, `./mvnw deploy`, SBOM CycloneDX); potem wersja `X.Y.(Z+1)-SNAPSHOT`. Lokalnie: `./mvnw clean install` (do `~/.m2`) i `npm run pack`.
 
 ## Walidacja lokalna i CI
 
@@ -1125,7 +1167,7 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
   decyzji i filtra wyników wykonywane przez `mcp-cedar-entities` (z walidacją encji schematem i drugim
   przebiegiem bez `forbid`), wektory paczek przez `mcp-policy-bundle`, budowa jarów.
 
-CI: **GitLab CI** (`.gitlab-ci.yml`), bo firmowe repozytoria i serwer MCP dla GitLaba są w GitLabie;
+CI: wydania buduje GitHub Actions (`.github/workflows/release.yml`). Kontrole na co dzień: **GitLab CI** (`.gitlab-ci.yml`), bo firmowe repozytoria i serwer MCP dla GitLaba są w GitLabie;
 joby `node`, `java`, `wiremock-smoke` (Docker-in-Docker) i na tagu `package-jar`, `package-npm`.
 Obrazy w CI: `node:24.18.0-bookworm`, `maven:3.9.12-eclipse-temurin-25`, `docker:28.3.2`.
 

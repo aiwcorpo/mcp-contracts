@@ -2,8 +2,14 @@
   "name": "@aiwcorpo/mcp-contracts",
   "version": "6.2.1-SNAPSHOT",
   "description": "Kontrakty platformy MCP: OpenAPI, JSON Schema, schemat Cedar, wektory testowe, typy TS i handlery MSW.",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aiwcorpo/mcp-contracts.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -38,12 +44,15 @@
     "schemas/",
     "cedar/",
     "test-vectors/",
+    "!test-vectors/keys/*NOT-FOR-PRODUCTION*",
     "security/",
     "mocks/",
     "dist/",
     "CONTRACT_CHANGES.md",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "generate": "node scripts/bundle-openapi.mjs && node scripts/generate-mocks.mjs",

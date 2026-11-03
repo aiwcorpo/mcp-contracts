@@ -1,0 +1,7 @@
+mcp-contracts
+Copyright 2026 aiwcorpo
+
+This product includes software developed at aiwcorpo (https://github.com/aiwcorpo).
+
+The private keys under test-vectors/keys/ (files named *NOT-FOR-PRODUCTION*) are published
+on purpose, are used only to sign test vectors, and must never be used outside tests.

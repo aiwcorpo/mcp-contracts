@@ -11,3 +11,5 @@ dist/
 .DS_Store
 # Logs
 *.log
+# Local npm pack output (npm run pack); releases are published from CI, not committed.
+release/
