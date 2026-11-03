@@ -4,9 +4,29 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 6.2.0 - 2026-11-03
+
+Wyjątek SemVer (wzór: 5.1.0; README, "Wersjonowanie"): CC-207, poprawki po przeglądzie 6.1.0. Według tabeli są tu zmiany major: nowa wartość enum `gateway_timeout` w `BalancerError` (z 6.1.0), inny punkt odniesienia bezstanowego `list_changed`, nowy kod `422 classification_inconsistent`, węższa odpowiedź `200` kanału adaptera (`AdapterRegistryServer`), kolejność `403`, `400`, `422` w kanale adaptera, pole `removed` w referencji. Dotyczą kanału adaptera, `BalancerError` i bezstanowego `list_changed` z 6.0.0 i 6.1.0, których nikt nie wdrożył; człowiek zdecydował (2026-11-03), że wydanie to 6.2.0. Bajty `cedar/mcp.cedarschema` bez zmian.
+
+- **Punkt odniesienia `list_changed` (S7):** lista użytkownika z chwili otwarcia strumienia `subscriptions/listen`; `tools/list` obsłużone gdzie indziej nie jest referencją. Referencja `listChangedStateless`, wektory `list-changed-stateless-*` (4) zamiast `list-changed-sequence-stateless-*`.
+- **Strumienie (S8):** `POST subscriptions/listen` poza `MCP_MAX_CONCURRENT_REQUESTS` jak `GET`; heartbeat SSE `: keepalive` co 15 s (`MCP_SSE_HEARTBEAT_INTERVAL`).
+- **Kanał adaptera:** kolejność `403`, `400` (`serverId` ciała różny od ścieżki), `422` (N11); odpowiedź bez `classifiedBy`/`classifiedAt` (N13); narzędzie nieobecne w manifeście jest usuwane wraz z klasyfikacją (decyzja człowieka); wektory `adapter-registry/` (13).
+- **`approve` adaptera:** `risk` i `action` muszą do siebie pasować, inaczej `classification_inconsistent` (N14); wektory `registry-approval/` (13). `action` w audycie klasyfikacji w tekstach i jako `$ref` (N10).
+- **Znane, odłożone do następnego majora (N1, N2):** schemat nie wymusza, że `RegistryTool.risk`/`action` są obecne poza oczekującym wpisem adaptera, ani że `KillSwitch.tool` występuje dokładnie przy `scope: tool`; obowiązuje opis. Egzekwowanie zaostrzyłoby walidację odpowiedzi.
+- **Do potwierdzenia przez człowieka (STATUS):** kolejność reguł `idpTokenClaimsDecision` i semantyka osieroconego przełącznika; bez zmian w tym wydaniu.
+
+### Zmiany względem 6.1.0 dla strumieni
+
+**ws-01 stos dev i platforma:** dla `/mcp` i `/s/...` (obie postacie strumienia): `proxy_buffering off`, `proxy_read_timeout` co najmniej 60 s; heartbeat gatewaya co 15 s; zerwany strumień to `504` albo zamknięte połączenie, nie błąd gatewaya.
+**ws-05 gateway:** (1) bezstanowy `list_changed` porównuje z listą z chwili otwarcia strumienia, nie z ostatnim `tools/list`; (2) `POST subscriptions/listen` poza limitem żądań w toku, metryka otwartych strumieni obejmuje obie postacie; (3) heartbeat SSE `: keepalive` co `MCP_SSE_HEARTBEAT_INTERVAL` (15 s) na każdym strumieniu; (4) kanał adaptera: `403` przed `400` przed `422`, odpowiedź bez `classifiedBy`/`classifiedAt`, usunięcie narzędzia usuwa klasyfikację; (5) `approve` adaptera: `classification_inconsistent`; (6) zdarzenie klasyfikacji niesie `risk` i `action`.
+**ws-13 adapter:** obsłużyć `400` przy `serverId` ciała różnym od ścieżki; odpowiedź `200` bez pól administratora; po powrocie usuniętego narzędzia spodziewać się ponownej klasyfikacji.
+**ws-07, ws-08:** `approve` adaptera może zwrócić `422 classification_inconsistent`: komunikat w dialogu klasyfikacji, para `risk`/`action` ograniczona do dozwolonych.
+**ws-10 e2e:** scenariusze: strumień `POST subscriptions/listen` nie zajmuje miejsca w limicie i nie ginie po bezczynności (heartbeat); `tools/list` na innej instancji nie psuje powiadomień; `403` przed `422`.
+**ws-02, ws-03, ws-04, ws-06, ws-09, ws-11, ws-12:** zależność 6.2.0, bez zmian w kodzie.
+
 ## 6.1.0 - 2026-11-03
 
-Minor (ścisły SemVer, tabela w README): CC-206, poprawki po przeglądzie 6.0.0 i decyzje człowieka z 2026-11-03. Bajty `cedar/mcp.cedarschema` bez zmian. Nic nie zaostrza walidacji istniejących danych; N1 i N2 (warunki w schematach odpowiedzi) odłożone do następnego majora.
+Minor: CC-206, poprawki po przeglądzie 6.0.0 i decyzje człowieka z 2026-11-03. Bajty `cedar/mcp.cedarschema` bez zmian. Nie zaostrza walidacji istniejących danych, **z jednym wyjątkiem od tabeli SemVer**: `BalancerError.error` z `const: bad_gateway` na `enum: [bad_gateway, gateway_timeout]` (nowa wartość enum, według tabeli major; element bez wdrożeń, wyjątek zatwierdzony razem z 6.2.0). N1 i N2 (warunki w schematach odpowiedzi) odłożone do następnego majora. Reguła punktu odniesienia `subscriptions/listen` z tego wydania ("ostatni `tools/list` w połączeniu") jest wycofana w 6.2.0.
 
 ### Nowe i poprawione
 

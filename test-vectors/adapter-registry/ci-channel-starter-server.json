@@ -33,6 +33,7 @@
     "pending": [
       "update_issue"
     ],
-    "pendingSource": "ci"
+    "pendingSource": "ci",
+    "removed": []
   }
 }

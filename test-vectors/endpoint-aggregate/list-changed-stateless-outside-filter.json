@@ -1,0 +1,31 @@
+{
+  "description": "The filter of the subscriptions/listen request cuts the changed tool: nothing is sent.",
+  "kind": "list-changed-stateless",
+  "input": {
+    "query": "systems=gitlab",
+    "openedWith": [
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "changes": [
+      {
+        "t": 3,
+        "tools": [
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "notifyAt": []
+  }
+}

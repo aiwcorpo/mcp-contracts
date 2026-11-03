@@ -1,0 +1,20 @@
+{
+  "description": "The action admin fits UPDATE (and DESTRUCTIVE), not READ_ONLY.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "UPDATE",
+      "action": "admin"
+    }
+  },
+  "expected": {
+    "status": 204,
+    "classification": {
+      "risk": "UPDATE",
+      "action": "admin"
+    },
+    "auditReason": "definition_approved"
+  }
+}

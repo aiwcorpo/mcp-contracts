@@ -67,6 +67,16 @@ export function listChangedNotification(filter, before, after) {
 export const LIST_CHANGED_WINDOW_SECONDS = 1;
 
 /**
+ * CC-207: the stateless variant (subscriptions/listen, a POST with no session). The reference of the comparison is always the list
+ * of the user at the time the stream was opened, which the instance that holds the stream knows. A tools/list answered meanwhile,
+ * perhaps by another instance behind the balancer, is not a reference (`lastToolsListRead` is accepted and ignored on purpose).
+ * `openedWith` is the list at the opening, `changes` is [{ t, tools }] as in listChangedSequence.
+ */
+export function listChangedStateless(filter, { openedWith, changes }) {
+  return listChangedSequence(filter, [{ t: 0, tools: openedWith }, ...changes]);
+}
+
+/**
  * CC-192: the times (seconds) at which the gateway sends notifications/tools/list_changed to one session. `snapshots` is
  * [{ t, tools }] in time order: the list of the session (all tools the user may call, before the filter) first when the stream was
  * opened and then after every event that may change it. A notification is sent when the list after the filter differs from the

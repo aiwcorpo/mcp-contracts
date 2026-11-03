@@ -32,6 +32,8 @@
       "get_issue",
       "update_issue"
     ],
-    "pendingSource": "adapter"
+    "pendingSource": "adapter",
+    "removed": [],
+    "classificationLost": []
   }
 }

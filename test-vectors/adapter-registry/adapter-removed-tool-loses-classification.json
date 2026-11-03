@@ -1,0 +1,35 @@
+{
+  "description": "A tool missing from the manifest of an adapter is removed together with its classification; if it returns it is new and unclassified (CC-207).",
+  "input": {
+    "serverId": "mcp-jira",
+    "serverMode": "adapter",
+    "channel": "adapter",
+    "cn": "mcp-adapter-mcp-jira",
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "removed"
+      }
+    ]
+  },
+  "expected": {
+    "status": 200,
+    "stored": true,
+    "approvedByCall": [],
+    "pending": [],
+    "pendingSource": "adapter",
+    "removed": [
+      "update_issue"
+    ],
+    "classificationLost": [
+      "update_issue"
+    ]
+  }
+}

@@ -281,7 +281,7 @@ paths:
         that passes is registered. The binding serverId -> system/internalUrl comes only from gateway configuration; a
         manifest that disagrees is rejected with 422 and nothing is stored.
 
-        **Adapter mode (CC-206).** For a `serverId` that gateway configuration serves through an adapter this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`.
+        **Adapter mode (CC-206).** For a `serverId` that gateway configuration serves through an adapter this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`. The certificate is checked before the mode, so this `422` is seen only by the holder of the CN of that `serverId`.
       security:
         - mtls: []
       requestBody:
@@ -520,7 +520,7 @@ paths:
         **Identity of the adapter.** The certificate is bound to one server: its CN is `mcp-adapter-<serverId>` (for example
         `mcp-adapter-mcp-jira`), compared as a whole and case-sensitively like the CN of the pipeline (CC-161). It is a different CN from
         `mcp-registry-ci-<serverId>`, so a pipeline cannot use this operation and an adapter cannot use `registerServer`. Another CN is `403` and
-        `client_certificate_rejected` in the audit.
+        `client_certificate_rejected` in the audit. The answers come in this order (CC-207): the certificate (`403`) first, so that a caller without the right CN learns nothing about the mode of any server; then `serverId` in the body against the path (`400`); then the mode and the `source` (`422`).
 
         **Adapter mode is gateway configuration.** Which `serverId` is served by an adapter is set in the configuration of the gateway, never by a
         manifest. For a `serverId` in adapter mode this operation is the only way to submit a manifest and `registerServer` answers `422`,
@@ -530,7 +530,7 @@ paths:
         **What the call stores.** Every new or changed tool becomes `pending_approval` (`change` new or changed, `source` adapter, `pendingVersion` the
         version of the manifest) without classification, a READ_ONLY-looking tool included: nothing of an adapter is approved by this call, and an
         unclassified tool is hidden and refused as `tool_disabled`. An entry whose `definitionHash` did not change stays as it is, with its
-        classification. A tool missing from the manifest is removed (`tool_removed`). Audit as `admin_change`: `definition_submitted` for every pending
+        classification. A tool missing from the manifest is removed (`tool_removed`) together with its classification: if it returns it is a new, unclassified tool and the administrator classifies it again (CC-207). Audit as `admin_change`: `definition_submitted` for every pending
         entry and `tool_removed`. The administrator classifies and approves with `approveTool` (`risk`, `action`).
 
         **Rejections.** The same checks as for `registerServer` (hash recomputed without risk and action, semantic rules, binding of serverId to
@@ -584,7 +584,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegistryServer'
+                $ref: '#/components/schemas/AdapterRegistryServer'
               examples:
                 submitted:
                   value:
@@ -814,7 +814,7 @@ paths:
         **Entries of an adapter (CC-193).** An entry with source adapter has no risk and no action; the body must carry both (`risk`, `action`), otherwise 422
         manifest_rejected with reason classification_required, and a body with them for any other entry is 422 classification_not_allowed. Approval then also
         classifies: the registry stores risk, action, the administrator and the time (`classifiedBy`, `classifiedAt` in the registry listing); the audit event is
-        admin_change with reason definition_approved and the new risk. A tool of an adapter that is not classified is hidden and refused as tool_disabled. A changed
+        admin_change with reason definition_approved, the new risk and the new action (`action` of the audit event). `risk` and `action` must fit each other (read for READ_ONLY only, update for UPDATE, delete for DESTRUCTIVE, admin for UPDATE or DESTRUCTIVE), otherwise 422 classification_inconsistent. A tool of an adapter that is not classified is hidden and refused as tool_disabled. A changed
         definition of an adapter tool is pending again; the earlier classification is shown to the administrator as a suggestion and is not applied.
       security:
         - mtls: []
@@ -1647,7 +1647,7 @@ components:
         reason:
           type: string
           pattern: '^[a-z][a-z0-9_]*$'
-          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter). A client must show an unknown value as a generic message.
+          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500
@@ -1770,6 +1770,43 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RegistryTool'
+      additionalProperties: false
+    AdapterRegistryTool:
+      allOf:
+        - $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntryFields'
+      type: object
+      required: [status]
+      description: A tool in the answer to the adapter (CC-207). The same as RegistryTool without classifiedBy and classifiedAt - an adapter is the sidecar of a foreign server and has no business with the identity of administrators. risk and action are present only for a tool that was classified earlier.
+      properties:
+        status:
+          $ref: '#/components/schemas/RegistryToolStatus'
+        change:
+          type: string
+          enum: [new, changed]
+        source:
+          type: string
+          enum: [adapter]
+        riskLowered:
+          type: boolean
+        approvedInVersion:
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/SemVer'
+            - type: 'null'
+      unevaluatedProperties: false
+    AdapterRegistryServer:
+      type: object
+      required: [serverId, system, version, tools]
+      properties:
+        serverId:
+          $ref: '../schemas/common.schema.json#/$defs/ServerId'
+        system:
+          $ref: '../schemas/common.schema.json#/$defs/SystemId'
+        version:
+          $ref: '../schemas/common.schema.json#/$defs/SemVer'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdapterRegistryTool'
       additionalProperties: false
     PendingTool:
       type: object

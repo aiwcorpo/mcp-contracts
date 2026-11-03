@@ -1,0 +1,33 @@
+{
+  "description": "Stateless variant (CC-207): the reference is the list at the time subscriptions/listen was opened; a change after it is announced.",
+  "kind": "list-changed-stateless",
+  "input": {
+    "query": "",
+    "openedWith": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "changes": [
+      {
+        "t": 6,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "notifyAt": [
+      6
+    ]
+  }
+}

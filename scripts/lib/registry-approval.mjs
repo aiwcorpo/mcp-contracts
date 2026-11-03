@@ -11,6 +11,7 @@ export function approveDecision({ entry, body = {}, floor = null }) {
   const classifies = body.risk !== undefined || body.action !== undefined;
   if (entry.source === 'adapter') {
     if (body.risk === undefined || body.action === undefined) return { status: 422, reason: 'classification_required' };
+    if (!consistent(body.risk, body.action)) return { status: 422, reason: 'classification_inconsistent' };
     if (floor !== null && RISK_ORDER[body.risk] < RISK_ORDER[floor] && body.acceptRiskLowering !== true) return { status: 422, reason: 'risk_lowered' };
     const lowered = floor !== null && RISK_ORDER[body.risk] < RISK_ORDER[floor];
     return { status: 204, classification: { risk: body.risk, action: body.action }, auditReason: lowered ? 'risk_lowered_by_admin' : 'definition_approved' };
@@ -19,6 +20,11 @@ export function approveDecision({ entry, body = {}, floor = null }) {
   if (entry.riskLowered && body.acceptRiskLowering !== true) return { status: 422, reason: 'risk_lowered' };
   return { status: 204, auditReason: entry.riskLowered ? 'risk_lowered_by_admin' : 'definition_approved' };
 }
+
+// CC-207: risk and action of a classification must fit each other. read is for READ_ONLY only, update for UPDATE, delete for
+// DESTRUCTIVE; admin may be UPDATE or DESTRUCTIVE (a READ_ONLY tool never has the action admin).
+const FITS = { READ_ONLY: ['read'], UPDATE: ['update', 'admin'], DESTRUCTIVE: ['delete', 'admin'] };
+const consistent = (risk, action) => FITS[risk]?.includes(action) === true;
 
 /** What a tool of an adapter is for callers: until it is classified and approved it is hidden and refused as tool_disabled. */
 export function adapterToolState({ classified }) {

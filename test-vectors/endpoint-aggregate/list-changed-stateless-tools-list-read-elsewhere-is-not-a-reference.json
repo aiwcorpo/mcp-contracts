@@ -1,0 +1,43 @@
+{
+  "description": "A tools/list answered meanwhile (here with the new tool, perhaps by another instance) is not a reference: the change is still announced, because the stream compares with the list at the opening (CC-207).",
+  "kind": "list-changed-stateless",
+  "input": {
+    "query": "",
+    "openedWith": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "lastToolsListRead": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      }
+    ],
+    "changes": [
+      {
+        "t": 6,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "notifyAt": [
+      6
+    ]
+  }
+}

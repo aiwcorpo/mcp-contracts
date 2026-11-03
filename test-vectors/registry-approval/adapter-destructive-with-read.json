@@ -1,0 +1,16 @@
+{
+  "description": "DESTRUCTIVE with read is 422 classification_inconsistent.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "DESTRUCTIVE",
+      "action": "read"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_inconsistent"
+  }
+}

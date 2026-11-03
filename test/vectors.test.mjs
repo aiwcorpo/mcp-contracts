@@ -13,7 +13,7 @@ import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
 import { gatewayAuthenticationResponse, idpTokenClaimsDecision, keyDecision, protectedResourceMetadata } from '../scripts/lib/gateway-authentication.mjs';
 import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from '../scripts/lib/endpoint-filter.mjs';
-import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
+import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 import { killSwitchDecision } from '../scripts/lib/kill-switch.mjs';
 import { submissionDecision } from '../scripts/lib/adapter-registry.mjs';
@@ -427,7 +427,7 @@ test('the filter field belongs to the gateway and to four events, and a rejected
 
 test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169, CC-176, CC-177)', () => {
   const vectors = listJson('test-vectors', 'endpoint-aggregate');
-  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['audit-throttle', 'availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'list-changed-sequence', 'page', 'routing']);
+  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['audit-throttle', 'availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'list-changed-sequence', 'list-changed-stateless', 'page', 'routing']);
   const validateError = schemaValidator(ajv, 'tool-error.schema.json');
   for (const { name, data } of vectors) {
     if (data.kind === 'list') {
@@ -459,6 +459,9 @@ test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169
     } else if (data.kind === 'list-changed-sequence') {
       assert.deepEqual({ notifyAt: listChangedSequence(parseFilter(data.input.query).filter, data.input.snapshots, data.input.windowSeconds) }, data.expected, name);
       assert.ok(data.expected.notifyAt.every((t, i, all) => i === 0 || t - all[i - 1] >= data.input.windowSeconds), `${name}: at most one notification per window`);
+    } else if (data.kind === 'list-changed-stateless') {
+      const { query, ...rest } = data.input;
+      assert.deepEqual({ notifyAt: listChangedStateless(parseFilter(query).filter, rest) }, data.expected, name);
     } else if (data.kind === 'list-changed') {
       assert.equal(listChangedNotification(parseFilter(data.input.query).filter, data.input.before, data.input.after), data.expected.notify, name);
     } else {
@@ -578,7 +581,7 @@ test('adapter registry: channel, certificate, mode and what stays pending (CC-19
 test('approval with a classification of an adapter tool (CC-193, CC-206)', () => {
   const vectors = listJson('test-vectors', 'registry-approval');
   const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
-  assert.deepEqual([...reasons].sort(), ['classification_not_allowed', 'classification_required', 'risk_lowered']);
+  assert.deepEqual([...reasons].sort(), ['classification_inconsistent', 'classification_not_allowed', 'classification_required', 'risk_lowered']);
   for (const { name, data } of vectors) {
     assert.deepEqual('entry' in data.input ? approveDecision(data.input) : adapterToolState(data.input), data.expected, name);
   }

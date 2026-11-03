@@ -1,0 +1,41 @@
+{
+  "description": "Events that leave the list as it was at the opening send nothing, whatever tools/list returned in between.",
+  "kind": "list-changed-stateless",
+  "input": {
+    "query": "",
+    "openedWith": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE"
+      }
+    ],
+    "lastToolsListRead": [
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY"
+      }
+    ],
+    "changes": [
+      {
+        "t": 6,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "notifyAt": []
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "risk and action must fit: READ_ONLY with delete is 422 classification_inconsistent (CC-207).",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "READ_ONLY",
+      "action": "delete"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_inconsistent"
+  }
+}

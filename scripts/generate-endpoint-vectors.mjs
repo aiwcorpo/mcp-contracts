@@ -4,7 +4,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
 import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from './lib/endpoint-filter.mjs';
-import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
+import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
 import { idpTokenClaimsDecision, protectedResourceMetadata } from './lib/gateway-authentication.mjs';
 import { killSwitchDecision } from './lib/kill-switch.mjs';
@@ -500,11 +500,18 @@ sequenceVector('outside-filter', 'A change the filter of the session cuts is not
   { t: 0, tools: [gitlabRead] }, { t: 4, tools: [gitlabRead, jiraUpdate] }, { t: 4.2, tools: [gitlabRead] }]);
 sequenceVector('connection-change-is-silent', 'The account connected a system: the list is the same, so nothing is sent (CC-176).', '', [{ t: 0, tools: [jiraRead, gitlabRead] }, { t: 20, tools: [jiraRead, gitlabRead] }]);
 
-const statelessSequence = (name, description, query, snapshots) => sequenceVector(`stateless-${name}`, description, query, snapshots);
-statelessSequence('compared-with-the-list-at-open', 'Stateless variant (CC-206): with no earlier tools/list in the connection the first comparison is with the list at the time subscriptions/listen was opened (snapshot 0).', '', [
-  { t: 0, tools: [jiraRead] }, { t: 6, tools: [jiraRead, jiraUpdate] }]);
-statelessSequence('compared-with-the-last-list-read', 'Stateless variant (CC-206): the reference is the list of the last tools/list of the connection, here taken as snapshot 0 after a read at t = 4; a change before that read is not announced again.', '', [
-  { t: 4, tools: [jiraRead, jiraUpdate] }, { t: 9, tools: [jiraRead, jiraUpdate] }, { t: 12, tools: [jiraRead] }]);
+const statelessVector = (name, description, query, input) => {
+  const { filter } = parseFilter(query);
+  aggOut(`list-changed-stateless-${name}`, { description, kind: 'list-changed-stateless', input: { query, ...input }, expected: { notifyAt: listChangedStateless(filter, input) } });
+};
+statelessVector('compared-with-the-list-at-open', 'Stateless variant (CC-207): the reference is the list at the time subscriptions/listen was opened; a change after it is announced.', '', {
+  openedWith: [jiraRead], changes: [{ t: 6, tools: [jiraRead, jiraUpdate] }] });
+statelessVector('tools-list-read-elsewhere-is-not-a-reference', 'A tools/list answered meanwhile (here with the new tool, perhaps by another instance) is not a reference: the change is still announced, because the stream compares with the list at the opening (CC-207).', '', {
+  openedWith: [jiraRead], lastToolsListRead: [jiraRead, jiraUpdate], changes: [{ t: 6, tools: [jiraRead, jiraUpdate] }] });
+statelessVector('no-change-since-opening', 'Events that leave the list as it was at the opening send nothing, whatever tools/list returned in between.', '', {
+  openedWith: [jiraRead, jiraUpdate], lastToolsListRead: [jiraRead], changes: [{ t: 6, tools: [jiraRead, jiraUpdate] }] });
+statelessVector('outside-filter', 'The filter of the subscriptions/listen request cuts the changed tool: nothing is sent.', 'systems=gitlab', {
+  openedWith: [gitlabRead], changes: [{ t: 3, tools: [gitlabRead, jiraUpdate] }] });
 const streamVector = (name, description, input) => {
   filterOut(`stream-open-${name}`, { description, kind: 'stream-open', input, expected: streamOpenDecision(input) });
 };
@@ -553,6 +560,12 @@ const adapterVector = (name, description, input) => adapterOut(name, { descripti
 const toolsAfter = [{ name: 'get_issue', risk: 'READ_ONLY', state: 'new' }, { name: 'update_issue', risk: 'UPDATE', state: 'changed' }, { name: 'list_projects', risk: 'READ_ONLY', state: 'unchanged' }];
 adapterVector('adapter-submits', 'The adapter submits its manifest on its own channel: every new or changed tool is pending, with source adapter, a tool that looks like a read included. Nothing is approved by the call.',
   { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-removed-tool-loses-classification', 'A tool missing from the manifest of an adapter is removed together with its classification; if it returns it is new and unclassified (CC-207).',
+  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: [{ name: 'get_issue', risk: 'READ_ONLY', state: 'unchanged' }, { name: 'update_issue', risk: 'UPDATE', state: 'removed' }] });
+adapterVector('adapter-body-server-id-differs-from-path', 'serverId in the manifest differs from the path: 400, nothing stored, after the certificate and before the mode (CC-207).',
+  { serverId: 'mcp-jira', bodyServerId: 'mcp-gitlab', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-wrong-cn-before-mode-mismatch', 'A certificate that is not the adapter of this server gets 403 even when the server is not in adapter mode: the answer never tells the mode to a caller without the right CN (CC-207).',
+  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'adapter', cn: 'mcp-adapter-mcp-gitlab', manifestSource: 'adapter', tools: toolsAfter });
 adapterVector('adapter-wrong-cn', 'The certificate of another server (or of the pipeline) on the adapter channel: 403, nothing stored.',
   { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-registry-ci-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
 adapterVector('adapter-cn-of-another-server', 'The adapter of mcp-gitlab cannot submit for mcp-jira: the CN is compared as a whole.',
@@ -577,6 +590,9 @@ const approvalVector = (name, description, input) => approvalOut(name, { descrip
 approvalVector('adapter-with-classification', 'An administrator approves a tool of an adapter and classifies it: 204, the classification is stored, audit definition_approved.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'update' } });
 approvalVector('adapter-without-classification', 'Approval of a tool of an adapter without risk and action: 422 classification_required.', { entry: { source: 'adapter' }, body: {} });
 approvalVector('adapter-only-risk', 'risk without action is not a classification.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE' } });
+approvalVector('adapter-read-only-with-delete', 'risk and action must fit: READ_ONLY with delete is 422 classification_inconsistent (CC-207).', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'delete' } });
+approvalVector('adapter-destructive-with-read', 'DESTRUCTIVE with read is 422 classification_inconsistent.', { entry: { source: 'adapter' }, body: { risk: 'DESTRUCTIVE', action: 'read' } });
+approvalVector('adapter-update-with-admin', 'The action admin fits UPDATE (and DESTRUCTIVE), not READ_ONLY.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'admin' } });
 approvalVector('adapter-lowering-without-accept', 'A classification lower than one given earlier needs acceptRiskLowering: 422 risk_lowered.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read' }, floor: 'UPDATE' });
 approvalVector('adapter-lowering-accepted', 'With acceptRiskLowering the lower classification is stored, audit risk_lowered_by_admin.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read', acceptRiskLowering: true }, floor: 'UPDATE' });
 approvalVector('ci-entry-with-classification', 'risk or action for an entry that is not from an adapter: 422 classification_not_allowed.', { entry: { source: 'ci' }, body: { risk: 'UPDATE', action: 'update' } });
