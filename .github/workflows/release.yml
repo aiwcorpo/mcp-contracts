@@ -7,7 +7,9 @@
 # `npm publish <tarball> --ignore-scripts` and the jars with the maven-deploy-plugin goal deploy:deploy-file (plugin from
 # Maven Central, run from a directory without a pom). The mvn deploy lifecycle was rejected: it would have to run the
 # build (and the plugins of the repository pom) in the job that holds the write token. The write token is in the
-# environment of the publishing steps only.
+# environment of the publishing steps only. The artifact is data from a job that ran repository code, so publish checks its
+# exact file list first, and runs mvn and npm from an empty directory with absolute paths, so that no .mvn, .npmrc or
+# pom of the artifact is ever read.
 name: release
 
 on:
@@ -83,11 +85,27 @@ jobs:
     environment: release
     permissions:
       packages: write
+    env:
+      ARTIFACT_DIR: ${{ runner.temp }}/packages
+      EMPTY_DIR: ${{ runner.temp }}/empty
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: packages
-          path: out
+          path: ${{ runner.temp }}/packages
+      - name: Check the artifact file list
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          modules='mcp-contracts|mcp-cedar-entities|mcp-policy-bundle|mcp-manifest'
+          cd "$ARTIFACT_DIR"
+          if find . -mindepth 1 ! -type f ! -type d | grep -q .; then echo "artifact holds a non-regular file" >&2; exit 1; fi
+          unexpected="$(find . -type f | sed 's|^\./||' | grep -Evx "npm/aiwcorpo-mcp-contracts-${version//./\\.}\.tgz|parent\.pom\.xml|($modules)/(pom\.xml|($modules)-${version//./\\.}\.jar|($modules)-${version//./\\.}-test-vectors\.jar)" || true)"
+          if [ -n "$unexpected" ]; then echo "unexpected files in the artifact:" >&2; echo "$unexpected" >&2; exit 1; fi
+          test -f "npm/aiwcorpo-mcp-contracts-$version.tgz" -a -f parent.pom.xml
+          for module in mcp-contracts mcp-cedar-entities mcp-policy-bundle mcp-manifest; do
+            test -f "$module/pom.xml" -a -f "$module/$module-$version.jar"
+          done
+          mkdir -p "$EMPTY_DIR"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '24'
@@ -101,28 +119,33 @@ jobs:
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
       - name: Publish npm package
-        run: npm publish --ignore-scripts out/npm/*.tgz
+        working-directory: ${{ runner.temp }}/empty
+        run: npm publish --ignore-scripts --registry=https://npm.pkg.github.com "$ARTIFACT_DIR"/npm/*.tgz
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Maven artifacts
+        working-directory: ${{ runner.temp }}/empty
         run: |
           repo="https://maven.pkg.github.com/${GITHUB_REPOSITORY}"
           plugin=org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file
-          mvn -B "$plugin" -Dfile=out/maven/parent.pom.xml -DpomFile=out/maven/parent.pom.xml -Durl="$repo" -DrepositoryId=github
-          for dir in out/maven/*/; do
+          deploy() {
+            mvn -B -s "$HOME/.m2/settings.xml" -Dmaven.multiModuleProjectDirectory="$EMPTY_DIR" "$plugin" \
+              -Durl="$repo" -DrepositoryId=github "$@"
+          }
+          deploy -Dfile="$ARTIFACT_DIR/parent.pom.xml" -DpomFile="$ARTIFACT_DIR/parent.pom.xml"
+          for dir in "$ARTIFACT_DIR"/*/; do
             module="$(basename "$dir")"
-            main="$(find "$dir" -maxdepth 1 -name "$module-[0-9]*.jar" ! -name "$module-*-*.jar" | head -n 1)"
-            test -n "$main"
-            files=""; classifiers=""; types=""
-            for extra in "$dir$module"-*-*.jar; do
-              [ -e "$extra" ] || continue
-              classifier="${extra##*/}"; classifier="${classifier%.jar}"
-              classifier="${classifier#"$module"-}"; classifier="${classifier#*-}"
-              files="${files:+$files,}$extra"; classifiers="${classifiers:+$classifiers,}$classifier"; types="${types:+$types,}jar"
-            done
-            mvn -B "$plugin" -Dfile="$main" -DpomFile="${dir}pom.xml" -Durl="$repo" -DrepositoryId=github \
-              ${files:+-Dfiles="$files" -Dclassifiers="$classifiers" -Dtypes="$types"}
+            [ "$module" = npm ] && continue
+            main="$(ls "$dir$module"-[0-9]*.jar | grep -v -- '-test-vectors\.jar$')"
+            vectors="$dir$module-${GITHUB_REF_NAME#v}-test-vectors.jar"
+            if [ -f "$vectors" ]; then
+              deploy -Dfile="$main" -DpomFile="${dir}pom.xml" -Dfiles="$vectors" -Dclassifiers=test-vectors -Dtypes=jar
+            else
+              deploy -Dfile="$main" -DpomFile="${dir}pom.xml"
+            fi
           done
         env:
+          MAVEN_OPTS: ''
+          MAVEN_ARGS: ''
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
