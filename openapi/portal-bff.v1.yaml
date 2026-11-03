@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 6.3.1
+  version: 6.3.2
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -223,6 +223,8 @@ paths:
                         credential:
                           supportedTypes: [user-secret, user-oauth]
                           defaultType: user-secret
+                          userSecretScheme: Bearer
+                          deployment: dc
                         connection:
                           system: jira
                           type: user-secret
@@ -272,6 +274,8 @@ paths:
                         credential:
                           supportedTypes: [user-oauth, user-secret]
                           defaultType: user-secret
+                          userSecretScheme: Basic
+                          deployment: cloud
                         connection: null
                         tools:
                           - name: confluence__get_page
@@ -539,6 +543,11 @@ paths:
                 value:
                   secret: test-only-jira-pat-0000000000000000
                   expiresAt: '2027-01-31T00:00:00Z'
+              basic_pair:
+                summary: A system whose userSecretScheme is Basic (login and token)
+                value:
+                  username: test-only-login
+                  secret: test-only-token-0000000000000000
       responses:
         '200':
           headers:

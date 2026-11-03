@@ -165,7 +165,9 @@ export const portalBffExamples: OperationExamples[] = [
                   "user-secret",
                   "user-oauth"
                 ],
-                "defaultType": "user-secret"
+                "defaultType": "user-secret",
+                "userSecretScheme": "Bearer",
+                "deployment": "dc"
               },
               "connection": {
                 "system": "jira",
@@ -246,7 +248,9 @@ export const portalBffExamples: OperationExamples[] = [
                   "user-oauth",
                   "user-secret"
                 ],
-                "defaultType": "user-secret"
+                "defaultType": "user-secret",
+                "userSecretScheme": "Basic",
+                "deployment": "cloud"
               },
               "connection": null,
               "tools": [

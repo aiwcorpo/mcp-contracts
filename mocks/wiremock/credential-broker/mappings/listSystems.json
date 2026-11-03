@@ -49,7 +49,9 @@
               "user-secret"
             ],
             "defaultType": "user-secret",
-            "oauthScopes": []
+            "oauthScopes": [],
+            "deployment": "dc",
+            "userSecretScheme": "Bearer"
           },
           {
             "system": "confluence",
@@ -58,7 +60,9 @@
               "user-secret"
             ],
             "defaultType": "user-secret",
-            "oauthScopes": []
+            "oauthScopes": [],
+            "deployment": "dc",
+            "userSecretScheme": "Bearer"
           },
           {
             "system": "gitlab",
@@ -87,6 +91,51 @@
             ],
             "defaultType": "token-exchange",
             "oauthScopes": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "listSystems 200 basic_login",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=basic_login($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "system": "confluence",
+            "supportedTypes": [
+              "user-secret"
+            ],
+            "defaultType": "user-secret",
+            "oauthScopes": [],
+            "deployment": "cloud",
+            "userSecretScheme": "Basic"
+          },
+          {
+            "system": "opensearch",
+            "supportedTypes": [
+              "user-secret"
+            ],
+            "defaultType": "user-secret",
+            "oauthScopes": [],
+            "deployment": "dc",
+            "userSecretScheme": "Basic"
           }
         ]
       }

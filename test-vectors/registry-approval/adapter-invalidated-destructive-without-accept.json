@@ -1,0 +1,18 @@
+{
+  "description": "An entry of an adapter whose stored DESTRUCTIVE classification was voided (CC-227) is pending_approval again; the voided classification stays the floor, so approving it as READ_ONLY without acceptRiskLowering is 422 risk_lowered.",
+  "input": {
+    "entry": {
+      "source": "adapter",
+      "invalidated": true
+    },
+    "body": {
+      "risk": "READ_ONLY",
+      "action": "read"
+    },
+    "floor": "DESTRUCTIVE"
+  },
+  "expected": {
+    "status": 422,
+    "reason": "risk_lowered"
+  }
+}

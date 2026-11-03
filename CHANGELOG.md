@@ -4,6 +4,24 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 6.3.2 - 2026-11-03
+
+Poprawki po drugim przeglądzie (6.3.1 nie było wypchnięte ani wdrożone). Bajty `cedar/mcp.cedarschema` bez zmian. Zgoda człowieka na wyjątek SemVer obejmuje cały pakiet poprawek 6.3.x po przeglądzie (6.3.0, 6.3.1, 6.3.2); zaostrzenia ponad CC-226 i CC-227, wszystkie bez konsumenta, bo Basic dla `user-secret` i kanał adaptera nie działają jeszcze nigdzie: węższy wzorzec `username`, `400` przy braku `username` dla systemu `Basic`, unieważnienie zapisanych klasyfikacji zapisu adaptera, odmowa sidecara bez klasyfikacji, zmienione wejście wektora `broker-authentication-denied-replay-store-unavailable`.
+
+- **N1 (CC-227):** wpis adaptera z unieważnioną klasyfikacją `UPDATE` albo `DESTRUCTIVE` wraca do `pending_approval` (`source: adapter`, nowy `pendingHash`). Unieważniona klasyfikacja zostaje podłogą, więc ponowne `approve` jako `READ_ONLY` to obniżenie: `acceptRiskLowering` i świeże MFA w portalu, bez wyjątku, audyt `risk_lowered_by_admin`. Wektory `registry-approval/adapter-invalidated-{update,destructive}-{without-accept,accepted}`.
+- **N2 (CC-222):** wzorzec `username` to zbiór znaków `backendUser` z CC-121 (`\p{Cc}`, `\p{Cf}`, `\p{Cs}`, separatory, wypełniacze) plus `:`; opis wskazuje CC-121.
+- **N3 (CC-222):** przykłady z `userSecretScheme`, `deployment` i `username` (`GET /v1/systems`, katalog C12, `putMySecret`); mocki MSW i WireMock z nich.
+- **N4 (CC-226):** `verifier.receiverMode` opisany w formacie wektorów; sidecar bez `mcp_risk` i `mcp_action` przy `tools/call` odmawia (powód `classification_missing`, wektor `jwt/classification-missing-at-adapter`); zalecenie walidacji względem `UserClaims` i `ServiceClaims` dla serwera natywnego i brokera.
+- **N5:** zdanie o zakresie wyjątku (wyżej).
+
+### Zmiany względem 6.3.1 dla strumieni
+
+**ws-05 gateway:** unieważniony wpis adaptera wraca do `pending_approval` z podłogą; `approve` jako `READ_ONLY` wymaga `acceptRiskLowering` (wektory).
+**ws-07, ws-08 portal:** przy ponownej klasyfikacji takiego wpisu dialog żąda `acceptRiskLowering` i świeżego MFA; pole loginu według `userSecretScheme` (przykłady w mockach).
+**ws-06 broker:** wzorzec `username` z CC-121.
+**ws-13 adapter, ws-02 starter:** sidecar odmawia `tools/call` bez `mcp_risk` i `mcp_action`; loguje i liczy wartość inną niż `READ_ONLY`.
+**pozostałe:** zależność 6.3.2.
+
 ## 6.3.1 - 2026-11-03
 
 Poprawki po przeglądzie 6.3.0 (tag `v6.3.0` był lokalny, nie wypchnięty ani wdrożony; 6.3.0 jest w `~/.m2` i jest niezmienne, więc poprawki idą pod nowym numerem). Bajty `cedar/mcp.cedarschema` bez zmian. Według tabeli SemVer jest tu zmiana major, **wyjątek zatwierdzony przez człowieka 2026-11-03** (wzór 5.1.0 i 6.2.0): **CC-226**: claimy `rsk` i `act` z 6.3.0 znikają ze schematu, zastępują je `mcp_risk` i `mcp_action` ograniczone do sidecara adaptera (6.3.0 nigdzie nie wdrożono). Pozostałe zmiany są opisami, nowymi wektorami i opcjonalnymi polami.

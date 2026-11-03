@@ -287,6 +287,9 @@ const ADAPTER = { receiverMode: 'adapter' };
 await add('valid-adapter-classification', 'tools/call for the sidecar of an adapter: the gateway adds the classification of the administrator from the registry as mcp_risk and mcp_action (CC-226).', {
   token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000094' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: ADAPTER, valid: true });
+await add('classification-missing-at-adapter', 'tools/call at the sidecar of an adapter without mcp_risk and mcp_action (an older gateway or a mode mismatch): the sidecar refuses the call, fail-closed (CC-226).', {
+  token: await sign(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000100' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: ADAPTER, valid: false, reason: 'classification_missing' });
 await add('classification-at-native-server', 'The same token at a native server: only the sidecar of an adapter accepts mcp_risk and mcp_action, any other receiver rejects them as invalid_claims (CC-226).', {
   token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000097' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: { receiverMode: 'native' }, valid: false, reason: 'invalid_claims' });

@@ -4130,6 +4130,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Kogo dotyka:** ws-03/ws-06 (broker), ws-04 (Jira, Confluence, OpenSearch), ws-05/ws-07/ws-08 (portal: formularz pary), ws-00, ws-02.
 - **Rekomendacja:** przyjąć warstwę kontraktową (pkt 1 do 3) w tym wydaniu, bo CC-213 potrzebuje tego samego formatu pary; obsługa Cloud w serwerach zostaje poza zakresem do decyzji W-7.
 - **Poprawka w 6.3.1 (przegląd 6.3.0, W4, W5):** decyzję, kiedy portal pyta o login, niesie `SystemInfo.userSecretScheme` (`Bearer` albo `Basic`) i to samo pole w C12 `CatalogCredential`, a nie `deployment` (OpenSearch klienta to `dc` i też `Basic`). `username` jest `writeOnly`, nigdy nie jest logowany ani zwracany, a wzorzec odrzuca też C1, bidi i zero-width. Bez `username` dla systemu `Basic` i z `username` dla systemu `Bearer` to `400 invalid_request`. Przykład `resolve` ze schematem `Basic` dla `user-secret`.
+- **Poprawka w 6.3.2 (N2, N3):** wzorzec `username` ze zbioru CC-121; przykłady z `userSecretScheme`, `deployment` i `username`.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (tylko warstwa kontraktu: Basic jako `user-secret`, format pary w C4, `deployment` dc/cloud; obsługa Cloud w serwerach odłożona, W-7); zgłosił: ws-04, 2026-11-03
 
 ## CC-223 | C5/C10/README | Limit otwartych strumieni na instancję gatewaya i `503`
@@ -4173,6 +4174,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Rekomendacja:** przyjąć w wydaniu po przeglądzie bezpieczeństwa wariantu użytkownika (nowy claim w tokenie); nie blokuje reszty pakietu, a obecna druga bariera działa.
 - **Poprawka w 6.3.1 (przegląd 6.3.0, W1, W7):** 6.3.0 dodało `rsk` i `act` do wspólnego wariantu użytkownika, więc każdy odbiorca przyjmowałby claim, a `act` koliduje z RFC 8693. W 6.3.1 claimy nazywają się `mcp_risk` i `mcp_action`, mają osobny wariant schematu `AdapterUserClaims` (para zgodna, tylko z `tool`), a reguła odbiorcy mówi, że tylko sidecar adaptera je przyjmuje; serwer natywny i broker odrzucają token jako `invalid_claims`. Wektory: `jwt/valid-adapter-classification`, `classification-at-native-server`, `classification-at-broker`, `classification-pair-does-not-fit`, `idp-token-claims/with-classification-claims`. Zmiana nazw i zawężenie względem 6.3.0 to wyjątek SemVer (6.3.0 nie był wypchnięty ani wdrożony).
 - **Uwaga dla sidecara:** po CC-226 i CC-227 lokalna druga bariera spada do klasyfikacji administratora; sidecar powinien logować i liczyć przypadki, w których `mcp_risk` jest niższe niż ryzyko z podpowiedzi obcego serwera.
+- **Poprawka w 6.3.2 (N4):** sidecar bez `mcp_risk` i `mcp_action` przy `tools/call` odmawia (`classification_missing`); `receiverMode` opisany w formacie wektorów.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0; po przeglądzie bezpieczeństwa 2026-11-03 ograniczone do sidecara adaptera i przemianowane w 6.3.1); zgłosił: ws-13, 2026-11-03
 
 ## CC-227 | C5/C10/README | Adapter tylko do odczytu: `approve` klasyfikuje wpis adaptera wyłącznie jako `READ_ONLY`
@@ -4183,6 +4185,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Kogo dotyka:** ws-05 (gateway), ws-07/ws-08 (portal: dialog klasyfikacji oferuje tylko odczyt dla adaptera), ws-13 (adapter), ws-10.
 - **Rekomendacja:** przyjąć.
 - **Poprawka w 6.3.1 (przegląd 6.3.0, W6):** uzasadnienie wyjątku: kanał adaptera jest w gatewayu od 6.2.0, ale nie działa na żadnym stosie z użytkownikami. Klasyfikacja `UPDATE` albo `DESTRUCTIVE` zapisana wcześniej traci ważność: wpis jest jak niesklasyfikowany (ukryty, `tool_disabled`) do ponownego `approve` jako `READ_ONLY` (wektor `registry-approval/stored-update-classification-is-hidden`). Opisy `ApproveRequest.risk` i `approveAdminTool` uzupełnione.
+- **Poprawka w 6.3.2 (N1):** unieważniony wpis wraca do `pending_approval` z podłogą; ponowne `approve` jako `READ_ONLY` wymaga `acceptRiskLowering` i świeżego MFA, bez wyjątku. Wektory `registry-approval/adapter-invalidated-*`.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0, wyjątek SemVer)
 
 ## CC-228 | C5/README | `list_changed` po zmianie paczki polityk bez gwarancji 5 s

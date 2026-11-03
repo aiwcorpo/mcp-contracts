@@ -59,6 +59,8 @@ async function verify(vector) {
     if (!toolCall && !resolve && claims.tool !== undefined) return 'tool_not_allowed';
   }
   if (toolCall && claims.tool !== request.toolName) return 'tool_mismatch';
+  // CC-226: a sidecar of an adapter that gets a tools/call without the classification refuses it (fail-closed, as a tool without a classification counts as DESTRUCTIVE).
+  if (verifier.receiverMode === 'adapter' && toolCall && claims.mcp_risk === undefined) return 'classification_missing';
   return null;
 }
 

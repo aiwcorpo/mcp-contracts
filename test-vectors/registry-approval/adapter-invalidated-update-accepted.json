@@ -1,0 +1,23 @@
+{
+  "description": "With acceptRiskLowering (the portal asks the administrator for a fresh MFA, as for every lowering, CC-167) the entry is approved as READ_ONLY, audit risk_lowered_by_admin.",
+  "input": {
+    "entry": {
+      "source": "adapter",
+      "invalidated": true
+    },
+    "body": {
+      "risk": "READ_ONLY",
+      "action": "read",
+      "acceptRiskLowering": true
+    },
+    "floor": "UPDATE"
+  },
+  "expected": {
+    "status": 204,
+    "classification": {
+      "risk": "READ_ONLY",
+      "action": "read"
+    },
+    "auditReason": "risk_lowered_by_admin"
+  }
+}
