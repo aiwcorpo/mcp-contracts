@@ -152,6 +152,32 @@
           "error": "access_denied"
         }
       }
+    },
+    {
+      "name": "getCatalog 503 unavailable",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/catalog",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "Retry-After": "10",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
     }
   ]
 }

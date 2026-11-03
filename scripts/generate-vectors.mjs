@@ -1126,6 +1126,10 @@ gatewayAuth('overloaded', 'The gateway has too many requests in progress and she
   { reason: 'overloaded', publicBaseUrl: BASE, resourcePath: '/mcp' },
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '2' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The gateway is busy. Try again in a few seconds.' } });
+gatewayAuth('streams-limit-reached', 'The instance has reached the limit of open streams (MCP_MAX_OPEN_STREAMS, 2000 by default; GET of a session and subscriptions/listen together, CC-223): 503 with Retry-After (2 s by default) and the body of an overload, no challenge, no stream was opened.',
+  { reason: 'streams_limit_reached', publicBaseUrl: BASE, resourcePath: '/mcp' },
+  { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '2' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
+    body: { error: 'upstream_unavailable', message: 'The gateway is busy. Try again in a few seconds.' } });
 gatewayAuth('session-store-unavailable', 'The store of the MCP sessions does not answer (CC-199): 503 with Retry-After, not a 404 (the session is not unknown, it cannot be read), no challenge.',
   { reason: 'session_store_unavailable', publicBaseUrl: BASE, resourcePath: '/mcp' },
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '10' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],

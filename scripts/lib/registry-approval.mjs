@@ -12,6 +12,8 @@ export function approveDecision({ entry, body = {}, floor = null }) {
   if (entry.source === 'adapter') {
     if (body.risk === undefined || body.action === undefined) return { status: 422, reason: 'classification_required' };
     if (!consistent(body.risk, body.action)) return { status: 422, reason: 'classification_inconsistent' };
+    // CC-227: the adapter has no resource scope, so the gateway has nothing to evaluate a write against; only reads are classified.
+    if (body.risk !== 'READ_ONLY') return { status: 422, reason: 'classification_not_allowed' };
     if (floor !== null && RISK_ORDER[body.risk] < RISK_ORDER[floor] && body.acceptRiskLowering !== true) return { status: 422, reason: 'risk_lowered' };
     const lowered = floor !== null && RISK_ORDER[body.risk] < RISK_ORDER[floor];
     return { status: 204, classification: { risk: body.risk, action: body.action }, auditReason: lowered ? 'risk_lowered_by_admin' : 'definition_approved' };

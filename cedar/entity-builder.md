@@ -230,7 +230,8 @@ Zapytanie buduje serwer ze struktury i rozwiązuje wzorce do nazw (CC-160):
 - Serwer składa zapytanie z pól strukturalnych (pole, operator, wartość z listy dozwolonych), nigdy z surowego JQL, CQL
   ani DSL OpenSearch podanego przez model. Każda wartość jest cytowana (`\` i `"` poprzedzone `\`, znaki sterujące
   odrzucone), warunki użytkownika stoją w jednym nawiasie, a warunek zakresu dochodzi po nim przez `AND`, więc `OR`
-  w wartości nie poszerza zakresu. `ORDER BY` przyjmuje tylko pole z listy i `ASC`/`DESC`. Pusty zakres to brak zapytania
+  w wartości nie poszerza zakresu. CQL kończy się stałą klauzulą `AND type = page` (po zakresie, przed `ORDER BY`; CC-219), bo `content/search` zwraca też
+  komentarze, załączniki i blogi. `ORDER BY` przyjmuje tylko pole z listy i `ASC`/`DESC`. Pusty zakres to brak zapytania
   (patrz wyżej), nigdy zapytanie bez filtra. Wzorzec: `scripts/lib/query-rendering.mjs`, wektory
   `test-vectors/query-rendering/` (JQL i CQL z wrogimi wartościami, nawias, `ORDER BY`, argumenty indeksu OpenSearch: `*`, `_all`, lista po przecinku, kropka
   na początku, alias, strumień danych). **Listy pól warunków, operatorów (`=`, `~`, `!=`) i pól `ORDER BY` w `scripts/lib/query-rendering.mjs` są

@@ -12,13 +12,15 @@ const INFRASTRUCTURE = new Set(['jwks_unavailable']);
 export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourcePath, retryAfterSeconds: given }) {
   const retryAfterSeconds = given ?? RETRY_AFTER_SECONDS;
   // CC-199: the gateway sheds a request when too many are in progress, and refuses one that needs a session it cannot read.
-  if (reason === 'overloaded' || reason === 'session_store_unavailable') {
-    const wait = String(given ?? (reason === 'overloaded' ? SHED_RETRY_AFTER_SECONDS : RETRY_AFTER_SECONDS));
+  // CC-223: a stream over the limit of open streams per instance is shed the same way, with the same body as an overload.
+  if (reason === 'overloaded' || reason === 'streams_limit_reached' || reason === 'session_store_unavailable') {
+    const shed = reason !== 'session_store_unavailable';
+    const wait = String(given ?? (shed ? SHED_RETRY_AFTER_SECONDS : RETRY_AFTER_SECONDS));
     return {
       status: 503,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': wait },
       absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
-      body: { error: 'upstream_unavailable', message: reason === 'overloaded' ? 'The gateway is busy. Try again in a few seconds.' : 'Sessions are temporarily unavailable. Try again in a few seconds.' },
+      body: { error: 'upstream_unavailable', message: shed ? 'The gateway is busy. Try again in a few seconds.' : 'Sessions are temporarily unavailable. Try again in a few seconds.' },
     };
   }
   // CC-156: a request over a limit that is not a tool call. The client waits; it does not log in again, so no challenge,

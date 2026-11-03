@@ -3996,7 +3996,7 @@ Poprawki 6.2.0 (przegląd 6.1.0, decyzje człowieka 2026-11-03 w `mcp-platform-p
 | CC-225 | `cursor: null` | ws-05 | patch | przyjąć |
 | CC-226 | Klasyfikacja w wewnętrznym JWT | ws-13 | minor | przyjąć po przeglądzie |
 
-Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217, CC-218, CC-220 są majorami według tabeli). Bez pozycji majorowych (albo przy wyjątku jak w 2.1.0): 6.3.0.
+Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, z dwoma wyjątkami SemVer opisanymi w CHANGELOG (CC-219: stała klauzula `type = page` zmienia dwa istniejące wektory CQL, jedynym odbiorcą jest serwer Confluence; CC-227: adapter tylko do odczytu zaostrza `approve` kanału, który nie jest wdrożony). Przyjęte: CC-210 ... CC-213 (część 1), CC-219, CC-222 ... CC-226; nowe CC-227 i CC-228. Odłożone: CC-214, CC-215, CC-216, CC-217, CC-218, CC-220, CC-221. Pierwotna rekomendacja 7.0.0 dotyczyła pakietu z nowymi typami zasobów i polami, które odłożono.
 
 
 ## CC-210 | C12 | `approveAdminTool` i `putAdmin*KillSwitch`: odpowiedź `400` i tekst powodu wyłącznika
@@ -4007,7 +4007,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz:** nowa odpowiedź `400` w kontrakcie opisującym zachowanie, które już istnieje: **patch** albo **minor**, bez zmiany wdrożeń.
 - **Kogo dotyka:** ws-07 (test kontraktowy), ws-08 (generowany klient obsługuje `400` jako błąd ogólny).
 - **Rekomendacja:** przyjąć (1) jako patch/minor; (2) opisać w `description`, że BFF odrzuca znaki ukryte `400` (potwierdzone implementacją ws-07).
-- **Status:** proposed (ws-07/ws-08, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0); zgłosił: ws-07/ws-08, 2026-11-03
 
 ## CC-211 | C8 | Odrzucenie tokenu przez broker: zdarzenie `authentication` czy zdarzenie operacji
 
@@ -4017,7 +4017,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz:** (a) opis, patch; (b) zmiana zdarzeń wdrożonego komponentu, nie schematu.
 - **Kogo dotyka:** ws-06, ws-01 (reguły SIEM).
 - **Rekomendacja:** wariant (b): zdarzenie `authentication` także dla odrzuceń tokenu przez broker, jedna reguła SIEM; zmiana w `CallerAuthenticationFilter` i wektorach `broker-authentication-*` po stronie ws-06.
-- **Status:** proposed (ws-06, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (wariant b, razem z CC-212); zgłosił: ws-06, 2026-11-03
 
 ## CC-212 | C8/wektory | Wektory `broker-authentication-*`: `decision` raz jest, raz go nie ma
 
@@ -4027,7 +4027,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz:** wektor bez zmiany oczekiwanego werdyktu: patch.
 - **Kogo dotyka:** ws-02 (starter emituje `decision`?), ws-06.
 - **Rekomendacja:** ujednolicić wektory bez `decision`; zdarzenie `authentication` jest odmową z definicji. Zmianę zrobić razem z CC-211.
-- **Status:** proposed (ws-06, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0); zgłosił: ws-06, 2026-11-03
 
 ## CC-213 | C3/C4/C12 | Basic dla OpenSearch bez JWT i OIDC (`user-secret` z parą login i hasło, `service-account` Basic)
 
@@ -4040,7 +4040,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz:** nowe wartości w zbiorze typów serwera: minor po stronie kontraktów, jeśli format pary w C4 jest opcjonalny; zmiana `PutSecretRequest` jest zależna od CC-114 i wspólna z CC-222 (Jira, Confluence).
 - **Kogo dotyka:** ws-04 (OpenSearch), ws-06 (broker: para jako sekret), ws-07/08 (formularz w portalu), ws-09 (`credential-type.cedar`, zakresy dla konta serwisowego), ws-10.
 - **Rekomendacja:** przyjąć część 1 (`user-secret` Basic) po CC-222, który wprowadza format pary w C4; część 2 (`service-account` Basic/ApiKey) odłożyć do realnej potrzeby klienta, bo kontrakt `service-account` już istnieje (CC-157).
-- **Status:** proposed (ws-04, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (tylko część 1: Basic jako `user-secret`, wspólny format pary z CC-222; część 2, Basic dla `service-account`, odłożona); zgłosił: ws-04, 2026-11-03
 
 ## CC-214 | C6/C7/Cedar | Typ zasobu `OpenSearch::Alias` dla `list_aliases` i `resolve_alias`
 
@@ -4050,7 +4050,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz:** nowa encja i nowy typ zasobu w manifeście: nie zmienia istniejących polityk, ale zmienia bajty schematu Cedar i dodaje wartość `ResourceType`, więc według tabeli w `README.md` **major** (minor tylko jako wyjątek na decyzję człowieka).
 - **Kogo dotyka:** ws-04, ws-09 (reguły `read` dla aliasów), ws-05 (resourceTypes w manifeście).
 - **Rekomendacja:** przyjąć; `list_aliases` jest w zakresie fazy 1, a bez typu serwer nie wystawia aliasów. Wydać razem z CC-216 jako jedną zmianę bajtów schematu Cedar.
-- **Status:** proposed (ws-04, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04, 2026-11-03): nowy typ zasobu, major
 
 ## CC-215 | C3/C4/C6 | Poświadczenie sondy wersji (`CapabilityProbe`) dla systemu, którego endpoint wersji wymaga logowania
 
@@ -4060,7 +4060,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Bez decyzji serwer działa:** `assume-tested-version` albo tryb `degraded`.
 - **Kogo dotyka:** ws-02 (sonda), ws-04 (wszystkie serwery z endpointem wersji za logowaniem: OpenSearch, GitLab, Confluence), ws-06 (broker), ws-01.
 - **Rekomendacja:** odłożyć. Serwer działa dziś w trybie `assume-tested-version` albo `degraded`, a zmiana wymaga decyzji o niezmienniku C3 (serwer nie trzyma sekretów). Ten sam problem zgłasza Confluence (`server-information` bywa za logowaniem).
-- **Status:** proposed (ws-04, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04, 2026-11-03): serwer zostaje przy `assume-tested-version` albo `degraded`
 
 ## CC-216 | C6/C7/Cedar | Typ zasobu `GitLab::MergeRequest` dla zatwierdzania i scalania
 
@@ -4070,7 +4070,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz:** nowa encja i nowy typ zasobu w manifeście: według tabeli w `README.md` **major** (nowa wartość `ResourceType`, zmiana bajtów schematu Cedar); dodanie drugiego `@ResourceRef` do istniejących narzędzi zmienia ich `definitionHash`.
 - **Kogo dotyka:** ws-04, ws-09 (reguły dla scalania do chronionej gałęzi), ws-05 (resourceTypes w manifeście).
 - **Rekomendacja:** przyjąć dla `GitLab::MergeRequest` (zatwierdzanie i scalanie do chronionej gałęzi to najwyższe ryzyko w serwerze GitLab); `GitLab::Pipeline` odłożyć.
-- **Status:** proposed (ws-04, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04, 2026-11-03): nowy typ zasobu, major
 
 ## CC-217 | C7/query-rendering/Java | Dodatkowe pola warunków JQL: `labels`, `component`, `fixVersion`, `priority`, `created`, `updated`, `issuetype`
 
@@ -4079,7 +4079,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowe wartości w liście normatywnej i w enum operatorów; serwery z mniejszym podzbiorem działają bez zmian. Według tabeli w `README.md` nowa wartość enum to **major**; sama lista pól i nowe wektory to minor.
 - **Kogo dotyka:** ws-02 (starter), ws-04 (Jira), ws-09 (polityki: bez zmian).
 - **Rekomendacja:** przyjąć w całości; `search_issues` filtruje wtedy po etykiecie, komponencie, wersji, priorytecie i dacie bez odfiltrowywania wierszy po stronie serwera. Bez decyzji Jira zostaje przy `status`, `assignee`, `summary`, `text` i typie zgłoszenia stosowanym po odpowiedzi.
-- **Status:** proposed (ws-04 Jira, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04 Jira, 2026-11-03): nowe pola, major
 
 ## CC-218 | C7/query-rendering/Java | Warunki CQL `ancestor` i `lastmodified`
 
@@ -4088,7 +4088,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowe wartości w liście normatywnej: jak CC-217, **major** według tabeli, jeśli trafiają do enum; w przeciwnym razie minor.
 - **Kogo dotyka:** ws-00, ws-02, ws-04 (Confluence), ws-06 (bez zmian po stronie brokera; wpis zachowany z uwagi na zebraną listę dotkniętych).
 - **Rekomendacja:** przyjąć razem z CC-217 (ta sama zmiana w rendererze i ten sam przebieg wektorów).
-- **Status:** proposed (ws-04 Confluence, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04 Confluence, 2026-11-03): nowe pola, major
 
 ## CC-219 | C7/query-rendering | `type = page` w wyszukiwaniu CQL
 
@@ -4097,7 +4097,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** (a) nowa wartość w liście: jak CC-218; (b) zmienia oczekiwane wyjście wszystkich istniejących wektorów CQL, czyli **major** (zmiana oczekiwania w istniejącym wektorze).
 - **Kogo dotyka:** ws-02 (starter), ws-04 (Confluence).
 - **Rekomendacja:** wariant (a): serwer wskazuje typ jawnie, istniejące wektory zostają.
-- **Status:** proposed (ws-04 Confluence, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (wariant b: stała klauzula `type = page` w rendererze CQL; wyjątek SemVer, patrz CHANGELOG 6.3.0); zgłosił: ws-04 Confluence, 2026-11-03
 
 ## CC-220 | C7/entity-builder | Typy zasobów `Jira::Board` i `Jira::Sprint` (Jira Software, `/rest/agile/1.0`)
 
@@ -4106,7 +4106,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowe wartości enum i definicje; zmienia bajty schematu Cedar (jak CC-173), więc paczka polityk wymaga przebudowy (ws-09). Według tabeli **major**.
 - **Kogo dotyka:** ws-02, ws-04, ws-09, ws-05 (portal pokazuje typy zasobów).
 - **Rekomendacja:** przyjąć; zakres odczytu (tablice, sprinty) jest potrzebny, zapis do sprintu można wdrożyć w serwerze później bez zmiany kontraktu. Do tej decyzji narzędzi agile nie ma w serwerze.
-- **Status:** proposed (ws-04 Jira, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04 Jira, 2026-11-03): nowe typy zasobów, major
 
 ## CC-221 | C6/C10 | Załączniki: treść binarna w wyniku narzędzia i wysyłanie plików
 
@@ -4116,7 +4116,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowy typ zasobu i definicje; zmienia bajty schematu Cedar: **major** według tabeli.
 - **Kogo dotyka:** ws-02, ws-04 (Jira, Confluence), ws-09, ws-13 (adapter).
 - **Rekomendacja:** odłożyć. Treść binarna w wyniku zmienia model wyniku (rozmiar, oznaczenie `UntrustedText`, obrazy) i zależy od CC-209; sensownie rozstrzygnąć po decyzji o `maxResultBytes`. Metadane zostają.
-- **Status:** proposed (ws-04 Jira, 2026-11-03)
+- **Status:** deferred (decyzja: człowiek, 2026-11-03; zgłosił: ws-04 Jira, 2026-11-03): bez zmiany modelu wyniku w tym wydaniu
 
 ## CC-222 | C3/C4/C12 | `Basic` w `user-secret` (Jira i Confluence Cloud) i atrybut `deployment` systemu
 
@@ -4126,7 +4126,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowe wartości i opcjonalne pola: minor.
 - **Kogo dotyka:** ws-03/ws-06 (broker), ws-04 (Jira, Confluence, OpenSearch), ws-05/ws-07/ws-08 (portal: formularz pary), ws-00, ws-02.
 - **Rekomendacja:** przyjąć warstwę kontraktową (pkt 1 do 3) w tym wydaniu, bo CC-213 potrzebuje tego samego formatu pary; obsługa Cloud w serwerach zostaje poza zakresem do decyzji W-7.
-- **Status:** proposed (ws-04, 2026-11-03); nie implementowane (decyzja W-7).
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (tylko warstwa kontraktu: Basic jako `user-secret`, format pary w C4, `deployment` dc/cloud; obsługa Cloud w serwerach odłożona, W-7); zgłosił: ws-04, 2026-11-03
 
 ## CC-223 | C5/C10/README | Limit otwartych strumieni na instancję gatewaya i `503`
 
@@ -4136,7 +4136,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** opis i nowy wektor, bez zmiany schematów i enum: minor.
 - **Kogo dotyka:** ws-05 (zgodność z opisem), ws-01 (konfiguracja, alert na `mcp_gateway_streams_refused_total`), ws-10 (scenariusz przekroczenia limitu).
 - **Rekomendacja:** decyzja człowieka 2026-11-03, do wydania.
-- **Status:** proposed (ws-05, 2026-11-03); decyzja człowieka 2026-11-03, do wydania.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (limit strumieni); zgłosił: ws-05, 2026-11-03
 
 ## CC-224 | C5/C10 | `503 upstream_unavailable` z `Retry-After` dla katalogu przy nieczytelnych wyłącznikach
 
@@ -4146,7 +4146,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowa odpowiedź w kontrakcie opisującym zachowanie, które już istnieje: minor.
 - **Kogo dotyka:** ws-05, ws-07 (BFF mapuje `503` katalogu), ws-08.
 - **Rekomendacja:** przyjąć; odpowiedź jest zgodna z CC-194 i CC-199, a alternatywa (pusty katalog) ukrywałaby wyłączone narzędzia.
-- **Status:** proposed (ws-05, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0); zgłosił: ws-05, 2026-11-03
 
 ## CC-225 | C5/README | `tools/list` z `cursor: null`
 
@@ -4156,7 +4156,7 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** doprecyzowanie opisu: patch; nowy wektor: minor.
 - **Kogo dotyka:** ws-05, ws-02 (starter odpowiada tak samo?), ws-10.
 - **Rekomendacja:** przyjąć (zgodnie z CC-200).
-- **Status:** proposed (ws-05, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0); zgłosił: ws-05, 2026-11-03
 
 ## CC-226 | C2/Java | Klasyfikacja administratora w wewnętrznym JWT dla sidecara adaptera
 
@@ -4166,4 +4166,22 @@ Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217
 - **Zgodność wstecz (SemVer):** nowe opcjonalne claimy: minor.
 - **Kogo dotyka:** ws-05 (gateway), ws-02 (starter), ws-13 (adapter), ws-09 (grupy Cedar po stronie sidecara).
 - **Rekomendacja:** przyjąć w wydaniu po przeglądzie bezpieczeństwa wariantu użytkownika (nowy claim w tokenie); nie blokuje reszty pakietu, a obecna druga bariera działa.
-- **Status:** proposed (ws-13, 2026-11-03)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (po przeglądzie bezpieczeństwa); zgłosił: ws-13, 2026-11-03
+
+## CC-227 | C5/C10/README | Adapter tylko do odczytu: `approve` klasyfikuje wpis adaptera wyłącznie jako `READ_ONLY`
+
+- **Źródło:** decyzja człowieka 2026-11-03 (`plan-wydanie.md`, "Decyzje o pakiecie CC-210..226"). Narzędzia obcego serwera nie mają `resourceRefs`, więc gateway nie ma zakresu zasobów, względem którego oceni zapis; `UPDATE` i `DESTRUCTIVE` byłyby decyzją bez zakresu.
+- **Zmiana:** `approveTool` dla wpisu `source: adapter` odpowiada `422 manifest_rejected` z `reason: classification_not_allowed`, gdy `risk` jest inne niż `READ_ONLY` (po sprawdzeniu `classification_required` i `classification_inconsistent`). Zasada obowiązuje, dopóki kontrakt nie da adapterowi zakresu zasobów. Wektory `registry-approval/`: `adapter-with-classification` (teraz `READ_ONLY`, `read`), `adapter-update-refused`, `adapter-destructive-refused`; `adapter-update-with-admin` zmienia wynik na `classification_not_allowed`.
+- **Zgodność wstecz (SemVer):** zaostrzenie walidacji kanału adaptera: według tabeli major. Wyjątek zatwierdzony przez człowieka (2026-11-03, wzór 5.1.0 i 6.2.0), bo kanał adaptera (CC-206) nie jest wdrożony.
+- **Kogo dotyka:** ws-05 (gateway), ws-07/ws-08 (portal: dialog klasyfikacji oferuje tylko odczyt dla adaptera), ws-13 (adapter), ws-10.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0, wyjątek SemVer)
+
+## CC-228 | C5/README | `list_changed` po zmianie paczki polityk bez gwarancji 5 s
+
+- **Źródło:** decyzja człowieka 2026-11-03; CC-192 obiecuje powiadomienie najwyżej 5 s po zdarzeniu "także przy wielu instancjach", a zmiana paczki polityk nie jest zdarzeniem, które gateway dostaje od razu na wszystkich instancjach.
+- **Zmiana:** README (C5, `list_changed`): zdarzenia rejestru i wyłączników zachowują granicę 5 s; po zmianie paczki polityk instancja wysyła `list_changed` po tym, jak sama załaduje nową paczkę, bez gwarancji 5 s (zależy od jej odpytywania paczki). `tools/list` jest zawsze liczone z paczki załadowanej na odpowiadającej instancji, więc utrata albo opóźnienie powiadomienia nie osłabia bezpieczeństwa.
+- **Zgodność wstecz (SemVer):** doprecyzowanie opisu: patch.
+- **Kogo dotyka:** ws-05, ws-10 (scenariusz zmiany paczki: nie zakładać 5 s).
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0)

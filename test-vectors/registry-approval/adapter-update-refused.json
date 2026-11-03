@@ -1,0 +1,16 @@
+{
+  "description": "A tool of an adapter is read only until the contract gives it a resource scope (CC-227): UPDATE with update is 422 classification_not_allowed.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "UPDATE",
+      "action": "update"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_not_allowed"
+  }
+}

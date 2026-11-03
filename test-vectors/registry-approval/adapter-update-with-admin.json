@@ -1,5 +1,5 @@
 {
-  "description": "The action admin fits UPDATE (and DESTRUCTIVE), not READ_ONLY.",
+  "description": "The action admin fits UPDATE (and DESTRUCTIVE), not READ_ONLY; for an adapter UPDATE is refused anyway (CC-227), so the answer is classification_not_allowed.",
   "input": {
     "entry": {
       "source": "adapter"
@@ -10,11 +10,7 @@
     }
   },
   "expected": {
-    "status": 204,
-    "classification": {
-      "risk": "UPDATE",
-      "action": "admin"
-    },
-    "auditReason": "definition_approved"
+    "status": 422,
+    "reason": "classification_not_allowed"
   }
 }

@@ -283,6 +283,15 @@ await add('removed-vsc-claim', 'vsc (narrowing of a saved link) no longer exists
 await add('removed-vs-and-vsc-claims', 'A token of a 4.x gateway that went through a link: vs together with vsc; rejected as invalid_claims (CC-173).', {
   token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000054' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('valid-adapter-classification', 'tools/call of a tool of an adapter server: the gateway adds the classification of the administrator from the registry as rsk and act (CC-226).', {
+  token: await sign(userClaims({ rsk: 'READ_ONLY', act: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000094' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: true });
+await add('classification-risk-without-action', 'rsk without act: the two claims come together or not at all (CC-226); rejected as invalid_claims.', {
+  token: await sign(userClaims({ rsk: 'READ_ONLY', jti: '0192d1b2-7c3a-7f00-9a11-000000000095' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('classification-without-tool', 'rsk and act without tool: the classification belongs to a tools/call, so it needs the tool claim (CC-226); rejected as invalid_claims.', {
+  token: await sign(userClaims({ rsk: 'READ_ONLY', act: 'read', tool: undefined, jti: '0192d1b2-7c3a-7f00-9a11-000000000096' }), 'test-gateway-jwt-a'),
+  request: rpc('tools/list', USER_RID), valid: false, reason: 'invalid_claims' });
 await add('service-variant-with-tool', 'Claims of the service variant plus a tool claim; matches neither variant.', {
   token: await sign(serviceClaims({ tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000034' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });

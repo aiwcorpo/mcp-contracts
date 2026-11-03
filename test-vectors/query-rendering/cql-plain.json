@@ -18,6 +18,6 @@
     }
   },
   "expected": {
-    "query": "(text ~ \"handbook\") AND space in (\"ENG\") ORDER BY lastmodified DESC"
+    "query": "(text ~ \"handbook\") AND space in (\"ENG\") AND type = page ORDER BY lastmodified DESC"
   }
 }

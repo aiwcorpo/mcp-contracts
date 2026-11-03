@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 6.2.2-SNAPSHOT
+  version: 6.3.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -1644,6 +1644,8 @@ paths:
                   value:
                     error: step_up_required
                     stepUpUrl: /api/v1/auth/login?stepUp=true&returnPath=/admin/registry
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':

@@ -1,19 +1,19 @@
 {
-  "description": "An administrator approves a tool of an adapter and classifies it: 204, the classification is stored, audit definition_approved.",
+  "description": "An administrator approves a tool of an adapter and classifies it as a read: 204, the classification is stored, audit definition_approved.",
   "input": {
     "entry": {
       "source": "adapter"
     },
     "body": {
-      "risk": "UPDATE",
-      "action": "update"
+      "risk": "READ_ONLY",
+      "action": "read"
     }
   },
   "expected": {
     "status": 204,
     "classification": {
-      "risk": "UPDATE",
-      "action": "update"
+      "risk": "READ_ONLY",
+      "action": "read"
     },
     "auditReason": "definition_approved"
   }

@@ -125,9 +125,26 @@
           "description": "Seconds since the last authentication at an MFA acr level. Absent means unknown.",
           "type": "integer",
           "minimum": 0
+        },
+        "rsk": {
+          "description": "Risk of the tool as the administrator classified it in the registry (CC-226). Only on a tools/call of a tool of a server in adapter mode (source adapter, CC-193), together with act and tool; the sidecar of the adapter uses it instead of the risk it guesses from the hints of the foreign server. Never on a native server: its receiver rejects the claim as invalid_claims like any claim outside the schema, so the gateway sends it to adapter sidecars only.",
+          "$ref": "common.schema.json#/$defs/Risk"
+        },
+        "act": {
+          "description": "Action of the tool as the administrator classified it (CC-226); present exactly with rsk.",
+          "$ref": "common.schema.json#/$defs/ToolAction"
         }
       },
-      "unevaluatedProperties": false
+      "unevaluatedProperties": false,
+      "dependentRequired": {
+        "rsk": [
+          "act",
+          "tool"
+        ],
+        "act": [
+          "rsk"
+        ]
+      }
     },
     "ServiceClaims": {
       "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping and GET /mcp-manifest (CC-069, CC-070).",

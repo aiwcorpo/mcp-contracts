@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 6.2.2-SNAPSHOT
+  version: 6.3.0
   summary: Contract C5 of the MCP platform (catalog, registry, activity, read-only confirmation preview).
   description: |
     Callers and their authentication:
@@ -47,12 +47,16 @@ paths:
       operationId: getCatalog
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Registered servers and tools with the current user's access computed from policy.
+      description: |
+        When the gateway cannot read the state of the emergency switches (CC-194) the catalog is not computed from a guess: the answer is `503 upstream_unavailable` with `Retry-After`, never a catalog that shows a switched tool as available (fail-closed, CC-224).
       security:
         - mtls: []
           bffUserToken: []
       responses:
         '403':
           $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/KillSwitchStoreUnavailable'
         '200':
           description: Approved tools of all registered servers.
           content:
@@ -814,7 +818,7 @@ paths:
         **Entries of an adapter (CC-193).** An entry with source adapter has no risk and no action; the body must carry both (`risk`, `action`), otherwise 422
         manifest_rejected with reason classification_required, and a body with them for any other entry is 422 classification_not_allowed. Approval then also
         classifies: the registry stores risk, action, the administrator and the time (`classifiedBy`, `classifiedAt` in the registry listing); the audit event is
-        admin_change with reason definition_approved, the new risk and the new action (`action` of the audit event). `risk` and `action` must fit each other (read for READ_ONLY only, update for UPDATE, delete for DESTRUCTIVE, admin for UPDATE or DESTRUCTIVE), otherwise 422 classification_inconsistent. A tool of an adapter that is not classified is hidden and refused as tool_disabled. A changed
+        admin_change with reason definition_approved, the new risk and the new action (`action` of the audit event). `risk` and `action` must fit each other (read for READ_ONLY only, update for UPDATE, delete for DESTRUCTIVE, admin for UPDATE or DESTRUCTIVE), otherwise 422 classification_inconsistent. Since 6.3.0 only a read can be classified: `risk` other than READ_ONLY for an entry of an adapter is 422 classification_not_allowed, until the contract gives the adapter a scope of resources (CC-227). A tool of an adapter that is not classified is hidden and refused as tool_disabled. A changed
         definition of an adapter tool is pending again; the earlier classification is shown to the administrator as a suggestion and is not applied.
       security:
         - mtls: []
@@ -1598,7 +1602,7 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-          description: Why the switch is on, free text of the administrator. Kept in the registry and shown in the portal; never part of an audit event and untrusted text for the UI like every administrator text (CC-094 rules).
+          description: Why the switch is on, free text of the administrator. Kept in the registry and shown in the portal; never part of an audit event and untrusted text for the UI like every administrator text (CC-094 rules). The portal BFF rejects a reason that contains hidden or control characters (text hygiene rules) with `400 invalid_request`, because the administrator types it and such a character is almost certainly a mistake; the gateway keeps its own range check (CC-210).
       additionalProperties: false
     KillSwitch:
       type: object
@@ -1647,7 +1651,7 @@ components:
         reason:
           type: string
           pattern: '^[a-z][a-z0-9_]*$'
-          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
+          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500

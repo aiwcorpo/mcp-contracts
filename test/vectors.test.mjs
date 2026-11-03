@@ -454,6 +454,7 @@ test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169
       if (mutation === 'malformed') cursor = 'not-a-cursor';
       if (mutation === 'not-a-string') cursor = 42;
       if (mutation === 'empty-string') cursor = '';
+      if (mutation === 'null') cursor = null;
       const result = readCursor(cursor, { sub: presentedBy.sub, canonicalFilter: parseFilter(presentedBy.query).canonical, now: iat + afterSeconds });
       assert.deepEqual(result.error ? { valid: false, error: result.error } : { valid: true }, data.expected, name);
     } else if (data.kind === 'list-changed-sequence') {

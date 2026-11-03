@@ -4,6 +4,34 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 6.3.0 - 2026-11-03
+
+Minor z dwoma wyjątkami od tabeli SemVer (README, "Wersjonowanie"; wzór: 5.1.0 i 6.2.0), zatwierdzonymi przez człowieka 2026-11-03: **CC-219** (stała klauzula `AND type = page` w CQL zmienia oczekiwane wyjście dwóch istniejących wektorów, `query-rendering/cql-plain` i `cql-hostile-value`; jedynym odbiorcą jest serwer Confluence) i **CC-227** (adapter tylko do odczytu zaostrza `approveTool` dla wpisu adaptera; kanał adaptera nie jest wdrożony). Reszta jest zgodna wstecz: opisy, odpowiedzi opisujące istniejące zachowanie, nowe opcjonalne pola i nowe wektory. Bajty `cedar/mcp.cedarschema` bez zmian. Pakiet CC-210 ... CC-228 (decyzje: `mcp-platform-plan/plan-wydanie.md`, "Decyzje o pakiecie CC-210..226"). Odłożone: CC-214, CC-215, CC-216, CC-217, CC-218, CC-220, CC-221.
+
+### Nowe i zmienione
+
+- **CC-210 (C12):** `400` w `approveAdminTool`; opis `KillSwitchRequest.reason`: BFF odrzuca tekst z ukrytymi znakami `400`.
+- **CC-211, CC-212 (C8):** broker zapisuje odrzucenie tokenu (`bad_signature`, `expired`, `replayed_jti` i pozostałe) jako zdarzenie `authentication`, nie jako zdarzenie operacji; `decision` jest opcjonalne dla `authentication`, broker go nie zapisuje. Wektory `audit-events/broker-authentication-denied-*` (+3), z `broker-authentication-denied-replay-store-unavailable` usunięte `decision`.
+- **CC-213, CC-222 (C3, C4, C12):** `PutSecretRequest.username` (opcjonalne, bez `:` i znaków sterujących) razem z `secret` tworzy parę zapisaną jako jeden sekret; `resolve` zwraca schemat `Basic`. `SystemInfo.deployment` (`dc`, `cloud`, opcjonalne). Basic dla `service-account` nie zmienione (odłożone).
+- **CC-219 (query-rendering):** CQL kończy się `AND type = page` (przed `ORDER BY`). Wyjątek SemVer.
+- **CC-223 (C5, README):** limit otwartych strumieni na instancję (`MCP_MAX_OPEN_STREAMS`, 2000), `503` z `Retry-After` i ciałem przeciążenia. Wektor `gateway-authentication/streams-limit-reached`, referencja `reason: streams_limit_reached`.
+- **CC-224 (C5):** `503` (`upstream_unavailable`, `Retry-After`) w `getCatalog` przy nieczytelnych wyłącznikach.
+- **CC-225:** `cursor: null` w `tools/list` to `-32602`; wektor `endpoint-aggregate/cursor-null`.
+- **CC-226 (C2):** opcjonalne claimy `rsk` i `act` w wariancie użytkownika, tylko razem i z `tool`, dla serwerów w trybie adaptera. Wektory `jwt/valid-adapter-classification`, `classification-risk-without-action`, `classification-without-tool`.
+- **CC-227 (C5):** adapter tylko do odczytu: `risk` inne niż `READ_ONLY` przy `approve` wpisu adaptera to `422 classification_not_allowed`. Wektory `registry-approval/`: `adapter-with-classification` (teraz `READ_ONLY`), `adapter-update-refused`, `adapter-destructive-refused`; `adapter-update-with-admin` zmienia wynik. Wyjątek SemVer.
+- **CC-228 (README):** `list_changed` po zmianie paczki polityk bez gwarancji 5 s.
+
+### Zmiany względem 6.2.1 dla strumieni
+
+**ws-05 gateway:** (1) `MCP_MAX_OPEN_STREAMS` i `503` (CC-223) zgodne z wektorem; (2) `503` katalogu z `Retry-After` (CC-224); (3) `cursor: null` to `-32602` (CC-225); (4) `approve` wpisu adaptera: `422 classification_not_allowed` dla `risk` innego niż `READ_ONLY` (CC-227); (5) claimy `rsk` i `act` w tokenie dla serwerów w trybie adaptera, wyłącznie do sidecarów adaptera, po przeglądzie bezpieczeństwa (CC-226); serwer natywny odrzuci je jako `invalid_claims`; (6) `list_changed` po zmianie paczki polityk bez 5 s (CC-228).
+**ws-06 broker:** odrzucenie tokenu zapisywać jako `authentication` bez `server`, `sub` i `tool` (CC-211), bez `decision`; `PutSecretRequest.username` i `resolve` ze schematem `Basic`, `deployment` w `GET /v1/systems` (CC-222); `400` dla `username` przy systemie bez Basic.
+**ws-02 starter:** CQL z `AND type = page` (CC-219, `scripts/lib/query-rendering.mjs`); `rsk` i `act` w claimach sidecara (CC-226); `decision` opcjonalne w zdarzeniu `authentication`.
+**ws-04 Confluence:** `search_pages` bez własnego odfiltrowywania komentarzy, załączników i blogów po odpowiedzi (CC-219); `Cql.contentIn` bez zmian. **ws-04 pozostałe serwery:** zależność 6.3.0, bez zmian w kodzie (CC-213: OpenSearch nadal tylko `token-exchange` do osobnej decyzji).
+**ws-07, ws-08 portal:** `400` w `approveAdminTool` (CC-210); pole loginu w formularzu `user-secret` dla systemu z `deployment: cloud` (CC-222); dialog klasyfikacji adaptera oferuje tylko `READ_ONLY` i `read` (CC-227); `503` katalogu jak każde `503`.
+**ws-13 adapter:** klasyfikacja może być tylko odczytem (CC-227); claimy `rsk` i `act` zamiast ryzyka zastępczego, gdy gateway je przekaże (CC-226).
+**ws-10 e2e:** scenariusze: odmowa otwarcia strumienia po przekroczeniu limitu (`503`), `approve` adaptera jako `UPDATE` (`422`), zmiana paczki polityk bez założenia 5 s, `cursor: null`.
+**ws-01, ws-09, ws-03, ws-11, ws-12:** zależność 6.3.0; ws-01: alert na `mcp_gateway_streams_refused_total`. Bez zmian w kodzie.
+
 ## 6.2.1 - 2026-11-03
 
 Patch: tylko pakowanie i metadane, bez zmian w kontraktach (OpenAPI, schematy, Cedar, wektory bez zmian poza numerem `info.version`).

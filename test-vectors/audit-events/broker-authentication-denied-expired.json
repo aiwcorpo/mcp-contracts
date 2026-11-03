@@ -1,0 +1,15 @@
+{
+  "description": "The broker rejects an expired internal JWT: the same shape as for a server (CC-211).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "broker",
+    "componentId": "mcp-credential-broker",
+    "event": "authentication",
+    "reason": "expired",
+    "outcome": "denied"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "DESTRUCTIVE with delete is 422 classification_not_allowed for an entry of an adapter (CC-227).",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "DESTRUCTIVE",
+      "action": "delete"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_not_allowed"
+  }
+}

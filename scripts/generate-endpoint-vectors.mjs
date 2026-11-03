@@ -344,6 +344,7 @@ const cursorVector = (name, description, issuedFor, presentedBy, { mutation = 'n
   if (mutation === 'malformed') cursor = 'not-a-cursor';
   if (mutation === 'not-a-string') cursor = 42;
   if (mutation === 'empty-string') cursor = '';
+  if (mutation === 'null') cursor = null;
   const result = readCursor(cursor, { sub: presentedBy.sub, canonicalFilter: parseFilter(presentedBy.query).canonical, now: IAT + afterSeconds });
   aggOut(`cursor-${name}`, { description: `${description} Key: test only, NOT FOR PRODUCTION.`, kind: 'cursor', input: { issuedFor, presentedBy, mutation, afterSeconds },
     expected: result.error ? { valid: false, error: result.error } : { valid: true } });
@@ -359,6 +360,7 @@ cursorVector('filter-removed', 'A cursor issued under a filter and used without 
 cursorVector('tampered', 'A cursor that was changed.', owner, owner, { mutation: 'tampered' });
 cursorVector('malformed', 'A string that never was a cursor.', owner, owner, { mutation: 'malformed' });
 cursorVector('not-a-string', 'A cursor that is not a string.', owner, owner, { mutation: 'not-a-string' });
+cursorVector('null', 'A null cursor is not a string either: -32602 like any cursor that does not verify (CC-225). The first page is a request without the field.', owner, owner, { mutation: 'null' });
 cursorVector('empty-string', 'An empty string is a cursor that does not verify, not the first page: the same -32602 (CC-200). The first page is a request without the field.', owner, owner, { mutation: 'empty-string' });
 
 // ---------- audit of repeatable refusals (CC-190, CC-191) ----------
@@ -587,12 +589,14 @@ adapterVector('runtime-read-in-starter-mode', 'The same read for a server on the
 
 const approvalOut = writer('registry-approval');
 const approvalVector = (name, description, input) => approvalOut(name, { description, input, expected: approveDecision(input) });
-approvalVector('adapter-with-classification', 'An administrator approves a tool of an adapter and classifies it: 204, the classification is stored, audit definition_approved.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'update' } });
+approvalVector('adapter-with-classification', 'An administrator approves a tool of an adapter and classifies it as a read: 204, the classification is stored, audit definition_approved.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read' } });
+approvalVector('adapter-update-refused', 'A tool of an adapter is read only until the contract gives it a resource scope (CC-227): UPDATE with update is 422 classification_not_allowed.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'update' } });
+approvalVector('adapter-destructive-refused', 'DESTRUCTIVE with delete is 422 classification_not_allowed for an entry of an adapter (CC-227).', { entry: { source: 'adapter' }, body: { risk: 'DESTRUCTIVE', action: 'delete' } });
 approvalVector('adapter-without-classification', 'Approval of a tool of an adapter without risk and action: 422 classification_required.', { entry: { source: 'adapter' }, body: {} });
 approvalVector('adapter-only-risk', 'risk without action is not a classification.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE' } });
 approvalVector('adapter-read-only-with-delete', 'risk and action must fit: READ_ONLY with delete is 422 classification_inconsistent (CC-207).', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'delete' } });
 approvalVector('adapter-destructive-with-read', 'DESTRUCTIVE with read is 422 classification_inconsistent.', { entry: { source: 'adapter' }, body: { risk: 'DESTRUCTIVE', action: 'read' } });
-approvalVector('adapter-update-with-admin', 'The action admin fits UPDATE (and DESTRUCTIVE), not READ_ONLY.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'admin' } });
+approvalVector('adapter-update-with-admin', 'The action admin fits UPDATE (and DESTRUCTIVE), not READ_ONLY; for an adapter UPDATE is refused anyway (CC-227), so the answer is classification_not_allowed.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'admin' } });
 approvalVector('adapter-lowering-without-accept', 'A classification lower than one given earlier needs acceptRiskLowering: 422 risk_lowered.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read' }, floor: 'UPDATE' });
 approvalVector('adapter-lowering-accepted', 'With acceptRiskLowering the lower classification is stored, audit risk_lowered_by_admin.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read', acceptRiskLowering: true }, floor: 'UPDATE' });
 approvalVector('ci-entry-with-classification', 'risk or action for an entry that is not from an adapter: 422 classification_not_allowed.', { entry: { source: 'ci' }, body: { risk: 'UPDATE', action: 'update' } });

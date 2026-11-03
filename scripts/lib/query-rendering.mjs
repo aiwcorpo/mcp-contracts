@@ -26,6 +26,8 @@ function render(language, scopeField, { scope, conditions = [], orderBy }) {
     parts.push(`(${rendered.join(' AND ')})`);
   }
   parts.push(`${scopeField} in (${scope.map(quote).join(', ')})`);
+  // content/search also returns comments, attachments and blog posts, which the server would drop after the answer (CC-219).
+  if (language === 'cql') parts.push('type = page');
   let query = parts.join(' AND ');
   if (orderBy) {
     if (!ORDER_FIELDS[language].includes(orderBy.field) || !['ASC', 'DESC'].includes(orderBy.direction)) throw new QueryError('order not allowed');
