@@ -3973,3 +3973,197 @@ Poprawki 6.2.0 (przegląd 6.1.0, decyzje człowieka 2026-11-03 w `mcp-platform-p
 - **Pytania do człowieka:** (1) czy `maxResultBytes` wchodzi do hasha; (2) czy kontrakt ma wymuszać `PagedResultFields` w `outputSchema` narzędzi z `nextCursor` (rekomendacja: nie, tylko definicja do powołania się).
 - **Kogo dotyka:** ws-02, ws-03, ws-04, ws-13 (adapter może mapować kursory obcych serwerów), ws-05 (jeśli ma użyć limitu).
 - **Status:** proposed (ws-02, 2026-11-03)
+
+**Pakiet propozycji M6 etap 3 (zebrane 2026-11-03, ws-00).** Pozycje CC-210 ... CC-226 pochodzą ze strumieni ws-02, ws-04, ws-05, ws-06, ws-07/ws-08 i ws-13; duplikaty połączono (Basic dla Cloud z Jiry i Confluence w CC-222, poświadczenie sondy w CC-215). CC-208 i CC-209 są wyżej. Kolumna SemVer liczona według tabeli w `README.md` ("Wersjonowanie"); nowa wartość enum i zmiana bajtów schematu Cedar to major, o ile człowiek nie zdecyduje o wyjątku jak w 2.1.0.
+
+| CC | Tytuł | Autor | SemVer | Rekomendacja |
+| --- | --- | --- | --- | --- |
+| CC-210 | `400` dla `approveAdminTool`, powód wyłącznika | ws-07/ws-08 | patch/minor | przyjąć |
+| CC-211 | Odrzucenie tokenu przez broker: `authentication` | ws-06 | patch (a) | wariant (b) |
+| CC-212 | Wektory `broker-authentication-*`: `decision` | ws-06 | patch | przyjąć |
+| CC-213 | Basic dla OpenSearch | ws-04 | minor | część 1 po CC-222 |
+| CC-214 | `OpenSearch::Alias` | ws-04 | major | przyjąć |
+| CC-215 | Poświadczenie sondy wersji | ws-04 | minor | odłożyć |
+| CC-216 | `GitLab::MergeRequest` | ws-04 | major | przyjąć |
+| CC-217 | Pola JQL | ws-04 Jira | major | przyjąć |
+| CC-218 | CQL `ancestor`, `lastmodified` | ws-04 Confluence | major | przyjąć |
+| CC-219 | CQL `type = page` | ws-04 Confluence | minor (a) | wariant (a) |
+| CC-220 | `Jira::Board`, `Jira::Sprint` | ws-04 Jira | major | przyjąć |
+| CC-221 | Załączniki binarne | ws-04 Jira | major | odłożyć |
+| CC-222 | Basic w `user-secret`, `deployment` | ws-04 | minor | przyjąć |
+| CC-223 | Limit otwartych strumieni | ws-05 | minor | decyzja człowieka 2026-11-03, do wydania |
+| CC-224 | `503` katalogu przy nieczytelnych wyłącznikach | ws-05 | minor | przyjąć |
+| CC-225 | `cursor: null` | ws-05 | patch | przyjąć |
+| CC-226 | Klasyfikacja w wewnętrznym JWT | ws-13 | minor | przyjąć po przeglądzie |
+
+Proponowany numer wydania dla całego pakietu: **7.0.0** (CC-214, CC-216, CC-217, CC-218, CC-220 są majorami według tabeli). Bez pozycji majorowych (albo przy wyjątku jak w 2.1.0): 6.3.0.
+
+
+## CC-210 | C12 | `approveAdminTool` i `putAdmin*KillSwitch`: odpowiedź `400` i tekst powodu wyłącznika
+
+- **Źródło:** ws-07 i ws-08, etap 3 M6 (kontrakty 6.2.0). BFF odpowiada `400 invalid_request` na `approve`, gdy ciało nie jest `ApproveRequest` (zły skrót, nieznana wartość `risk` albo `action`, pole spoza schematu, para `risk` bez `action`), a operacja `approveAdminTool` nie wylicza `400` w odpowiedziach. Test odpowiedzi względem kontraktu musi tę odpowiedź pomijać.
+- **Zmiana (proponowana):** (1) dodać `"400": BadRequest` do `approveAdminTool` w `portal-bff.v1.yaml`. (2) `KillSwitchRequest.reason` jest `UntrustedText` (`CC-094`), ale schemat nie mówi, czy BFF odrzuca znaki ukryte w tekście administratora, czy je zapisuje i neutralizuje przy wyświetlaniu; BFF odrzuca je `400` (administrator wpisuje tekst sam, ukryty znak to prawie na pewno błąd), gateway zostaje przy swoim zakresie. Do potwierdzenia albo do opisu w `description`.
+- **Uwaga bez zmiany kontraktu:** `ToolEntry` wyraża `required: [risk, action]` przez `allOf`, więc generator `typescript-angular` (openapi-generator 7.26.0) robi z `risk` i `action` pola opcjonalne także tam, gdzie kontrakt je wymaga (wpis zatwierdzony, `approvedEntry`). Web sprawdza obecność w kodzie; typy z `dist/types` pakietu tego nie mają.
+- **Zgodność wstecz:** nowa odpowiedź `400` w kontrakcie opisującym zachowanie, które już istnieje: **patch** albo **minor**, bez zmiany wdrożeń.
+- **Kogo dotyka:** ws-07 (test kontraktowy), ws-08 (generowany klient obsługuje `400` jako błąd ogólny).
+- **Rekomendacja:** przyjąć (1) jako patch/minor; (2) opisać w `description`, że BFF odrzuca znaki ukryte `400` (potwierdzone implementacją ws-07).
+- **Status:** proposed (ws-07/ws-08, 2026-11-03)
+
+## CC-211 | C8 | Odrzucenie tokenu przez broker: zdarzenie `authentication` czy zdarzenie operacji
+
+- **Źródło:** przegląd ws-06 M6 etap 3 (pkt 6), `mcp-credential-broker` w HEAD po migracji do 6.2.0.
+- **Stan:** opis `reason` w `audit-event.schema.json` mówi, że dla zdarzenia `authentication` powodem jest kod odrzucenia, także dla odbiorcy JWT wewnętrznego "receiver: server, broker". Broker po CC-197 zapisuje jako `authentication` tylko awarie infrastruktury (`jwks_unavailable`, `replay_store_unavailable`). Odrzucenie samego tokenu (`bad_signature`, `expired`, `replayed_jti`, ...) zapisuje jako zdarzenie operacji (`credential_resolve`, `connection_change`, ...) z `server` i wynikiem `denied`, a dla operacji bez własnego zdarzenia wcale.
+- **Zmiana (proponowana):** albo (a) opis mówi wprost, że broker zapisuje odrzucenia tokenu jako zdarzenie operacji i `authentication` tylko dla awarii infrastruktury, albo (b) kontrakt wymaga `authentication` także dla odrzuceń i broker się dostosowuje (jedna reguła SIEM dla serwerów i brokera). Rekomendacja: (b), bo dwa kształty w jednej fazie rozbijają reguły; koszt: zmiana w `CallerAuthenticationFilter` i wektory `broker-authentication-*` dla kilku kodów.
+- **Zgodność wstecz:** (a) opis, patch; (b) zmiana zdarzeń wdrożonego komponentu, nie schematu.
+- **Kogo dotyka:** ws-06, ws-01 (reguły SIEM).
+- **Rekomendacja:** wariant (b): zdarzenie `authentication` także dla odrzuceń tokenu przez broker, jedna reguła SIEM; zmiana w `CallerAuthenticationFilter` i wektorach `broker-authentication-*` po stronie ws-06.
+- **Status:** proposed (ws-06, 2026-11-03)
+
+## CC-212 | C8/wektory | Wektory `broker-authentication-*`: `decision` raz jest, raz go nie ma
+
+- **Źródło:** przegląd ws-06 M6 etap 3 (pkt 8).
+- **Stan:** `audit-events/broker-authentication-denied-replay-store-unavailable.json` ma `"decision": "deny"`, a `broker-authentication-jwks-unavailable.json` nie ma pola. Oba zdarzenia to ten sam kształt (`authentication`, `denied`, `upstream_unavailable`). Broker nie emituje `decision`; schemat dopuszcza oba warianty.
+- **Zmiana (proponowana):** ujednolicić wektory (rekomendacja: bez `decision`, bo zdarzenie `authentication` jest odmową z definicji) albo dopisać w opisie, że `decision` jest opcjonalne dla `authentication`.
+- **Zgodność wstecz:** wektor bez zmiany oczekiwanego werdyktu: patch.
+- **Kogo dotyka:** ws-02 (starter emituje `decision`?), ws-06.
+- **Rekomendacja:** ujednolicić wektory bez `decision`; zdarzenie `authentication` jest odmową z definicji. Zmianę zrobić razem z CC-211.
+- **Status:** proposed (ws-06, 2026-11-03)
+
+## CC-213 | C3/C4/C12 | Basic dla OpenSearch bez JWT i OIDC (`user-secret` z parą login i hasło, `service-account` Basic)
+
+- **Źródło:** `research-full-servers.md` pkt 4.2, `servers-full.md` pkt 5, mcp-server-opensearch (strumień ws-04). Serwer przyjmuje dziś wyłącznie `token-exchange` z `Authorization: Bearer`; `CredentialTypeGuard` zatrzymuje start z innym zbiorem typów. Klaster OpenSearch bez skonfigurowanego JWT albo OIDC w pluginie Security (częsty przypadek u klienta: konta wewnętrzne i LDAP) nie przyjmie tokenu od brokera, więc serwer nie jest dla niego użyteczny.
+- **Zmiana (proponowana):**
+  1. Serwer OpenSearch dopuszcza drugi typ: `user-secret` ze schematem `Basic` (login i hasło użytkownika w OpenSearch). Wymaga formatu pary w C4 (`PutSecretRequest`: pole `username` albo `secretFormat: basic`, CC-049 i CC-114) i przechowania pary jako jednego sekretu w brokerze; nagłówek `X-MCP-Credential` ma już schemat `Basic`.
+  2. Albo `service-account` ze schematem `Basic`/`ApiKey` dla klastra bez SSO (broker: `secret/data/mcp/service-accounts/opensearch`). Konto serwisowe zastępuje DLS/FLS użytkownika uprawnieniami konta, więc serwer jest wtedy główną granicą zakresu (jak servicedesk), a polityka musi nadać zakresy indeksów (`credential-type.cedar`).
+  3. Typ domyślny (`context.credentialType`) to pierwszy element `accepted-credential-types`; zbiór nie miesza `service-account` z typami użytkownika (beta-7).
+- **Co serwer zrobi po decyzji:** zmieni `CredentialTypeGuard` i `OpenSearchAdapter.credential()` (dziś odrzuca wszystko poza `token-exchange` Bearer), dopisze testy typu poświadczenia i fixture z odpowiedzią 401 dla Basic. Bez decyzji nie implementuje.
+- **Zgodność wstecz:** nowe wartości w zbiorze typów serwera: minor po stronie kontraktów, jeśli format pary w C4 jest opcjonalny; zmiana `PutSecretRequest` jest zależna od CC-114 i wspólna z CC-222 (Jira, Confluence).
+- **Kogo dotyka:** ws-04 (OpenSearch), ws-06 (broker: para jako sekret), ws-07/08 (formularz w portalu), ws-09 (`credential-type.cedar`, zakresy dla konta serwisowego), ws-10.
+- **Rekomendacja:** przyjąć część 1 (`user-secret` Basic) po CC-222, który wprowadza format pary w C4; część 2 (`service-account` Basic/ApiKey) odłożyć do realnej potrzeby klienta, bo kontrakt `service-account` już istnieje (CC-157).
+- **Status:** proposed (ws-04, 2026-11-03)
+
+## CC-214 | C6/C7/Cedar | Typ zasobu `OpenSearch::Alias` dla `list_aliases` i `resolve_alias`
+
+- **Źródło:** `research-full-servers.md` pkt 4.4 (faza 1: `list_aliases`, `resolve_alias` w zakresie), mcp-server-opensearch (strumień ws-04). Serwer celowo nie przyjmuje aliasów: alias o nazwie z zakresu może wskazywać indeksy innego zespołu, więc `QueryScope` je odrzuca, a narzędzia pracują na konkretnych nazwach indeksów.
+- **Zmiana (proponowana):** nowa encja `OpenSearch::Alias` w `mcp.cedarschema` (atrybuty `name`, `scopes`, `targets: Set<String>` z nazwami indeksów docelowych; polityka odmawia, gdy którykolwiek cel jest poza zakresem), wpis w `resourceTypes` manifestu i w `PrincipalOrResource`. Wzorzec `OpenSearchAliasName` w `common.schema.json` (taki sam jak nazwa indeksu).
+- **Co serwer zrobi po decyzji:** narzędzia `list_aliases` (strona, `PagedResult`) i `resolve_alias` (`@ResourceRef` na aliasie), oba `READ_ONLY`/`read`; odpowiedź zawiera tylko aliasy, których wszystkie cele są w zakresie wywołującego. Bez typu serwer nie wystawia aliasów w żadnej postaci.
+- **Zgodność wstecz:** nowa encja i nowy typ zasobu w manifeście: nie zmienia istniejących polityk, ale zmienia bajty schematu Cedar i dodaje wartość `ResourceType`, więc według tabeli w `README.md` **major** (minor tylko jako wyjątek na decyzję człowieka).
+- **Kogo dotyka:** ws-04, ws-09 (reguły `read` dla aliasów), ws-05 (resourceTypes w manifeście).
+- **Rekomendacja:** przyjąć; `list_aliases` jest w zakresie fazy 1, a bez typu serwer nie wystawia aliasów. Wydać razem z CC-216 jako jedną zmianę bajtów schematu Cedar.
+- **Status:** proposed (ws-04, 2026-11-03)
+
+## CC-215 | C3/C4/C6 | Poświadczenie sondy wersji (`CapabilityProbe`) dla systemu, którego endpoint wersji wymaga logowania
+
+- **Źródło:** mcp-server-opensearch (ws-04), README startera, "Wersje systemu" ("serwer nie trzyma sekretów"). Klaster OpenSearch z wtyczką Security odpowiada 401 na anonimowe `GET /`, więc sonda nie pozna wersji i serwer pracuje w trybie `degraded` (narzędzia `list_indices`, `validate_query`, `get_cluster_health` odmawiają). Obejście dziś: właściwość `MCP_OPENSEARCH_ASSUME_TESTED_VERSION=true`, czyli oświadczenie operatora, bez sekretu. To samo dotyczy `/api/v4/version` w GitLabie.
+- **Zmiana (proponowana):** broker wydaje serwerowi poświadczenie serwisowe tylko do odczytu wersji (typ `service-account`, zakres "tylko endpoint wersji", rotowane w OpenBao), a gateway albo broker przekazuje je sondzie bez udziału użytkownika. Wymaga decyzji, czy serwer może w ogóle trzymać sekret (dziś nie: niezmiennik C3) i jak sonda go odbiera.
+- **Zgodność wstecz:** nowy kanał poświadczenia dla sondy: minor, jeśli opcjonalny.
+- **Bez decyzji serwer działa:** `assume-tested-version` albo tryb `degraded`.
+- **Kogo dotyka:** ws-02 (sonda), ws-04 (wszystkie serwery z endpointem wersji za logowaniem: OpenSearch, GitLab, Confluence), ws-06 (broker), ws-01.
+- **Rekomendacja:** odłożyć. Serwer działa dziś w trybie `assume-tested-version` albo `degraded`, a zmiana wymaga decyzji o niezmienniku C3 (serwer nie trzyma sekretów). Ten sam problem zgłasza Confluence (`server-information` bywa za logowaniem).
+- **Status:** proposed (ws-04, 2026-11-03)
+
+## CC-216 | C6/C7/Cedar | Typ zasobu `GitLab::MergeRequest` dla zatwierdzania i scalania
+
+- **Źródło:** `research-full-servers.md` pkt 5.7 i 5.8 (zasób `GitLab::MergeRequest`, polityka dla `approve` i `merge`), decyzja W-8 (merge i approve to `UPDATE`), mcp-server-gitlab (strumień ws-04). `approve_merge_request` i `merge_merge_request` sprawdzają dziś tylko projekt (`GitLab::Project`), więc polityka nie odróżni scalenia do chronionej gałęzi od scalenia do gałęzi roboczej ani merge requesta cudzego autorstwa od własnego.
+- **Zmiana (proponowana):** nowa encja `GitLab::MergeRequest` w `mcp.cedarschema` z rodzicem `GitLab::Project` i atrybutami `iid`, `targetBranch`, `targetBranchProtected: Bool`, `authorUsername`, `draft: Bool`; wpis w `resourceTypes` manifestu i w `PrincipalOrResource`; identyfikator `<ścieżka projektu>!<iid>` z wzorcem `GitLabMergeRequestRef` w `common.schema.json`. Opcjonalnie to samo dla `GitLab::Pipeline` (atrybut `ref`), jeśli polityka ma odróżniać ponowienie na gałęzi chronionej.
+- **Co serwer zrobi po decyzji:** `@ResourceRef(type = "GitLab::MergeRequest")` na `approve_merge_request`, `merge_merge_request` i `update_merge_request` (obok projektu); resolver czyta merge request jednym `GET`, bierze atrybuty z odpowiedzi GitLaba, nigdy z argumentu, i potwierdza `project_id`. Bez typu narzędzia zostają na projekcie, a ograniczenia (chroniona gałąź, liczba zatwierdzeń) egzekwuje sam GitLab.
+- **Zgodność wstecz:** nowa encja i nowy typ zasobu w manifeście: według tabeli w `README.md` **major** (nowa wartość `ResourceType`, zmiana bajtów schematu Cedar); dodanie drugiego `@ResourceRef` do istniejących narzędzi zmienia ich `definitionHash`.
+- **Kogo dotyka:** ws-04, ws-09 (reguły dla scalania do chronionej gałęzi), ws-05 (resourceTypes w manifeście).
+- **Rekomendacja:** przyjąć dla `GitLab::MergeRequest` (zatwierdzanie i scalanie do chronionej gałęzi to najwyższe ryzyko w serwerze GitLab); `GitLab::Pipeline` odłożyć.
+- **Status:** proposed (ws-04, 2026-11-03)
+
+## CC-217 | C7/query-rendering/Java | Dodatkowe pola warunków JQL: `labels`, `component`, `fixVersion`, `priority`, `created`, `updated`, `issuetype`
+
+- **Źródło:** `research-full-servers.md` pkt 1.4 (rozszerzyć `jql_filter` o labels, component, fixVersion, zakresy dat, priority), mcp-server-jira etap 3 M6 (ws-04). Listy normatywne JQL (CC-160) mają dziś warunki `text`, `status`, `assignee`, `summary` i `ORDER BY` `created`, `updated`, `priority`, `key`. `issuetype` serwer Jira stosuje po odpowiedzi systemu (strona bywa krótka), a pozostałych pól model nie może dziś użyć wcale.
+- **Zmiana (proponowana):** do listy warunków JQL dochodzą `labels`, `component`, `fixVersion`, `priority`, `issuetype` (operatory `EQUALS`, `NOT_EQUALS`) oraz `created` i `updated` z operatorami `GREATER_OR_EQUAL` i `LESS_OR_EQUAL` (wartość: data `YYYY-MM-DD`, bez funkcji i bez względnych zapisów). Dotyka `StructuredQuery.JQL_CONDITION_FIELDS`, `Operator`, `scripts/lib/query-rendering.mjs` i wektorów `query-rendering/` (po jednym wektorze na pole i na wartość z cudzysłowem, nawiasem i słowem `OR`).
+- **Zgodność wstecz (SemVer):** nowe wartości w liście normatywnej i w enum operatorów; serwery z mniejszym podzbiorem działają bez zmian. Według tabeli w `README.md` nowa wartość enum to **major**; sama lista pól i nowe wektory to minor.
+- **Kogo dotyka:** ws-02 (starter), ws-04 (Jira), ws-09 (polityki: bez zmian).
+- **Rekomendacja:** przyjąć w całości; `search_issues` filtruje wtedy po etykiecie, komponencie, wersji, priorytecie i dacie bez odfiltrowywania wierszy po stronie serwera. Bez decyzji Jira zostaje przy `status`, `assignee`, `summary`, `text` i typie zgłoszenia stosowanym po odpowiedzi.
+- **Status:** proposed (ws-04 Jira, 2026-11-03)
+
+## CC-218 | C7/query-rendering/Java | Warunki CQL `ancestor` i `lastmodified`
+
+- **Źródło:** mcp-server-confluence (ws-04), M6 (zebrane przez koordynatora w `plan-wydanie.md`, "Propozycje CC zebrane od serwerów"). `StructuredQuery` dla CQL nie ma dziś warunku po drzewie stron ani po dacie zmiany, więc `search_pages` nie zawęzi wyników do poddrzewa ani do ostatnio zmienionych stron.
+- **Zmiana (proponowana):** do listy warunków CQL dochodzą `ancestor` (operator `EQUALS`, wartość: identyfikator strony, 1 do 18 cyfr) i `lastmodified` (`GREATER_OR_EQUAL`, `LESS_OR_EQUAL`, wartość: data `YYYY-MM-DD`). Dotyka listy w `StructuredQuery`, `scripts/lib/query-rendering.mjs` i wektorów `query-rendering/` (po jednym wektorze na pole i na wartość z cudzysłowem).
+- **Zgodność wstecz (SemVer):** nowe wartości w liście normatywnej: jak CC-217, **major** według tabeli, jeśli trafiają do enum; w przeciwnym razie minor.
+- **Kogo dotyka:** ws-00, ws-02, ws-04 (Confluence), ws-06 (bez zmian po stronie brokera; wpis zachowany z uwagi na zebraną listę dotkniętych).
+- **Rekomendacja:** przyjąć razem z CC-217 (ta sama zmiana w rendererze i ten sam przebieg wektorów).
+- **Status:** proposed (ws-04 Confluence, 2026-11-03)
+
+## CC-219 | C7/query-rendering | `type = page` w wyszukiwaniu CQL
+
+- **Źródło:** mcp-server-confluence STATUS (ws-04), "Do zebrania przez koordynatora". `content/search` bez `type = page` zwraca też komentarze, załączniki i blogi, które serwer odrzuca po odpowiedzi, więc okna wyników są częściej puste. `type` nie jest polem warunku `StructuredQuery`. Resolver serwera już używa `id in (...) AND type = page` (`Cql.contentIn`).
+- **Zmiana (proponowana), dwa warianty:** (a) pole `type` (operator `EQUALS`, wartość `page`) w liście normatywnej CQL; (b) stała klauzula `type = page` w rendererze CQL startera.
+- **Zgodność wstecz (SemVer):** (a) nowa wartość w liście: jak CC-218; (b) zmienia oczekiwane wyjście wszystkich istniejących wektorów CQL, czyli **major** (zmiana oczekiwania w istniejącym wektorze).
+- **Kogo dotyka:** ws-02 (starter), ws-04 (Confluence).
+- **Rekomendacja:** wariant (a): serwer wskazuje typ jawnie, istniejące wektory zostają.
+- **Status:** proposed (ws-04 Confluence, 2026-11-03)
+
+## CC-220 | C7/entity-builder | Typy zasobów `Jira::Board` i `Jira::Sprint` (Jira Software, `/rest/agile/1.0`)
+
+- **Źródło:** `research-full-servers.md` pkt 1.4 i 5.7 (tablice, sprinty, zapis do sprintu), mcp-server-jira etap 3 M6 (ws-04).
+- **Zmiana (proponowana):** `ResourceType` dostaje `Jira::Board` i `Jira::Sprint` z atrybutem `project` (klucz projektu tablicy; tablica obejmująca kilka projektów: atrybuty każdego z nich albo odmowa). Wzorce identyfikatorów w `common.schema.json` (`JiraBoardId`, `JiraSprintId`: liczby całkowite jako tekst, 1 do 10 cyfr), schemat Cedar, `entity-builder.md`, wektory `resource-checks/` i `result-filter/`. Narzędzia, które wtedy powstają w serwerze Jira: `list_boards`, `list_sprints`, `get_sprint_issues` (odczyt) oraz `add_issues_to_sprint`, `move_issues_to_backlog` (`UPDATE`).
+- **Zgodność wstecz (SemVer):** nowe wartości enum i definicje; zmienia bajty schematu Cedar (jak CC-173), więc paczka polityk wymaga przebudowy (ws-09). Według tabeli **major**.
+- **Kogo dotyka:** ws-02, ws-04, ws-09, ws-05 (portal pokazuje typy zasobów).
+- **Rekomendacja:** przyjąć; zakres odczytu (tablice, sprinty) jest potrzebny, zapis do sprintu można wdrożyć w serwerze później bez zmiany kontraktu. Do tej decyzji narzędzi agile nie ma w serwerze.
+- **Status:** proposed (ws-04 Jira, 2026-11-03)
+
+## CC-221 | C6/C10 | Załączniki: treść binarna w wyniku narzędzia i wysyłanie plików
+
+- **Źródło:** `research-full-servers.md` pkt 1.4 i 5.4 (`download_attachment`, `add_attachment`), mcp-server-jira etap 3 M6 (ws-04).
+- **Stan:** serwer Jira ma `list_attachments` (same metadane). Pobranie treści wymaga, żeby kontrakt wyniku narzędzia dopuszczał treść `text` albo `image` z limitem rozmiaru (propozycja: `maxResultBytes` z CC-209) oraz typu zasobu `Jira::Attachment` z atrybutem `project`. Wysyłanie (`add_attachment`) wymaga base64 w argumencie (limit schematu argumentów kilkaset KB) albo odrzucenia.
+- **Zmiana (proponowana):** `ResourceType` `Jira::Attachment` (wzorzec `JiraAttachmentId`: 1 do 18 cyfr), reguła README dla treści `text`/`image` w wyniku (tylko `text/*` i `image/*`, do 2 MB, reszta jako metadane), decyzja, czy `add_attachment` istnieje.
+- **Zgodność wstecz (SemVer):** nowy typ zasobu i definicje; zmienia bajty schematu Cedar: **major** według tabeli.
+- **Kogo dotyka:** ws-02, ws-04 (Jira, Confluence), ws-09, ws-13 (adapter).
+- **Rekomendacja:** odłożyć. Treść binarna w wyniku zmienia model wyniku (rozmiar, oznaczenie `UntrustedText`, obrazy) i zależy od CC-209; sensownie rozstrzygnąć po decyzji o `maxResultBytes`. Metadane zostają.
+- **Status:** proposed (ws-04 Jira, 2026-11-03)
+
+## CC-222 | C3/C4/C12 | `Basic` w `user-secret` (Jira i Confluence Cloud) i atrybut `deployment` systemu
+
+- **Źródło:** `research-full-servers.md` pkt 1.2 i 5.1 (Cloud: `Basic email:token`), decyzja W-7 (Cloud później), mcp-server-jira (ws-04) oraz mcp-server-confluence (ws-04); ta sama propozycja zgłoszona przez oba serwery, połączona. Dotyczy też portalu (`mcp-portal/web`: `PutSecretRequest` nie ma formatu pary) i jest warunkiem CC-213 (OpenSearch).
+- **Stan:** serwery Jira i Confluence przyjmują wyłącznie `user-secret` z `Bearer` (PAT Data Center); sonda oznacza `deploymentType: Cloud` jako `degraded` (odczyty tylko). Cloud wymaga: pary `email` + token w brokerze jako jednego sekretu, whoami `GET /rest/api/2/myself` (Jira), bazy URL z `cloudId` dla tokenów z zakresami, atrybutu `deployment` (`dc`, `cloud`) w `GET /v1/systems` brokera; po stronie serwerów wyszukiwanie `POST /rest/api/3/search/jql` (kursor `nextPageToken`, bez `total`) i tekst w ADF.
+- **Zmiana (proponowana):** (1) przyjęcie `Basic` w `X-MCP-Credential-Type: user-secret` dla `jira` i `confluence`; (2) format pary w C4 (`PutSecretRequest`: pole `username` albo `secretFormat: basic`, CC-049 i CC-114); (3) opcjonalny atrybut `deployment` w C4.1; (4) zmienne konfiguracji serwera `deployment` i `cloudId` (poza kontraktem).
+- **Zgodność wstecz (SemVer):** nowe wartości i opcjonalne pola: minor.
+- **Kogo dotyka:** ws-03/ws-06 (broker), ws-04 (Jira, Confluence, OpenSearch), ws-05/ws-07/ws-08 (portal: formularz pary), ws-00, ws-02.
+- **Rekomendacja:** przyjąć warstwę kontraktową (pkt 1 do 3) w tym wydaniu, bo CC-213 potrzebuje tego samego formatu pary; obsługa Cloud w serwerach zostaje poza zakresem do decyzji W-7.
+- **Status:** proposed (ws-04, 2026-11-03); nie implementowane (decyzja W-7).
+
+## CC-223 | C5/C10/README | Limit otwartych strumieni na instancję gatewaya i `503`
+
+- **Źródło:** mcp-gateway STATUS (ws-05), M6 etap 3, sekcja "Decyzje i granice tego etapu"; zebrane w `plan-wydanie.md`.
+- **Stan:** gateway wdrożył limit: `MCP_MAX_OPEN_STREAMS` (domyślnie 2000 na instancję, strumień `GET` sesji i `subscriptions/listen` razem, bez limitu na użytkownika). Powyżej limitu odpowiada `503` z `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`) i tym samym ciałem co przeciążenie z CC-199 (`upstream_unavailable`), metryka `mcp_gateway_streams_refused_total`. Otwarcie strumienia przechodzi przez limity użytkownika i klienta (CC-135). Testy: `StreamLimitTest`, `ToolStreamsTest`.
+- **Zmiana (proponowana):** README i C5/C10 opisują limit otwartych strumieni na instancję (konfigurowalny, domyślnie 2000, oba rodzaje razem), odpowiedź `503` jak shed z CC-199, otwarcie strumienia jako zwykłe żądanie dla limitów użytkownika i klienta; wektor w `gateway-authentication/` dla odmowy strumienia. Nazwa metryki do potwierdzenia.
+- **Zgodność wstecz (SemVer):** opis i nowy wektor, bez zmiany schematów i enum: minor.
+- **Kogo dotyka:** ws-05 (zgodność z opisem), ws-01 (konfiguracja, alert na `mcp_gateway_streams_refused_total`), ws-10 (scenariusz przekroczenia limitu).
+- **Rekomendacja:** decyzja człowieka 2026-11-03, do wydania.
+- **Status:** proposed (ws-05, 2026-11-03); decyzja człowieka 2026-11-03, do wydania.
+
+## CC-224 | C5/C10 | `503 upstream_unavailable` z `Retry-After` dla katalogu przy nieczytelnych wyłącznikach
+
+- **Źródło:** mcp-gateway STATUS (ws-05), M6 etap 3: "to moja decyzja, do potwierdzenia".
+- **Stan:** kontrakt opisuje `503` dla operacji wyłączników (CC-194), ale nie dla odczytu katalogu. Gateway przy nieczytelnym stanie wyłączników odpowiada na katalog `503 upstream_unavailable` z `Retry-After`, zgodnie z regułą fail-closed.
+- **Zmiana (proponowana):** dopisać odpowiedź `503` (`upstream_unavailable`, `Retry-After`) do operacji katalogu w `gateway-admin` C5 i zdanie w README o stanie wyłączników; wektor `kill-switch/` dla katalogu.
+- **Zgodność wstecz (SemVer):** nowa odpowiedź w kontrakcie opisującym zachowanie, które już istnieje: minor.
+- **Kogo dotyka:** ws-05, ws-07 (BFF mapuje `503` katalogu), ws-08.
+- **Rekomendacja:** przyjąć; odpowiedź jest zgodna z CC-194 i CC-199, a alternatywa (pusty katalog) ukrywałaby wyłączone narzędzia.
+- **Status:** proposed (ws-05, 2026-11-03)
+
+## CC-225 | C5/README | `tools/list` z `cursor: null`
+
+- **Źródło:** mcp-gateway STATUS (ws-05), M6 etap 3; pokrewne CC-200 (`cursor: ""`).
+- **Stan:** `cursor: null` jest odrzucany jak każdy kursor niebędący napisem (`-32602`); kontrakt tego nie rozstrzyga.
+- **Zmiana (proponowana):** dopisać do opisu `tools/list` w C5/README, że `cursor` niebędący napisem, w tym `null`, to `-32602`; wektor `mcp-endpoint/` dla `cursor: null`.
+- **Zgodność wstecz (SemVer):** doprecyzowanie opisu: patch; nowy wektor: minor.
+- **Kogo dotyka:** ws-05, ws-02 (starter odpowiada tak samo?), ws-10.
+- **Rekomendacja:** przyjąć (zgodnie z CC-200).
+- **Status:** proposed (ws-05, 2026-11-03)
+
+## CC-226 | C2/Java | Klasyfikacja administratora w wewnętrznym JWT dla sidecara adaptera
+
+- **Źródło:** mcp-server-adapter STATUS i README, "Ryzyko lokalne a klasyfikacja administratora" (ws-13): "Docelowo lepiej, by gateway przekazywał klasyfikację z rejestru w JWT, a starter jej używał; to zmiana kontraktu, poza M6".
+- **Stan:** starter wymaga ryzyka każdego narzędzia, a adapter go nie zna, więc podstawia ryzyko zastępcze z podpowiedzi obcego serwera. Lokalna kontrola Cedar `call` w sidecarze może odmówić użytkownikom, których gateway przepuścił (klasyfikacja administratora niższa niż ryzyko zastępcze).
+- **Zmiana (proponowana):** opcjonalne claimy `risk` i `action` w wariancie użytkownika wewnętrznego JWT, ustawiane przez gateway z klasyfikacji w rejestrze tylko dla wpisów `source: adapter`; starter w sidecarze używa ich zamiast ryzyka zastępczego; claimy podpisane razem z tokenem, więc nie rozszerzają zaufania. Opis w `internal-jwt.schema.json` i wektory `jwt/`.
+- **Zgodność wstecz (SemVer):** nowe opcjonalne claimy: minor.
+- **Kogo dotyka:** ws-05 (gateway), ws-02 (starter), ws-13 (adapter), ws-09 (grupy Cedar po stronie sidecara).
+- **Rekomendacja:** przyjąć w wydaniu po przeglądzie bezpieczeństwa wariantu użytkownika (nowy claim w tokenie); nie blokuje reszty pakietu, a obecna druga bariera działa.
+- **Status:** proposed (ws-13, 2026-11-03)
