@@ -3952,3 +3952,24 @@ Poprawki 6.2.0 (przegląd 6.1.0, decyzje człowieka 2026-11-03 w `mcp-platform-p
 - **Wyjątek SemVer:** według tabeli major byłyby: nowa wartość enum `gateway_timeout` w `BalancerError` (6.1.0), inny punkt odniesienia, kolejność odpowiedzi kanału adaptera, `classification_inconsistent`, węższa odpowiedź `200` kanału adaptera i pole `removed` w referencji. Dotyczą elementów bez wdrożeń; wydane jako minor (decyzja człowieka, 2026-11-03).
 - **Kogo dotyka:** ws-05, ws-13, ws-01, ws-07/08 (nowy kod `422` przy `approve`), ws-10.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.2.0
+
+## CC-208 | C8/README | Zdarzenie audytu zmiany zdolności backendu (`backend_capability`)
+
+- **Źródło:** `research-full-servers.md` pkt 9 (starter: `CapabilityProbe` przy starcie, tryb `degraded` dla nieznanej wersji systemu), ws-02 etap 3 M6. Starter 3.0.0-beta-11 ma sondę, log, metrykę `mcp_backend_capability{probe,state}` i szczegół zdrowia; zdarzenia C8 nie mają typu na zmianę stanu, więc audytu nie wysyła.
+- **Zmiana (proponowana):** nowe zdarzenie `backend_capability` w `audit-event.schema.json` (`component: server`): `probe` (nazwa systemu, snake case), `state` (`supported`, `degraded`, `unavailable`), `backendVersion` (opcjonalne, tekst oczyszczony do `[A-Za-z0-9._+ -]`, do 120 znaków), `reason` (stałe kody, na przykład `version_unknown`, `probe_failed`, `probe_timeout`). Emitowane przy zmianie stanu lub wersji, nie przy każdej sondzie. Bez `sub`, `tool` i `requestId` użytkownika (zdarzenie nie należy do żądania). Wektory `audit-events/server-backend-capability-*`.
+- **Zgodność wstecz:** nowa wartość enum `event`, według tabeli SemVer **major** (jak `PendingTool.source: adapter` w 6.0.0); do wydania z następnym majorem albo z wyjątkiem opisanym jak w 5.1.0.
+- **Kogo dotyka:** ws-02 (emisja), ws-05/ws-07 (jeśli aktywność ma pokazywać degradację serwera), ws-10 (scenariusz: serwer z nieznaną wersją systemu startuje i raportuje `degraded`).
+- **Bez decyzji kontraktowej starter działa:** log i metryka wystarczają operatorowi; audyt jest dodatkiem.
+- **Status:** proposed (ws-02, 2026-11-03)
+
+## CC-209 | C6/C10/README | Wspólny kształt dużego wyniku: definicje `PageCursor`, `PagedResult` i limit wyniku w manifeście
+
+- **Źródło:** `research-full-servers.md` pkt 4 i 5 (duże odpowiedzi: logi pipeline, diff MR, strony Confluence; limit `maxResultBytes` per narzędzie), ws-02 etap 3 M6. Starter 3.0.0-beta-11 ma `CursorCodec` (kursor HMAC związany z `sub`, narzędziem i zapytaniem, ważny 15 minut) i rekord `PagedResult<T>` (`items`, `nextCursor`, `truncated`, `omitted`); kształt jest zapisany w kodzie i README startera, nie w kontrakcie.
+- **Zmiana (proponowana):**
+  1. `common.schema.json`: `$defs/PageCursor` (string, `pattern` `^[A-Za-z0-9_.-]{1,1024}$`, `maxLength` 1024), żeby `@ArgumentLimits(contractPattern = "PageCursor")` zastąpiło stałą w starterze i żeby adapter (ws-13) i serwery miały jedną definicję.
+  2. `$defs/PagedResultFields`: `nextCursor` (opcjonalne `PageCursor`), `truncated` (boolean), `omitted` (do 10 unikalnych kodów snake case do 40 znaków, bez liczników). Zasada w README: `omitted` nigdy nie liczy elementów usuniętych przez politykę; brak `total`.
+  3. `server-manifest.schema.json`: opcjonalne `maxResultBytes` we wpisie narzędzia (limit wyniku deklarowany przez serwer, dziś tylko globalne `tools.max-result-size` startera, 1 MB); gateway może go używać do obcięcia i do ostrzeżeń w portalu. Wchodzi do `definitionHash` albo nie: do rozstrzygnięcia (jeśli tak, zmienia hashe wszystkich narzędzi, które je ustawią).
+- **Zgodność wstecz:** nowe definicje i opcjonalne pole: **minor**; wejście `maxResultBytes` do `definitionHash` to major.
+- **Pytania do człowieka:** (1) czy `maxResultBytes` wchodzi do hasha; (2) czy kontrakt ma wymuszać `PagedResultFields` w `outputSchema` narzędzi z `nextCursor` (rekomendacja: nie, tylko definicja do powołania się).
+- **Kogo dotyka:** ws-02, ws-03, ws-04, ws-13 (adapter może mapować kursory obcych serwerów), ws-05 (jeśli ma użyć limitu).
+- **Status:** proposed (ws-02, 2026-11-03)
