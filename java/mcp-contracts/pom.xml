@@ -70,6 +70,23 @@
                             </resources>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>license-files-test-vectors</id>
+                        <phase>prepare-package</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/test-vectors-jar/META-INF</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${repo.root}</directory>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                        <include>NOTICE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>

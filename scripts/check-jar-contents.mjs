@@ -44,4 +44,21 @@ for (const [name, roots] of checks) {
     console.log(`${name}: ${actual.size} files, identical to the source tree`);
   }
 }
+
+// Apache-2.0: every jar of the build carries LICENSE and NOTICE in META-INF.
+const jars = readdirSync(join(ROOT, 'java')).flatMap((m) => {
+  const target = join(ROOT, 'java', m, 'target');
+  return existsSync(target) ? readdirSync(target).filter((n) => n.endsWith('.jar') && !n.endsWith('-javadoc.jar') && !n.endsWith('-sources.jar')).map((n) => join(target, n)) : [];
+});
+for (const jar of jars) {
+  const entries = new Set(execFileSync('unzip', ['-Z1', jar], { encoding: 'utf8' }).split('\n'));
+  const lacking = ['META-INF/LICENSE', 'META-INF/NOTICE'].filter((n) => !entries.has(n));
+  if (lacking.length > 0) {
+    failed = true;
+    console.error(`${jar}: missing ${lacking.join(', ')}`);
+  } else {
+    console.log(`${jar.slice(ROOT.length + 1)}: LICENSE and NOTICE present`);
+  }
+}
+if (jars.length < 5) { failed = true; console.error(`expected at least 5 jars, found ${jars.length}`); }
 if (failed) process.exit(1);
