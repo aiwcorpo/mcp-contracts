@@ -1,5 +1,5 @@
 {
-  "description": "The replay store of the broker is down.",
+  "description": "The replay store of the broker is down: the same shape as the jwks_unavailable vector, without decision (CC-197, CC-212).",
   "expected": {
     "valid": true
   },
@@ -9,7 +9,6 @@
     "component": "broker",
     "componentId": "mcp-credential-broker",
     "event": "authentication",
-    "decision": "deny",
     "reason": "replay_store_unavailable",
     "outcome": "denied",
     "errorCode": "upstream_unavailable"

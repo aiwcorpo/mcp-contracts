@@ -1,6 +1,6 @@
 {
-  "description": "rsk and act without tool: the classification belongs to a tools/call, so it needs the tool claim (CC-226); rejected as invalid_claims.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA5NiIsInJzayI6IlJFQURfT05MWSIsImFjdCI6InJlYWQifQ.1gZtB5ZTAgs233g2r7hlPI7UN3MNIVujN_-SvRV_gPoAYEqj8MmJHX_zbDNqc4rNH-xDdvBRNBnj9MnIOh8TJQ",
+  "description": "mcp_risk and mcp_action without tool: the classification belongs to a tools/call, so it needs the tool claim (CC-226); rejected as invalid_claims.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOiIyMDI2MTAyNjEyMDAwMC1hMWIyYzNkIiwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA5NiIsIm1jcF9yaXNrIjoiUkVBRF9PTkxZIiwibWNwX2FjdGlvbiI6InJlYWQifQ.ehyPS5Ku_-IduU6GLW6l7BrdNgFX1frR20GppACZPYBYsWnEzhGslfkNztN81bSfHL2udcZvccBz-JPApcWYnw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -22,8 +22,8 @@
     "iat": 1793016000,
     "exp": 1793016060,
     "jti": "0192d1b2-7c3a-7f00-9a11-000000000096",
-    "rsk": "READ_ONLY",
-    "act": "read"
+    "mcp_risk": "READ_ONLY",
+    "mcp_action": "read"
   },
   "verifier": {
     "issuer": "https://mcp-gateway.internal",
@@ -33,7 +33,8 @@
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
     "seenJtis": [],
-    "allowTestKeys": true
+    "allowTestKeys": true,
+    "receiverMode": "adapter"
   },
   "request": {
     "kind": "jsonrpc",

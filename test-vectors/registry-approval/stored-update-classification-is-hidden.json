@@ -1,0 +1,12 @@
+{
+  "description": "A classification UPDATE or DESTRUCTIVE of an adapter entry, stored before 6.3.0 (CC-227), is not valid: the tool is hidden and refused as tool_disabled until an administrator approves it again as READ_ONLY.",
+  "input": {
+    "classified": true,
+    "risk": "UPDATE"
+  },
+  "expected": {
+    "listed": false,
+    "errorCode": "tool_disabled",
+    "auditReason": "tool_disabled"
+  }
+}

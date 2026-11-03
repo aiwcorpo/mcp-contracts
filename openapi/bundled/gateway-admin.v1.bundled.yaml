@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 6.3.0
+  version: 6.3.1
   summary: Contract C5 of the MCP platform (catalog, registry, activity, read-only confirmation preview).
   description: |
     Callers and their authentication:
@@ -1957,10 +1957,10 @@ components:
           description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
         risk:
           $ref: "#/components/schemas/Risk"
-          description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk; forbidden for any other entry (422 manifest_rejected, reason classification_not_allowed). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
+          description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk, and for such an entry only READ_ONLY is accepted (an adapter is read only, CC-227, any other value is 422 manifest_rejected, reason classification_not_allowed); forbidden for any other entry (the same 422). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
         action:
           $ref: "#/components/schemas/ToolAction"
-          description: Cedar action given by the administrator together with risk (CC-193); required and forbidden under the same conditions as risk.
+          description: Cedar action given by the administrator together with risk (CC-193); required and forbidden under the same conditions as risk; for an adapter it fits READ_ONLY, so it is read.
       additionalProperties: false
     ActivityCall:
       type: object

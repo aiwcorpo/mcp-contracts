@@ -547,6 +547,7 @@ switchVector('list-keeps-other-tools', 'The other tools stay in the list.', { sw
 switchVector('confirm-pending-call-of-switched-tool', 'A pending DESTRUCTIVE call whose tool was switched off fails at the confirmation: the gate is checked again before it runs.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'confirm' });
 switchVector('store-unreadable-call', 'A gateway that cannot read the switches refuses the call (fail-closed).', { switches: [], tool: 'jira__get_issue', event: 'call', storeReadable: false });
 switchVector('store-unreadable-list', 'and lists nothing.', { switches: [], tool: 'jira__get_issue', event: 'list', storeReadable: false });
+switchVector('store-unreadable-catalog', 'The catalog of C5 cannot be computed without the state of the switches: 503 upstream_unavailable with Retry-After, not a catalog (CC-224).', { switches: [], tool: 'jira__get_issue', event: 'catalog', storeReadable: false });
 switchVector('approval-does-not-lift', 'An approval of a pending definition leaves the switch on.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'approve' });
 switchVector('registration-does-not-lift', 'A new PUT of the manifest leaves the switch on.', { switches: [jiraTool, gitlabServer], tool: 'jira__update_issue', event: 'register' });
 switchVector('lift-tool-keeps-server-switch', 'Lifting the switch of a tool does not lift the switch of its server.', { switches: [{ scope: 'tool', serverId: 'mcp-gitlab', tool: 'get_project' }, gitlabServer], tool: 'gitlab__get_project', event: 'lift-tool' });
@@ -603,6 +604,7 @@ approvalVector('ci-entry-with-classification', 'risk or action for an entry that
 approvalVector('server-entry-plain', 'A plain approval of an entry the running server presented is unchanged.', { entry: { source: 'server' }, body: {} });
 approvalVector('ci-entry-risk-lowered', 'The floor of CC-167 for an entry that is not from an adapter is unchanged.', { entry: { source: 'ci', riskLowered: true }, body: {} });
 approvalOut('unclassified-adapter-tool-is-hidden', { description: 'A tool of an adapter that is not classified and approved is hidden and refused as tool_disabled (fail-closed).', input: { classified: false }, expected: adapterToolState({ classified: false }) });
+approvalOut('stored-update-classification-is-hidden', { description: 'A classification UPDATE or DESTRUCTIVE of an adapter entry, stored before 6.3.0 (CC-227), is not valid: the tool is hidden and refused as tool_disabled until an administrator approves it again as READ_ONLY.', input: { classified: true, risk: 'UPDATE' }, expected: adapterToolState({ classified: true, risk: 'UPDATE' }) });
 approvalOut('classified-adapter-tool-is-listed', { description: 'Once classified and approved the tool follows the usual rules.', input: { classified: true }, expected: adapterToolState({ classified: true }) });
 
 // ---------- failure of an instance behind the balancer (CC-204) ----------
@@ -628,6 +630,7 @@ const idpVector = (name, description, claims) => {
 };
 idpVector('plain', 'A valid token of the IdP.', idpClaims);
 idpVector('with-vs-and-vsc', 'A valid token that carries vs and vsc: the claims are ignored, the token is accepted. Nothing reads them and the gateway builds the internal JWT only from the fields it knows, so they never reach a server or the broker (the internal JWT refuses them, CC-173).', { ...idpClaims, vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] } });
+idpVector('with-classification-claims', 'A token of the IdP (after a token exchange, for example) that carries act, mcp_risk and mcp_action: ignored like any claim the gateway does not know, never copied to the internal JWT (CC-226). The classification comes only from the registry.', { ...idpClaims, act: { sub: 'service-a' }, mcp_risk: 'READ_ONLY', mcp_action: 'read' });
 idpVector('with-unknown-claim', 'Any other claim the gateway does not know is ignored in the same way.', { ...idpClaims, department: 'it' });
 idpVector('vs-does-not-save-an-expired-token', 'The claims change nothing about the checks: an expired token is rejected whatever else it carries.', { ...idpClaims, exp: 1000, vs: 'team-a-dev' });
 

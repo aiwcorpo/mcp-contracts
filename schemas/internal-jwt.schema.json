@@ -1,10 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Internal JWT claims (C2)",
-  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (unit tests and dev, CC-044), and kid not starting with 'dev-' unless the receiver is in dev mode, that is the devstack profile and allowTestKeys=true together (CC-137; allowTestKeys alone is not enough for dev-), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tool present and == params.name for tools/call, tool present for the broker resolve and for the authenticator calls of the gateway (GET /v1/authenticator, POST /v1/authenticator/verify, POST /v1/authenticator/invalidate-codes; CC-092, CC-128), tool absent for every other request (CC-038), service variant only for initialize, server/discover, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems, and only outside a session (stateless, CC-070): notifications/*, GET/DELETE on the MCP endpoint, subscriptions/listen and every other request of a session carry the user variant without tool. A tools/call retry with inputResponses (MRTR, MCP 2026-07-28) is an ordinary tools/call with a fresh token (CC-069). Any failure -> HTTP 401.",
+  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (unit tests and dev, CC-044), and kid not starting with 'dev-' unless the receiver is in dev mode, that is the devstack profile and allowTestKeys=true together (CC-137; allowTestKeys alone is not enough for dev-), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tool present and == params.name for tools/call, tool present for the broker resolve and for the authenticator calls of the gateway (GET /v1/authenticator, POST /v1/authenticator/verify, POST /v1/authenticator/invalidate-codes; CC-092, CC-128), tool absent for every other request (CC-038), service variant only for initialize, server/discover, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems, and only outside a session (stateless, CC-070): notifications/*, GET/DELETE on the MCP endpoint, subscriptions/listen and every other request of a session carry the user variant without tool. A tools/call retry with inputResponses (MRTR, MCP 2026-07-28) is an ordinary tools/call with a fresh token (CC-069). mcp_risk and mcp_action (CC-226) only when the receiver is the sidecar of an adapter, otherwise invalid_claims. Any failure -> HTTP 401.",
   "oneOf": [
     {
       "$ref": "#/$defs/UserClaims"
+    },
+    {
+      "$ref": "#/$defs/AdapterUserClaims"
     },
     {
       "$ref": "#/$defs/ServiceClaims"
@@ -68,11 +71,48 @@
     },
     "UserClaims": {
       "description": "Call on behalf of a user. The only variant accepted for tools/call and by the broker resolve and authenticator endpoints.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/Common"
+        },
+        {
+          "$ref": "#/$defs/UserBase"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "ServiceClaims": {
+      "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping and GET /mcp-manifest (CC-069, CC-070).",
       "allOf": [
         {
           "$ref": "#/$defs/Common"
         }
       ],
+      "type": "object",
+      "required": [
+        "iss",
+        "aud",
+        "sub",
+        "grp",
+        "rid",
+        "prv",
+        "iat",
+        "exp",
+        "jti"
+      ],
+      "properties": {
+        "sub": {
+          "const": "system:mcp-gateway"
+        },
+        "grp": {
+          "type": "array",
+          "maxItems": 0
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "UserBase": {
       "type": "object",
       "required": [
         "iss",
@@ -125,55 +165,102 @@
           "description": "Seconds since the last authentication at an MFA acr level. Absent means unknown.",
           "type": "integer",
           "minimum": 0
-        },
-        "rsk": {
-          "description": "Risk of the tool as the administrator classified it in the registry (CC-226). Only on a tools/call of a tool of a server in adapter mode (source adapter, CC-193), together with act and tool; the sidecar of the adapter uses it instead of the risk it guesses from the hints of the foreign server. Never on a native server: its receiver rejects the claim as invalid_claims like any claim outside the schema, so the gateway sends it to adapter sidecars only.",
-          "$ref": "common.schema.json#/$defs/Risk"
-        },
-        "act": {
-          "description": "Action of the tool as the administrator classified it (CC-226); present exactly with rsk.",
-          "$ref": "common.schema.json#/$defs/ToolAction"
         }
       },
-      "unevaluatedProperties": false,
-      "dependentRequired": {
-        "rsk": [
-          "act",
-          "tool"
-        ],
-        "act": [
-          "rsk"
-        ]
-      }
+      "description": "Claims shared by the user variant for every receiver (CC-038, CC-069)."
     },
-    "ServiceClaims": {
-      "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping and GET /mcp-manifest (CC-069, CC-070).",
+    "AdapterUserClaims": {
+      "description": "User variant for a receiver that is the sidecar of an adapter (CC-226, CC-193): the claims of UserClaims plus the classification of the administrator from the registry, as mcp_risk and mcp_action. Both come together, only with tool (a tools/call), and must fit each other (read for READ_ONLY, update or admin for UPDATE, delete or admin for DESTRUCTIVE). The gateway sends them only to a server that its configuration puts in adapter mode; the schema cannot tell the receiver, so the rule of the receiver is normative: a receiver that is not the sidecar of an adapter (a native server, the credential broker) rejects a token that carries mcp_risk or mcp_action as invalid_claims. The names are not act (RFC 8693, actor) on purpose.",
+      "type": "object",
       "allOf": [
         {
           "$ref": "#/$defs/Common"
-        }
-      ],
-      "type": "object",
-      "required": [
-        "iss",
-        "aud",
-        "sub",
-        "grp",
-        "rid",
-        "prv",
-        "iat",
-        "exp",
-        "jti"
-      ],
-      "properties": {
-        "sub": {
-          "const": "system:mcp-gateway"
         },
-        "grp": {
-          "type": "array",
-          "maxItems": 0
+        {
+          "$ref": "#/$defs/UserBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "mcp_risk",
+            "mcp_action",
+            "tool"
+          ],
+          "properties": {
+            "mcp_risk": {
+              "$ref": "common.schema.json#/$defs/Risk"
+            },
+            "mcp_action": {
+              "$ref": "common.schema.json#/$defs/ToolAction"
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mcp_risk": {
+                "const": "READ_ONLY"
+              }
+            },
+            "required": [
+              "mcp_risk"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mcp_action": {
+                "enum": [
+                  "read"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mcp_risk": {
+                "const": "UPDATE"
+              }
+            },
+            "required": [
+              "mcp_risk"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mcp_action": {
+                "enum": [
+                  "update",
+                  "admin"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mcp_risk": {
+                "const": "DESTRUCTIVE"
+              }
+            },
+            "required": [
+              "mcp_risk"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mcp_action": {
+                "enum": [
+                  "delete",
+                  "admin"
+                ]
+              }
+            }
+          }
         }
-      },
+      ],
       "unevaluatedProperties": false
     }
   }

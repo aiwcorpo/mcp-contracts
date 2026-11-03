@@ -29,6 +29,8 @@ const FITS = { READ_ONLY: ['read'], UPDATE: ['update', 'admin'], DESTRUCTIVE: ['
 const consistent = (risk, action) => FITS[risk]?.includes(action) === true;
 
 /** What a tool of an adapter is for callers: until it is classified and approved it is hidden and refused as tool_disabled. */
-export function adapterToolState({ classified }) {
-  return classified ? { listed: true } : { listed: false, errorCode: 'tool_disabled', auditReason: 'tool_disabled' };
+export function adapterToolState({ classified, risk = 'READ_ONLY' }) {
+  // CC-227, 6.3.1: a classification above READ_ONLY stored before the adapter became read only is not valid; the tool is as if it were
+  // not classified until an administrator approves it again as a read.
+  return classified && risk === 'READ_ONLY' ? { listed: true } : { listed: false, errorCode: 'tool_disabled', auditReason: 'tool_disabled' };
 }

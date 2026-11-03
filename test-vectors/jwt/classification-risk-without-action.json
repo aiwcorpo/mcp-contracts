@@ -1,6 +1,6 @@
 {
-  "description": "rsk without act: the two claims come together or not at all (CC-226); rejected as invalid_claims.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTUiLCJyc2siOiJSRUFEX09OTFkifQ.lbr6a6CCmZkRr0uZ1r3IhT-52K9m2eiTiiUlpY4hwQ2NNJUlHdWAyrQywjvCsfnIyAIX9KpWu74cMImuHyKVoA",
+  "description": "mcp_risk without mcp_action: the two claims come together or not at all (CC-226); rejected as invalid_claims.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTUiLCJtY3BfcmlzayI6IlJFQURfT05MWSJ9.nWYHTTtoEvdrVxnre9YeFg8NImcPGEQvJumHgwg4-rx50mOouwWymh35OUKH-NoMqBAV5uqNanRrVqhMUHgeOQ",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -23,7 +23,7 @@
     "iat": 1793016000,
     "exp": 1793016060,
     "jti": "0192d1b2-7c3a-7f00-9a11-000000000095",
-    "rsk": "READ_ONLY"
+    "mcp_risk": "READ_ONLY"
   },
   "verifier": {
     "issuer": "https://mcp-gateway.internal",
@@ -33,7 +33,8 @@
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
     "seenJtis": [],
-    "allowTestKeys": true
+    "allowTestKeys": true,
+    "receiverMode": "adapter"
   },
   "request": {
     "kind": "jsonrpc",

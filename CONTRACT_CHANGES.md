@@ -4007,6 +4007,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz:** nowa odpowiedź `400` w kontrakcie opisującym zachowanie, które już istnieje: **patch** albo **minor**, bez zmiany wdrożeń.
 - **Kogo dotyka:** ws-07 (test kontraktowy), ws-08 (generowany klient obsługuje `400` jako błąd ogólny).
 - **Rekomendacja:** przyjąć (1) jako patch/minor; (2) opisać w `description`, że BFF odrzuca znaki ukryte `400` (potwierdzone implementacją ws-07).
+- **Uwaga uczciwa (6.3.1):** odrzucanie przez BFF `reason` z ukrytymi znakami zaostrza pole C12 według tabeli SemVer; wydane bez osobnego wyjątku, bo opisuje zachowanie BFF, którego nikt jeszcze nie wdrożył.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0); zgłosił: ws-07/ws-08, 2026-11-03
 
 ## CC-211 | C8 | Odrzucenie tokenu przez broker: zdarzenie `authentication` czy zdarzenie operacji
@@ -4040,6 +4041,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz:** nowe wartości w zbiorze typów serwera: minor po stronie kontraktów, jeśli format pary w C4 jest opcjonalny; zmiana `PutSecretRequest` jest zależna od CC-114 i wspólna z CC-222 (Jira, Confluence).
 - **Kogo dotyka:** ws-04 (OpenSearch), ws-06 (broker: para jako sekret), ws-07/08 (formularz w portalu), ws-09 (`credential-type.cedar`, zakresy dla konta serwisowego), ws-10.
 - **Rekomendacja:** przyjąć część 1 (`user-secret` Basic) po CC-222, który wprowadza format pary w C4; część 2 (`service-account` Basic/ApiKey) odłożyć do realnej potrzeby klienta, bo kontrakt `service-account` już istnieje (CC-157).
+- **Poprawka w 6.3.1:** część 1 jest wykonalna z portalu dzięki `userSecretScheme` w C4 i C12 (patrz CC-222); OpenSearch na własnej instalacji jest objęty (`userSecretScheme: Basic`, `deployment: dc`).
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (tylko część 1: Basic jako `user-secret`, wspólny format pary z CC-222; część 2, Basic dla `service-account`, odłożona); zgłosił: ws-04, 2026-11-03
 
 ## CC-214 | C6/C7/Cedar | Typ zasobu `OpenSearch::Alias` dla `list_aliases` i `resolve_alias`
@@ -4097,6 +4099,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** (a) nowa wartość w liście: jak CC-218; (b) zmienia oczekiwane wyjście wszystkich istniejących wektorów CQL, czyli **major** (zmiana oczekiwania w istniejącym wektorze).
 - **Kogo dotyka:** ws-02 (starter), ws-04 (Confluence).
 - **Rekomendacja:** wariant (a): serwer wskazuje typ jawnie, istniejące wektory zostają.
+- **Uwaga (6.3.1):** serwer Confluence zostaje przy filtrowaniu typów po odpowiedzi jako obronie w głąb; stała klauzula zmniejsza tylko liczbę pustych okien.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (wariant b: stała klauzula `type = page` w rendererze CQL; wyjątek SemVer, patrz CHANGELOG 6.3.0); zgłosił: ws-04 Confluence, 2026-11-03
 
 ## CC-220 | C7/entity-builder | Typy zasobów `Jira::Board` i `Jira::Sprint` (Jira Software, `/rest/agile/1.0`)
@@ -4126,6 +4129,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** nowe wartości i opcjonalne pola: minor.
 - **Kogo dotyka:** ws-03/ws-06 (broker), ws-04 (Jira, Confluence, OpenSearch), ws-05/ws-07/ws-08 (portal: formularz pary), ws-00, ws-02.
 - **Rekomendacja:** przyjąć warstwę kontraktową (pkt 1 do 3) w tym wydaniu, bo CC-213 potrzebuje tego samego formatu pary; obsługa Cloud w serwerach zostaje poza zakresem do decyzji W-7.
+- **Poprawka w 6.3.1 (przegląd 6.3.0, W4, W5):** decyzję, kiedy portal pyta o login, niesie `SystemInfo.userSecretScheme` (`Bearer` albo `Basic`) i to samo pole w C12 `CatalogCredential`, a nie `deployment` (OpenSearch klienta to `dc` i też `Basic`). `username` jest `writeOnly`, nigdy nie jest logowany ani zwracany, a wzorzec odrzuca też C1, bidi i zero-width. Bez `username` dla systemu `Basic` i z `username` dla systemu `Bearer` to `400 invalid_request`. Przykład `resolve` ze schematem `Basic` dla `user-secret`.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (tylko warstwa kontraktu: Basic jako `user-secret`, format pary w C4, `deployment` dc/cloud; obsługa Cloud w serwerach odłożona, W-7); zgłosił: ws-04, 2026-11-03
 
 ## CC-223 | C5/C10/README | Limit otwartych strumieni na instancję gatewaya i `503`
@@ -4146,6 +4150,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** nowa odpowiedź w kontrakcie opisującym zachowanie, które już istnieje: minor.
 - **Kogo dotyka:** ws-05, ws-07 (BFF mapuje `503` katalogu), ws-08.
 - **Rekomendacja:** przyjąć; odpowiedź jest zgodna z CC-194 i CC-199, a alternatywa (pusty katalog) ukrywałaby wyłączone narzędzia.
+- **Uzupełnienie w 6.3.1:** zdanie w README i wektor `kill-switch/store-unreadable-catalog`.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0); zgłosił: ws-05, 2026-11-03
 
 ## CC-225 | C5/README | `tools/list` z `cursor: null`
@@ -4166,7 +4171,9 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** nowe opcjonalne claimy: minor.
 - **Kogo dotyka:** ws-05 (gateway), ws-02 (starter), ws-13 (adapter), ws-09 (grupy Cedar po stronie sidecara).
 - **Rekomendacja:** przyjąć w wydaniu po przeglądzie bezpieczeństwa wariantu użytkownika (nowy claim w tokenie); nie blokuje reszty pakietu, a obecna druga bariera działa.
-- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (po przeglądzie bezpieczeństwa); zgłosił: ws-13, 2026-11-03
+- **Poprawka w 6.3.1 (przegląd 6.3.0, W1, W7):** 6.3.0 dodało `rsk` i `act` do wspólnego wariantu użytkownika, więc każdy odbiorca przyjmowałby claim, a `act` koliduje z RFC 8693. W 6.3.1 claimy nazywają się `mcp_risk` i `mcp_action`, mają osobny wariant schematu `AdapterUserClaims` (para zgodna, tylko z `tool`), a reguła odbiorcy mówi, że tylko sidecar adaptera je przyjmuje; serwer natywny i broker odrzucają token jako `invalid_claims`. Wektory: `jwt/valid-adapter-classification`, `classification-at-native-server`, `classification-at-broker`, `classification-pair-does-not-fit`, `idp-token-claims/with-classification-claims`. Zmiana nazw i zawężenie względem 6.3.0 to wyjątek SemVer (6.3.0 nie był wypchnięty ani wdrożony).
+- **Uwaga dla sidecara:** po CC-226 i CC-227 lokalna druga bariera spada do klasyfikacji administratora; sidecar powinien logować i liczyć przypadki, w których `mcp_risk` jest niższe niż ryzyko z podpowiedzi obcego serwera.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0; po przeglądzie bezpieczeństwa 2026-11-03 ograniczone do sidecara adaptera i przemianowane w 6.3.1); zgłosił: ws-13, 2026-11-03
 
 ## CC-227 | C5/C10/README | Adapter tylko do odczytu: `approve` klasyfikuje wpis adaptera wyłącznie jako `READ_ONLY`
 
@@ -4175,6 +4182,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** zaostrzenie walidacji kanału adaptera: według tabeli major. Wyjątek zatwierdzony przez człowieka (2026-11-03, wzór 5.1.0 i 6.2.0), bo kanał adaptera (CC-206) nie jest wdrożony.
 - **Kogo dotyka:** ws-05 (gateway), ws-07/ws-08 (portal: dialog klasyfikacji oferuje tylko odczyt dla adaptera), ws-13 (adapter), ws-10.
 - **Rekomendacja:** przyjąć.
+- **Poprawka w 6.3.1 (przegląd 6.3.0, W6):** uzasadnienie wyjątku: kanał adaptera jest w gatewayu od 6.2.0, ale nie działa na żadnym stosie z użytkownikami. Klasyfikacja `UPDATE` albo `DESTRUCTIVE` zapisana wcześniej traci ważność: wpis jest jak niesklasyfikowany (ukryty, `tool_disabled`) do ponownego `approve` jako `READ_ONLY` (wektor `registry-approval/stored-update-classification-is-hidden`). Opisy `ApproveRequest.risk` i `approveAdminTool` uzupełnione.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0, wyjątek SemVer)
 
 ## CC-228 | C5/README | `list_changed` po zmianie paczki polityk bez gwarancji 5 s
@@ -4184,4 +4192,5 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** doprecyzowanie opisu: patch.
 - **Kogo dotyka:** ws-05, ws-10 (scenariusz zmiany paczki: nie zakładać 5 s).
 - **Rekomendacja:** przyjąć.
+- **Uwaga uczciwa (6.3.1):** to osłabienie obietnicy 5 s z 6.0.0 i 6.2.0, na której mógł się opierać ws-10; opisane w CHANGELOG, nie tylko jako doprecyzowanie.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0)

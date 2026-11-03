@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 6.3.0
+  version: 6.3.1
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -1599,7 +1599,7 @@ paths:
       operationId: approveAdminTool
       summary: Approve a pending tool definition (proxy to C5). The manual way to accept a change made outside a deployment (CC-133).
       description: |
-        Plain approve is unchanged. An entry of an adapter (source adapter, CC-193) is approved together with its classification: the body then carries `risk` and `action` (required for such an entry, forbidden for any other: 422 `classification_required` or `classification_not_allowed`), and the same fresh MFA is required when the classification lowers one given earlier. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
+        Plain approve is unchanged. An entry of an adapter (source adapter, CC-193) is approved together with its classification: the body then carries `risk` and `action` (required for such an entry, forbidden for any other: 422 `classification_required` or `classification_not_allowed`; an adapter is read only since 6.3.0, so `risk` other than `READ_ONLY` is also 422 `classification_not_allowed`, CC-227), and the same fresh MFA is required when the classification lowers one given earlier. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
       security:
         - session: []
           csrf: []
@@ -2079,6 +2079,14 @@ components:
             $ref: '../schemas/common.schema.json#/$defs/CredentialType'
         defaultType:
           $ref: '../schemas/common.schema.json#/$defs/CredentialType'
+        userSecretScheme:
+          description: Scheme of `user-secret` for the system (C4 `SystemInfo.userSecretScheme`, CC-222). `Basic`, the form of `add_secret` has the field of the login (`username`) next to the secret; `Bearer` or absent, one token (the contract before 6.3.1 had only this).
+          type: string
+          enum: [Bearer, Basic]
+        deployment:
+          description: Kind of installation (C4 `SystemInfo.deployment`, CC-222), information only; it does not decide about the field of the login.
+          type: string
+          enum: [dc, cloud]
       additionalProperties: false
     ConnectErrorCode:
       type: string

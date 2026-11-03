@@ -1,0 +1,26 @@
+{
+  "description": "A token of the IdP (after a token exchange, for example) that carries act, mcp_risk and mcp_action: ignored like any claim the gateway does not know, never copied to the internal JWT (CC-226). The classification comes only from the registry.",
+  "input": {
+    "claims": {
+      "iss": "https://idp.example/realms/corp",
+      "aud": "mcp-gateway",
+      "sub": "user-a",
+      "exp": 4102444800,
+      "iat": 4102444700,
+      "act": {
+        "sub": "service-a"
+      },
+      "mcp_risk": "READ_ONLY",
+      "mcp_action": "read"
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "ignoredClaims": [
+      "act",
+      "mcp_action",
+      "mcp_risk"
+    ],
+    "copiedToInternalJwt": []
+  }
+}

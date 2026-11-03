@@ -1,0 +1,51 @@
+{
+  "description": "READ_ONLY with delete: risk and action must fit each other as in approveTool (CC-207, CC-226); rejected as invalid_claims.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTkiLCJtY3BfcmlzayI6IlJFQURfT05MWSIsIm1jcF9hY3Rpb24iOiJkZWxldGUifQ.Z0-uCp2RktUCvgBdn8X1CcreHu0U9lQc_JZ3tiZ1c0TWifCOUlaPmkyrd98fIYFv2PVOECJU-hQkDrPyH53Y_g",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-jira",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "usr": "jkowalski",
+    "grp": [
+      "mcp-jira-read",
+      "mcp-jira-write",
+      "mcp-jira-proj-ABC"
+    ],
+    "azp": "claude-code",
+    "tool": "get_issue",
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "prv": "20261026120000-a1b2c3d",
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000099",
+    "mcp_risk": "READ_ONLY",
+    "mcp_action": "delete"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-jira",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true,
+    "receiverMode": "adapter"
+  },
+  "request": {
+    "kind": "jsonrpc",
+    "method": "tools/call",
+    "toolName": "get_issue",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+  },
+  "expected": {
+    "valid": false,
+    "httpStatus": 401,
+    "reason": "invalid_claims"
+  }
+}

@@ -30,6 +30,8 @@ export function killSwitchDecision({ switches, tool, event, storeReadable = true
     if (isSwitchedOff(switches, tool)) return { allowed: false, errorCode: 'tool_disabled', auditReason: 'kill_switch' };
     return { allowed: true };
   }
+  // CC-224: the catalog is computed with the state of the switches; an unreadable state is a 503, never a catalog that shows a switched tool.
+  if (event === 'catalog') return storeReadable ? { status: 200 } : { status: 503, errorCode: 'upstream_unavailable', retryAfter: true };
   if (event === 'list') return { listed: storeReadable && !isSwitchedOff(switches, tool) };
   const { serverId, tool: name } = split(tool);
   if (event === 'lift-tool') return { switches: switches.filter((s) => !(s.scope === 'tool' && s.serverId === serverId && s.tool === name)) };

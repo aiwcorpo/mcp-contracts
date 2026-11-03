@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 6.3.0
+  version: 6.3.1
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -1678,7 +1678,7 @@ paths:
       operationId: approveAdminTool
       summary: Approve a pending tool definition (proxy to C5). The manual way to accept a change made outside a deployment (CC-133).
       description: |
-        Plain approve is unchanged. An entry of an adapter (source adapter, CC-193) is approved together with its classification: the body then carries `risk` and `action` (required for such an entry, forbidden for any other: 422 `classification_required` or `classification_not_allowed`), and the same fresh MFA is required when the classification lowers one given earlier. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
+        Plain approve is unchanged. An entry of an adapter (source adapter, CC-193) is approved together with its classification: the body then carries `risk` and `action` (required for such an entry, forbidden for any other: 422 `classification_required` or `classification_not_allowed`; an adapter is read only since 6.3.0, so `risk` other than `READ_ONLY` is also 422 `classification_not_allowed`, CC-227), and the same fresh MFA is required when the classification lowers one given earlier. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
       security:
         - session: []
           csrf: []
@@ -2189,6 +2189,18 @@ components:
             $ref: "#/components/schemas/CredentialType"
         defaultType:
           $ref: "#/components/schemas/CredentialType"
+        userSecretScheme:
+          description: Scheme of `user-secret` for the system (C4 `SystemInfo.userSecretScheme`, CC-222). `Basic`, the form of `add_secret` has the field of the login (`username`) next to the secret; `Bearer` or absent, one token (the contract before 6.3.1 had only this).
+          type: string
+          enum:
+            - Bearer
+            - Basic
+        deployment:
+          description: Kind of installation (C4 `SystemInfo.deployment`, CC-222), information only; it does not decide about the field of the login.
+          type: string
+          enum:
+            - dc
+            - cloud
       additionalProperties: false
     ConnectErrorCode:
       type: string
@@ -2560,8 +2572,9 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          pattern: ^[^:\u0000-\u001f\u007f]+$
-          description: Login of the user in the target system, only for a system that takes `user-secret` as Basic (Jira or Confluence Cloud with `email`, OpenSearch with a login; CC-222). No `:` (RFC 7617) and no control characters. Absent for a single token. Together with `secret` it is one secret of the connection.
+          writeOnly: true
+          pattern: ^[^:\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]+$
+          description: Login of the user in the target system, for a system whose `userSecretScheme` is `Basic` (Jira or Confluence Cloud with the e-mail, an OpenSearch installation of the customer with its own accounts; CC-222). No `:` (RFC 7617), no C0 or C1 control characters, no line or paragraph separators, no bidi controls and no zero-width characters (the hygiene rules of CC-094). Absent for a single token. Together with `secret` it is one secret of the connection, kept where the broker keeps every `user-secret`, with the same policy. Never logged, never returned (the connection shows only `backendUser` from whoami).
         expiresAt:
           $ref: "#/components/schemas/Timestamp"
       additionalProperties: false
@@ -3070,10 +3083,10 @@ components:
           description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
         risk:
           $ref: "#/components/schemas/Risk"
-          description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk; forbidden for any other entry (422 manifest_rejected, reason classification_not_allowed). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
+          description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk, and for such an entry only READ_ONLY is accepted (an adapter is read only, CC-227, any other value is 422 manifest_rejected, reason classification_not_allowed); forbidden for any other entry (the same 422). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
         action:
           $ref: "#/components/schemas/ToolAction"
-          description: Cedar action given by the administrator together with risk (CC-193); required and forbidden under the same conditions as risk.
+          description: Cedar action given by the administrator together with risk (CC-193); required and forbidden under the same conditions as risk; for an adapter it fits READ_ONLY, so it is read.
       additionalProperties: false
     ManifestRejected:
       type: object

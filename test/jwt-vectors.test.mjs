@@ -37,6 +37,8 @@ async function verify(vector) {
     return 'bad_signature';
   }
   if (!validateClaims(claims)) return 'invalid_claims';
+  // CC-226: the schema cannot tell the receiver; only the sidecar of an adapter accepts the classification claims.
+  if (('mcp_risk' in claims || 'mcp_action' in claims) && verifier.receiverMode !== 'adapter') return 'invalid_claims';
   if (claims.iss !== verifier.issuer) return 'wrong_issuer';
   if (claims.aud !== verifier.audience) return 'wrong_audience';
   const now = Date.parse(verifier.now) / 1000;

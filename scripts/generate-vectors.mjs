@@ -722,10 +722,19 @@ audit('server-authentication-denied-replay-store-unavailable', 'The replay store
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication',
   decision: 'deny', reason: 'replay_store_unavailable', outcome: 'denied', errorCode: 'upstream_unavailable',
 }, true);
-audit('broker-authentication-denied-replay-store-unavailable', 'The replay store of the broker is down.', {
+audit('broker-authentication-denied-replay-store-unavailable', 'The replay store of the broker is down: the same shape as the jwks_unavailable vector, without decision (CC-197, CC-212).', {
   ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authentication',
-  decision: 'deny', reason: 'replay_store_unavailable', outcome: 'denied', errorCode: 'upstream_unavailable',
+  reason: 'replay_store_unavailable', outcome: 'denied', errorCode: 'upstream_unavailable',
 }, true);
+for (const [suffix, reason, description] of [
+  ['bad-signature', 'bad_signature', 'The broker rejects the signature of the internal JWT: event authentication, no server, sub or tool, no event of the operation (CC-211).'],
+  ['expired', 'expired', 'The broker rejects an expired internal JWT: the same shape as for a server (CC-211).'],
+  ['replayed-jti', 'replayed_jti', 'The broker rejects a replayed jti: event authentication, outcome denied (CC-211).'],
+]) {
+  audit(`broker-authentication-denied-${suffix}`, description, {
+    ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authentication', reason, outcome: 'denied',
+  }, true);
+}
 audit('server-resource-denied', 'Server denied a resolved resource (Restricted project).', {
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',

@@ -1,0 +1,14 @@
+{
+  "description": "The catalog of C5 cannot be computed without the state of the switches: 503 upstream_unavailable with Retry-After, not a catalog (CC-224).",
+  "input": {
+    "switches": [],
+    "tool": "jira__get_issue",
+    "event": "catalog",
+    "storeReadable": false
+  },
+  "expected": {
+    "status": 503,
+    "errorCode": "upstream_unavailable",
+    "retryAfter": true
+  }
+}

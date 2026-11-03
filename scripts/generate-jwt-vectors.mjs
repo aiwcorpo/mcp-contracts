@@ -283,15 +283,25 @@ await add('removed-vsc-claim', 'vsc (narrowing of a saved link) no longer exists
 await add('removed-vs-and-vsc-claims', 'A token of a 4.x gateway that went through a link: vs together with vsc; rejected as invalid_claims (CC-173).', {
   token: await sign(userClaims({ vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] }, jti: '0192d1b2-7c3a-7f00-9a11-000000000054' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
-await add('valid-adapter-classification', 'tools/call of a tool of an adapter server: the gateway adds the classification of the administrator from the registry as rsk and act (CC-226).', {
-  token: await sign(userClaims({ rsk: 'READ_ONLY', act: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000094' }), 'test-gateway-jwt-a'),
-  request: toolsCall('get_issue'), valid: true });
-await add('classification-risk-without-action', 'rsk without act: the two claims come together or not at all (CC-226); rejected as invalid_claims.', {
-  token: await sign(userClaims({ rsk: 'READ_ONLY', jti: '0192d1b2-7c3a-7f00-9a11-000000000095' }), 'test-gateway-jwt-a'),
-  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
-await add('classification-without-tool', 'rsk and act without tool: the classification belongs to a tools/call, so it needs the tool claim (CC-226); rejected as invalid_claims.', {
-  token: await sign(userClaims({ rsk: 'READ_ONLY', act: 'read', tool: undefined, jti: '0192d1b2-7c3a-7f00-9a11-000000000096' }), 'test-gateway-jwt-a'),
-  request: rpc('tools/list', USER_RID), valid: false, reason: 'invalid_claims' });
+const ADAPTER = { receiverMode: 'adapter' };
+await add('valid-adapter-classification', 'tools/call for the sidecar of an adapter: the gateway adds the classification of the administrator from the registry as mcp_risk and mcp_action (CC-226).', {
+  token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000094' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: ADAPTER, valid: true });
+await add('classification-at-native-server', 'The same token at a native server: only the sidecar of an adapter accepts mcp_risk and mcp_action, any other receiver rejects them as invalid_claims (CC-226).', {
+  token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000097' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: { receiverMode: 'native' }, valid: false, reason: 'invalid_claims' });
+await add('classification-at-broker', 'mcp_risk and mcp_action in a token for the credential broker: rejected as invalid_claims (CC-226).', {
+  token: await sign(userClaims({ aud: 'mcp-credential-broker', mcp_risk: 'READ_ONLY', mcp_action: 'read', jti: '0192d1b2-7c3a-7f00-9a11-000000000098' }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker', receiverMode: 'broker' }, valid: false, reason: 'invalid_claims' });
+await add('classification-risk-without-action', 'mcp_risk without mcp_action: the two claims come together or not at all (CC-226); rejected as invalid_claims.', {
+  token: await sign(userClaims({ mcp_risk: 'READ_ONLY', jti: '0192d1b2-7c3a-7f00-9a11-000000000095' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: ADAPTER, valid: false, reason: 'invalid_claims' });
+await add('classification-without-tool', 'mcp_risk and mcp_action without tool: the classification belongs to a tools/call, so it needs the tool claim (CC-226); rejected as invalid_claims.', {
+  token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'read', tool: undefined, jti: '0192d1b2-7c3a-7f00-9a11-000000000096' }), 'test-gateway-jwt-a'),
+  request: rpc('tools/list', USER_RID), verifierOverrides: ADAPTER, valid: false, reason: 'invalid_claims' });
+await add('classification-pair-does-not-fit', 'READ_ONLY with delete: risk and action must fit each other as in approveTool (CC-207, CC-226); rejected as invalid_claims.', {
+  token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'delete', jti: '0192d1b2-7c3a-7f00-9a11-000000000099' }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: ADAPTER, valid: false, reason: 'invalid_claims' });
 await add('service-variant-with-tool', 'Claims of the service variant plus a tool claim; matches neither variant.', {
   token: await sign(serviceClaims({ tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000034' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
