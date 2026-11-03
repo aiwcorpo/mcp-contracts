@@ -4,6 +4,22 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 6.2.1 - 2026-11-03
+
+Patch: tylko pakowanie i metadane, bez zmian w kontraktach (OpenAPI, schematy, Cedar, wektory bez zmian poza numerem `info.version`).
+
+- Licencja Apache-2.0: `LICENSE`, `NOTICE`, `<licenses>` w pomach, `license` w `package.json` (wcześniej `UNLICENSED`).
+- Publikacja: `distributionManagement` (Maven) i `publishConfig` (npm) na GitHub Packages organizacji `aiwcorpo`; workflow `.github/workflows/release.yml` (po tagu `vX.Y.Z`, SBOM CycloneDX). `"private": true` usunięte z `package.json`.
+- Paczka npm nie zawiera już kluczy prywatnych testów (`test-vectors/keys/*NOT-FOR-PRODUCTION*`); zostają w jarze `test-vectors` (scope test). Klucze publiczne i JWKS bez zmian.
+- `release/` nie jest śledzony w gicie (`.gitignore`); `npm run pack` pisze tam lokalnie.
+- `scripts/verify-all.sh` bez ścieżek Homebrew (JAVA_HOME, PATH, `java_home`, `brew --prefix`, `/usr/lib/jvm`, SDKMAN).
+- `SECURITY.md`, `CONTRIBUTING.md`, README: instalacja z GitHub Packages.
+
+### Zmiany względem 6.2.0 dla strumieni
+
+**ws-07, ws-08 (portal):** zależność `file:../../mcp-contracts/release/aiwcorpo-mcp-contracts-<wersja>.tgz` działa lokalnie, dopóki plik jest na dysku (katalog `release/` zostaje, poza gitem); na czystym checkoucie plik nie istnieje. Przejście: `@aiwcorpo/mcp-contracts@6.2.1` z GitHub Packages (`.npmrc` ze scope `@aiwcorpo`) albo lokalnie `npm run pack`. Zmiana sumy integralności w `package-lock.json` jest oczekiwana.
+**pozostałe:** zależność 6.2.1 w Mavenie jest opcjonalna (bajty kontraktów jak w 6.2.0).
+
 ## 6.2.0 - 2026-11-03
 
 Wyjątek SemVer (wzór: 5.1.0; README, "Wersjonowanie"): CC-207, poprawki po przeglądzie 6.1.0. Według tabeli są tu zmiany major: nowa wartość enum `gateway_timeout` w `BalancerError` (z 6.1.0), inny punkt odniesienia bezstanowego `list_changed`, nowy kod `422 classification_inconsistent`, węższa odpowiedź `200` kanału adaptera (`AdapterRegistryServer`), kolejność `403`, `400`, `422` w kanale adaptera, pole `removed` w referencji. Dotyczą kanału adaptera, `BalancerError` i bezstanowego `list_changed` z 6.0.0 i 6.1.0, których nikt nie wdrożył; człowiek zdecydował (2026-11-03), że wydanie to 6.2.0. Bajty `cedar/mcp.cedarschema` bez zmian.
