@@ -1,0 +1,12 @@
+{
+  "description": "The stateless variant opens its stream with subscriptions/listen: no session, the stream is bound to the filter of that request (CC-206).",
+  "kind": "stream-open",
+  "input": {
+    "variant": "stateless",
+    "accept": "text/event-stream",
+    "requestQuery": "systems=jira"
+  },
+  "expected": {
+    "status": "continue"
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "mappings": [
+    {
+      "name": "submitAdapterManifest 200 submitted",
+      "priority": 5,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/adapters/{serverId}"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "serverId": "mcp-jira",
+          "system": "jira",
+          "version": "0.3.0",
+          "tools": [
+            {
+              "name": "get_issue",
+              "resourceRefs": [],
+              "definition": {
+                "name": "get_issue",
+                "title": "Get issue",
+                "description": "Returns one Jira issue by key.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "issueKey": {
+                      "type": "string",
+                      "description": "Issue key, e.g. ABC-123",
+                      "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                      "maxLength": 32
+                    }
+                  },
+                  "required": [
+                    "issueKey"
+                  ],
+                  "additionalProperties": false
+                },
+                "annotations": {
+                  "readOnlyHint": true
+                }
+              },
+              "definitionHash": "sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7",
+              "status": "pending_approval",
+              "change": "new",
+              "source": "adapter",
+              "approvedInVersion": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "submitAdapterManifest 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/adapters/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "submitAdapterManifest 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/adapters/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "submitAdapterManifest 422 adapter_mode_mismatch",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/adapters/{serverId}",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=adapter_mode_mismatch($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "reason": "adapter_mode_mismatch",
+          "message": "mcp-jira is not served by an adapter"
+        }
+      }
+    }
+  ]
+}

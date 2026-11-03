@@ -51,8 +51,17 @@ public final class DefinitionHash {
     }
 
     static String hashOf(JsonNode manifest, JsonNode tool) {
-        return sha256(CanonicalJson.canonicalize(hashedObject(tool.get("definition"), tool, manifest.get("system").asText(),
+        // CC-206: for an adapter manifest the hash never covers risk and action, even when the entry carries the classification of the registry.
+        JsonNode entry = "adapter".equals(manifest.path("source").asText()) ? withoutClassification(tool) : tool;
+        return sha256(CanonicalJson.canonicalize(hashedObject(tool.get("definition"), entry, manifest.get("system").asText(),
                 manifest.get("credential"))));
+    }
+
+    private static JsonNode withoutClassification(JsonNode tool) {
+        ObjectNode copy = tool.deepCopy();
+        copy.remove("risk");
+        copy.remove("action");
+        return copy;
     }
 
     private static ObjectNode hashedObject(JsonNode definition, JsonNode entry, String system, JsonNode credential) {

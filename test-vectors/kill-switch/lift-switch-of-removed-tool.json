@@ -1,0 +1,17 @@
+{
+  "description": "A switch belongs to the address, not to the manifest: the switch of a tool that left the manifest can be lifted (204) like any other (CC-206).",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "removed_tool"
+      }
+    ],
+    "tool": "jira__removed_tool",
+    "event": "lift-tool"
+  },
+  "expected": {
+    "switches": []
+  }
+}

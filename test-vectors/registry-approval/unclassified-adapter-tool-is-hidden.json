@@ -1,0 +1,11 @@
+{
+  "description": "A tool of an adapter that is not classified and approved is hidden and refused as tool_disabled (fail-closed).",
+  "input": {
+    "classified": false
+  },
+  "expected": {
+    "listed": false,
+    "errorCode": "tool_disabled",
+    "auditReason": "tool_disabled"
+  }
+}

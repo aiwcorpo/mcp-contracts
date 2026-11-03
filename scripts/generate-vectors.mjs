@@ -240,7 +240,7 @@ manifest('valid-adapter', 'Manifest of an adapter (CC-193): source adapter, no r
 }
 {
   const m = adapterManifest();
-  m.tools[0].definitionHash = manifestEntryHash(m, { ...m.tools[0], risk: 'READ_ONLY', action: 'read' });
+  m.tools[0].definitionHash = definitionHash({ tool: m.tools[0].definition, manifestEntry: { risk: 'READ_ONLY', action: 'read', resourceRefs: [] }, server: { system: m.system, credential: m.credential } }).hash;
   manifest('invalid-adapter-hash-covers-classification', 'The hash of an adapter entry does not cover risk and action: a hash computed with them does not match (CC-193).', m, false, 'definition-hash-matches');
 }
 {
@@ -554,7 +554,7 @@ audit('gateway-kill-switch-refusal', 'A call of a switched tool: refused as tool
 }, true);
 audit('gateway-registry-adapter-tool-classified', 'An administrator approved a tool of an adapter and gave it a risk (CC-193); the event is the same as for any approval, with the new risk.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
-  reason: 'definition_approved', risk: 'UPDATE', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
+  reason: 'definition_approved', risk: 'UPDATE', action: 'update', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
 }, true);
 audit('broker-connection-secret-missing', 'The secret of a connection is gone from the secret store: the connection goes to error (CC-205).', {
   ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'connection_change',

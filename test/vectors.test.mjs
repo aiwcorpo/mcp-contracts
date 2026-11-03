@@ -16,6 +16,8 @@ import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sess
 import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 import { killSwitchDecision } from '../scripts/lib/kill-switch.mjs';
+import { submissionDecision } from '../scripts/lib/adapter-registry.mjs';
+import { adapterToolState, approveDecision } from '../scripts/lib/registry-approval.mjs';
 
 const ajv = createAjv();
 
@@ -531,8 +533,13 @@ test('the balancer answer after the failure of an instance has the fixed text (C
   const vectors = listJson('test-vectors', 'balancer-errors');
   assert.ok(vectors.length >= 1);
   for (const { name, data } of vectors) {
+    if (data.expected.balancerTriesNextInstance) {
+      assert.equal(data.expected.nonIdempotentRetry, false, `${name}: a request that was sent is never repeated (no non_idempotent)`);
+      continue;
+    }
     assert.ok(validate(data.expected.body), `${name}: ${formatErrors(validate.errors)}`);
-    assert.equal(data.expected.status, 502, name);
+    assert.ok([502, 504].includes(data.expected.status), name);
+    assert.equal(data.expected.body.error, data.expected.status === 502 ? 'bad_gateway' : 'gateway_timeout', name);
     assert.equal(data.expected.balancerRepeatsRequest, false, name);
   }
   assert.ok(!validate({ error: 'bad_gateway', message: 'The request was not processed.' }), 'the text is a constant');
@@ -557,4 +564,31 @@ test('an adapter manifest has no risk and no action, and its hash does not cover
     if (data.expected.valid) assert.deepEqual(violations, [], `${name}: ${formatErrors(validate.errors)}`);
     else assert.ok(violations.includes(data.expected.rule), `${name}: ${violations}`);
   }
+});
+
+test('adapter registry: channel, certificate, mode and what stays pending (CC-193, CC-206)', () => {
+  const vectors = listJson('test-vectors', 'adapter-registry');
+  assert.ok(vectors.length >= 10);
+  for (const { name, data } of vectors) assert.deepEqual(submissionDecision(data.input), data.expected, name);
+  for (const { name, data } of vectors.filter((v) => v.data.input.channel === 'adapter' && v.data.expected.status === 200)) {
+    assert.deepEqual(data.expected.approvedByCall, [], `${name}: nothing of an adapter is approved by a call`);
+  }
+});
+
+test('approval with a classification of an adapter tool (CC-193, CC-206)', () => {
+  const vectors = listJson('test-vectors', 'registry-approval');
+  const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
+  assert.deepEqual([...reasons].sort(), ['classification_not_allowed', 'classification_required', 'risk_lowered']);
+  for (const { name, data } of vectors) {
+    assert.deepEqual('entry' in data.input ? approveDecision(data.input) : adapterToolState(data.input), data.expected, name);
+  }
+});
+
+test('the hash of an adapter entry never covers risk and action, also when the entry carries the classification (CC-206)', () => {
+  const manifest = readJson('test-vectors', 'manifests', 'valid-adapter.json').manifest;
+  for (const tool of manifest.tools) {
+    assert.equal(manifestEntryHash(manifest, { ...tool, risk: 'UPDATE', action: 'update' }), tool.definitionHash, tool.name);
+  }
+  const starter = readJson('test-vectors', 'manifests', 'valid-jira.json').manifest;
+  assert.notEqual(manifestEntryHash(starter, { ...starter.tools[0], risk: 'DESTRUCTIVE' }), starter.tools[0].definitionHash, 'a starter entry hashes its risk');
 });

@@ -1,0 +1,17 @@
+{
+  "description": "The issuer decides: another iss is rejected whatever else the token carries.",
+  "input": {
+    "claims": {
+      "iss": "https://other.example/realms/corp",
+      "aud": "mcp-gateway",
+      "sub": "user-a",
+      "exp": 4102444800,
+      "iat": 4102444700
+    }
+  },
+  "expected": {
+    "accepted": false,
+    "reason": "wrong_issuer",
+    "ignoredClaims": []
+  }
+}

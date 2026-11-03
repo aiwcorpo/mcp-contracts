@@ -16,11 +16,16 @@ export function isSwitchedOff(switches, qualifiedTool) {
  * What a gateway instance does with a switched tool. `storeReadable` false is a gateway that cannot read the switches (fail-closed:
  * the call is refused as upstream_unavailable and nothing is listed). A switch is lifted only by its own DELETE: an approval, a
  * registration of a manifest and a lift of the other scope leave it as it is.
+ * The switch is a state of the tool like the others (CC-178, CC-206): it is looked at only for a user who may call the tool (`mayCall`) and
+ * whose filter leaves it visible (`inFilter`); everyone else gets not_found_or_denied and learns nothing (invariant 8). The unreadable store
+ * is the same refusal for everyone who gets that far.
  * events: call and confirm (the gate of a pending DESTRUCTIVE call is checked again before it runs) -> { allowed, errorCode, auditReason };
  * list (tools/list and the catalog) -> { listed }; approve, register -> { switches } after the event; lift-tool, lift-server -> { switches }.
  */
-export function killSwitchDecision({ switches, tool, event, storeReadable = true }) {
+export function killSwitchDecision({ switches, tool, event, storeReadable = true, mayCall = true, inFilter = true }) {
   if (event === 'call' || event === 'confirm') {
+    if (!mayCall) return { allowed: false, errorCode: 'not_found_or_denied', auditReason: 'not_granted' };
+    if (!inFilter) return { allowed: false, errorCode: 'not_found_or_denied', auditReason: 'filter_scope' };
     if (!storeReadable) return { allowed: false, errorCode: 'upstream_unavailable', auditReason: 'upstream_unavailable' };
     if (isSwitchedOff(switches, tool)) return { allowed: false, errorCode: 'tool_disabled', auditReason: 'kill_switch' };
     return { allowed: true };

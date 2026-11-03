@@ -1,0 +1,38 @@
+{
+  "description": "The usual registration is unchanged: a new READ_ONLY tool is approved by the call, a changed UPDATE tool is pending with source ci.",
+  "input": {
+    "serverId": "mcp-jira",
+    "serverMode": "starter",
+    "channel": "ci",
+    "cn": "mcp-registry-ci-mcp-jira",
+    "manifestSource": null,
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "status": 200,
+    "stored": true,
+    "approvedByCall": [
+      "get_issue"
+    ],
+    "pending": [
+      "update_issue"
+    ],
+    "pendingSource": "ci"
+  }
+}

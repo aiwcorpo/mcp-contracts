@@ -1,0 +1,20 @@
+{
+  "description": "A user who may not call a switched tool gets not_found_or_denied with not_granted: the switch is looked at only after authorization (CC-206).",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "call",
+    "mayCall": false
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "not_found_or_denied",
+    "auditReason": "not_granted"
+  }
+}

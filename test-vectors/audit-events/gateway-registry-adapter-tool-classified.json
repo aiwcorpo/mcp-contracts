@@ -15,6 +15,7 @@
     "tool": "update_issue",
     "reason": "definition_approved",
     "risk": "UPDATE",
+    "action": "update",
     "definitionHash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
     "outcome": "ok"
   }

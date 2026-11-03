@@ -1,0 +1,9 @@
+{
+  "description": "Once classified and approved the tool follows the usual rules.",
+  "input": {
+    "classified": true
+  },
+  "expected": {
+    "listed": true
+  }
+}

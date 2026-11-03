@@ -1,0 +1,20 @@
+{
+  "description": "An administrator approves a tool of an adapter and classifies it: 204, the classification is stored, audit definition_approved.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "UPDATE",
+      "action": "update"
+    }
+  },
+  "expected": {
+    "status": 204,
+    "classification": {
+      "risk": "UPDATE",
+      "action": "update"
+    },
+    "auditReason": "definition_approved"
+  }
+}

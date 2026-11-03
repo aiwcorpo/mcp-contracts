@@ -8,6 +8,8 @@ import { auditThrottle, issueCursor, listChangedNotification, listChangedSequenc
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
 import { idpTokenClaimsDecision, protectedResourceMetadata } from './lib/gateway-authentication.mjs';
 import { killSwitchDecision } from './lib/kill-switch.mjs';
+import { submissionDecision } from './lib/adapter-registry.mjs';
+import { adapterToolState, approveDecision } from './lib/registry-approval.mjs';
 
 const writer = (dir) => {
   rmSync(path('test-vectors', dir), { recursive: true, force: true });
@@ -176,6 +178,9 @@ callStateVector('tool-disabled', 'A tool that is disabled, pending approval, cha
 callStateVector('tool-disabled-cut-by-filter', 'The same tool under a filter that removes it: filter_scope first.', 'access=read', 'jira__create_issue', { ...up, toolEnabled: false });
 callStateVector('not-connected', 'A system without a connection of the account: credential_required (connectUrl is in the body).', '', 'gitlab__get_project', { ...up, connected: false });
 callStateVector('not-connected-cut-by-filter', 'The same call under a filter that removes it: not_found_or_denied, filter_scope.', 'systems=jira', 'gitlab__get_project', { ...up, connected: false });
+callStateVector('kill-switch-user-with-access', 'A tool switched off by an administrator, the user may call it and the filter leaves it: tool_disabled, audit reason kill_switch (CC-194).', '', 'jira__create_issue', { ...up, killSwitch: true });
+callStateVector('kill-switch-user-without-access', 'The same switch, but the user may not call the tool: not_found_or_denied with not_granted, never tool_disabled, which would tell that the tool exists (CC-206, invariant 8).', '', 'jira__create_issue', { ...up, killSwitch: true }, catalog.filter((t) => t.name !== 'jira__create_issue'));
+callStateVector('kill-switch-cut-by-filter', 'The same switch under a filter that removes the tool: filter_scope first.', 'access=read', 'jira__create_issue', { ...up, killSwitch: true });
 callStateVector('order-disabled-before-unavailable', 'Tool disabled and server down: tool_disabled.', '', 'jira__create_issue', { toolEnabled: false, serverAvailable: false, connected: true });
 callStateVector('order-unavailable-before-credential', 'Server down and no connection: upstream_unavailable.', '', 'gitlab__get_project', { toolEnabled: true, serverAvailable: false, connected: false });
 callStateVector('order-all-three', 'All three problems: tool_disabled.', '', 'gitlab__get_project', { toolEnabled: false, serverAvailable: false, connected: false });
@@ -495,6 +500,11 @@ sequenceVector('outside-filter', 'A change the filter of the session cuts is not
   { t: 0, tools: [gitlabRead] }, { t: 4, tools: [gitlabRead, jiraUpdate] }, { t: 4.2, tools: [gitlabRead] }]);
 sequenceVector('connection-change-is-silent', 'The account connected a system: the list is the same, so nothing is sent (CC-176).', '', [{ t: 0, tools: [jiraRead, gitlabRead] }, { t: 20, tools: [jiraRead, gitlabRead] }]);
 
+const statelessSequence = (name, description, query, snapshots) => sequenceVector(`stateless-${name}`, description, query, snapshots);
+statelessSequence('compared-with-the-list-at-open', 'Stateless variant (CC-206): with no earlier tools/list in the connection the first comparison is with the list at the time subscriptions/listen was opened (snapshot 0).', '', [
+  { t: 0, tools: [jiraRead] }, { t: 6, tools: [jiraRead, jiraUpdate] }]);
+statelessSequence('compared-with-the-last-list-read', 'Stateless variant (CC-206): the reference is the list of the last tools/list of the connection, here taken as snapshot 0 after a read at t = 4; a change before that read is not announced again.', '', [
+  { t: 4, tools: [jiraRead, jiraUpdate] }, { t: 9, tools: [jiraRead, jiraUpdate] }, { t: 12, tools: [jiraRead] }]);
 const streamVector = (name, description, input) => {
   filterOut(`stream-open-${name}`, { description, kind: 'stream-open', input, expected: streamOpenDecision(input) });
 };
@@ -505,11 +515,14 @@ streamVector('own-session-same-filter', 'A stream of the own session with the sa
 streamVector('own-session-other-filter', 'Another filter than the one of initialize: 404 and filter_mismatch, as for a POST (CC-184).', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: own });
 streamVector('foreign-session', 'A session of another user: 404 as for an unknown session, no filter_mismatch.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: { ...own, sub: 'user-b' } });
 streamVector('other-route', 'A session opened on /mcp used on /s/mcp-jira/mcp: 404 and filter_mismatch.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'systems=jira', route: '/s/mcp-jira/mcp', callerSub: 'user-a', session: own });
+streamVector('stateless-valid-filter', 'The stateless variant opens its stream with subscriptions/listen: no session, the stream is bound to the filter of that request (CC-206).', { variant: 'stateless', accept: 'text/event-stream', requestQuery: 'systems=jira' });
+streamVector('stateless-invalid-filter', 'A bad filter in subscriptions/listen is 400 invalid_filter, as everywhere; there is no session and no filter_mismatch.', { variant: 'stateless', accept: 'text/event-stream', requestQuery: 'system=jira' });
 streamVector('invalid-filter-syntax', 'A bad query is 400 invalid_filter before the session is read.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'system=jira', route: '/mcp', callerSub: 'user-a', session: own });
 
 // ---------- emergency switch (CC-194) ----------
 
 const switchOut = writer('kill-switch');
+const switchVectorFull = (name, description, input) => switchOut(name, { description, input, expected: killSwitchDecision(input) });
 const switchVector = (name, description, input) => {
   switchOut(name, { description, input, expected: killSwitchDecision(input) });
 };
@@ -528,7 +541,49 @@ switchVector('store-unreadable-list', 'and lists nothing.', { switches: [], tool
 switchVector('approval-does-not-lift', 'An approval of a pending definition leaves the switch on.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'approve' });
 switchVector('registration-does-not-lift', 'A new PUT of the manifest leaves the switch on.', { switches: [jiraTool, gitlabServer], tool: 'jira__update_issue', event: 'register' });
 switchVector('lift-tool-keeps-server-switch', 'Lifting the switch of a tool does not lift the switch of its server.', { switches: [{ scope: 'tool', serverId: 'mcp-gitlab', tool: 'get_project' }, gitlabServer], tool: 'gitlab__get_project', event: 'lift-tool' });
+switchVectorFull('call-user-without-access', 'A user who may not call a switched tool gets not_found_or_denied with not_granted: the switch is looked at only after authorization (CC-206).', { switches: [jiraTool], tool: 'jira__update_issue', event: 'call', mayCall: false });
+switchVectorFull('call-outside-filter', 'A switched tool the filter of the address leaves out: not_found_or_denied with filter_scope.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'call', inFilter: false });
+switchVectorFull('lift-switch-of-removed-tool', 'A switch belongs to the address, not to the manifest: the switch of a tool that left the manifest can be lifted (204) like any other (CC-206).', { switches: [{ scope: 'tool', serverId: 'mcp-jira', tool: 'removed_tool' }], tool: 'jira__removed_tool', event: 'lift-tool' });
 switchVector('lift-server', 'Lifting the switch of a server leaves the switches of single tools.', { switches: [jiraTool, { scope: 'server', serverId: 'mcp-jira' }], tool: 'jira__update_issue', event: 'lift-server' });
+
+// ---------- servers behind an adapter (CC-193, CC-206) ----------
+
+const adapterOut = writer('adapter-registry');
+const adapterVector = (name, description, input) => adapterOut(name, { description, input, expected: submissionDecision(input) });
+const toolsAfter = [{ name: 'get_issue', risk: 'READ_ONLY', state: 'new' }, { name: 'update_issue', risk: 'UPDATE', state: 'changed' }, { name: 'list_projects', risk: 'READ_ONLY', state: 'unchanged' }];
+adapterVector('adapter-submits', 'The adapter submits its manifest on its own channel: every new or changed tool is pending, with source adapter, a tool that looks like a read included. Nothing is approved by the call.',
+  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-wrong-cn', 'The certificate of another server (or of the pipeline) on the adapter channel: 403, nothing stored.',
+  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-registry-ci-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-cn-of-another-server', 'The adapter of mcp-gitlab cannot submit for mcp-jira: the CN is compared as a whole.',
+  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-gitlab', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-channel-server-not-in-adapter-mode', 'A server that gateway configuration does not serve through an adapter: 422 adapter_mode_mismatch.',
+  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-channel-manifest-without-source', 'A manifest without source adapter on the adapter channel: 422 adapter_mode_mismatch.',
+  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: null, tools: toolsAfter });
+adapterVector('ci-channel-for-adapter-server', 'The pipeline cannot register the manifest of a server that is in adapter mode: 422 adapter_mode_mismatch.',
+  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'ci', cn: 'mcp-registry-ci-mcp-jira', manifestSource: null, tools: toolsAfter });
+adapterVector('ci-channel-adapter-manifest', 'A manifest with source adapter sent by the pipeline: 422 adapter_mode_mismatch.',
+  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'ci', cn: 'mcp-registry-ci-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('ci-channel-starter-server', 'The usual registration is unchanged: a new READ_ONLY tool is approved by the call, a changed UPDATE tool is pending with source ci.',
+  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'ci', cn: 'mcp-registry-ci-mcp-jira', manifestSource: null, tools: toolsAfter });
+adapterVector('runtime-read-in-adapter-mode', 'A difference found when the gateway reads tools/list of a running server in adapter mode makes a pending entry with source adapter, never server: a later approve needs the classification, and the earlier one is not applied silently.',
+  { serverId: 'mcp-jira', serverMode: 'adapter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
+adapterVector('runtime-read-in-starter-mode', 'The same read for a server on the starter makes a pending entry with source server (CC-162).',
+  { serverId: 'mcp-jira', serverMode: 'starter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
+
+const approvalOut = writer('registry-approval');
+const approvalVector = (name, description, input) => approvalOut(name, { description, input, expected: approveDecision(input) });
+approvalVector('adapter-with-classification', 'An administrator approves a tool of an adapter and classifies it: 204, the classification is stored, audit definition_approved.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE', action: 'update' } });
+approvalVector('adapter-without-classification', 'Approval of a tool of an adapter without risk and action: 422 classification_required.', { entry: { source: 'adapter' }, body: {} });
+approvalVector('adapter-only-risk', 'risk without action is not a classification.', { entry: { source: 'adapter' }, body: { risk: 'UPDATE' } });
+approvalVector('adapter-lowering-without-accept', 'A classification lower than one given earlier needs acceptRiskLowering: 422 risk_lowered.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read' }, floor: 'UPDATE' });
+approvalVector('adapter-lowering-accepted', 'With acceptRiskLowering the lower classification is stored, audit risk_lowered_by_admin.', { entry: { source: 'adapter' }, body: { risk: 'READ_ONLY', action: 'read', acceptRiskLowering: true }, floor: 'UPDATE' });
+approvalVector('ci-entry-with-classification', 'risk or action for an entry that is not from an adapter: 422 classification_not_allowed.', { entry: { source: 'ci' }, body: { risk: 'UPDATE', action: 'update' } });
+approvalVector('server-entry-plain', 'A plain approval of an entry the running server presented is unchanged.', { entry: { source: 'server' }, body: {} });
+approvalVector('ci-entry-risk-lowered', 'The floor of CC-167 for an entry that is not from an adapter is unchanged.', { entry: { source: 'ci', riskLowered: true }, body: {} });
+approvalOut('unclassified-adapter-tool-is-hidden', { description: 'A tool of an adapter that is not classified and approved is hidden and refused as tool_disabled (fail-closed).', input: { classified: false }, expected: adapterToolState({ classified: false }) });
+approvalOut('classified-adapter-tool-is-listed', { description: 'Once classified and approved the tool follows the usual rules.', input: { classified: true }, expected: adapterToolState({ classified: true }) });
 
 // ---------- failure of an instance behind the balancer (CC-204) ----------
 
@@ -555,5 +610,25 @@ idpVector('plain', 'A valid token of the IdP.', idpClaims);
 idpVector('with-vs-and-vsc', 'A valid token that carries vs and vsc: the claims are ignored, the token is accepted. Nothing reads them and the gateway builds the internal JWT only from the fields it knows, so they never reach a server or the broker (the internal JWT refuses them, CC-173).', { ...idpClaims, vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] } });
 idpVector('with-unknown-claim', 'Any other claim the gateway does not know is ignored in the same way.', { ...idpClaims, department: 'it' });
 idpVector('vs-does-not-save-an-expired-token', 'The claims change nothing about the checks: an expired token is rejected whatever else it carries.', { ...idpClaims, exp: 1000, vs: 'team-a-dev' });
+
+balancerOut('instance-did-not-answer-in-time', {
+  description: 'An instance does not answer within the read timeout of the balancer: 504 with the same fixed text (CC-206). The outcome of the call is not known either.',
+  input: { event: 'instance-timed-out', method: 'POST', path: '/mcp', toolRisk: 'UPDATE' },
+  expected: {
+    status: 504,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' },
+    body: { error: 'gateway_timeout', message: 'The request may or may not have been processed. Check the result before repeating a write.' },
+    balancerRepeatsRequest: false,
+  },
+});
+balancerOut('instance-down-before-connect', {
+  description: 'An instance that is down when the connection is made: nothing was sent, so the balancer may try the next instance (proxy_next_upstream error timeout). The client sees the answer of the other instance, not a 502.',
+  input: { event: 'connect-failed', method: 'POST', path: '/mcp', toolRisk: 'UPDATE' },
+  expected: { balancerTriesNextInstance: true, status: null, nonIdempotentRetry: false },
+});
+
+idpVector('wrong-issuer', 'The issuer decides: another iss is rejected whatever else the token carries.', { ...idpClaims, iss: 'https://other.example/realms/corp' });
+idpVector('wrong-audience', 'The audience decides: aud other than mcp-gateway is rejected.', { ...idpClaims, aud: 'mcp-portal-bff' });
+idpVector('without-sub', 'sub is one of the four: a token without it is rejected as invalid_claims.', (({ sub, ...rest }) => rest)(idpClaims));
 
 console.log('endpoint vectors written');

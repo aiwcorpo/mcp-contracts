@@ -29,7 +29,8 @@ public final class PolicyLintCli {
         System.exit(run(args, System.out, System.err));
     }
 
-    static int run(String[] args, PrintStream out, PrintStream err) {
+    /** The command without {@code System.exit}: the exit code is the return value (0 clean, 1 violations, 2 usage, parse or validation failure). */
+    public static int run(String[] args, PrintStream out, PrintStream err) {
         boolean overrides = false;
         Path schemaFile = null;
         List<Path> inputs = new ArrayList<>();

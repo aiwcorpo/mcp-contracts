@@ -1,0 +1,21 @@
+{
+  "description": "An instance does not answer within the read timeout of the balancer: 504 with the same fixed text (CC-206). The outcome of the call is not known either.",
+  "input": {
+    "event": "instance-timed-out",
+    "method": "POST",
+    "path": "/mcp",
+    "toolRisk": "UPDATE"
+  },
+  "expected": {
+    "status": 504,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff"
+    },
+    "body": {
+      "error": "gateway_timeout",
+      "message": "The request may or may not have been processed. Check the result before repeating a write."
+    },
+    "balancerRepeatsRequest": false
+  }
+}

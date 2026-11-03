@@ -102,14 +102,20 @@ export function keyDecision({ independentReason = null, keyCache, kid, refresh =
 }
 
 /**
- * CC-201: the claims of the token of the IdP (C1) that the gateway looks at are iss, aud, sub and exp. Any other claim, vs and vsc
+ * CC-201: the claims of the token of the IdP (C1) that the gateway decides on are iss, aud, sub and exp. Any other claim, vs and vsc
  * (removed from the platform by CC-173) among them, is ignored: the token is accepted or rejected for the four, never for the rest.
  * The gateway builds the internal JWT (C2) from the fields it knows and copies no claim of the IdP token, so the ignored claims
- * do not reach a server or the broker. `now` is in epoch seconds.
+ * do not reach a server or the broker. `now` is in epoch seconds. The reasons are those of C1 (CC-120).
  */
-export function idpTokenClaimsDecision({ claims, now = 4102444750 }) {
+export function idpTokenClaimsDecision({ claims, now = 4102444750, issuer = 'https://idp.example/realms/corp', audience = 'mcp-gateway' }) {
   const known = ['iss', 'aud', 'sub', 'exp', 'iat', 'nbf', 'jti', 'azp', 'scope', 'groups', 'preferred_username'];
-  const ignored = Object.keys(claims).filter((name) => !known.includes(name)).sort();
-  if (typeof claims.exp !== 'number' || claims.exp <= now) return { accepted: false, reason: 'expired', ignoredClaims: ignored };
-  return { accepted: true, ignoredClaims: ignored, copiedToInternalJwt: [] };
+  const ignoredClaims = Object.keys(claims).filter((name) => !known.includes(name)).sort();
+  const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  let reason = null;
+  if (claims.iss !== issuer) reason = 'wrong_issuer';
+  else if (!audiences.includes(audience)) reason = 'wrong_audience';
+  else if (typeof claims.exp !== 'number' || claims.exp <= now) reason = 'expired';
+  else if (typeof claims.sub !== 'string' || claims.sub === '') reason = 'invalid_claims';
+  if (reason !== null) return { accepted: false, reason, ignoredClaims };
+  return { accepted: true, ignoredClaims, copiedToInternalJwt: [] };
 }

@@ -1,0 +1,32 @@
+{
+  "description": "The adapter of mcp-gitlab cannot submit for mcp-jira: the CN is compared as a whole.",
+  "input": {
+    "serverId": "mcp-jira",
+    "serverMode": "adapter",
+    "channel": "adapter",
+    "cn": "mcp-adapter-mcp-gitlab",
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "status": 403,
+    "audit": "client_certificate_rejected",
+    "stored": false
+  }
+}

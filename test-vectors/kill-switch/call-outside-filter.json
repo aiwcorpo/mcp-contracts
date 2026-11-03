@@ -1,0 +1,20 @@
+{
+  "description": "A switched tool the filter of the address leaves out: not_found_or_denied with filter_scope.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "call",
+    "inFilter": false
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "not_found_or_denied",
+    "auditReason": "filter_scope"
+  }
+}

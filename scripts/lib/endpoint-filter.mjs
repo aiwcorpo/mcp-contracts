@@ -146,7 +146,18 @@ export function sessionDecision({ requestQuery, route, callerSub, session }) {
  * variant opens its stream with subscriptions/listen, a POST). With both the checks of a request of a session follow in the order
  * of CC-184 (sessionDecision); `continue` means the stream is opened for that session and filter.
  */
-export function streamOpenDecision({ sessionId, accept, ...session }) {
+export function streamOpenDecision({ variant = 'session', sessionId, accept, ...session }) {
+  // CC-206: the stateless variant has no session. The stream is opened by subscriptions/listen (a POST) and bound to the filter of that
+  // request: token first, then the syntax of the filter (400); there is nothing to compare with, so no filter_mismatch.
+  if (variant === 'stateless') {
+    try {
+      parseFilter(session.requestQuery);
+    } catch (e) {
+      if (!(e instanceof InvalidFilter)) throw e;
+      return { status: 400, error: 'invalid_request', reason: 'invalid_filter', sessionRead: false };
+    }
+    return { status: 'continue' };
+  }
   if (!sessionId || !/(^|,)\s*text\/event-stream\s*(;|,|$)/u.test(accept ?? '')) {
     return { status: 405, headers: { Allow: 'POST, DELETE, GET' } };
   }
@@ -170,7 +181,10 @@ export function callDecision(filter, tool, mayCall, state = null) {
   const denied = (errorCode, auditReason) => ({ outcome: 'denied', errorCode, auditReason });
   let decision;
   if (visible) {
-    if (!s.toolEnabled) decision = denied('tool_disabled', 'tool_disabled');
+    // CC-206: the emergency switch is a state of the tool like the others: it comes after mayCall and the filter, so that a user who may
+    // not call the tool, or whose filter cuts it, gets not_found_or_denied and not tool_disabled.
+    if (s.killSwitch) decision = denied('tool_disabled', 'kill_switch');
+    else if (!s.toolEnabled) decision = denied('tool_disabled', 'tool_disabled');
     else if (!s.serverAvailable) decision = denied('upstream_unavailable', 'upstream_unavailable');
     else if (!s.connected) decision = denied('credential_required', 'credential_required');
     else decision = { outcome: 'allowed' };

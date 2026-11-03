@@ -1,0 +1,15 @@
+{
+  "description": "A bad filter in subscriptions/listen is 400 invalid_filter, as everywhere; there is no session and no filter_mismatch.",
+  "kind": "stream-open",
+  "input": {
+    "variant": "stateless",
+    "accept": "text/event-stream",
+    "requestQuery": "system=jira"
+  },
+  "expected": {
+    "status": 400,
+    "error": "invalid_request",
+    "reason": "invalid_filter",
+    "sessionRead": false
+  }
+}

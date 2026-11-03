@@ -1,0 +1,37 @@
+{
+  "description": "The adapter submits its manifest on its own channel: every new or changed tool is pending, with source adapter, a tool that looks like a read included. Nothing is approved by the call.",
+  "input": {
+    "serverId": "mcp-jira",
+    "serverMode": "adapter",
+    "channel": "adapter",
+    "cn": "mcp-adapter-mcp-jira",
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "status": 200,
+    "stored": true,
+    "approvedByCall": [],
+    "pending": [
+      "get_issue",
+      "update_issue"
+    ],
+    "pendingSource": "adapter"
+  }
+}

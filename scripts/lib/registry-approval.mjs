@@ -1,0 +1,26 @@
+// Reference of approveTool for the classification of adapter tools (CC-193, CC-206). Used by test-vectors/registry-approval.
+
+const RISK_ORDER = { READ_ONLY: 0, UPDATE: 1, DESTRUCTIVE: 2 };
+
+/**
+ * `entry` is the pending entry: { source: ci | server | adapter, riskLowered? }. `body` is the ApproveRequest without definitionHash:
+ * { risk?, action?, acceptRiskLowering? }. `floor` is the highest classification given earlier to the tool (null when none).
+ * Returns the answer and, on success, the classification stored and the audit reason.
+ */
+export function approveDecision({ entry, body = {}, floor = null }) {
+  const classifies = body.risk !== undefined || body.action !== undefined;
+  if (entry.source === 'adapter') {
+    if (body.risk === undefined || body.action === undefined) return { status: 422, reason: 'classification_required' };
+    if (floor !== null && RISK_ORDER[body.risk] < RISK_ORDER[floor] && body.acceptRiskLowering !== true) return { status: 422, reason: 'risk_lowered' };
+    const lowered = floor !== null && RISK_ORDER[body.risk] < RISK_ORDER[floor];
+    return { status: 204, classification: { risk: body.risk, action: body.action }, auditReason: lowered ? 'risk_lowered_by_admin' : 'definition_approved' };
+  }
+  if (classifies) return { status: 422, reason: 'classification_not_allowed' };
+  if (entry.riskLowered && body.acceptRiskLowering !== true) return { status: 422, reason: 'risk_lowered' };
+  return { status: 204, auditReason: entry.riskLowered ? 'risk_lowered_by_admin' : 'definition_approved' };
+}
+
+/** What a tool of an adapter is for callers: until it is classified and approved it is hidden and refused as tool_disabled. */
+export function adapterToolState({ classified }) {
+  return classified ? { listed: true } : { listed: false, errorCode: 'tool_disabled', auditReason: 'tool_disabled' };
+}

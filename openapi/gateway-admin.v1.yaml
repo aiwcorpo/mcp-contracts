@@ -280,6 +280,8 @@ paths:
         replaced: the server is reported with enabled false and its tools are refused as tool_disabled until a manifest
         that passes is registered. The binding serverId -> system/internalUrl comes only from gateway configuration; a
         manifest that disagrees is rejected with 422 and nothing is stored.
+
+        **Adapter mode (CC-206).** For a `serverId` that gateway configuration serves through an adapter this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`.
       security:
         - mtls: []
       requestBody:
@@ -503,6 +505,133 @@ paths:
                     error: manifest_rejected
                     reason: credential_type_mismatch
                     message: the gateway asks the broker for token-exchange for opensearch, the manifest accepts user-secret
+  /admin/v1/registry/adapters/{serverId}:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    put:
+      tags: [registry]
+      operationId: submitAdapterManifest
+      x-allowed-client-cn: ['mcp-adapter-{serverId}']
+      summary: An adapter submits the manifest of its foreign server at startup (CC-206).
+      description: |
+        The channel of `mcp-server-adapter` (the sidecar of a foreign MCP server, CC-193). The body is the C6 manifest with `source: adapter`;
+        `serverId` in the body must equal the path.
+
+        **Identity of the adapter.** The certificate is bound to one server: its CN is `mcp-adapter-<serverId>` (for example
+        `mcp-adapter-mcp-jira`), compared as a whole and case-sensitively like the CN of the pipeline (CC-161). It is a different CN from
+        `mcp-registry-ci-<serverId>`, so a pipeline cannot use this operation and an adapter cannot use `registerServer`. Another CN is `403` and
+        `client_certificate_rejected` in the audit.
+
+        **Adapter mode is gateway configuration.** Which `serverId` is served by an adapter is set in the configuration of the gateway, never by a
+        manifest. For a `serverId` in adapter mode this operation is the only way to submit a manifest and `registerServer` answers `422`,
+        `manifest_rejected`, reason `adapter_mode_mismatch`; for any other `serverId` this operation answers `422` with the same reason, and so does
+        a manifest without `source: adapter` sent here or with it sent to `registerServer`. Nothing is stored in these cases.
+
+        **What the call stores.** Every new or changed tool becomes `pending_approval` (`change` new or changed, `source` adapter, `pendingVersion` the
+        version of the manifest) without classification, a READ_ONLY-looking tool included: nothing of an adapter is approved by this call, and an
+        unclassified tool is hidden and refused as `tool_disabled`. An entry whose `definitionHash` did not change stays as it is, with its
+        classification. A tool missing from the manifest is removed (`tool_removed`). Audit as `admin_change`: `definition_submitted` for every pending
+        entry and `tool_removed`. The administrator classifies and approves with `approveTool` (`risk`, `action`).
+
+        **Rejections.** The same checks as for `registerServer` (hash recomputed without risk and action, semantic rules, binding of serverId to
+        system and internalUrl from configuration, credential types) with `422 manifest_rejected`. The environment check applies too.
+      security:
+        - mtls: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/server-manifest.schema.json'
+            examples:
+              adapter:
+                value:
+                  serverId: mcp-jira
+                  version: 0.3.0
+                  system: jira
+                  source: adapter
+                  internalUrl: https://mcp-jira.internal:8443/mcp
+                  credential:
+                    required: true
+                    acceptedTypes:
+                    - user-oauth
+                    - user-secret
+                  resourceTypes: []
+                  tools:
+                  - name: get_issue
+                    resourceRefs: []
+                    definition:
+                      name: get_issue
+                      title: Get issue
+                      description: Returns one Jira issue by key.
+                      inputSchema:
+                        type: object
+                        properties:
+                          issueKey:
+                            type: string
+                            description: Issue key, e.g. ABC-123
+                            pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                            maxLength: 32
+                        required:
+                        - issueKey
+                        additionalProperties: false
+                      annotations:
+                        readOnlyHint: true
+                    definitionHash: sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7
+      responses:
+        '200':
+          description: Stored; the body shows the resulting status of every tool.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryServer'
+              examples:
+                submitted:
+                  value:
+                    serverId: mcp-jira
+                    system: jira
+                    version: 0.3.0
+                    tools:
+                    - name: get_issue
+                      resourceRefs: []
+                      definition:
+                        name: get_issue
+                        title: Get issue
+                        description: Returns one Jira issue by key.
+                        inputSchema:
+                          type: object
+                          properties:
+                            issueKey:
+                              type: string
+                              description: Issue key, e.g. ABC-123
+                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
+                              maxLength: 32
+                          required:
+                          - issueKey
+                          additionalProperties: false
+                        annotations:
+                          readOnlyHint: true
+                      definitionHash: sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7
+                      status: pending_approval
+                      change: new
+                      source: adapter
+                      approvedInVersion: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: The manifest fails a check, or the server is not in adapter mode, or the manifest has no source adapter (reason adapter_mode_mismatch).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestRejected'
+              examples:
+                adapter_mode_mismatch:
+                  value:
+                    error: manifest_rejected
+                    reason: adapter_mode_mismatch
+                    message: mcp-jira is not served by an adapter
   /admin/v1/registry/servers/{serverId}/tools/{tool}/pending:
     parameters:
       - $ref: '#/components/parameters/ServerId'
@@ -1180,12 +1309,12 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Switch off every tool of a server at once (group mcp-platform-admin, CC-194).
       description: |
-        Emergency switch (A9). From the moment of the `204`, on every gateway instance within 5 seconds at the latest, a call of a switched
-        tool is refused as `tool_disabled` (C10) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
+        Emergency switch (A9). From the moment of the `204`, on every gateway instance within 5 seconds at the latest (decision of 2026-11-03), a call of a switched
+        tool is refused as `tool_disabled` (C10), after authorization and the filter of the address like every other state of a tool (CC-178): a user who may not call the tool, or whose filter leaves it out, still gets `not_found_or_denied` and learns nothing (invariant 8) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
         `disabledBy` `kill_switch`. A call that was already accepted is not interrupted; a pending confirmation of a switched tool fails at
         the confirmation with `tool_disabled`. The switch is stored durably (it survives a restart) and is lifted only by `DELETE` on the
         same address: a new `PUT` of a manifest, an approval and a registration never lift it. System and server are the same thing here
-        (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. No fresh MFA is needed (an incident must
+        (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. A switch belongs to the (server, tool) address, not to the manifest: a tool that leaves the manifest keeps its switch (listed by `listKillSwitches`, in force again if the tool returns) and `DELETE` of such a switch is `204`. `PUT` for a tool the registry does not know is `404`. No fresh MFA is needed (an incident must
         not wait for a second factor); the portal asks for one when the switch is lifted. If the gateway cannot store the switch the answer is
         `503` and the switch is not on. Audited as `admin_change` with reason `kill_switch_set` (the text of `reason` stays in the registry and
         the portal and is not part of the audit event); refused calls are `tool_call` deny with reason `kill_switch`.
@@ -1248,12 +1377,12 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Switch off one tool (group mcp-platform-admin, CC-194).
       description: |
-        Emergency switch (A9). From the moment of the `204`, on every gateway instance within 5 seconds at the latest, a call of a switched
-        tool is refused as `tool_disabled` (C10) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
+        Emergency switch (A9). From the moment of the `204`, on every gateway instance within 5 seconds at the latest (decision of 2026-11-03), a call of a switched
+        tool is refused as `tool_disabled` (C10), after authorization and the filter of the address like every other state of a tool (CC-178): a user who may not call the tool, or whose filter leaves it out, still gets `not_found_or_denied` and learns nothing (invariant 8) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
         `disabledBy` `kill_switch`. A call that was already accepted is not interrupted; a pending confirmation of a switched tool fails at
         the confirmation with `tool_disabled`. The switch is stored durably (it survives a restart) and is lifted only by `DELETE` on the
         same address: a new `PUT` of a manifest, an approval and a registration never lift it. System and server are the same thing here
-        (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. No fresh MFA is needed (an incident must
+        (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. A switch belongs to the (server, tool) address, not to the manifest: a tool that leaves the manifest keeps its switch (listed by `listKillSwitches`, in force again if the tool returns) and `DELETE` of such a switch is `204`. `PUT` for a tool the registry does not know is `404`. No fresh MFA is needed (an incident must
         not wait for a second factor); the portal asks for one when the switch is lifted. If the gateway cannot store the switch the answer is
         `503` and the switch is not on. Audited as `admin_change` with reason `kill_switch_set` (the text of `reason` stays in the registry and
         the portal and is not part of the audit event); refused calls are `tool_call` deny with reason `kill_switch`.
@@ -1518,7 +1647,7 @@ components:
         reason:
           type: string
           pattern: '^[a-z][a-z0-9_]*$'
-          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter). A client must show an unknown value as a generic message.
+          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500

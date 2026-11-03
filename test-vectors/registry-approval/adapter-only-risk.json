@@ -1,0 +1,15 @@
+{
+  "description": "risk without action is not a classification.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "UPDATE"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_required"
+  }
+}

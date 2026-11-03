@@ -1,0 +1,13 @@
+{
+  "description": "Approval of a tool of an adapter without risk and action: 422 classification_required.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_required"
+  }
+}

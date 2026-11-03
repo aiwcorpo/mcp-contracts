@@ -33,9 +33,12 @@ export function definitionHash(input) {
 
 /** Hash of a manifest tool entry (C6 with CC-005): its definition, its policy fields and the server fields. */
 export function manifestEntryHash(manifest, entry) {
+  // CC-206: for an adapter manifest the hash never covers risk and action, even when the entry was enriched with the classification of the
+  // registry; it is always computed from the entry of the manifest as the adapter sent it.
+  const classified = manifest.source === 'adapter' ? {} : { risk: entry.risk, action: entry.action };
   return definitionHash({
     tool: entry.definition,
-    manifestEntry: { risk: entry.risk, action: entry.action, resourceRefs: entry.resourceRefs },
+    manifestEntry: { ...classified, resourceRefs: entry.resourceRefs },
     server: { system: manifest.system, credential: manifest.credential },
   }).hash;
 }

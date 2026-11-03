@@ -1,0 +1,17 @@
+{
+  "description": "A classification lower than one given earlier needs acceptRiskLowering: 422 risk_lowered.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "READ_ONLY",
+      "action": "read"
+    },
+    "floor": "UPDATE"
+  },
+  "expected": {
+    "status": 422,
+    "reason": "risk_lowered"
+  }
+}

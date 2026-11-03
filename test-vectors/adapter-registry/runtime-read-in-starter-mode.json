@@ -1,0 +1,22 @@
+{
+  "description": "The same read for a server on the starter makes a pending entry with source server (CC-162).",
+  "input": {
+    "serverId": "mcp-jira",
+    "serverMode": "starter",
+    "runtimeRead": true,
+    "tools": [
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      }
+    ]
+  },
+  "expected": {
+    "approvedByCall": [],
+    "pending": [
+      "update_issue"
+    ],
+    "pendingSource": "server"
+  }
+}

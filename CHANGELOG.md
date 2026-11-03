@@ -4,6 +4,35 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 6.1.0 - 2026-11-03
+
+Minor (ścisły SemVer, tabela w README): CC-206, poprawki po przeglądzie 6.0.0 i decyzje człowieka z 2026-11-03. Bajty `cedar/mcp.cedarschema` bez zmian. Nic nie zaostrza walidacji istniejących danych; N1 i N2 (warunki w schematach odpowiedzi) odłożone do następnego majora.
+
+### Nowe i poprawione
+
+- **Kanał adaptera (W1):** operacja C5 `submitAdapterManifest` (`PUT /admin/v1/registry/adapters/{serverId}`, CN `mcp-adapter-<serverId>`), tryb adaptera w konfiguracji gatewaya, `422 adapter_mode_mismatch` w obie strony, nowe narzędzia zawsze `pending_approval` z `source: adapter`, bez klasyfikacji. Wektory `adapter-registry/` (10), `registry-approval/` (10).
+- **Adapter działa tylko dla pięciu znanych systemów (W2):** obcy serwer na szóstym systemie to zmiana major; bez zmiany enumów w 6.1.0.
+- **Balancer (W3):** `proxy_next_upstream error timeout` bez `non_idempotent`; `BalancerError` także dla `504` (`gateway_timeout`).
+- **Wyłącznik po autoryzacji (S1):** po `mayCall` i filtrze; użytkownik bez dostępu dostaje `not_found_or_denied`. Wektory `endpoint-filter/call-state-kill-switch-*` (3), `kill-switch/` (17).
+- **Hash adaptera (S3), odczyt w czasie działania (S2), `subscriptions/listen` (S4), osierocony przełącznik (N3), `action` w audycie klasyfikacji (N4), `Retry-After` (N6), dokładniejsza referencja claimów IdP (N7), `PolicyLintCli.run` publiczne (N8), granica 5 s jako decyzja człowieka (D1).**
+- **Wektory:** `endpoint-filter/stream-open-stateless-*` (2), `endpoint-aggregate/list-changed-sequence-stateless-*` (2), `balancer-errors/` (+2), `idp-token-claims/` (+3), `kill-switch/` (+3).
+
+### Zmiany względem 6.0.0 dla strumieni
+
+**ws-01 stos dev i platforma:** nginx bez `proxy_next_upstream off`: zostaje `error timeout` z `proxy_next_upstream_tries`, bez `non_idempotent`; strona błędu `504` w JSON z `BalancerError` (`gateway_timeout`) obok `502`; certyfikat adaptera z CN `mcp-adapter-<serverId>` dla demo.
+**ws-05 gateway:** (1) tryb adaptera w konfiguracji per `serverId`; operacja `submitAdapterManifest` z CN `mcp-adapter-<serverId>`; `registerServer` i `submitAdapterManifest` w złym trybie albo z manifestem o złym `source` to `422 adapter_mode_mismatch`; narzędzia z adaptera zawsze oczekujące, bez klasyfikacji ukryte jako `tool_disabled`; odczyt `tools/list` w trybie adaptera tworzy wpis `source: adapter`; hash adaptera zawsze bez `risk`/`action` (też przy kontroli trzymanych manifestów); (2) wyłącznik sprawdzany po `mayCall` i po filtrze (wektory `call-state-kill-switch-*`), `PUT` dla nieznanego narzędzia `404`, przełącznik narzędzia usuniętego z manifestu zostaje; (3) `subscriptions/listen` bez sesji: token, składnia filtra, bez `filter_mismatch`, punkt odniesienia z ostatniego `tools/list` albo z chwili otwarcia; (4) `approve` adaptera: `classification_required`, `classification_not_allowed`, obniżenie z `acceptRiskLowering` (wektory `registry-approval/`), zdarzenie z `risk` i `action`.
+**ws-13 adapter:** wysyłka manifestu operacją `submitAdapterManifest` z certyfikatem `mcp-adapter-<serverId>`; tylko pięć znanych systemów; hash przez `DefinitionHash.ofManifestTool`.
+**ws-09 polityki:** `PolicyChecks.impossible` (`mcp-policies/.ci/.../PolicyChecks.java`) łapie tylko `AuthException`, a `PolicyLint.impossible` od 6.0.0 rzuca `IllegalStateException` przy błędzie walidacji: dodać ten wyjątek do `catch` i zapisać problem na liście zamiast przerywać krok.
+**ws-06 broker:** potwierdzić wyniki i `errorCode` dziewięciu powodów z opisu `reason`; wektory pokrywają tylko `database_unavailable`, `refresh_token_lost`, `secret_missing`.
+**ws-10 e2e:** scenariusze: użytkownik bez dostępu woła wyłączone narzędzie (`not_found_or_denied`), pomyłka trybu kanału (`422`), `subscriptions/listen` ze złym filtrem, `504` balancera, failover nginx przy martwej instancji (bez `502`).
+**ws-07, ws-08, ws-02, ws-03, ws-04, ws-11, ws-12:** zależność 6.1.0, bez zmian w kodzie; ws-11 dopisuje, że adapter działa dla pięciu znanych systemów.
+
+### Erratum do 6.0.0 (tag bez zmian)
+
+- Lista "Niezgodne wstecz względem 5.1.2" w 6.0.0 miała 8 pozycji; dopełnienie: **9.** CC-200 (`cursor: ""` to `-32602`; klient, który wysyła `""`, i gateway, który traktował go jak pierwszą stronę, muszą się zmienić) oraz **10.** CC-202 (mock MSW odrzuca `%zz`, zwykła zmiana major, bez wyjątku). Pozycje 5 (CC-192) i 7 (CC-198) oraz CC-195 są zmianami oczekiwanego zachowania i oczekiwań wektorów, więc część majora; ich opisy w `CONTRACT_CHANGES.md` poprawione w 6.1.0.
+- Zalecenie dla ws-01 z 6.0.0 (`proxy_next_upstream off`) było błędne; obowiązuje `error timeout` bez `non_idempotent` (W3).
+- Wektory zapowiedziane w CC-192/193/204 pod innymi nazwami: `stream-open-*`, `valid-adapter`, `get-issue-adapter-without-classification`, `balancer-errors/*`.
+
 ## 6.0.0 - 2026-11-03
 
 Major według tabeli SemVer (README, "Wersjonowanie"), bez wyjątków: nowa wartość enum (`PendingTool.source: adapter`), warunkowo wymagane `risk` i `action` we wpisie manifestu i zaostrzony kod wyjścia `PolicyLintCli`. Pakiet CC-192 ... CC-205, decyzje człowieka z 2026-11-03 (`mcp-platform-plan/m6-plan.md`, "Decyzje pakietu kontraktów").
@@ -31,7 +60,7 @@ Bajty `cedar/mcp.cedarschema` bez zmian (SHA-256 `51d71b2d...`): paczki polityk 
 
 ### Migracja z 5.x
 
-**ws-01 stos dev i platforma:** zależności na 6.0.0 (`MCP_CONTRACTS_REF`); nginx: `proxy_next_upstream off` dla `POST /mcp`, strona błędu `502` w JSON z tekstem z `BalancerError` (nagłówki `nosniff` i CSP), buforowanie wyłączone i długi `proxy_read_timeout` dla `GET` strumienia SSE na `/mcp` i `/s/...`; Redis pub/sub (lub licznik wersji) dla zdarzeń rejestru, polityk i przełączników; alerty na `kill_switch_set` i `suppressedTargets`.
+**ws-01 stos dev i platforma:** zależności na 6.0.0 (`MCP_CONTRACTS_REF`); nginx: `proxy_next_upstream error timeout` bez `non_idempotent` (patrz erratum w 6.1.0), strona błędu `502` i `504` w JSON z tekstem z `BalancerError` (nagłówki `nosniff` i CSP), buforowanie wyłączone i długi `proxy_read_timeout` dla `GET` strumienia SSE na `/mcp` i `/s/...`; Redis pub/sub (lub licznik wersji) dla zdarzeń rejestru, polityk i przełączników; alerty na `kill_switch_set` i `suppressedTargets`.
 **ws-02 starter:** zależność 6.0.0; `ManifestExport` bez zmian (serwer na starterze nie ustawia `source`); README: operacje `UPDATE` projektować tak, by powtórzenie było nieszkodliwe (CC-204); nazwy `jwks_unavailable` i `replay_store_unavailable` są już zgodne.
 **ws-03 szablon, ws-04 serwery (jira, confluence, gitlab, servicedesk, opensearch):** tylko zależność 6.0.0 i regeneracja manifestu (hashe bez zmian).
 **ws-05 gateway:** (1) `listChanged: true`, strumień `GET` z kolejnością CC-184 i `405` z `Allow: POST, DELETE, GET` poza nim, `subscriptions/listen`, okno 1 s, kanał zdarzeń między instancjami, opóźnienie do 5 s, strumień poza `MCP_MAX_CONCURRENT_REQUESTS`, metryka otwartych strumieni; (2) wyłącznik awaryjny: tabela w bazie, pięć operacji C5, cache nie starszy niż 5 s, odmowa `tool_disabled` z `kill_switch`, fail-closed, `approve`/`PUT` nie zdejmują, `disabledBy` w katalogu; (3) rejestr: `source: adapter`, klasyfikacja przy `approve`, `classification_required`/`classification_not_allowed`, niesklasyfikowane to `tool_disabled`, hash bez `risk`/`action` (Java `DefinitionHash`);

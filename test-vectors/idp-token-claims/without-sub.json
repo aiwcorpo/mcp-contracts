@@ -1,0 +1,16 @@
+{
+  "description": "sub is one of the four: a token without it is rejected as invalid_claims.",
+  "input": {
+    "claims": {
+      "iss": "https://idp.example/realms/corp",
+      "aud": "mcp-gateway",
+      "exp": 4102444800,
+      "iat": 4102444700
+    }
+  },
+  "expected": {
+    "accepted": false,
+    "reason": "invalid_claims",
+    "ignoredClaims": []
+  }
+}

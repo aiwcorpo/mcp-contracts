@@ -1,0 +1,22 @@
+{
+  "description": "With acceptRiskLowering the lower classification is stored, audit risk_lowered_by_admin.",
+  "input": {
+    "entry": {
+      "source": "adapter"
+    },
+    "body": {
+      "risk": "READ_ONLY",
+      "action": "read",
+      "acceptRiskLowering": true
+    },
+    "floor": "UPDATE"
+  },
+  "expected": {
+    "status": 204,
+    "classification": {
+      "risk": "READ_ONLY",
+      "action": "read"
+    },
+    "auditReason": "risk_lowered_by_admin"
+  }
+}

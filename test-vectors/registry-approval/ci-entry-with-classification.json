@@ -1,0 +1,16 @@
+{
+  "description": "risk or action for an entry that is not from an adapter: 422 classification_not_allowed.",
+  "input": {
+    "entry": {
+      "source": "ci"
+    },
+    "body": {
+      "risk": "UPDATE",
+      "action": "update"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "reason": "classification_not_allowed"
+  }
+}

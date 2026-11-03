@@ -1,0 +1,14 @@
+{
+  "description": "An instance that is down when the connection is made: nothing was sent, so the balancer may try the next instance (proxy_next_upstream error timeout). The client sees the answer of the other instance, not a 502.",
+  "input": {
+    "event": "connect-failed",
+    "method": "POST",
+    "path": "/mcp",
+    "toolRisk": "UPDATE"
+  },
+  "expected": {
+    "balancerTriesNextInstance": true,
+    "status": null,
+    "nonIdempotentRetry": false
+  }
+}

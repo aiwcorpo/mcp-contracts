@@ -1,0 +1,32 @@
+{
+  "description": "The certificate of another server (or of the pipeline) on the adapter channel: 403, nothing stored.",
+  "input": {
+    "serverId": "mcp-jira",
+    "serverMode": "adapter",
+    "channel": "adapter",
+    "cn": "mcp-registry-ci-mcp-jira",
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "status": 403,
+    "audit": "client_certificate_rejected",
+    "stored": false
+  }
+}

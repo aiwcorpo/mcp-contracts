@@ -1,0 +1,13 @@
+{
+  "description": "A plain approval of an entry the running server presented is unchanged.",
+  "input": {
+    "entry": {
+      "source": "server"
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 204,
+    "auditReason": "definition_approved"
+  }
+}
