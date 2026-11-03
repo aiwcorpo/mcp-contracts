@@ -1,11 +1,18 @@
 # Status ws-00 (mcp-contracts)
 
-Wersja **6.0.0**, tag `v6.0.0` (CC-192 ... CC-205, pakiet M6; praca dalej na `6.0.1-SNAPSHOT`); wcześniej **5.1.2**, tag `v5.1.2` (CC-191); wcześniej **5.1.1**, tag `v5.1.1` (CC-189, CC-190); **5.1.0**, tag `v5.1.0` (CC-178 ... CC-188, poprawki po przeglądzie 5.0.0); **5.0.0**, tag `v5.0.0` (CC-169 ... CC-177, M5 punkt A); **4.1.0**, tag `v4.1.0` (CC-165 ... CC-168); **4.0.1**, tag `v4.0.1`; **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
+Wersja **6.1.0**, tag `v6.1.0` (CC-206, poprawki po przeglądzie 6.0.0; praca dalej na `6.1.1-SNAPSHOT`); wcześniej **6.0.0**, tag `v6.0.0` (CC-192 ... CC-205, pakiet M6); **5.1.2**, tag `v5.1.2` (CC-191); wcześniej **5.1.1**, tag `v5.1.1` (CC-189, CC-190); **5.1.0**, tag `v5.1.0` (CC-178 ... CC-188, poprawki po przeglądzie 5.0.0); **5.0.0**, tag `v5.0.0` (CC-169 ... CC-177, M5 punkt A); **4.1.0**, tag `v4.1.0` (CC-165 ... CC-168); **4.0.1**, tag `v4.0.1`; **4.0.0**, tag `v4.0.0` (pakiet M4); wcześniej **3.1.1**, tag `v3.1.1`; wcześniej **3.1.0**, **3.0.2**, **3.0.1**, **3.0.0**, tag `v3.0.0`, i **2.2.5**, tag `v2.2.5` (grupa A pakietu M2, CC-117 ... CC-120; wcześniej `v2.2.4`, `v2.2.3`, `v2.2.2`, `v2.2.1`, `v2.2.0` (CC-080 ... CC-090 dla M2), `v2.1.1`, `v2.1.0`, `v2.0.2`, `v2.0.1`, `v2.0.0`, `v1.2.0`, `v1.1.0`, `v1.0.0`). Od 2.0.0 ścisły
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
 Walidacja 5.1.0: `./scripts/verify-all.sh` zielony (`npm test`: 270 testów Node; `./mvnw clean verify`: 579 testów JUnit,
 w tym 327 mcp-cedar-entities, 70 mcp-policy-bundle, 182 mcp-manifest).
+
+## 6.1.0 (wydane 2026-11-03)
+
+- CC-206 `accepted` (decyzje człowieka 2026-11-03, "Decyzje po przeglądzie 6.0.0"): kanał adaptera `submitAdapterManifest` (CN `mcp-adapter-<serverId>`, tryb adaptera w konfiguracji gatewaya), wyłącznik po `mayCall` i filtrze, balancer `error timeout` bez `non_idempotent` i `504`, `subscriptions/listen`, wektory `adapter-registry/`, `registry-approval/`, hash adaptera bez `risk`/`action`, erratum do listy zmian niezgodnych 6.0.0.
+- Minor według tabeli SemVer. N1 i N2 (warunki w schematach odpowiedzi) odłożone do następnego majora, bo zaostrzają walidację.
+- Walidacja: `./scripts/verify-all.sh` zielony.
+- Wydane: artefakty `pl.aiwcorpo.mcp:*:6.1.0` w `~/.m2`, `release/aiwcorpo-mcp-contracts-6.1.0.tgz`, tag `v6.1.0`.
 
 ## 6.0.0 (wydane 2026-11-03)
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 6.0.1-SNAPSHOT
+  version: 6.1.0
   summary: Contract C5 of the MCP platform (catalog, registry, activity, read-only confirmation preview).
   description: |
     Callers and their authentication:
