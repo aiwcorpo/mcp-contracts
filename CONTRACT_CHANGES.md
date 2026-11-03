@@ -3730,9 +3730,9 @@ Poprawki 5.1.1 (decyzje człowieka, 2026-11-01, po przeglądzie ws-05 i ws-10): 
 
 ---
 
-Pakiet M6 (propozycje ws-00, 2026-11-03, etap 2 planu M6, status `proposed`, bez wydania i bez zmian w schematach, wektorach, kodzie i tagach): CC-192 ... CC-205. Źródła faktów: `STATUS.md` repozytoriów strumieni, `mcp-platform-plan/STATUS.md`, `m5-plan.md` (pkt D, G), `m6-plan.md`, `pytania-eksploatacja.md` (A9), przegląd kodu `mcp-contracts` w HEAD (5.1.3-SNAPSHOT). Gdzie źródła nie wystarczają (CC-204, CC-205), wpis mówi to wprost i nie zgaduje rozwiązania. Liczby oznaczone jako "propozycja" są wyborem ws-00, nie danymi z komponentu.
+Pakiet M6 (etap 2 planu M6; propozycje ws-00 z 2026-11-03, decyzje człowieka z 2026-11-03 w `mcp-platform-plan/m6-plan.md`, "Decyzje pakietu kontraktów"; wydanie 6.0.0): CC-192 ... CC-205. Źródła faktów: `STATUS.md` repozytoriów strumieni, `mcp-platform-plan/STATUS.md`, `m5-plan.md` (pkt D, G), `m6-plan.md`, `pytania-eksploatacja.md` (A9), przegląd kodu `mcp-contracts` w HEAD (5.1.3-SNAPSHOT). Liczby oznaczone jako "propozycja" są wyborem ws-00, nie danymi z komponentu.
 
-Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość enum (`adapter` w `PendingTool.source`) i warunkowo wymagane `risk`/`action` we wpisie manifestu, a CC-203 zaostrza kod wyjścia `PolicyLintCli`; według tabeli to **major, czyli 6.0.0**. Bez CC-193 i CC-203 pozostałe pozycje są minor lub patch, czyli 5.2.0. Szczegóły przy każdej pozycji.
+Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość enum (`adapter` w `PendingTool.source`) i warunkowo wymagane `risk`/`action` we wpisie manifestu, a CC-203 zaostrza kod wyjścia `PolicyLintCli`; według tabeli to **major, czyli 6.0.0** (decyzja człowieka, 2026-11-03). Pozostałe pozycje są minor lub patch.
 
 ## CC-192 | C5/C10/README | Włączenie `list_changed`: zasady, `GET /mcp`, wektory `list-changed-*`
 
@@ -3740,15 +3740,15 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Stan dziś:** `capabilities.tools.listChanged: false`, `GET` na `/mcp` i `/s/<serverId>/mcp` to `405` z `Allow: POST, DELETE` (po sprawdzeniu tokenu), referencja `listChangedNotification` i 11 wektorów `endpoint-aggregate/list-changed-*` są "materiałem dla M6". Wektorów dla `listChanged: false` ani dla `405` na `GET` nie ma (tylko tekst README), więc zmiana nie przestawia żadnego wektora.
 - **Zmiana (proponowana):**
   - Gateway deklaruje `listChanged: true` na `/mcp` i `/s/<serverId>/mcp` dla protokołu z sesją i wysyła puste `notifications/tools/list_changed` na otwarty strumień `GET` sesji. Wyzwalacze, ograniczenia (najwyżej jedno powiadomienie na sesję na 1 s, porównanie z listą sesji po filtrze, brak audytu powiadomień) i zasada "zmiana połączenia konta nie jest wyzwalaczem" zostają jak w CC-176 i stają się wymaganiem.
-  - **`GET`** z `Accept: text/event-stream` i `Mcp-Session-Id` otwiera strumień. Kolejność kontroli jak w CC-184: (1) token, `401`/`503`; (2) składnia query, `400 invalid_filter`; (3) `sub` sesji, cudza albo nieznana sesja to `404` bez `filter_mismatch`; (4) trasa sesji; (5) filtr równy filtrowi `initialize`, inaczej `404` i `filter_mismatch`. To domyka zdanie CC-179: "sprawdzenie filtra na strumieniu `GET` jest wymaganiem M6". `GET` bez sesji albo bez `Accept: text/event-stream` zostaje `405` (`Allow: POST, DELETE, GET`); zdarzenia odrzuceń `GET` podlegają ograniczaniu z CC-190/CC-191.
-  - **Życie strumienia (propozycja):** strumień kończy się, gdy wygasa token, którym go otwarto (klient otwiera nowy z nowym tokenem), gdy sesja zostaje usunięta (`DELETE`) i przy `purge` użytkownika. Brak odtwarzania zdarzeń (`Last-Event-ID` ignorowane): po ponownym połączeniu klient i tak wywołuje `tools/list`, więc utrata powiadomienia nie psuje bezpieczeństwa (`tools/call` jest sprawdzane przy każdym wywołaniu). Limit strumieni na użytkownika: propozycja 5, konfigurowalny, ponad limit `429` z `Retry-After` i zdarzeniem jak w CC-156.
+  - **`GET`** z `Accept: text/event-stream` i `Mcp-Session-Id` otwiera strumień. Kolejność kontroli jak w CC-184: (1) token, `401`/`503`; (2) składnia query, `400 invalid_filter`; (3) `sub` sesji, cudza albo nieznana sesja to `404` bez `filter_mismatch`; (4) trasa sesji; (5) filtr równy filtrowi `initialize`, inaczej `404` i `filter_mismatch`. To domyka zdanie CC-179: "sprawdzenie filtra na strumieniu `GET` jest wymaganiem M6". `GET` bez sesji albo bez `Accept: text/event-stream` zostaje `405` (`Allow: POST, DELETE, GET`; w wariancie bezstanowym strumień otwiera `subscriptions/listen`); zdarzenia odrzuceń `GET` podlegają ograniczaniu z CC-190/CC-191.
+  - **Życie strumienia (propozycja):** strumień kończy się, gdy wygasa token, którym go otwarto (klient otwiera nowy z nowym tokenem), gdy sesja zostaje usunięta (`DELETE`) i przy `purge` użytkownika. Brak odtwarzania zdarzeń (`Last-Event-ID` ignorowane): po ponownym połączeniu klient i tak wywołuje `tools/list`, więc utrata powiadomienia nie psuje bezpieczeństwa (`tools/call` jest sprawdzane przy każdym wywołaniu). Limitu strumieni na użytkownika nie ma (decyzja niżej); strumień nie zajmuje miejsca w limicie żądań w toku, a liczba otwartych strumieni jest metryką.
   - **HA:** zdarzenia rejestru i polityk trafiają do wszystkich instancji (Redis pub/sub albo licznik wersji), instancja trzymająca strumień rozsyła. Opóźnienie do powiadomienia: propozycja najwyżej 5 s od zdarzenia (precedens: okno do 60 s przy `purge` i TTL rejestru do 60 s są za długie dla "lista zmienia się na żywo"). Zmiana grup wykrywana tylko przy odświeżeniu tokenu albo żądaniu (CC-176), więc sesja bezczynna może dostać powiadomienie z opóźnieniem; README to mówi.
-  - **Wariant bezstanowy (MCP 2026-07-28, `subscriptions/listen`):** CC-179 przesunęło `list_changed` m.in. dlatego, że brak tam punktu odniesienia listy. Propozycja: M6 obejmuje tylko wariant z sesją; w wariancie bezstanowym `initialize` deklaruje `listChanged: false`. Kontrakt mówi to wprost, a `subscriptions/listen` zostaje poza M6.
-- **Wektory `list-changed-*` (11):** zostają bez zmian i stają się normatywne (README: "materiał dla M6" zastąpione wymaganiem). Trzy kluczowe: `connection-changed` (brak powiadomienia), `definition-changed-and-approved` i `definition-approved-outside-filter` (poprawione w CC-187). Nowe (minor): `list-changed-sequence-*` (łączenie zdarzeń w oknie 1 s, nowy `kind` z czasem zdarzeń), `endpoint-filter/session-order-get-*` (kolejność kontroli i `filter_mismatch` na `GET`). Zakończenie strumienia przy wygaśnięciu tokenu i limit strumieni nie mają wektorów (zachowanie transportu): scenariusze ws-10.
+  - **Wariant bezstanowy (MCP 2026-07-28, `subscriptions/listen`):** obowiązuje te same wyzwalacze i ograniczenia; punkt odniesienia listy opisany w decyzji niżej (CC-179 przesuwało `list_changed` m.in. dlatego, że go brakowało).
+- **Wektory `list-changed-*` (11):** zostają bez zmian i stają się normatywne (README: "materiał dla M6" zastąpione wymaganiem). Trzy kluczowe: `connection-changed` (brak powiadomienia), `definition-changed-and-approved` i `definition-approved-outside-filter` (poprawione w CC-187). Nowe (minor): `list-changed-sequence-*` (łączenie zdarzeń w oknie 1 s, nowy `kind` z migawkami listy w czasie), `endpoint-filter/session-order-get-*` (kolejność kontroli i `filter_mismatch` na `GET`). Zakończenie strumienia przy wygaśnięciu tokenu i brak limitu strumieni i wyłączenie strumienia z limitu żądań nie mają wektorów (zachowanie transportu): scenariusze ws-10.
 - **Zgodność wstecz:** nowa zdolność i nowa odpowiedź `GET` tam, gdzie był `405`; brak wektora, który się zmienia: **minor**. Klient, który nie otwiera `GET`, działa jak dziś. W razie wątpliwości co do 5.1.0 (gdzie `true -> false` poszło jako wyjątek major): odwrotny kierunek nie usuwa niczego, więc nie potrzebuje wyjątku.
-- **Kogo dotyka:** ws-05 (strumień `GET`, emisja, kanał między instancjami, łączenie zdarzeń, limit strumieni), ws-01 (Redis pub/sub w HA, nginx: buforowanie i `proxy_read_timeout` dla SSE; nie sprawdzono, czy obecna konfiguracja proxy to znosi), ws-10 (zatwierdzenie narzędzia w trakcie sesji daje powiadomienie i nowe narzędzie w drugim kliencie; wygaśnięcie tokenu zamyka strumień), ws-07/08 (brak), ws-02/03/04/09 (brak).
-- **Pytania do człowieka:** (1) tylko sesja w M6, wariant bezstanowy `false` (rekomendacja: tak); (2) limit 5 strumieni na użytkownika i opóźnienie 5 s (rekomendacja: przyjąć jako domyślne, konfigurowalne); (3) czy zamknięcie strumienia przy wygaśnięciu tokenu jest akceptowalne dla klienta Claude Desktop (sprawdza ws-10 przy drugim kliencie, M6-5).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie: 5.2.0 albo 6.0.0 razem z pakietem
+- **Kogo dotyka:** ws-05 (strumień `GET` i `subscriptions/listen`, emisja, kanał między instancjami, łączenie zdarzeń, wyłączenie strumienia z limitu żądań, metryka otwartych strumieni), ws-01 (Redis pub/sub w HA, nginx: buforowanie i `proxy_read_timeout` dla SSE; nie sprawdzono, czy obecna konfiguracja proxy to znosi), ws-10 (zatwierdzenie narzędzia w trakcie sesji daje powiadomienie i nowe narzędzie w drugim kliencie; wygaśnięcie tokenu zamyka strumień), ws-07/08 (brak), ws-02/03/04/09 (brak).
+- **Decyzja człowieka (2026-11-03):** `list_changed` w obu wariantach (sesja i bezstanowy); bez limitu strumieni na użytkownika, ale strumień `GET` nie liczy się do limitu żądań w toku (`MCP_MAX_CONCURRENT_REQUESTS`, CC-199) i gateway wystawia metrykę liczby otwartych strumieni (nazwa do potwierdzenia w ws-05, propozycja `mcp_gateway_open_streams`). Opóźnienie do powiadomienia 5 s (górna granica). Wariant bezstanowy (`subscriptions/listen`): gateway deklaruje `listChanged: true` także tam; punkt odniesienia listy to lista zwrócona ostatnim `tools/list` w tym połączeniu, a bez niego pierwsze zdarzenie po `subscriptions/listen` jest porównywane z listą z chwili otwarcia. Zamknięcie strumienia przy wygaśnięciu tokenu sprawdza ws-10 przy drugim kliencie (M6-5).
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-193 | C6/C5/C12 | Manifest obcego serwera bez adnotacji: `source: adapter`, ryzyko i akcja nadawane przez admina
 
@@ -3764,8 +3764,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Zgodność wstecz:** nowa wartość enum (`PendingTool.source`, `ManifestRejected.reason`) oraz `risk`/`action` warunkowo wymagane we wpisie: według tabeli README **major**. Manifesty bez `source` i bez nowych pól przechodzą bez zmian, wygenerowane typy (TS, Java) wymagają regeneracji u odbiorców enum. Wariant bez zmiany enum nie istnieje: wpis adaptera nie jest ani `ci`, ani `server` (nikt go nie przejrzał w commicie, a nie jest to definicja prezentowana przez serwer zbudowany na starterze). To główny powód rekomendacji 6.0.0.
 - **Kogo dotyka:** ws-13 (manifest bez `risk`/`action`, `source`), ws-05 (rejestr: klasyfikacja, `approve`, `tool_disabled` dla niesklasyfikowanych), ws-07 (operacja zatwierdzenia z `risk`/`action`, step-up jak dla obniżenia ryzyka), ws-08 (dialog klasyfikacji, pokazanie `annotations` jako sugestii), ws-10 (scenariusz: obcy serwer, klasyfikacja, wywołanie), ws-09 (polityki per narzędzie bez zmian), ws-02/03/04 (brak).
 - **Wektory (nowe, minor w pakiecie major):** `manifests/valid-adapter-unclassified`, `manifests/invalid-adapter-risk-claimed`, `manifests/invalid-adapter-resource-refs`, `definition-hash/adapter-without-risk`, wektory zatwierdzenia (`classification_required`, klasyfikacja przy `approve`). Istniejące wektory manifestów bez `source` bez zmian.
-- **Pytania do człowieka:** (1) hash bez klasyfikacji i klasyfikacja jako dana rejestru (rekomendacja: tak; alternatywa: gateway liczy drugi, "efektywny" hash z `risk`/`action` po zatwierdzeniu, co daje silniejsze przypinanie, ale dwa hashe w kontrakcie); (2) kto wysyła manifest adaptera do rejestru: potok CI jak serwer (wtedy wpis dostaje `source: ci` z manifestem `source: adapter`) czy adapter przy starcie (wtedy `PendingTool.source: adapter`); tekst wyżej zakłada drugie (rekomendacja: adapter przy starcie, bo narzędzia obcego serwera nie przechodzą przeglądu commitu); (3) czy 6.0.0 (rekomendacja: tak, patrz wersja pakietu).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 6.0.0 (major)
+- **Decyzja człowieka (2026-11-03):** klasyfikacja admina jest daną rejestru poza `definitionHash`; manifest adaptera wysyła adapter przy starcie (`PendingTool.source: adapter`); 6.0.0.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-194 | C5/C12/C8 | Wyłącznik awaryjny narzędzia i systemu dla admina (A9)
 
@@ -3781,8 +3781,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Zgodność wstecz:** nowe operacje, nowe opcjonalne pole `disabledBy`, nowe wartości `reason` (pole to wzorzec, nie enum): **minor**. Opis `enabled`/`disabled` poprawiony (patch).
 - **Kogo dotyka:** ws-05 (tabela, cache z TTL, kanał unieważnień, brama w `tools/call`, `tools/list`, potwierdzenia), ws-07 (operacje BFF, grupa admina, step-up), ws-08 (przełącznik w ekranie admina, lista aktywnych), ws-01 (Redis pub/sub, alert na `kill_switch_set`), ws-10 (scenariusze: włączenie, skutek na dwóch instancjach w <= N s, restart, awaria bazy, zdjęcie), ws-11 (instrukcja A9), ws-09 (bez zmian).
 - **Wektory (nowe):** `kill-switch/` (stan przełącznika i wywołanie -> `tool_disabled`; `approve`/`PUT` nie zdejmują; system obejmuje narzędzia), `audit-events/gateway-kill-switch-*`, wektory `activity-calls/` dla `reason: kill_switch`.
-- **Pytania do człowieka:** (1) zdejmowanie ze step-up, włączanie bez (rekomendacja: tak); (2) N = 5 s (rekomendacja: tak, konfigurowalne); (3) czy "system" ma zawsze oznaczać jeden serwer (rekomendacja: tak, dziś 1:1; przy wielu serwerach na system trzeba będzie zmienić zakres); (4) czy przełącznik ma wygasać (rekomendacja: nie, tylko jawne zdjęcie).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 albo 6.0.0 razem z pakietem
+- **Decyzja człowieka (2026-11-03):** wyłącznik włączany bez MFA, zdejmowany po świeżym MFA, bez wygasania, system = jeden serwer (`mcp-<system>`), propagacja do 5 s.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-195 | C8/C5 | Doprecyzowanie CC-191: klucz limitu kluczy, zamykanie okna, liczba pominiętych celów
 
@@ -3794,8 +3794,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
   3. Opcjonalne pole `suppressedTargets` (liczba różnych pominiętych celów w oknie) w zdarzeniu podsumowującym, obok `suppressedCount`. Dziś gateway wystawia ją tylko w metryce `mcp_audit_endpoint_summary_targets`, bo schemat 5.1.2 ma `additionalProperties: false`.
 - **Zgodność wstecz:** nowe pole opcjonalne i nowe wektory: **minor**. Istniejące wektory `audit-throttle-*` zachowują oczekiwania; zmienia się referencja tak, że daje te same wyniki dla nich. Rozstrzygnięcie "per sub" zamiast "per (sub, powód)" wymagałoby zmiany gateway'a i jest odradzane (wabik jednego powodu, który CC-191 miało zamknąć).
 - **Kogo dotyka:** ws-05 (zgodność już jest; pole `suppressedTargets` w zdarzeniu), ws-10 (asercje podsumowań), ws-01 (alert na `suppressedCount`/`suppressedTargets`), pozostali bez zmian.
-- **Pytanie do człowieka:** limit per (`sub`, powód), jak w gatewayu (rekomendacja: tak).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 (6.0.0 razem z pakietem)
+- **Decyzja człowieka (2026-11-03):** limit kluczy per (`sub`, powód).
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-196 | C8 | Powody audytu brokera spoza opisu: `database_unavailable`, `refresh_token_lost`, `user_offboarding` i pozostałe
 
@@ -3808,8 +3808,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Zmiana (proponowana):** dopisać wszystkie do opisu `reason` z jednozdaniowym znaczeniem i zdarzeniem (`connection_change`/`credential_resolve`), wynikiem i `errorCode`, jak wyżej; bez zmiany reguł walidacji. Precyzyjne zdarzenia i wyniki każdego powodu potwierdza ws-06 (zestawienie powyżej pochodzi z jego STATUS, nie z kodu).
 - **Zgodność wstecz:** poprawka opisu: **patch**. Nowe wektory `audit-events/broker-*` (po jednym na powód) byłyby minor; nie są wymagane.
 - **Kogo dotyka:** ws-06 (potwierdzenie listy i znaczeń), ws-01 (reguły SIEM), pozostali bez zmian.
-- **Pytanie do człowieka:** czy dopisujemy wszystkie dziewięć powodów, czy tylko trzy z planu M6 (rekomendacja: wszystkie, bo brak w opisie oznacza, że SIEM nie zna ich znaczenia).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie: razem z pakietem
+- **Decyzja człowieka (2026-11-03):** dopisujemy wszystkie dziewięć powodów (plus `secret_missing` z CC-205).
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-197 | C8/C2 | Nazwa powodu niedostępnego źródła kluczy: `jwks_unavailable` czy `key_source_unavailable` (i `jti_store_unavailable`)
 
@@ -3819,8 +3819,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Alternatywa (B):** kontrakt dodaje `key_source_unavailable` i `jti_store_unavailable` jako powody brokera, bo broker może czytać klucze także z pliku (tryb dev), a "JWKS" jest wtedy nieścisłe. Odradzane: dwa powody tego samego zjawiska rozbijają reguły SIEM, a w trybie pliku źródło nie bywa niedostępne (STATUS brokera: `fromFile` nie wygasa).
 - **Zgodność wstecz:** wariant A: opis (patch); zmiana nazw w brokerze to zmiana zdarzeń audytu u wdrożonego komponentu, nie kontraktu. Wariant B: nowe wartości w opisie, patch.
 - **Kogo dotyka:** ws-06 (zmiana nazw i kształtu zdarzenia), ws-01 (reguły SIEM), pozostali bez zmian. Wektory: istniejące `audit-events/*-jwks-unavailable-*` dotyczą zdarzenia `authentication`; broker powinien być sprawdzony na nich (zakres ws-06).
-- **Pytanie do człowieka:** wariant A (rekomendacja) czy B.
-- **Status:** proposed (ws-00, 2026-11-03), wydanie: razem z pakietem (patch)
+- **Decyzja człowieka (2026-11-03):** wariant A, nazwy z kontraktu, broker się dostosowuje.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-198 | C8/C5 | Powód `policy_forbid` dla zakazu na poziomie narzędzia
 
@@ -3829,18 +3829,18 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Zmiana (proponowana):** przy tym samym kodzie klienta (`not_found_or_denied`) zdarzenie audytu dostaje `reason: policy_forbid`, gdy odmowę dał `forbid` (na poziomie narzędzia), a `not_granted`, gdy nie było żadnego `permit`. **Wiersz aktywności użytkownika zostaje `denied_not_granted`**: mapowanie `policy_forbid -> denied_policy` dotyczy odmów z argumentami (`access_denied`), a użycie go tu odsłoniłoby użytkownikowi, że narzędzie istnieje i jest objęte zakazem (niezmiennik 8). Mapowanie rozróżnia więc po `errorCode` (`not_found_or_denied` kontra `access_denied`), nie po samym powodzie.
 - **Zgodność wstecz:** powód już jest na liście; zmiana zasady ustalania powodu przy `not_found_or_denied` i warunek w mapowaniu wiersza. Wektory `activity-calls/` z `policy_forbid` przy `access_denied` bez zmian; nowy wektor `policy_forbid` + `not_found_or_denied` -> `denied_not_granted`. Zmienia to treść CC-178 ("także dla zakazu z `overrides`: `not_granted`"), co według tabeli jest zmianą oczekiwania wobec reguły, ale nie istniejącego wektora: **minor** (do potwierdzenia, czy istnieje wektor `audit-events` z `not_granted` dla `forbid`; w tej wersji roboczej nie sprawdzano wszystkich).
 - **Kogo dotyka:** ws-05 (powód przy odmowie narzędzia, mapowanie wiersza), ws-01 (reguły SIEM), ws-10 (asercja: awaryjny `forbid` daje `policy_forbid` w audycie i `denied_not_granted` w wierszu użytkownika), pozostali bez zmian.
-- **Pytanie do człowieka:** czy rozróżnienie dla SIEM jest warte kosztu osobnego mapowania wiersza (rekomendacja: tak; wiersz użytkownika zostaje bez zmian).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 (6.0.0 razem z pakietem)
+- **Decyzja człowieka (2026-11-03):** `policy_forbid` tylko w audycie, wiersz użytkownika `denied_not_granted`.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
-## CC-199 | C5/C10/README | `Retry-After` przy `503` z ograniczenia współbieżności (shed)
+## CC-199 | C5/C10/README | `Retry-After` przy `503` z ograniczenia współbieżności (shed) i z niedostępnego magazynu sesji
 
 - **Kontrakt:** README i opisy odpowiedzi C5 (`503` z `Retry-After` jest opisane dla niedostępnego JWKS, CC-124, i dla limitów przy niedostępnym Redisie, CC-167, `Retry-After: 10`). Źródło: `mcp-gateway/STATUS.md` ("Przeciążenie") i README gateway'a. Nie znalazłem w źródłach jawnej treści pozycji "`Retry-After`" z `m6-plan.md`; poniżej jedyny przypadek z lukami w kontrakcie, jaki znalazłem. Pytanie, czy o to chodziło, jest niżej.
 - **Stan:** `ConcurrencyLimitFilter` gateway'a (domyślnie 128 żądań `POST`/`DELETE` w toku) odmawia `503` z `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`, domyślnie 2 s) i ciałem `{"error":"upstream_unavailable"}` (kod C10), bez wywołania czegokolwiek za bramą, po uwierzytelnieniu. Kontrakt tego `503` nie opisuje (grep po README i CONTRACT_CHANGES: brak przeciążenia), więc klient i test nie mają wektora.
-- **Zmiana (proponowana):** README opisuje trzecie źródło `503` z `Retry-After`: przeciążenie gateway'a. `Retry-After` w sekundach (liczba całkowita, >= 1), bez `WWW-Authenticate`, ciało jak C10 `upstream_unavailable`, brak nagłówka ujawniającego limit lub ustawienie (jak CC-156). Wektor odpowiedzi w `gateway-authentication-decision/` nie pasuje (to nie uwierzytelnienie); proponuję `tool-errors/` albo krótki wektor `endpoint-aggregate/shed-503` z oczekiwanym kształtem. Audyt: zdarzenie `policy_decision` deny z `errorCode: upstream_unavailable`, ograniczane jak CC-125 (częstość zdarzeń z przeciążenia byłaby sama zalewem); powód do ustalenia z ws-05.
+- **Zmiana (proponowana):** README opisuje trzecie i czwarte źródło `503` z `Retry-After`: przeciążenie gateway'a i niedostępny magazyn sesji. `Retry-After` w sekundach (liczba całkowita, >= 1), bez `WWW-Authenticate`, ciało jak C10 `upstream_unavailable`, brak nagłówka ujawniającego limit lub ustawienie (jak CC-156). Wektor odpowiedzi w `gateway-authentication-decision/` nie pasuje (to nie uwierzytelnienie); proponuję `tool-errors/` albo krótki wektor `endpoint-aggregate/shed-503` z oczekiwanym kształtem. Audyt: zdarzenie `policy_decision` deny z `errorCode: upstream_unavailable`, ograniczane jak CC-125 (częstość zdarzeń z przeciążenia byłaby sama zalewem); powód do ustalenia z ws-05.
 - **Zgodność wstecz:** opis istniejącego zachowania i nowy wektor: **patch/minor**.
 - **Kogo dotyka:** ws-05 (zgodność już jest; powód audytu), ws-01 (nginx nie może gubić `Retry-After`), ws-10 (scenariusz przeciążenia już istnieje w `mcp-load-tests`), klienci MCP (zalecenie ponowienia).
-- **Pytanie do człowieka:** (1) czy pozycja "`Retry-After`" z planu to właśnie ta; jeśli chodziło o `503` brokera (C4: `database_unavailable`, `secret_store_unavailable` bez `Retry-After`; w OpenAPI brokera `Retry-After` występuje tylko przy `429`), wpis trzeba rozszerzyć (rekomendacja: sprawdzić z ws-06 i dopisać w tym samym CC); (2) powód audytu odmowy z przeciążenia.
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 (patch/minor)
+- **Decyzja człowieka (2026-11-03):** `Retry-After` przy `503` z shed i z magazynu sesji. Magazyn sesji (Redis): gdy gateway nie potrafi odczytać ani zapisać sesji MCP, żądanie sesyjne dostaje `503`, ciało C10 `upstream_unavailable` i `Retry-After` (domyślnie 10 s, jak przy niedostępnym Redisie w CC-167), bez `WWW-Authenticate`; nie jest to `404` (sesja nie jest "nieznana", tylko nieczytelna). `503` brokera (C4) poza zakresem tego wpisu.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-200 | C5/README | `tools/list` z `cursor: ""`
 
@@ -3850,8 +3850,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Alternatywa:** `""` jak brak kursora (pierwsza strona). Łagodniejsze dla klientów, które wysyłają puste pole, ale tworzy drugą ścieżkę wejścia bez uwierzytelnienia kursora; odradzane.
 - **Zgodność wstecz:** nowy wektor, doprecyzowanie: **minor**. Jeśli gateway dziś traktuje `""` jak brak kursora, jego zachowanie się zmienia (poprawka u ws-05). Nie sprawdzano kodu gatewaya.
 - **Kogo dotyka:** ws-05 (obsługa `""`), ws-10 (G9: dopisać pusty kursor do zestawu błędnych), ws-08/07 (brak).
-- **Pytanie do człowieka:** `-32602` (rekomendacja) czy pierwsza strona.
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 (6.0.0 razem z pakietem)
+- **Decyzja człowieka (2026-11-03):** `-32602`.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-201 | C1/C2 | Token IdP z claimami `vs`/`vsc` na `/mcp`
 
@@ -3861,8 +3861,8 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Alternatywa:** odrzucać token IdP z `vs`/`vsc` (`401`). Daje twardszy sygnał, ale psuje logowanie, gdy IdP dopisze claim o tej nazwie z innego powodu; odradzane.
 - **Zgodność wstecz:** doprecyzowanie, nowy wektor: **minor** (nie zmienia żadnego istniejącego oczekiwania; zachowanie "ignoruj" jest typowe dla biblioteki JWT).
 - **Kogo dotyka:** ws-05 (potwierdzenie, że C2 nie kopiuje claimów), ws-10 (scenariusz), pozostali bez zmian.
-- **Pytanie do człowieka:** ignorować (rekomendacja) czy odrzucać.
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 (6.0.0 razem z pakietem)
+- **Decyzja człowieka (2026-11-03):** claim ignorowany.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-202 | C12/wektory | Wektor `%zz` (niepoprawny escape w query)
 
@@ -3871,7 +3871,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Zmiana (proponowana):** opis CC-182 mówi, że niepoprawny escape to `400 invalid_request`, `reason: invalid_filter` (jak każde `%` po dekodowaniu). Nowy wektor `mcp-endpoint/http-broken-escape` (`httpQuery: "systems=%zz"`, `rawQuery` pominięte, oczekiwane `400 invalid_filter`) i, jeśli generator na to pozwala, wariant `systems=%` i `systems=%4`. Mock MSW zwraca to samo.
 - **Zgodność wstecz:** nowe wektory i opis: **minor**. Mock odrzucający `%zz`, jeśli dziś przepuszcza, to zaostrzenie walidacji mocka (wyjątek jak w CC-182).
 - **Kogo dotyka:** ws-07 (już zgodne według STATUS), ws-08 (mock), ws-05 (gateway odrzuca każde `%` w query: `endpoint-filter/parse-percent-encoded-*`; wariant surowy `%zz` do dopisania w tym samym wektorze).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 5.2.0 (minor)
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-203 | Java | Kod wyjścia `PolicyLintCli` przy uszkodzonym schemacie lub błędzie walidacji
 
@@ -3880,25 +3880,29 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Zmiana (proponowana):** brak wyniku walidacji to błąd: `impossible` rzuca wyjątek z komunikatem walidatora (lub zwraca go jako naruszenie), a `PolicyLintCli` kończy kodem `2` ("cannot lint"), nie `0`. Test: uszkodzony `--schema` i polityka niezgodna ze schematem -> `2`. `BundleVerifier` bez zmian (jak w CC-183).
 - **Zgodność wstecz:** metoda i CLI kończą się błędem tam, gdzie wcześniej kończyły się sukcesem: według tabeli zaostrzenie walidacji, **major** (precedens: CC-183 w 5.1.0, wyjątek SemVer). Praktycznie to naprawa błędu; w potoku ws-09 uszkodzony schemat i tak łapie `policy-tool check`.
 - **Kogo dotyka:** ws-09 (krok `PolicyLintCli`: polityki, które nie przechodzą walidacji, kończą krok kodem `2`), odbiorcy paczek bez zmian.
-- **Pytanie do człowieka:** wydać razem z pakietem jako major (rekomendacja: tak, jeśli pakiet i tak jest 6.0.0) czy jako wyjątek w 5.2.0 jak CC-183 (kosztem kolejnego wyjątku od tabeli).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie 6.0.0 (major) albo 5.2.0 z wyjątkiem SemVer
+- **Decyzja człowieka (2026-11-03):** wydane z pakietem jako major 6.0.0.
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
-## CC-204 | C5 | Idempotencja operacji UPDATE (dane niewystarczające)
+## CC-204 | C5/C10/README | `UPDATE` jest dostarczane co najmniej raz; `502` z balancera ze stałym tekstem o nieznanym wyniku
 
-- **Kontrakt:** nieustalony. Pozycja "idempotencja UPDATE" jest w `m6-plan.md` (etap 2) bez opisu.
-- **Czego szukałem:** `mcp-platform-plan/STATUS.md`, `m5-plan.md`, `m6-plan.md`, `pytania-eksploatacja.md`, STATUS brokera, gatewaya, BFF, startera, e2e, platform-dev i `docs/m6.md`, przeglądy M6 w scratchpadzie oraz `CONTRACT_CHANGES.md`/README/OpenAPI kontraktów. Trafienia "idempotentne" dotyczą innych operacji (`purge`, `DELETE connections`, `invalidate-codes`, `cancel`, `viewed`, wniosek o dostęp, skrypty `bulk.sh`); żaden nie dotyczy narzędzi o ryzyku `UPDATE` ani `PUT`/`approve` w rejestrze dla wpisów `UPDATE`.
-- **Hipotezy (niezweryfikowane, nie wybieram żadnej):** (a) ponowienie wywołania narzędzia `UPDATE` przez model lub klienta (klucz idempotencji w `tools/call`); (b) powtórny `PUT` manifestu z niezmienionym wpisem `UPDATE` (rejestr: ten sam hash nie zmienia stanu); (c) powtórne `approve` wpisu `UPDATE`; (d) powtórne `POST` wniosku o dostęp z tytułu uprawnień do zapisu.
-- **Zmiana:** brak, do czasu odpowiedzi zgłaszającego. Wpis rezerwuje numer.
-- **Pytanie do człowieka:** który przypadek ma pokrywać pozycja i skąd się wzięła (przegląd, scenariusz ws-10, uwaga z etapu 1?). Bez tego nie piszę reguły ani wektorów.
-- **Status:** proposed (ws-00, 2026-11-03), wydanie: po wyjaśnieniu; nie blokuje reszty pakietu
+- **Kontrakt:** C10 (`tools/call`), README ("Semantyka dostarczenia"), `common.schema.json`. Źródło: przegląd HA M5 (decyzja człowieka, 2026-11-03): gdy instancja gatewaya pada w trakcie `tools/call`, balancer odpowiada `502`, a klient może ponowić wywołanie, więc narzędzie o ryzyku `UPDATE` może wykonać się dwa razy.
+- **Decyzja człowieka (2026-11-03):** semantyka at-least-once zapisana w kontrakcie, bez klucza idempotencji. Zamiast niego `502` z balancera ma stały, jednoznaczny tekst o nieznanym wyniku.
+- **Zmiana:**
+  - README, "Semantyka dostarczenia": `tools/call` o ryzyku `READ_ONLY` jest bezpieczne do ponowienia; `UPDATE` jest dostarczane co najmniej raz (po błędzie o nieznanym wyniku: `502`, reset połączenia, limit czasu klienta, ponowienie przez klienta może wykonać operację drugi raz); `DESTRUCTIVE` wymaga przy ponowieniu nowego potwierdzenia (kod potwierdzenia jest jednorazowy, C11). Platforma nie wprowadza klucza idempotencji. Gateway nie ponawia sam `tools/call` o ryzyku `UPDATE` ani `DESTRUCTIVE` do serwera (ponowienie decyduje klient albo użytkownik); autorzy narzędzi `UPDATE` powinni, gdzie system docelowy na to pozwala, projektować operację tak, by powtórzenie było nieszkodliwe (opisane w README startera, nie wymuszone).
+  - Odpowiedź balancera na awarię instancji w trakcie żądania: `502` z ciałem JSON `{"error":"bad_gateway","message":"The request may or may not have been processed. Check the result before repeating a write."}` (nowy schemat `BalancerError` w `common.schema.json`, `message` jest stałą; nagłówki `nosniff` i CSP jak w CC-189). Tekst jest stały, żeby klient i model nie interpretowali go jako "nie wykonano"; nie zdradza ustawień ani instancji.
+- **Pliki:** `schemas/common.schema.json` (`BalancerError`), wektor `endpoint-filter/error-response-balancer-502`, README, `test/vectors.test.mjs`.
+- **SemVer:** nowy schemat i wektor, opis semantyki: minor w pakiecie major.
+- **Wpływ:** ws-01 (nginx: `proxy_next_upstream off` dla `POST /mcp` i strona błędu `502` w JSON z nagłówkami; nginx nie powinien sam ponawiać `POST` na drugą instancję, bo to tworzy podwójne wykonanie bez wiedzy klienta), ws-05 (brak automatycznego ponowienia `tools/call` UPDATE/DESTRUCTIVE do serwera), ws-10 (scenariusz: zabicie instancji w trakcie `tools/call` UPDATE daje `502` z tym tekstem), ws-02/03/04 (README: operacje powtarzalne tam, gdzie to możliwe), ws-11 (dokumentacja).
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
-## CC-205 | C4/C12 | Oznaczenie wiersza `connected` bez sekretu (dane niepełne)
+## CC-205 | C4/C12/C8 | Połączenie bez sekretu przechodzi w `error` z powodem `secret_missing`
 
-- **Kontrakt:** C4 `Connection` / `ConnectionStatus`, C12 (lista połączeń w portalu). Źródło: `mcp-credential-broker/STATUS.md`, M6 etap 1 (`LostSecretSignal`) i przegląd ws-06 M6 (M4: "wiersz zostaje `connected`", sweep tła bierze 100 najstarszych `access_expires_at`, 100 wierszy bez sekretu blokuje batch).
-- **Fakty:** gdy sekretu połączenia brakuje w OpenBao (utrata danych), wiersz w bazie zostaje `connected`; użytkownik nie widzi problemu, a wywołanie kończy się `credential_required`. Broker sygnalizuje to tylko metryką `broker.connection.secret_missing{system,place}` (niewystawioną przez aktuator) i logiem WARN. Nowych powodów audytu broker w tym etapie nie dodał (zdanie ze STATUS). Opis `ConnectionStatus` ogranicza `expiring` do `user-secret` z `expiresAt`.
-- **Czego nie ustaliłem:** czy oznaczenie ma być widoczne dla użytkownika (nowy stan, np. wymaga ponownego połączenia), czy tylko w sygnale operatora; jaki ma być stan wiersza po wykryciu (zmiana na `error`/`revoked` w bazie, żeby wypadł z zapytania sweepu); czy zmiana ma dotyczyć wszystkich typów poświadczeń. STATUS brokera mówi tylko "do decyzji (patrz niżej)", a "niżej" nie ma rozstrzygnięcia.
-- **Opcje (do decyzji, bez wyboru po stronie ws-00):** (a) wiersz przechodzi w istniejący stan `error` z powodem audytu `secret_missing` (patch w opisie + nowy powód, wektor `connection_change`); portal pokazuje istniejący stan błędu i prośbę o ponowne połączenie; (b) nowy stan `ConnectionStatus` (np. `lost`): nowa wartość enum, **major**; (c) bez zmian w C4, tylko metryka/alert (obecne zachowanie).
-- **Zgodność wstecz:** (a) patch/minor, (b) major, (c) brak zmian.
-- **Kogo dotyka:** ws-06 (stan wiersza, sweep), ws-07/08 (wyświetlanie), ws-01 (alert na metrykę).
-- **Pytanie do człowieka:** (a), (b) czy (c) (rekomendacja ws-00 przy braku danych o intencji: (a), bo nie dodaje wartości enum i usuwa wiersz z batcha sweepu; do potwierdzenia przez ws-06).
-- **Status:** proposed (ws-00, 2026-11-03), wydanie: po decyzji; nie blokuje reszty pakietu
+- **Kontrakt:** C4 (`Connection`, zdarzenie `connection_change`), C8 (powód), C12 (lista połączeń). Źródło: `mcp-credential-broker/STATUS.md`, M6 etap 1 (`LostSecretSignal`) i przegląd ws-06 M6 (M4: wiersz `connected` bez sekretu zajmuje batch sweepu).
+- **Stan:** gdy sekretu połączenia brakuje w OpenBao, wiersz zostaje `connected`; użytkownik nie widzi problemu, a wywołanie kończy się `credential_required`. Sygnał to metryka `broker.connection.secret_missing{system,place}` i log WARN.
+- **Decyzja człowieka (2026-11-03), opcja a):** po wykryciu braku sekretu (przy `resolve` albo w sweepie) broker ustawia stan wiersza `error` i zapisuje zdarzenie `connection_change` z powodem `secret_missing`, wynikiem `error` (zdarzenie niżej). Wiersz w stanie `error` wypada z zapytania sweepu, więc nie blokuje batcha. Portal pokazuje istniejący stan błędu z prośbą o ponowne połączenie (`connectUrl`); ponowne połączenie zapisuje nowy sekret i przywraca `connected`. Bez nowej wartości enum.
+  - **Zdarzenie:** `connection_change`, `reason: secret_missing`, `outcome: error`, bez `errorCode`, jeśli kontrakt zdarzenia nie wymaga go dla tego powodu (do potwierdzenia przez ws-06 z wektorem); `place` (`resolve`, `refresh_sweep`) pozostaje w metryce, nie w zdarzeniu.
+  - Dotyczy wszystkich typów poświadczeń przechowywanych w OpenBao (`user-secret`, `user-oauth`); `token-exchange` i `service-account` nie mają sekretu użytkownika.
+- **Pliki:** `schemas/audit-event.schema.json` (opis `reason`), wektor `audit-events/broker-connection-secret-missing`, opis `ConnectionStatus` w `credential-broker.v1.yaml` (`error` obejmuje także brak sekretu), README.
+- **SemVer:** nowy powód (pole to wzorzec) i opis; zachowanie brokera zmienia stan wiersza: minor w pakiecie major.
+- **Wpływ:** ws-06 (stan `error` po wykryciu, zdarzenie, sweep), ws-07/08 (pokazanie `error` z prośbą o ponowne połączenie; bez zmian w kontrakcie), ws-01 (alert na metrykę), ws-10 (scenariusz: usunięty sekret konta jednorazowego daje `error`).
+- **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
