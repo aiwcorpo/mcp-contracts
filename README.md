@@ -1155,7 +1155,7 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
 1. Wersja dokładnie `X.Y.Z` w pomach, `package.json` i `info.version` OpenAPI; `./scripts/verify-all.sh` zielony (robi `./mvnw clean verify`
    i `scripts/check-jar-contents.mjs`: jary muszą zawierać dokładnie pliki drzewa źródeł).
 2. Sprawdzić, że w `~/.m2` nie ma jeszcze `X.Y.Z` (wydane wersje są niezmienne), commit `Release X.Y.Z`, tag `vX.Y.Z`.
-3. Wypchnięcie tagu uruchamia `.github/workflows/release.yml` (weryfikacja, `npm publish`, `./mvnw deploy`, SBOM CycloneDX); potem wersja `X.Y.(Z+1)-SNAPSHOT`. Lokalnie: `./mvnw clean install` (do `~/.m2`) i `npm run pack`.
+3. Wypchnięcie tagu uruchamia `.github/workflows/release.yml` (job `build` tylko do odczytu: weryfikacja, `npm pack`, jary Maven, SBOM CycloneDX; job `publish` z `packages: write`: `npm publish` tarballa i `deploy:deploy-file` gotowych jarów, bez budowania); potem wersja `X.Y.(Z+1)-SNAPSHOT`. Lokalnie: `./mvnw clean install` (do `~/.m2`) i `npm run pack`.
 
 ## Walidacja lokalna i CI
 
