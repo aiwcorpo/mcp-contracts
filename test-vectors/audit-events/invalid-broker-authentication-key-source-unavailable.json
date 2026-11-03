@@ -1,0 +1,16 @@
+{
+  "description": "key_source_unavailable is not a defined name: the event authentication uses jwks_unavailable (CC-197).",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "broker",
+    "componentId": "mcp-credential-broker",
+    "event": "authentication",
+    "reason": "key_source_unavailable",
+    "outcome": "error",
+    "errorCode": "upstream_unavailable"
+  }
+}

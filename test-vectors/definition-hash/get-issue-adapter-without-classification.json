@@ -1,0 +1,44 @@
+{
+  "description": "The entry of a tool of an adapter has no risk and no action (CC-193): the flat object has no such keys, the hash differs from get-issue and no classification of the administrator changes it.",
+  "input": {
+    "tool": {
+      "name": "get_issue",
+      "title": "Get issue",
+      "description": "Returns one Jira issue by key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "issueKey"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    },
+    "manifestEntry": {
+      "resourceRefs": []
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Returns one Jira issue by key.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"maxLength\":32,\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"get_issue\",\"resourceRefs\":[],\"system\":\"jira\",\"title\":\"Get issue\"}",
+  "expected": "sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7",
+  "differsFrom": "get-issue.json"
+}

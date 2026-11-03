@@ -681,6 +681,12 @@ paths:
         outside a deployment (CC-133). An entry whose risk is lower than the risk floor (riskLowered true) cannot be approved: 422
         manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; the pipeline never can, CC-167). The approval is audited as admin_change with reason definition_approved, or, when a lowering was accepted, with one event risk_lowered_by_admin in its place (risk = the new risk), the administrator
         as sub and the approved hash as definitionHash.
+
+        **Entries of an adapter (CC-193).** An entry with source adapter has no risk and no action; the body must carry both (`risk`, `action`), otherwise 422
+        manifest_rejected with reason classification_required, and a body with them for any other entry is 422 classification_not_allowed. Approval then also
+        classifies: the registry stores risk, action, the administrator and the time (`classifiedBy`, `classifiedAt` in the registry listing); the audit event is
+        admin_change with reason definition_approved and the new risk. A tool of an adapter that is not classified is hidden and refused as tool_disabled. A changed
+        definition of an adapter tool is pending again; the earlier classification is shown to the administrator as a suggestion and is not applied.
       security:
         - mtls: []
           bffUserToken: []
@@ -698,6 +704,11 @@ paths:
                 value:
                   definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
                   acceptRiskLowering: true
+              approve_adapter_tool:
+                value:
+                  definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                  risk: UPDATE
+                  action: update
       responses:
         '204':
           description: Approved.
@@ -729,6 +740,11 @@ paths:
                     error: manifest_rejected
                     reason: risk_lowered
                     message: update_issue lowers risk from UPDATE to READ_ONLY
+                classification_required:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_required
+                    message: update_issue comes from an adapter and needs risk and action
   /admin/v1/activity:
     get:
       tags: [activity]
@@ -1115,6 +1131,180 @@ paths:
                 upstream_unavailable:
                   value:
                     error: upstream_unavailable
+  /admin/v1/kill-switches:
+    get:
+      tags: [registry]
+      operationId: listKillSwitches
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Active emergency switches of servers and tools (group mcp-platform-admin, CC-194).
+      description: |
+        One entry per switch that is on. A tool that is disabled for another reason (pending approval, configuration) is not listed here;
+        the catalog shows it with `disabled` true and `disabledBy`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: The active switches, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KillSwitchList'
+              examples:
+                two_switches:
+                  value:
+                    switches:
+                      - scope: tool
+                        serverId: mcp-jira
+                        tool: update_issue
+                        setBy: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                        setAt: '2026-11-03T09:12:44Z'
+                        reason: Issue updates corrupt the workflow after the 9.4 upgrade
+                      - scope: server
+                        serverId: mcp-confluence
+                        setBy: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                        setAt: '2026-11-03T09:15:02Z'
+                        reason: Vendor incident
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/KillSwitchStoreUnavailable'
+  /admin/v1/registry/servers/{serverId}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    put:
+      tags: [registry]
+      operationId: putServerKillSwitch
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Switch off every tool of a server at once (group mcp-platform-admin, CC-194).
+      description: |
+        Emergency switch (A9). From the moment of the `204`, on every gateway instance within 5 seconds at the latest, a call of a switched
+        tool is refused as `tool_disabled` (C10) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
+        `disabledBy` `kill_switch`. A call that was already accepted is not interrupted; a pending confirmation of a switched tool fails at
+        the confirmation with `tool_disabled`. The switch is stored durably (it survives a restart) and is lifted only by `DELETE` on the
+        same address: a new `PUT` of a manifest, an approval and a registration never lift it. System and server are the same thing here
+        (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. No fresh MFA is needed (an incident must
+        not wait for a second factor); the portal asks for one when the switch is lifted. If the gateway cannot store the switch the answer is
+        `503` and the switch is not on. Audited as `admin_change` with reason `kill_switch_set` (the text of `reason` stays in the registry and
+        the portal and is not part of the audit event); refused calls are `tool_call` deny with reason `kill_switch`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Vendor incident
+      responses:
+        '204':
+          description: The switch is on.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/KillSwitchStoreUnavailable'
+    delete:
+      tags: [registry]
+      operationId: deleteServerKillSwitch
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Lift the switch of a server (group mcp-platform-admin, CC-194).
+      description: |
+        Idempotent: `204` also when the switch was not on. The tools of the server return to the state their approval gives them (a tool
+        pending approval stays disabled). Audited as `admin_change` with reason `kill_switch_cleared`. The portal requires a fresh MFA of the
+        administrator before it calls this operation.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '204':
+          description: The switch is off.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/KillSwitchStoreUnavailable'
+  /admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/Tool'
+    put:
+      tags: [registry]
+      operationId: putToolKillSwitch
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Switch off one tool (group mcp-platform-admin, CC-194).
+      description: |
+        Emergency switch (A9). From the moment of the `204`, on every gateway instance within 5 seconds at the latest, a call of a switched
+        tool is refused as `tool_disabled` (C10) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
+        `disabledBy` `kill_switch`. A call that was already accepted is not interrupted; a pending confirmation of a switched tool fails at
+        the confirmation with `tool_disabled`. The switch is stored durably (it survives a restart) and is lifted only by `DELETE` on the
+        same address: a new `PUT` of a manifest, an approval and a registration never lift it. System and server are the same thing here
+        (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. No fresh MFA is needed (an incident must
+        not wait for a second factor); the portal asks for one when the switch is lifted. If the gateway cannot store the switch the answer is
+        `503` and the switch is not on. Audited as `admin_change` with reason `kill_switch_set` (the text of `reason` stays in the registry and
+        the portal and is not part of the audit event); refused calls are `tool_call` deny with reason `kill_switch`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Issue updates corrupt the workflow
+      responses:
+        '204':
+          description: The switch is on.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/KillSwitchStoreUnavailable'
+    delete:
+      tags: [registry]
+      operationId: deleteToolKillSwitch
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: Lift the switch of a tool (group mcp-platform-admin, CC-194).
+      description: |
+        Idempotent: `204` also when the switch was not on. Same rules as for a server. A switch of the whole server stays on when only the
+        tool switch is lifted.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '204':
+          description: The switch is off.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/KillSwitchStoreUnavailable'
   /admin/v1/policy/status:
     get:
       tags: [policy]
@@ -1201,6 +1391,23 @@ components:
         maximum: 200
         default: 50
   responses:
+    KillSwitchStoreUnavailable:
+      description: The gateway cannot read or store the emergency switches (fail-closed). A switch is never reported as on when it could not be stored; a call that needs the state of the switches is refused as upstream_unavailable.
+      headers:
+        Retry-After:
+          description: Seconds to wait before repeating the call.
+          schema:
+            type: integer
+            minimum: 1
+          example: 10
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unavailable:
+              value:
+                error: upstream_unavailable
     BadRequest:
       description: Malformed request or schema violation.
       content:
@@ -1254,6 +1461,53 @@ components:
           type: string
           maxLength: 500
       additionalProperties: false
+    KillSwitchRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Why the switch is on, free text of the administrator. Kept in the registry and shown in the portal; never part of an audit event and untrusted text for the UI like every administrator text (CC-094 rules).
+      additionalProperties: false
+    KillSwitch:
+      type: object
+      required: [scope, serverId, setBy, setAt, reason]
+      properties:
+        scope:
+          type: string
+          enum: [server, tool]
+        serverId:
+          $ref: '../schemas/common.schema.json#/$defs/ServerId'
+        tool:
+          description: Present exactly when scope is tool.
+          $ref: '../schemas/common.schema.json#/$defs/ToolName'
+        setBy:
+          description: sub of the administrator who put the switch.
+          type: string
+          minLength: 1
+          maxLength: 255
+        setAt:
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+    KillSwitchList:
+      type: object
+      required: [switches]
+      properties:
+        switches:
+          type: array
+          items:
+            $ref: '#/components/schemas/KillSwitch'
+      additionalProperties: false
+    DisabledBy:
+      type: string
+      enum: [kill_switch, approval, configuration]
+      description: Why a tool or server is disabled, present only when disabled is true (CC-194). kill_switch is an emergency switch of an administrator, approval a definition waiting for approval or classification, configuration the gateway configuration or an overrides policy. When more than one applies the first of the list is shown.
     ManifestRejected:
       type: object
       description: 422 of a registration or an approval (CC-133). reason is a known value or absent for the older rejections (a hash that does not match, a rule of the manifest).
@@ -1264,7 +1518,7 @@ components:
         reason:
           type: string
           pattern: '^[a-z][a-z0-9_]*$'
-          description: Known values are risk_lowered, environment_mismatch (CC-138) and credential_type_mismatch (CC-159). A client must show an unknown value as a generic message.
+          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500
@@ -1301,6 +1555,8 @@ components:
           type: boolean
           default: false
           description: True when an administrator disabled the tool or its server (C10 tool_disabled; a hash pending approval counts) (CC-081).
+        disabledBy:
+          $ref: '#/components/schemas/DisabledBy'
         requiresConfirmation:
           type: boolean
           default: false
@@ -1334,12 +1590,20 @@ components:
       type: string
       enum: [approved, pending_approval]
     RegistryTool:
-      description: Manifest tool entry (C6) with its approval status. Pending entries are shown when present.
       allOf:
         - $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntryFields'
       type: object
       required: [status]
+      description: Manifest tool entry (C6) with its approval status. Pending entries are shown when present. risk and action are always present except on a pending entry whose source is adapter (CC-193); an approved adapter tool has the classification of the administrator in them.
       properties:
+        classifiedBy:
+          description: sub of the administrator who classified the tool; present only for a tool of an adapter that was classified (CC-193).
+          type: string
+          minLength: 1
+          maxLength: 255
+        classifiedAt:
+          description: When the tool was classified (CC-193).
+          $ref: '../schemas/common.schema.json#/$defs/Timestamp'
         status:
           $ref: '#/components/schemas/RegistryToolStatus'
         change:
@@ -1348,8 +1612,8 @@ components:
           description: Present exactly when status is pending_approval. new means no approved entry exists, changed means an approved entry exists and differs (CC-097).
         source:
           type: string
-          enum: [ci, server]
-          description: Present exactly when status is pending_approval (CC-162); same meaning as PendingTool.source.
+          enum: [ci, server, adapter]
+          description: Present exactly when status is pending_approval (CC-162, CC-193); same meaning as PendingTool.source.
         riskLowered:
           type: boolean
           description: True when the pending entry has a risk below the risk floor (CC-167). The tool is hidden and refused as tool_disabled, and only an administrator can approve it, with acceptRiskLowering true. Absent means false.
@@ -1372,7 +1636,7 @@ components:
         enabled:
           type: boolean
           default: true
-          description: False when the server is disabled in gateway configuration or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only; the portal has no switch.
+          description: False when the server is disabled in gateway configuration or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only here; the emergency switch of a server is a separate resource (CC-194).
         tools:
           type: array
           items:
@@ -1395,15 +1659,18 @@ components:
           description: True when the pending entry has a risk below the risk floor, the highest risk ever reported for the tool (CC-167); approve needs acceptRiskLowering true then. Absent means false.
         source:
           type: string
-          enum: [ci, server]
-          description: Where the pending entry comes from (CC-162). ci is an entry left by a PUT of the pipeline (the reviewed commit); server is a definition that the running server presented. A server entry never replaces a ci entry, see the README, "Rejestr i przypinanie definicji".
+          enum: [ci, server, adapter]
+          description: Where the pending entry comes from (CC-162, CC-193). ci is an entry left by a PUT of the pipeline (the reviewed commit); server is a definition that the running server presented; adapter is an entry that an adapter (the sidecar of a foreign MCP server) presented at startup, never approved automatically and without risk and action until an administrator classifies it. A server entry never replaces a ci entry, see the README, "Rejestr i przypinanie definicji".
         approvedEntry:
-          description: Currently approved entry; null for a new tool.
+          description: Currently approved entry; null for a new tool. For an adapter tool it carries the classification of the administrator.
           oneOf:
             - $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntry'
             - type: 'null'
         pendingEntry:
-          $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntry'
+          description: The pending entry. Without risk and action when source is adapter (CC-193).
+          oneOf:
+            - $ref: '../schemas/server-manifest.schema.json#/$defs/ToolEntry'
+            - $ref: '../schemas/server-manifest.schema.json#/$defs/AdapterToolEntry'
         pendingHash:
           $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
       additionalProperties: false
@@ -1417,6 +1684,12 @@ components:
           type: boolean
           default: false
           description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
+        risk:
+          $ref: '../schemas/common.schema.json#/$defs/Risk'
+          description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk; forbidden for any other entry (422 manifest_rejected, reason classification_not_allowed). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
+        action:
+          $ref: '../schemas/common.schema.json#/$defs/ToolAction'
+          description: Cedar action given by the administrator together with risk (CC-193); required and forbidden under the same conditions as risk.
       additionalProperties: false
     ActivityCall:
       type: object

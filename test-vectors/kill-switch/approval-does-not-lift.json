@@ -1,0 +1,23 @@
+{
+  "description": "An approval of a pending definition leaves the switch on.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "approve"
+  },
+  "expected": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ]
+  }
+}

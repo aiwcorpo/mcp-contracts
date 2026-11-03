@@ -1,0 +1,19 @@
+{
+  "description": "A stream of the own session with the same filter after normalization is opened.",
+  "kind": "stream-open",
+  "input": {
+    "sessionId": "sess-1",
+    "accept": "text/event-stream",
+    "requestQuery": "SYSTEMS=jira",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": "continue"
+  }
+}

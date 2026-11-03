@@ -1,0 +1,23 @@
+{
+  "description": "An empty string is a cursor that does not verify, not the first page: the same -32602 (CC-200). The first page is a request without the field. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "cursor",
+  "input": {
+    "issuedFor": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "presentedBy": {
+      "sub": "user-a",
+      "query": "systems=jira&access=read"
+    },
+    "mutation": "empty-string",
+    "afterSeconds": 60
+  },
+  "expected": {
+    "valid": false,
+    "error": {
+      "code": -32602,
+      "message": "Invalid cursor"
+    }
+  }
+}

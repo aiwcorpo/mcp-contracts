@@ -73,7 +73,8 @@
         "t": 60,
         "sub": "user-a",
         "reason": "invalid_cursor",
-        "suppressedCount": 2
+        "suppressedCount": 2,
+        "suppressedTargets": 1
       }
     ]
   }

@@ -3,10 +3,11 @@
 // EndpointFilter and the tests must reproduce them.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches } from './lib/endpoint-filter.mjs';
-import { auditThrottle, issueCursor, listChangedNotification, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
+import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from './lib/endpoint-filter.mjs';
+import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
-import { protectedResourceMetadata } from './lib/gateway-authentication.mjs';
+import { idpTokenClaimsDecision, protectedResourceMetadata } from './lib/gateway-authentication.mjs';
+import { killSwitchDecision } from './lib/kill-switch.mjs';
 
 const writer = (dir) => {
   rmSync(path('test-vectors', dir), { recursive: true, force: true });
@@ -337,6 +338,7 @@ const cursorVector = (name, description, issuedFor, presentedBy, { mutation = 'n
   if (mutation === 'tampered') cursor = `${cursor.slice(0, -2)}${cursor.endsWith('AA') ? 'BB' : 'AA'}`;
   if (mutation === 'malformed') cursor = 'not-a-cursor';
   if (mutation === 'not-a-string') cursor = 42;
+  if (mutation === 'empty-string') cursor = '';
   const result = readCursor(cursor, { sub: presentedBy.sub, canonicalFilter: parseFilter(presentedBy.query).canonical, now: IAT + afterSeconds });
   aggOut(`cursor-${name}`, { description: `${description} Key: test only, NOT FOR PRODUCTION.`, kind: 'cursor', input: { issuedFor, presentedBy, mutation, afterSeconds },
     expected: result.error ? { valid: false, error: result.error } : { valid: true } });
@@ -352,6 +354,7 @@ cursorVector('filter-removed', 'A cursor issued under a filter and used without 
 cursorVector('tampered', 'A cursor that was changed.', owner, owner, { mutation: 'tampered' });
 cursorVector('malformed', 'A string that never was a cursor.', owner, owner, { mutation: 'malformed' });
 cursorVector('not-a-string', 'A cursor that is not a string.', owner, owner, { mutation: 'not-a-string' });
+cursorVector('empty-string', 'An empty string is a cursor that does not verify, not the first page: the same -32602 (CC-200). The first page is a request without the field.', owner, owner, { mutation: 'empty-string' });
 
 // ---------- audit of repeatable refusals (CC-190, CC-191) ----------
 
@@ -376,6 +379,9 @@ throttleVector('filter-scope-per-tool', 'filter_scope is throttled per tool like
 throttleVector('number-of-keys-is-limited', 'A user who invents a new target on every request does not make the number of keys unbounded: over the limit (3 here) new targets share one key and are audited once per interval together.', [
   ev(0, 'not_granted', 'a__t1'), ev(1, 'not_granted', 'a__t2'), ev(2, 'not_granted', 'a__t3'), ev(3, 'not_granted', 'a__t4'), ev(4, 'not_granted', 'a__t5'), ev(5, 'not_granted', 'a__t6')],
   { maxTargetsPerSub: 3 });
+throttleVector('keys-limited-per-reason', 'The bound on keys is per user and reason (CC-195): a user who used up the budget of invalid_filter keys (2 here) still gets the event for a new tool refusal at once.', [
+  ev(0, 'invalid_filter', 'q:aaaa'), ev(1, 'invalid_filter', 'q:bbbb'), ev(2, 'invalid_filter', 'q:cccc'), ev(3, 'not_granted', 'jira__delete_issue')],
+  { maxTargetsPerSub: 2 });
 throttleVector('summary-after-the-interval', 'The summary event per (user, reason) carries the number of events left out in the window, whatever their targets.', [
   ev(0, 'not_granted', 'jira__delete_issue'), ev(1, 'not_granted', 'jira__delete_issue'), ev(2, 'not_granted', 'jira__delete_issue'), ev(3, 'not_granted', 'gitlab__delete_project'), ev(4, 'not_granted', 'gitlab__delete_project')]);
 throttleVector('no-summary-without-suppressed', 'Nothing was left out: no summary.', [ev(0, 'invalid_cursor', 'c:91ee'), ev(30, 'invalid_cursor', 'c:91ee')]);
@@ -454,6 +460,9 @@ fromHttp('http-encoded-comma-is-decoded-first', 'The generated client sends a co
 fromHttp('http-double-encoded-comma', 'A comma encoded twice (%252C) decodes once to %2C, a value with a percent sign: invalid filter.', 'systems=jira%252Cgitlab');
 fromHttp('http-ampersand-in-value', 'An encoded ampersand inside a value must not add a parameter: systems=jira%26access=read is one invalid value, not the filter systems=jira&access=read.', 'systems=jira%26access=read');
 fromHttp('http-plus-is-a-space', 'A plus sign in a query decodes to a space, which is not in the alphabet of the filter.', 'systems=jira+gitlab');
+fromHttp('http-broken-escape', 'A percent sign that is no escape (%zz) is an invalid filter like any decoded percent sign (CC-202); the container does not reject the request and the BFF does not answer 500.', 'systems=%zz');
+fromHttp('http-lone-percent', 'A percent sign at the end, with no digits after it.', 'systems=jira%');
+fromHttp('http-half-escape', 'One digit after the percent sign.', 'systems=jira%4');
 
 // ---------- metadata document of the protected resource (CC-171, CC-187) ----------
 
@@ -467,5 +476,84 @@ metadataVector('aggregate-endpoint-invalid-query-ignored', 'Even a query that is
 metadataVector('system-route', 'The document for one system: resource is the route of that system.', '/.well-known/oauth-protected-resource/s/mcp-jira/mcp');
 metadataVector('saved-link-route-gone', 'There is no document for /v/ (CC-177): the usual 404.', '/.well-known/oauth-protected-resource/v/team-a-dev/mcp');
 metadataVector('unknown-route', 'A route the gateway does not serve.', '/.well-known/oauth-protected-resource/f/systems=jira/mcp');
+
+// ---------- list_changed (CC-192) ----------
+
+const sequenceVector = (name, description, query, snapshots) => {
+  const { filter } = parseFilter(query);
+  aggOut(`list-changed-sequence-${name}`, { description, kind: 'list-changed-sequence', input: { query, snapshots, windowSeconds: 1 }, expected: { notifyAt: listChangedSequence(filter, snapshots) } });
+};
+sequenceVector('one-change', 'One change after the stream was opened: one notification, at the time of the change.', '', [{ t: 0, tools: [jiraRead] }, { t: 7, tools: [jiraRead, jiraUpdate] }]);
+sequenceVector('no-change', 'Events that leave the list as it was send nothing.', '', [{ t: 0, tools: [jiraRead] }, { t: 3, tools: [jiraRead] }, { t: 9, tools: [jiraRead] }]);
+sequenceVector('burst-is-coalesced', 'Three changes within one second: the first is sent at once, the other two as one notification when the second ends.', '', [
+  { t: 0, tools: [jiraRead] }, { t: 10, tools: [jiraRead, jiraUpdate] }, { t: 10.3, tools: [jiraRead] }, { t: 10.6, tools: [jiraRead, gitlabRead] }]);
+sequenceVector('changes-apart', 'Changes more than a second apart are two notifications.', '', [
+  { t: 0, tools: [jiraRead] }, { t: 5, tools: [jiraRead, jiraUpdate] }, { t: 8, tools: [jiraRead] }]);
+sequenceVector('change-back-inside-window', 'A change that is undone inside the window is still sent once: the client fetches the list and sees the truth.', '', [
+  { t: 0, tools: [jiraRead] }, { t: 10, tools: [jiraRead, jiraUpdate] }, { t: 10.2, tools: [jiraRead] }, { t: 10.4, tools: [jiraRead, jiraUpdate] }, { t: 10.5, tools: [jiraRead] }]);
+sequenceVector('outside-filter', 'A change the filter of the session cuts is not a notification, whatever the number of events.', 'systems=gitlab', [
+  { t: 0, tools: [gitlabRead] }, { t: 4, tools: [gitlabRead, jiraUpdate] }, { t: 4.2, tools: [gitlabRead] }]);
+sequenceVector('connection-change-is-silent', 'The account connected a system: the list is the same, so nothing is sent (CC-176).', '', [{ t: 0, tools: [jiraRead, gitlabRead] }, { t: 20, tools: [jiraRead, gitlabRead] }]);
+
+const streamVector = (name, description, input) => {
+  filterOut(`stream-open-${name}`, { description, kind: 'stream-open', input, expected: streamOpenDecision(input) });
+};
+const own = { sub: 'user-a', route: '/mcp', initializeQuery: 'systems=jira' };
+streamVector('without-session', 'GET without Mcp-Session-Id is 405 with Allow (the stateless variant uses subscriptions/listen).', { sessionId: null, accept: 'text/event-stream', requestQuery: 'systems=jira', route: '/mcp', callerSub: 'user-a', session: null });
+streamVector('without-event-stream-accept', 'GET that does not accept text/event-stream is 405.', { sessionId: 'sess-1', accept: 'application/json', requestQuery: 'systems=jira', route: '/mcp', callerSub: 'user-a', session: own });
+streamVector('own-session-same-filter', 'A stream of the own session with the same filter after normalization is opened.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'SYSTEMS=jira', route: '/mcp', callerSub: 'user-a', session: own });
+streamVector('own-session-other-filter', 'Another filter than the one of initialize: 404 and filter_mismatch, as for a POST (CC-184).', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: own });
+streamVector('foreign-session', 'A session of another user: 404 as for an unknown session, no filter_mismatch.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'systems=gitlab', route: '/mcp', callerSub: 'user-a', session: { ...own, sub: 'user-b' } });
+streamVector('other-route', 'A session opened on /mcp used on /s/mcp-jira/mcp: 404 and filter_mismatch.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'systems=jira', route: '/s/mcp-jira/mcp', callerSub: 'user-a', session: own });
+streamVector('invalid-filter-syntax', 'A bad query is 400 invalid_filter before the session is read.', { sessionId: 'sess-1', accept: 'text/event-stream', requestQuery: 'system=jira', route: '/mcp', callerSub: 'user-a', session: own });
+
+// ---------- emergency switch (CC-194) ----------
+
+const switchOut = writer('kill-switch');
+const switchVector = (name, description, input) => {
+  switchOut(name, { description, input, expected: killSwitchDecision(input) });
+};
+const jiraTool = { scope: 'tool', serverId: 'mcp-jira', tool: 'update_issue' };
+const gitlabServer = { scope: 'server', serverId: 'mcp-gitlab' };
+switchVector('call-switched-tool', 'A call of a tool that is switched off is refused as tool_disabled, audited as kill_switch.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'call' });
+switchVector('call-other-tool-of-the-server', 'Another tool of the same server is not affected by a tool switch.', { switches: [jiraTool], tool: 'jira__get_issue', event: 'call' });
+switchVector('call-tool-of-switched-server', 'A switch of a server refuses every tool of that server.', { switches: [gitlabServer], tool: 'gitlab__get_project', event: 'call' });
+switchVector('call-other-server', 'A switch of one server leaves the others alone.', { switches: [gitlabServer], tool: 'jira__get_issue', event: 'call' });
+switchVector('call-without-switches', 'No switch: the call goes on to the next checks.', { switches: [], tool: 'jira__update_issue', event: 'call' });
+switchVector('list-hides-switched-tool', 'A switched tool is absent from tools/list.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'list' });
+switchVector('list-keeps-other-tools', 'The other tools stay in the list.', { switches: [jiraTool], tool: 'jira__get_issue', event: 'list' });
+switchVector('confirm-pending-call-of-switched-tool', 'A pending DESTRUCTIVE call whose tool was switched off fails at the confirmation: the gate is checked again before it runs.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'confirm' });
+switchVector('store-unreadable-call', 'A gateway that cannot read the switches refuses the call (fail-closed).', { switches: [], tool: 'jira__get_issue', event: 'call', storeReadable: false });
+switchVector('store-unreadable-list', 'and lists nothing.', { switches: [], tool: 'jira__get_issue', event: 'list', storeReadable: false });
+switchVector('approval-does-not-lift', 'An approval of a pending definition leaves the switch on.', { switches: [jiraTool], tool: 'jira__update_issue', event: 'approve' });
+switchVector('registration-does-not-lift', 'A new PUT of the manifest leaves the switch on.', { switches: [jiraTool, gitlabServer], tool: 'jira__update_issue', event: 'register' });
+switchVector('lift-tool-keeps-server-switch', 'Lifting the switch of a tool does not lift the switch of its server.', { switches: [{ scope: 'tool', serverId: 'mcp-gitlab', tool: 'get_project' }, gitlabServer], tool: 'gitlab__get_project', event: 'lift-tool' });
+switchVector('lift-server', 'Lifting the switch of a server leaves the switches of single tools.', { switches: [jiraTool, { scope: 'server', serverId: 'mcp-jira' }], tool: 'jira__update_issue', event: 'lift-server' });
+
+// ---------- failure of an instance behind the balancer (CC-204) ----------
+
+const balancerOut = writer('balancer-errors');
+balancerOut('instance-failed-during-call', {
+  description: 'An instance of the gateway fails while it handles a tools/call: the balancer answers 502 with the fixed text. It does not repeat the request and it does not say that nothing was done (CC-204).',
+  input: { event: 'instance-failed-during-request', method: 'POST', path: '/mcp', toolRisk: 'UPDATE' },
+  expected: {
+    status: 502,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' },
+    body: { error: 'bad_gateway', message: 'The request may or may not have been processed. Check the result before repeating a write.' },
+    balancerRepeatsRequest: false,
+  },
+});
+
+// ---------- token of the IdP with claims that no longer exist (CC-201) ----------
+
+const idpOut = writer('idp-token-claims');
+const idpClaims = { iss: 'https://idp.example/realms/corp', aud: 'mcp-gateway', sub: 'user-a', exp: 4102444800, iat: 4102444700 };
+const idpVector = (name, description, claims) => {
+  idpOut(name, { description, input: { claims }, expected: idpTokenClaimsDecision({ claims }) });
+};
+idpVector('plain', 'A valid token of the IdP.', idpClaims);
+idpVector('with-vs-and-vsc', 'A valid token that carries vs and vsc: the claims are ignored, the token is accepted. Nothing reads them and the gateway builds the internal JWT only from the fields it knows, so they never reach a server or the broker (the internal JWT refuses them, CC-173).', { ...idpClaims, vs: 'team-a-dev', vsc: { jiraProjects: ['ABC'] } });
+idpVector('with-unknown-claim', 'Any other claim the gateway does not know is ignored in the same way.', { ...idpClaims, department: 'it' });
+idpVector('vs-does-not-save-an-expired-token', 'The claims change nothing about the checks: an expired token is rejected whatever else it carries.', { ...idpClaims, exp: 1000, vs: 'team-a-dev' });
 
 console.log('endpoint vectors written');

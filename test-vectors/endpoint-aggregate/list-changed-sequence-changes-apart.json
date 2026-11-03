@@ -1,0 +1,47 @@
+{
+  "description": "Changes more than a second apart are two notifications.",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 5,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      },
+      {
+        "t": 8,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": [
+      5,
+      8
+    ]
+  }
+}

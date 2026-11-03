@@ -1,0 +1,69 @@
+{
+  "description": "A change that is undone inside the window is still sent once: the client fetches the list and sees the truth.",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 10,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      },
+      {
+        "t": 10.2,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 10.4,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      },
+      {
+        "t": 10.5,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": [
+      10,
+      11
+    ]
+  }
+}

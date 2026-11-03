@@ -72,7 +72,8 @@
         "t": 11,
         "sub": "user-a",
         "reason": "filter_mismatch",
-        "suppressedCount": 1
+        "suppressedCount": 1,
+        "suppressedTargets": 1
       }
     ]
   }

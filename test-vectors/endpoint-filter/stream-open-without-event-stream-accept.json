@@ -1,0 +1,22 @@
+{
+  "description": "GET that does not accept text/event-stream is 405.",
+  "kind": "stream-open",
+  "input": {
+    "sessionId": "sess-1",
+    "accept": "application/json",
+    "requestQuery": "systems=jira",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 405,
+    "headers": {
+      "Allow": "POST, DELETE, GET"
+    }
+  }
+}

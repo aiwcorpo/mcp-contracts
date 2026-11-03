@@ -3,12 +3,24 @@
 // failure of the infrastructure the check depends on (the IdP key set) is 503 without any challenge, so that a client
 // does not start a new login that cannot help.
 export const RETRY_AFTER_SECONDS = 10;
+export const SHED_RETRY_AFTER_SECONDS = 2;
 const INFRASTRUCTURE = new Set(['jwks_unavailable']);
 
 // resourcePath is the path of the route without a query. The query of the request (the filter of /mcp, CC-170) is not an
 // argument on purpose: the identifier of the protected resource is <publicBaseUrl>/mcp without a query, and so is
 // resource_metadata (CC-171, variant V2). Vectors may carry requestQuery to show that it changes nothing.
-export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourcePath, retryAfterSeconds = RETRY_AFTER_SECONDS }) {
+export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourcePath, retryAfterSeconds: given }) {
+  const retryAfterSeconds = given ?? RETRY_AFTER_SECONDS;
+  // CC-199: the gateway sheds a request when too many are in progress, and refuses one that needs a session it cannot read.
+  if (reason === 'overloaded' || reason === 'session_store_unavailable') {
+    const wait = String(given ?? (reason === 'overloaded' ? SHED_RETRY_AFTER_SECONDS : RETRY_AFTER_SECONDS));
+    return {
+      status: 503,
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': wait },
+      absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
+      body: { error: 'upstream_unavailable', message: reason === 'overloaded' ? 'The gateway is busy. Try again in a few seconds.' : 'Sessions are temporarily unavailable. Try again in a few seconds.' },
+    };
+  }
   // CC-156: a request over a limit that is not a tool call. The client waits; it does not log in again, so no challenge,
   // and no X-RateLimit-* header, which would reveal the settings.
   if (reason === 'rate_limited') {
@@ -87,4 +99,17 @@ export function keyDecision({ independentReason = null, keyCache, kid, refresh =
   if (refresh === 'ok-kid-found') return { reason: null, status: null };
   if (refresh === 'ok-kid-missing' || refresh === 'skipped-after-success') return { reason: 'unknown_kid', status: 401 };
   return { reason: 'jwks_unavailable', status: 503 };
+}
+
+/**
+ * CC-201: the claims of the token of the IdP (C1) that the gateway looks at are iss, aud, sub and exp. Any other claim, vs and vsc
+ * (removed from the platform by CC-173) among them, is ignored: the token is accepted or rejected for the four, never for the rest.
+ * The gateway builds the internal JWT (C2) from the fields it knows and copies no claim of the IdP token, so the ignored claims
+ * do not reach a server or the broker. `now` is in epoch seconds.
+ */
+export function idpTokenClaimsDecision({ claims, now = 4102444750 }) {
+  const known = ['iss', 'aud', 'sub', 'exp', 'iat', 'nbf', 'jti', 'azp', 'scope', 'groups', 'preferred_username'];
+  const ignored = Object.keys(claims).filter((name) => !known.includes(name)).sort();
+  if (typeof claims.exp !== 'number' || claims.exp <= now) return { accepted: false, reason: 'expired', ignoredClaims: ignored };
+  return { accepted: true, ignoredClaims: ignored, copiedToInternalJwt: [] };
 }

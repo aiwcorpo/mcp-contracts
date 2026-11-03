@@ -1599,7 +1599,7 @@ paths:
       operationId: approveAdminTool
       summary: Approve a pending tool definition (proxy to C5). The manual way to accept a change made outside a deployment (CC-133).
       description: |
-        Plain approve is unchanged. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
+        Plain approve is unchanged. An entry of an adapter (source adapter, CC-193) is approved together with its classification: the body then carries `risk` and `action` (required for such an entry, forbidden for any other: 422 `classification_required` or `classification_not_allowed`), and the same fresh MFA is required when the classification lowers one given earlier. With acceptRiskLowering true (an entry with riskLowered true, CC-167) the BFF requires a fresh MFA of the administrator, the same mechanism and window as the registration of the Authenticator: without it `401 step_up_required` with `stepUpUrl`. The BFF sends the field only when it is true, so that an older gateway keeps accepting the request.
       security:
         - session: []
           csrf: []
@@ -1617,6 +1617,11 @@ paths:
                 value:
                   definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                   acceptRiskLowering: true
+              approve_adapter_tool:
+                value:
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                  risk: UPDATE
+                  action: update
       responses:
         '204':
           headers:
@@ -1671,6 +1676,167 @@ paths:
                     error: manifest_rejected
                     reason: risk_lowered
                     message: update_issue lowers risk from UPDATE to READ_ONLY
+                classification_required:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_required
+                    message: update_issue comes from an adapter and needs risk and action
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/kill-switches:
+    get:
+      tags: [admin]
+      operationId: listAdminKillSwitches
+      summary: Active emergency switches of servers and tools (proxy to C5, group mcp-platform-admin, CC-194).
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The active switches, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchList'
+              examples:
+                one_switch:
+                  value:
+                    switches:
+                      - scope: tool
+                        serverId: mcp-jira
+                        tool: update_issue
+                        setBy: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                        setAt: '2026-11-03T09:12:44Z'
+                        reason: Issue updates corrupt the workflow
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    put:
+      tags: [admin]
+      operationId: putAdminServerKillSwitch
+      summary: Switch off every tool of a server (proxy to C5, CC-194).
+      description: |
+        Emergency switch (A9): no fresh MFA is required, an incident must not wait for a second factor. Takes effect on every gateway
+        instance within 5 seconds of the `204`. Lifted only by the `DELETE` below.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Vendor incident
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is on.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminServerKillSwitch
+      summary: Lift the switch of a server (proxy to C5, CC-194).
+      description: |
+        Needs a fresh MFA of the administrator (the mechanism and window of the registration of the Authenticator): without it
+        `401 step_up_required` with `stepUpUrl`, the return path is the admin page. Idempotent.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is off.
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/tools/{tool}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/Tool'
+    put:
+      tags: [admin]
+      operationId: putAdminToolKillSwitch
+      summary: Switch off one tool (proxy to C5, CC-194).
+      description: Same rules as for a server, no fresh MFA, effective within 5 seconds, lifted only by the DELETE.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Issue updates corrupt the workflow
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is on.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminToolKillSwitch
+      summary: Lift the switch of a tool (proxy to C5, CC-194).
+      description: Needs a fresh MFA of the administrator like the lift of a server switch. Idempotent. A switch of the whole server stays on.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is off.
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
 components:

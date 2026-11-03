@@ -1,0 +1,21 @@
+{
+  "description": "Another filter than the one of initialize: 404 and filter_mismatch, as for a POST (CC-184).",
+  "kind": "stream-open",
+  "input": {
+    "sessionId": "sess-1",
+    "accept": "text/event-stream",
+    "requestQuery": "systems=gitlab",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": "filter_mismatch"
+  }
+}

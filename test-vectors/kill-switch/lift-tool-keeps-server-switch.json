@@ -1,0 +1,26 @@
+{
+  "description": "Lifting the switch of a tool does not lift the switch of its server.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-gitlab",
+        "tool": "get_project"
+      },
+      {
+        "scope": "server",
+        "serverId": "mcp-gitlab"
+      }
+    ],
+    "tool": "gitlab__get_project",
+    "event": "lift-tool"
+  },
+  "expected": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-gitlab"
+      }
+    ]
+  }
+}

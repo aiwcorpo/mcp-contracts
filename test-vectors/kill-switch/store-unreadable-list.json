@@ -1,0 +1,12 @@
+{
+  "description": "and lists nothing.",
+  "input": {
+    "switches": [],
+    "tool": "jira__get_issue",
+    "event": "list",
+    "storeReadable": false
+  },
+  "expected": {
+    "listed": false
+  }
+}

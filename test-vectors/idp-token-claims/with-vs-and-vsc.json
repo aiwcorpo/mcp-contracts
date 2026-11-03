@@ -1,0 +1,26 @@
+{
+  "description": "A valid token that carries vs and vsc: the claims are ignored, the token is accepted. Nothing reads them and the gateway builds the internal JWT only from the fields it knows, so they never reach a server or the broker (the internal JWT refuses them, CC-173).",
+  "input": {
+    "claims": {
+      "iss": "https://idp.example/realms/corp",
+      "aud": "mcp-gateway",
+      "sub": "user-a",
+      "exp": 4102444800,
+      "iat": 4102444700,
+      "vs": "team-a-dev",
+      "vsc": {
+        "jiraProjects": [
+          "ABC"
+        ]
+      }
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "ignoredClaims": [
+      "vs",
+      "vsc"
+    ],
+    "copiedToInternalJwt": []
+  }
+}

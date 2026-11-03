@@ -2041,6 +2041,317 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 422,
+        "name": "classification_required",
+        "body": {
+          "error": "manifest_rejected",
+          "reason": "classification_required",
+          "message": "update_issue comes from an adapter and needs risk and action"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "listAdminKillSwitches",
+    "method": "GET",
+    "route": "/api/v1/admin/kill-switches",
+    "defaultExample": "one_switch",
+    "responses": [
+      {
+        "status": 200,
+        "name": "one_switch",
+        "body": {
+          "switches": [
+            {
+              "scope": "tool",
+              "serverId": "mcp-jira",
+              "tool": "update_issue",
+              "setBy": "3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11",
+              "setAt": "2026-11-03T09:12:44Z",
+              "reason": "Issue updates corrupt the workflow"
+            }
+          ]
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "putAdminServerKillSwitch",
+    "method": "PUT",
+    "route": "/api/v1/admin/registry/servers/{serverId}/kill-switch",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteAdminServerKillSwitch",
+    "method": "DELETE",
+    "route": "/api/v1/admin/registry/servers/{serverId}/kill-switch",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "putAdminToolKillSwitch",
+    "method": "PUT",
+    "route": "/api/v1/admin/registry/servers/{serverId}/tools/{tool}/kill-switch",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteAdminToolKillSwitch",
+    "method": "DELETE",
+    "route": "/api/v1/admin/registry/servers/{serverId}/tools/{tool}/kill-switch",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 503,
         "name": "upstream_unavailable",
         "body": {

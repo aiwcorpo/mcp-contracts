@@ -1,0 +1,44 @@
+{
+  "description": "A change the filter of the session cuts is not a notification, whatever the number of events.",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "systems=gitlab",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 4,
+        "tools": [
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      },
+      {
+        "t": 4.2,
+        "tools": [
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": []
+  }
+}

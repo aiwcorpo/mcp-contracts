@@ -1,0 +1,41 @@
+{
+  "description": "policy_forbid answered access_denied (a forbid on the resource of the arguments) stays denied_policy (CC-165, CC-198).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e90",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "policy_decision",
+      "server": "mcp-jira",
+      "tool": "get_issue",
+      "risk": "READ_ONLY",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "decision": "deny",
+      "reason": "policy_forbid",
+      "outcome": "denied",
+      "errorCode": "access_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e90",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "jira__get_issue",
+    "risk": "READ_ONLY",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "result": "denied_policy",
+    "errorCode": "access_denied"
+  }
+}

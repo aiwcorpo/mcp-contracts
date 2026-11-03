@@ -39,7 +39,7 @@ class EndpointFilterVectorTest {
             case "session" -> session(file, input, expected);
             // The state checks of tools/call and the order of the checks of a session are decisions of the gateway, not of the
             // filter; the reference in scripts/lib/endpoint-filter.mjs and the Node tests cover them.
-            case "error-response", "call-state", "session-order" -> { }
+            case "error-response", "call-state", "session-order", "stream-open" -> { }
             default -> throw new IllegalStateException(file.toString());
         }
     }
@@ -127,7 +127,7 @@ class EndpointFilterVectorTest {
                 throw new IllegalStateException(e);
             }
         }).distinct().sorted().toList();
-        assertEquals(List.of("apply", "call", "call-state", "error-response", "parse", "route", "session", "session-order"), kinds);
+        assertEquals(List.of("apply", "call", "call-state", "error-response", "parse", "route", "session", "session-order", "stream-open"), kinds);
     }
 
     @Test

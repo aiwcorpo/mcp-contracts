@@ -1,0 +1,19 @@
+{
+  "description": "A call of a tool that is switched off is refused as tool_disabled, audited as kill_switch.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "tool_disabled",
+    "auditReason": "kill_switch"
+  }
+}

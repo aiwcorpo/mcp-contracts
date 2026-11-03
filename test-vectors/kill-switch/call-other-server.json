@@ -1,0 +1,16 @@
+{
+  "description": "A switch of one server leaves the others alone.",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-gitlab"
+      }
+    ],
+    "tool": "jira__get_issue",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

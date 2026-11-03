@@ -1,0 +1,19 @@
+{
+  "description": "A pending DESTRUCTIVE call whose tool was switched off fails at the confirmation: the gate is checked again before it runs.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "confirm"
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "tool_disabled",
+    "auditReason": "kill_switch"
+  }
+}

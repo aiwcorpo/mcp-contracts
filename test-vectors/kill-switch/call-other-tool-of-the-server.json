@@ -1,0 +1,17 @@
+{
+  "description": "Another tool of the same server is not affected by a tool switch.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__get_issue",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

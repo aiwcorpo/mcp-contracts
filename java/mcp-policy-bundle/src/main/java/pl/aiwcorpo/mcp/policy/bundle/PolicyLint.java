@@ -46,12 +46,18 @@ public final class PolicyLint {
      * is not reported either.
      *
      * @return one description per policy the validator calls impossible; empty when there is none
+     * @throws IllegalStateException when the schema or a policy does not validate (no result, or validation errors)
      */
     public static List<String> impossible(Schema schema, PolicySet policies) throws AuthException {
         ValidationResponse response = new BasicAuthorizationEngine().validate(new ValidationRequest(schema, policies));
         List<String> found = new ArrayList<>();
         if (response.success.isEmpty()) {
-            return found;
+            // No result means the schema or the policies did not validate at all; an empty list would read as "clean" (CC-203).
+            throw new IllegalStateException("cannot lint, validation failed: " + response.errors.map(Object::toString).orElse(response.toString()));
+        }
+        if (!response.success.get().validationErrors.isEmpty()) {
+            throw new IllegalStateException("cannot lint, a policy does not validate against the schema: "
+                    + response.success.get().validationErrors.stream().map(e -> e.getPolicyId() + " " + e.getError().message).toList());
         }
         for (ValidationResponse.ValidationError warning : response.success.get().validationWarnings) {
             String message = warning.getError().message;

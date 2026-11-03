@@ -17,8 +17,9 @@ export function hashInput({ tool, manifestEntry, server }) {
   flat.inputSchema = inputSchema;
   if (tool.outputSchema !== undefined) flat.outputSchema = tool.outputSchema;
   if (tool.annotations !== undefined) flat.annotations = tool.annotations;
-  flat.risk = manifestEntry.risk;
-  flat.action = manifestEntry.action;
+  // An entry of an adapter has no risk and no action (CC-193); the administrator's classification is not part of the hash.
+  if (manifestEntry.risk !== undefined) flat.risk = manifestEntry.risk;
+  if (manifestEntry.action !== undefined) flat.action = manifestEntry.action;
   flat.resourceRefs = manifestEntry.resourceRefs ?? [];
   flat.system = server.system;
   flat.credential = server.credential;

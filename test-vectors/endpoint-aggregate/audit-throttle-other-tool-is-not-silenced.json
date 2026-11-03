@@ -72,7 +72,8 @@
         "t": 10,
         "sub": "user-a",
         "reason": "not_granted",
-        "suppressedCount": 2
+        "suppressedCount": 2,
+        "suppressedTargets": 2
       }
     ]
   }

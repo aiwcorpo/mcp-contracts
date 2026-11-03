@@ -64,6 +64,42 @@ export function listChangedNotification(filter, before, after) {
   return a.length !== b.length || a.some((entry, i) => entry !== b[i]);
 }
 
+export const LIST_CHANGED_WINDOW_SECONDS = 1;
+
+/**
+ * CC-192: the times (seconds) at which the gateway sends notifications/tools/list_changed to one session. `snapshots` is
+ * [{ t, tools }] in time order: the list of the session (all tools the user may call, before the filter) first when the stream was
+ * opened and then after every event that may change it. A notification is sent when the list after the filter differs from the
+ * previous snapshot (listChangedNotification). At most one per window (1 s): a change inside the window of the last notification is
+ * sent when the window ends, one notification for all changes so far, even when the list went back in the meantime (the client
+ * fetches tools/list and sees the truth). The notification is empty, so nothing about the change is revealed.
+ */
+export function listChangedSequence(filter, snapshots, windowSeconds = LIST_CHANGED_WINDOW_SECONDS) {
+  const times = [];
+  let lastSent = null;
+  let pending = false;
+  const flush = (now) => {
+    if (pending && lastSent + windowSeconds <= now) {
+      lastSent += windowSeconds;
+      times.push(lastSent);
+      pending = false;
+    }
+  };
+  for (let i = 1; i < snapshots.length; i++) {
+    flush(snapshots[i].t);
+    if (!listChangedNotification(filter, snapshots[i - 1].tools, snapshots[i].tools)) continue;
+    if (lastSent === null || snapshots[i].t - lastSent >= windowSeconds) {
+      lastSent = snapshots[i].t;
+      times.push(lastSent);
+      pending = false;
+    } else {
+      pending = true;
+    }
+  }
+  flush(Infinity);
+  return times;
+}
+
 /** Position of a tool in the list: system by ServerId, then tool name, bytewise (CC-169). The key of a cursor. */
 export const listKey = (tool) => `mcp-${tool.name.slice(0, tool.name.indexOf('__'))}\u0000${tool.name}`;
 
@@ -126,7 +162,7 @@ const OVERFLOW_TARGET = '*';
  * filter_mismatch, invalid_cursor and a tools/call that is not_found_or_denied). One event in each interval per key
  * (sub, reason, target). The target is the tool name for the refusals of a tool (not_granted, filter_scope) and a hash of the
  * canonical filter (invalid_filter: of the raw query) or of the cursor for the others, so a decoy of one target does not silence
- * another. The keys of one user are limited (`maxTargetsPerSub`, 50 by default); a new target over the limit shares the key
+ * another. The keys of one user and reason are limited (`maxTargetsPerSub` per pair of sub and reason since CC-195, 50 by default); a new target over the limit shares the key
  * `*`. When the window of a (sub, reason) group closes, one summary event with the number of events left out in that window
  * is written; the counter by reason only says how many, the summary says whose. The refusal itself is never throttled, so
  * every event has rejected: true. Per instance, in memory, interval 10 s by default (MCP_RATE_LIMIT_AUDIT_INTERVAL).
@@ -140,7 +176,7 @@ export function auditThrottle(events, { intervalSeconds = DEFAULT_AUDIT_INTERVAL
   const closeWindows = (now) => {
     for (const [group, w] of [...windows]) {
       if (w.start + intervalSeconds <= now) {
-        if (w.count > 0) summaries.push({ t: w.start + intervalSeconds, sub: w.sub, reason: w.reason, suppressedCount: w.count });
+        if (w.count > 0) summaries.push({ t: w.start + intervalSeconds, sub: w.sub, reason: w.reason, suppressedCount: w.count, suppressedTargets: w.targets.size });
         windows.delete(group);
       }
     }
@@ -148,17 +184,19 @@ export function auditThrottle(events, { intervalSeconds = DEFAULT_AUDIT_INTERVAL
   const decisions = events.map(({ t, sub, reason, target }) => {
     closeWindows(t);
     const group = `${sub}\n${reason}`;
-    const active = [...last].filter(([key, at]) => key.startsWith(`${sub}\n`) && t - at < intervalSeconds).map(([key]) => key);
+    // CC-195: the bound on keys is per (sub, reason), so a flood of cheap invalid_filter refusals does not use up the budget of tool refusals.
+    const active = [...last].filter(([key, at]) => key.startsWith(`${group}\n`) && t - at < intervalSeconds).map(([key]) => key);
     let key = `${group}\n${target}`;
     if (!last.has(key) && active.length >= maxTargetsPerSub) key = `${group}\n${OVERFLOW_TARGET}`;
     const at = last.get(key);
     const emit = at === undefined || t - at >= intervalSeconds;
-    if (!windows.has(group)) windows.set(group, { sub, reason, start: t, count: 0 });
+    if (!windows.has(group)) windows.set(group, { sub, reason, start: t, count: 0, targets: new Set() });
     if (emit) {
       last.set(key, t);
     } else {
       suppressed[reason] = (suppressed[reason] ?? 0) + 1;
       windows.get(group).count += 1;
+      windows.get(group).targets.add(target);
     }
     return { t, sub, reason, target, rejected: true, audited: emit };
   });

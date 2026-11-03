@@ -1,0 +1,21 @@
+{
+  "description": "An instance of the gateway fails while it handles a tools/call: the balancer answers 502 with the fixed text. It does not repeat the request and it does not say that nothing was done (CC-204).",
+  "input": {
+    "event": "instance-failed-during-request",
+    "method": "POST",
+    "path": "/mcp",
+    "toolRisk": "UPDATE"
+  },
+  "expected": {
+    "status": 502,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff"
+    },
+    "body": {
+      "error": "bad_gateway",
+      "message": "The request may or may not have been processed. Check the result before repeating a write."
+    },
+    "balancerRepeatsRequest": false
+  }
+}

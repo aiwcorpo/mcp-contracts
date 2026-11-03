@@ -1,0 +1,14 @@
+{
+  "description": "A gateway that cannot read the switches refuses the call (fail-closed).",
+  "input": {
+    "switches": [],
+    "tool": "jira__get_issue",
+    "event": "call",
+    "storeReadable": false
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "upstream_unavailable",
+    "auditReason": "upstream_unavailable"
+  }
+}

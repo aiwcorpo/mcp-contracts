@@ -72,13 +72,15 @@
         "t": 10,
         "sub": "user-a",
         "reason": "invalid_filter",
-        "suppressedCount": 1
+        "suppressedCount": 1,
+        "suppressedTargets": 1
       },
       {
         "t": 20,
         "sub": "user-a",
         "reason": "invalid_filter",
-        "suppressedCount": 1
+        "suppressedCount": 1,
+        "suppressedTargets": 1
       }
     ]
   }

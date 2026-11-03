@@ -1,0 +1,37 @@
+{
+  "description": "One change after the stream was opened: one notification, at the time of the change.",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 7,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": [
+      7
+    ]
+  }
+}

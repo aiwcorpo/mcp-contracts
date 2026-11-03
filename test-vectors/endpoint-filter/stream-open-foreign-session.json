@@ -1,0 +1,21 @@
+{
+  "description": "A session of another user: 404 as for an unknown session, no filter_mismatch.",
+  "kind": "stream-open",
+  "input": {
+    "sessionId": "sess-1",
+    "accept": "text/event-stream",
+    "requestQuery": "systems=gitlab",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-b",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 404,
+    "body": "as for an unknown session",
+    "auditReason": null
+  }
+}

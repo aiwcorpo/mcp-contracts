@@ -1,0 +1,22 @@
+{
+  "description": "A bad query is 400 invalid_filter before the session is read.",
+  "kind": "stream-open",
+  "input": {
+    "sessionId": "sess-1",
+    "accept": "text/event-stream",
+    "requestQuery": "system=jira",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": {
+      "sub": "user-a",
+      "route": "/mcp",
+      "initializeQuery": "systems=jira"
+    }
+  },
+  "expected": {
+    "status": 400,
+    "error": "invalid_request",
+    "reason": "invalid_filter",
+    "sessionRead": false
+  }
+}

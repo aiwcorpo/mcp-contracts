@@ -1,0 +1,71 @@
+{
+  "description": "The bound on keys is per user and reason (CC-195): a user who used up the budget of invalid_filter keys (2 here) still gets the event for a new tool refusal at once.",
+  "kind": "audit-throttle",
+  "input": {
+    "events": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:aaaa"
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:bbbb"
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:cccc"
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "jira__delete_issue"
+      }
+    ],
+    "maxTargetsPerSub": 2
+  },
+  "expected": {
+    "decisions": [
+      {
+        "t": 0,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:aaaa",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 1,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:bbbb",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 2,
+        "sub": "user-a",
+        "reason": "invalid_filter",
+        "target": "q:cccc",
+        "rejected": true,
+        "audited": true
+      },
+      {
+        "t": 3,
+        "sub": "user-a",
+        "reason": "not_granted",
+        "target": "jira__delete_issue",
+        "rejected": true,
+        "audited": true
+      }
+    ],
+    "suppressed": {},
+    "summaries": []
+  }
+}

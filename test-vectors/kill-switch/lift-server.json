@@ -1,0 +1,27 @@
+{
+  "description": "Lifting the switch of a server leaves the switches of single tools.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      },
+      {
+        "scope": "server",
+        "serverId": "mcp-jira"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "lift-server"
+  },
+  "expected": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ]
+  }
+}

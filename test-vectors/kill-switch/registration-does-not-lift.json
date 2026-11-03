@@ -1,0 +1,31 @@
+{
+  "description": "A new PUT of the manifest leaves the switch on.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      },
+      {
+        "scope": "server",
+        "serverId": "mcp-gitlab"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "register"
+  },
+  "expected": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      },
+      {
+        "scope": "server",
+        "serverId": "mcp-gitlab"
+      }
+    ]
+  }
+}

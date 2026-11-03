@@ -1,0 +1,40 @@
+{
+  "description": "Events that leave the list as it was send nothing.",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 3,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 9,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": []
+  }
+}

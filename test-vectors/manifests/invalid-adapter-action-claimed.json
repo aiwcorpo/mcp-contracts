@@ -1,0 +1,87 @@
+{
+  "description": "An adapter does not classify: action in an entry of an adapter manifest is refused (CC-193).",
+  "expected": {
+    "valid": false,
+    "rule": "schema"
+  },
+  "manifest": {
+    "serverId": "mcp-jira",
+    "version": "0.3.0",
+    "system": "jira",
+    "source": "adapter",
+    "internalUrl": "https://mcp-jira.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth",
+        "user-secret"
+      ]
+    },
+    "resourceTypes": [],
+    "tools": [
+      {
+        "name": "get_issue",
+        "resourceRefs": [],
+        "definition": {
+          "name": "get_issue",
+          "title": "Get issue",
+          "description": "Returns one Jira issue by key.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string",
+                "description": "Issue key, e.g. ABC-123",
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
+              }
+            },
+            "required": [
+              "issueKey"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true
+          }
+        },
+        "definitionHash": "sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7",
+        "action": "read"
+      },
+      {
+        "name": "update_issue",
+        "resourceRefs": [],
+        "definition": {
+          "name": "update_issue",
+          "title": "Update issue",
+          "description": "Updates the summary of an issue.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "issueKey": {
+                "type": "string",
+                "description": "Issue key, e.g. ABC-123",
+                "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+                "maxLength": 32
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 255
+              }
+            },
+            "required": [
+              "issueKey",
+              "summary"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false
+          }
+        },
+        "definitionHash": "sha256:7505274bcd7d1d45bc67f4aa6a8e9b41d92a029e8dc16ffbf06a744ec4916bc7"
+      }
+    ]
+  }
+}

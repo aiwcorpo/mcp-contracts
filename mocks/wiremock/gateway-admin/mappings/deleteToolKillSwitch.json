@@ -1,0 +1,143 @@
+{
+  "mappings": [
+    {
+      "name": "deleteToolKillSwitch without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "deleteToolKillSwitch 204 status-204",
+      "priority": 5,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "name": "deleteToolKillSwitch 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "deleteToolKillSwitch 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "deleteToolKillSwitch 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    },
+    {
+      "name": "deleteToolKillSwitch 503 unavailable",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "Retry-After": "10",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

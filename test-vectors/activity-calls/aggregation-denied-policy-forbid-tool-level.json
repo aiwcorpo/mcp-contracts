@@ -1,0 +1,41 @@
+{
+  "description": "A forbid at the tool level (from the overrides bundle) is answered not_found_or_denied and audited as policy_forbid (CC-198); the row of the user is denied_not_granted, so it does not tell a forbidden tool from one the user was never granted (invariant 8).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e89",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "policy_decision",
+      "server": "mcp-jira",
+      "tool": "get_issue",
+      "risk": "READ_ONLY",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123",
+        "parent": "Jira::Project::ABC"
+      },
+      "decision": "deny",
+      "reason": "policy_forbid",
+      "outcome": "denied",
+      "errorCode": "not_found_or_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e89",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "claude-code",
+    "tool": "jira__get_issue",
+    "risk": "READ_ONLY",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123",
+      "parent": "Jira::Project::ABC"
+    },
+    "result": "denied_not_granted",
+    "errorCode": "not_found_or_denied"
+  }
+}

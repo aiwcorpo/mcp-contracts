@@ -17,6 +17,7 @@
     "policyRevision": "20261026120000-a1b2c3d",
     "outcome": "denied",
     "errorCode": "not_found_or_denied",
-    "suppressedCount": 17
+    "suppressedCount": 17,
+    "suppressedTargets": 4
   }
 }

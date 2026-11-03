@@ -1,0 +1,168 @@
+{
+  "mappings": [
+    {
+      "name": "putServerKillSwitch without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "putServerKillSwitch 204 status-204",
+      "priority": 5,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "name": "putServerKillSwitch 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "putServerKillSwitch 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "putServerKillSwitch 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "putServerKillSwitch 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    },
+    {
+      "name": "putServerKillSwitch 503 unavailable",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/kill-switch",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "Retry-After": "10",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

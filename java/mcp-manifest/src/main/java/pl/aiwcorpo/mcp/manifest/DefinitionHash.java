@@ -13,8 +13,8 @@ import java.util.HexFormat;
 
 /**
  * definitionHash of C6 (CC-004, CC-005, CC-042): SHA-256 of the RFC 8785 form of the flat object {name, title?,
- * description, inputSchema (without confirmation_code), outputSchema?, annotations?, risk, action, resourceRefs,
- * system, credential}.
+ * description, inputSchema (without confirmation_code), outputSchema?, annotations?, risk?, action?, resourceRefs,
+ * system, credential}. risk and action are absent for the entries of an adapter (CC-193).
  */
 public final class DefinitionHash {
 
@@ -83,8 +83,13 @@ public final class DefinitionHash {
         if (definition.has("annotations")) {
             flat.set("annotations", definition.get("annotations"));
         }
-        flat.set("risk", entry.get("risk"));
-        flat.set("action", entry.get("action"));
+        // An entry of an adapter has neither risk nor action (CC-193); the administrator's classification is not hashed.
+        if (entry.has("risk")) {
+            flat.set("risk", entry.get("risk"));
+        }
+        if (entry.has("action")) {
+            flat.set("action", entry.get("action"));
+        }
         flat.set("resourceRefs", entry.has("resourceRefs") ? entry.get("resourceRefs") : JSON.createArrayNode());
         flat.put("system", system);
         flat.set("credential", credential);

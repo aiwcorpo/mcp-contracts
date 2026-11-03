@@ -1,0 +1,140 @@
+{
+  "mappings": [
+    {
+      "name": "listKillSwitches without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/kill-switches",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listKillSwitches 200 two_switches",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/kill-switches",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "switches": [
+            {
+              "scope": "tool",
+              "serverId": "mcp-jira",
+              "tool": "update_issue",
+              "setBy": "3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11",
+              "setAt": "2026-11-03T09:12:44Z",
+              "reason": "Issue updates corrupt the workflow after the 9.4 upgrade"
+            },
+            {
+              "scope": "server",
+              "serverId": "mcp-confluence",
+              "setBy": "3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11",
+              "setAt": "2026-11-03T09:15:02Z",
+              "reason": "Vendor incident"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "listKillSwitches 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/kill-switches",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listKillSwitches 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/kill-switches",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "listKillSwitches 503 unavailable",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/kill-switches",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "Retry-After": "10",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

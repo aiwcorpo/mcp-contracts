@@ -86,7 +86,8 @@
         "t": 10,
         "sub": "user-a",
         "reason": "invalid_filter",
-        "suppressedCount": 4
+        "suppressedCount": 4,
+        "suppressedTargets": 1
       }
     ]
   }

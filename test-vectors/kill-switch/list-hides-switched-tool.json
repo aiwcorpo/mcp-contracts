@@ -1,0 +1,17 @@
+{
+  "description": "A switched tool is absent from tools/list.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__update_issue",
+    "event": "list"
+  },
+  "expected": {
+    "listed": false
+  }
+}

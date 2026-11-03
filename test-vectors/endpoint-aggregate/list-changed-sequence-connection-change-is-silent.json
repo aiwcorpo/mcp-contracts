@@ -1,0 +1,39 @@
+{
+  "description": "The account connected a system: the list is the same, so nothing is sent (CC-176).",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 20,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": []
+  }
+}

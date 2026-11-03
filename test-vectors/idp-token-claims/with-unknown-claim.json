@@ -1,0 +1,20 @@
+{
+  "description": "Any other claim the gateway does not know is ignored in the same way.",
+  "input": {
+    "claims": {
+      "iss": "https://idp.example/realms/corp",
+      "aud": "mcp-gateway",
+      "sub": "user-a",
+      "exp": 4102444800,
+      "iat": 4102444700,
+      "department": "it"
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "ignoredClaims": [
+      "department"
+    ],
+    "copiedToInternalJwt": []
+  }
+}

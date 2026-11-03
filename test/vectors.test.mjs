@@ -11,10 +11,11 @@ import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
-import { gatewayAuthenticationResponse, keyDecision, protectedResourceMetadata } from '../scripts/lib/gateway-authentication.mjs';
-import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches } from '../scripts/lib/endpoint-filter.mjs';
-import { auditThrottle, issueCursor, listChangedNotification, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
+import { gatewayAuthenticationResponse, idpTokenClaimsDecision, keyDecision, protectedResourceMetadata } from '../scripts/lib/gateway-authentication.mjs';
+import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from '../scripts/lib/endpoint-filter.mjs';
+import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
+import { killSwitchDecision } from '../scripts/lib/kill-switch.mjs';
 
 const ajv = createAjv();
 
@@ -33,7 +34,8 @@ test('definition-hash vectors: canonical form and sha256', () => {
       name: tool.name, ...(tool.title !== undefined && { title: tool.title }), description: tool.description, inputSchema,
       ...(tool.outputSchema !== undefined && { outputSchema: tool.outputSchema }),
       ...(tool.annotations !== undefined && { annotations: tool.annotations }),
-      risk: manifestEntry.risk, action: manifestEntry.action, resourceRefs: manifestEntry.resourceRefs ?? [],
+      ...(manifestEntry.risk !== undefined && { risk: manifestEntry.risk }), ...(manifestEntry.action !== undefined && { action: manifestEntry.action }),
+      resourceRefs: manifestEntry.resourceRefs ?? [],
       system: server.system, credential: server.credential,
     };
     assert.equal(canonicalize(flat), data.canonical, name);
@@ -340,7 +342,7 @@ test('endpoint filter vectors: parsing, normalization, route, visible set, call 
   const validTransport = schemaValidator(ajv, 'common.schema.json#/$defs/TransportLimitError');
   const vectors = listJson('test-vectors', 'endpoint-filter');
   const kinds = new Set(vectors.map((v) => v.data.kind));
-  assert.deepEqual([...kinds].sort(), ['apply', 'call', 'call-state', 'error-response', 'parse', 'route', 'session', 'session-order']);
+  assert.deepEqual([...kinds].sort(), ['apply', 'call', 'call-state', 'error-response', 'parse', 'route', 'session', 'session-order', 'stream-open']);
   assert.ok(vectors.length >= 100);
   for (const { name, data } of vectors) {
     const { input, expected } = data;
@@ -373,6 +375,8 @@ test('endpoint filter vectors: parsing, normalization, route, visible set, call 
       assert.equal(sessionMatches(input.initializeQuery, input.requestQuery), expected.match, name);
     } else if (data.kind === 'session-order') {
       assert.deepEqual(sessionDecision(input), expected, name);
+    } else if (data.kind === 'stream-open') {
+      assert.deepEqual(streamOpenDecision(input), expected, name);
     } else {
       if (expected.statusOneOf) {
         assert.ok(validTransport(expected.body), `${name}: ${formatErrors(validTransport.errors)}`);
@@ -421,7 +425,7 @@ test('the filter field belongs to the gateway and to four events, and a rejected
 
 test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169, CC-176, CC-177)', () => {
   const vectors = listJson('test-vectors', 'endpoint-aggregate');
-  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['audit-throttle', 'availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'page', 'routing']);
+  assert.deepEqual([...new Set(vectors.map((v) => v.data.kind))].sort(), ['audit-throttle', 'availability', 'cursor', 'legacy-route', 'list', 'list-changed', 'list-changed-sequence', 'page', 'routing']);
   const validateError = schemaValidator(ajv, 'tool-error.schema.json');
   for (const { name, data } of vectors) {
     if (data.kind === 'list') {
@@ -435,6 +439,7 @@ test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169
       assert.ok(result.decisions.every((d) => d.rejected), `${name}: the refusal itself is never throttled`);
       const left = result.decisions.filter((d) => !d.audited).length;
       assert.equal(result.summaries.reduce((n, x) => n + x.suppressedCount, 0), left, `${name}: every event left out is in a summary`);
+      assert.ok(result.summaries.every((x) => x.suppressedTargets >= 1 && x.suppressedTargets <= x.suppressedCount), `${name}: suppressedTargets (CC-195)`);
     } else if (data.kind === 'availability') {
       assert.equal(serverAvailable(data.input.read, data.input.timeoutMs), data.expected.available, name);
     } else if (data.kind === 'page') {
@@ -446,8 +451,12 @@ test('aggregate endpoint vectors: visible list, routing and list_changed (CC-169
       if (mutation === 'tampered') cursor = `${cursor.slice(0, -2)}${cursor.endsWith('AA') ? 'BB' : 'AA'}`;
       if (mutation === 'malformed') cursor = 'not-a-cursor';
       if (mutation === 'not-a-string') cursor = 42;
+      if (mutation === 'empty-string') cursor = '';
       const result = readCursor(cursor, { sub: presentedBy.sub, canonicalFilter: parseFilter(presentedBy.query).canonical, now: iat + afterSeconds });
       assert.deepEqual(result.error ? { valid: false, error: result.error } : { valid: true }, data.expected, name);
+    } else if (data.kind === 'list-changed-sequence') {
+      assert.deepEqual({ notifyAt: listChangedSequence(parseFilter(data.input.query).filter, data.input.snapshots, data.input.windowSeconds) }, data.expected, name);
+      assert.ok(data.expected.notifyAt.every((t, i, all) => i === 0 || t - all[i - 1] >= data.input.windowSeconds), `${name}: at most one notification per window`);
     } else if (data.kind === 'list-changed') {
       assert.equal(listChangedNotification(parseFilter(data.input.query).filter, data.input.before, data.input.after), data.expected.notify, name);
     } else {
@@ -505,4 +514,47 @@ test('internal JWT claims vs and vsc no longer exist (CC-173)', () => {
 test('the Cedar schema has neither virtualServer nor vsScopes (CC-173)', () => {
   const code = readFileSync(path('cedar', 'mcp.cedarschema'), 'utf8').split('\n').filter((line) => !line.trimStart().startsWith('//')).join('\n');
   assert.ok(!/virtualServer|vsScopes|VsScopes/.test(code));
+});
+
+test('kill-switch vectors: a switched tool is refused, hidden and stays off until its own lift (CC-194)', () => {
+  const vectors = listJson('test-vectors', 'kill-switch');
+  assert.ok(vectors.length >= 12);
+  for (const { name, data } of vectors) assert.deepEqual(killSwitchDecision(data.input), data.expected, name);
+  const byName = Object.fromEntries(vectors.map((v) => [v.name, v.data.expected]));
+  assert.equal(byName['call-switched-tool.json'].auditReason, 'kill_switch');
+  assert.equal(byName['call-switched-tool.json'].errorCode, 'tool_disabled');
+  assert.equal(byName['store-unreadable-call.json'].allowed, false, 'fail-closed');
+});
+
+test('the balancer answer after the failure of an instance has the fixed text (CC-204)', () => {
+  const validate = schemaValidator(ajv, 'common.schema.json#/$defs/BalancerError');
+  const vectors = listJson('test-vectors', 'balancer-errors');
+  assert.ok(vectors.length >= 1);
+  for (const { name, data } of vectors) {
+    assert.ok(validate(data.expected.body), `${name}: ${formatErrors(validate.errors)}`);
+    assert.equal(data.expected.status, 502, name);
+    assert.equal(data.expected.balancerRepeatsRequest, false, name);
+  }
+  assert.ok(!validate({ error: 'bad_gateway', message: 'The request was not processed.' }), 'the text is a constant');
+});
+
+test('claims of the IdP token that no longer exist are ignored, not copied (CC-201)', () => {
+  const vectors = listJson('test-vectors', 'idp-token-claims');
+  assert.ok(vectors.some((v) => v.data.expected.ignoredClaims.includes('vs')));
+  for (const { name, data } of vectors) assert.deepEqual(idpTokenClaimsDecision(data.input), data.expected, name);
+  const validate = schemaValidator(ajv, 'internal-jwt.schema.json');
+  const internal = readJson('test-vectors', 'jwt', 'valid.json').claims;
+  assert.ok(!validate({ ...internal, vs: 'team-a-dev' }), 'the internal JWT refuses what the IdP token may carry');
+});
+
+test('an adapter manifest has no risk and no action, and its hash does not cover them (CC-193)', () => {
+  const validate = schemaValidator(ajv, 'server-manifest.schema.json');
+  const vectors = listJson('test-vectors', 'manifests').filter((v) => v.name.includes('adapter'));
+  assert.ok(vectors.length >= 5);
+  for (const { name, data } of vectors) {
+    const ok = validate(data.manifest);
+    const violations = ok ? manifestRuleViolations(data.manifest) : ['schema'];
+    if (data.expected.valid) assert.deepEqual(violations, [], `${name}: ${formatErrors(validate.errors)}`);
+    else assert.ok(violations.includes(data.expected.rule), `${name}: ${violations}`);
+  }
 });

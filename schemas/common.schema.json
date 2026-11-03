@@ -68,6 +68,23 @@
       },
       "additionalProperties": false
     },
+    "BalancerError": {
+      "description": "Body of the 502 that the balancer in front of the gateway answers when an instance fails while it handles a request (CC-204). The text is fixed on purpose: the outcome is not known, so a client or a model must not read it as \"not done\". UPDATE calls are delivered at least once (README, \"Semantyka dostarczenia\"). The balancer repeats nothing by itself.",
+      "type": "object",
+      "required": [
+        "error",
+        "message"
+      ],
+      "properties": {
+        "error": {
+          "const": "bad_gateway"
+        },
+        "message": {
+          "const": "The request may or may not have been processed. Check the result before repeating a write."
+        }
+      },
+      "additionalProperties": false
+    },
     "EndpointFilterError": {
       "description": "Body of the HTTP 400 that /mcp and /s/<serverId>/mcp answer for a query that is not a valid endpoint filter (CC-170): it comes after the check of the token, carries no WWW-Authenticate header and does not depend on the state of any system. It is an HTTP answer, not the content of a tool result, so it is not part of C10 (tool-error.schema.json) and 'invalid_request' is not an ErrorCode.",
       "type": "object",

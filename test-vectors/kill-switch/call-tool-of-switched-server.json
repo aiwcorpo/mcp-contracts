@@ -1,0 +1,18 @@
+{
+  "description": "A switch of a server refuses every tool of that server.",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-gitlab"
+      }
+    ],
+    "tool": "gitlab__get_project",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "tool_disabled",
+    "auditReason": "kill_switch"
+  }
+}

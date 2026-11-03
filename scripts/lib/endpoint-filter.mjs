@@ -141,6 +141,19 @@ export function sessionDecision({ requestQuery, route, callerSub, session }) {
 }
 
 /**
+ * CC-192: GET on /mcp or /s/<serverId>/mcp opens the stream of server notifications. The token has been checked (401, 503 come
+ * before). Without Mcp-Session-Id or without Accept: text/event-stream the answer is 405, Allow: POST, DELETE, GET (the stateless
+ * variant opens its stream with subscriptions/listen, a POST). With both the checks of a request of a session follow in the order
+ * of CC-184 (sessionDecision); `continue` means the stream is opened for that session and filter.
+ */
+export function streamOpenDecision({ sessionId, accept, ...session }) {
+  if (!sessionId || !/(^|,)\s*text\/event-stream\s*(;|,|$)/u.test(accept ?? '')) {
+    return { status: 405, headers: { Allow: 'POST, DELETE, GET' } };
+  }
+  return sessionDecision(session);
+}
+
+/**
  * What the gateway does with tools/call on an endpoint with a filter (CC-170, CC-178, invariant 8). The filter is checked
  * first: a tool that the filter leaves out is not_found_or_denied whatever the state of its server, of the tool and of the
  * account, and the audit reason says filter_scope only when the user may call the tool. `mayCall` is the set of tools the

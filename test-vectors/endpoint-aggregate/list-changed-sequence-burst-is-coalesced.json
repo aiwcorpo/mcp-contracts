@@ -1,0 +1,60 @@
+{
+  "description": "Three changes within one second: the first is sent at once, the other two as one notification when the second ends.",
+  "kind": "list-changed-sequence",
+  "input": {
+    "query": "",
+    "snapshots": [
+      {
+        "t": 0,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 10,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "jira__create_issue",
+            "risk": "UPDATE"
+          }
+        ]
+      },
+      {
+        "t": 10.3,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          }
+        ]
+      },
+      {
+        "t": 10.6,
+        "tools": [
+          {
+            "name": "jira__get_issue",
+            "risk": "READ_ONLY"
+          },
+          {
+            "name": "gitlab__get_project",
+            "risk": "READ_ONLY"
+          }
+        ]
+      }
+    ],
+    "windowSeconds": 1
+  },
+  "expected": {
+    "notifyAt": [
+      10,
+      11
+    ]
+  }
+}

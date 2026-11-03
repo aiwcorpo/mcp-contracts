@@ -1,0 +1,17 @@
+{
+  "description": "The other tools stay in the list.",
+  "input": {
+    "switches": [
+      {
+        "scope": "tool",
+        "serverId": "mcp-jira",
+        "tool": "update_issue"
+      }
+    ],
+    "tool": "jira__get_issue",
+    "event": "list"
+  },
+  "expected": {
+    "listed": true
+  }
+}

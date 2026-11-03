@@ -1,0 +1,24 @@
+{
+  "description": "The gateway has too many requests in progress and sheds this one (CC-199): 503 with Retry-After (2 s by default), the C10 body, no challenge, nothing was called behind the gateway.",
+  "input": {
+    "reason": "overloaded",
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "resourcePath": "/mcp"
+  },
+  "expected": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "2"
+    },
+    "absentHeaders": [
+      "WWW-Authenticate",
+      "Set-Cookie"
+    ],
+    "body": {
+      "error": "upstream_unavailable",
+      "message": "The gateway is busy. Try again in a few seconds."
+    }
+  }
+}

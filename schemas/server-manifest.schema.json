@@ -84,8 +84,20 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "#/$defs/ToolEntry"
-      }
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ToolEntry"
+          },
+          {
+            "$ref": "#/$defs/AdapterToolEntry"
+          }
+        ]
+      },
+      "description": "Which of the two entry forms applies depends on source: AdapterToolEntry when source is adapter, ToolEntry otherwise (CC-193)."
+    },
+    "source": {
+      "description": "Absent for a server built on the starter. adapter marks the manifest of an adapter, the sidecar of a foreign MCP server (CC-193): its tool entries carry no risk and no action (an administrator classifies them at approval, outside definitionHash) and no resourceRefs.",
+      "const": "adapter"
     }
   },
   "additionalProperties": false,
@@ -139,17 +151,21 @@
       "allOf": [
         {
           "$ref": "#/$defs/ToolEntryFields"
+        },
+        {
+          "required": [
+            "risk",
+            "action"
+          ]
         }
       ],
       "unevaluatedProperties": false
     },
     "ToolEntryFields": {
-      "description": "Fields of a manifest tool entry, open for composition (used by the gateway registry API).",
+      "description": "Fields of a manifest tool entry, open for composition (used by the gateway registry API). risk and action are required by ToolEntry and forbidden by AdapterToolEntry.",
       "type": "object",
       "required": [
         "name",
-        "risk",
-        "action",
         "resourceRefs",
         "definition",
         "definitionHash"
@@ -214,6 +230,70 @@
         }
       },
       "additionalProperties": false
+    },
+    "AdapterToolEntry": {
+      "description": "Manifest entry of a tool of an adapter (CC-193). The adapter does not classify: risk and action are absent (the administrator gives them at approval), resourceRefs is empty (policies are per tool), and definitionHash covers the definition, resourceRefs, system and credential without risk and action.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/ToolEntryFields"
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "risk"
+                ]
+              },
+              {
+                "required": [
+                  "action"
+                ]
+              }
+            ]
+          },
+          "properties": {
+            "resourceRefs": {
+              "type": "array",
+              "maxItems": 0,
+              "items": {
+                "$ref": "#/$defs/ResourceRef"
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "tools": {
+            "items": {
+              "$ref": "#/$defs/AdapterToolEntry"
+            },
+            "type": "array"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "tools": {
+            "items": {
+              "$ref": "#/$defs/ToolEntry"
+            },
+            "type": "array"
+          }
+        }
+      }
+    }
+  ]
 }

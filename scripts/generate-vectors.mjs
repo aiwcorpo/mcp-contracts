@@ -118,6 +118,12 @@ for (const [toolName, def] of Object.entries(jiraTools)) {
 }
 {
   const def = structuredClone(jiraTools.get_issue);
+  hashVector('get-issue-adapter-without-classification',
+    'The entry of a tool of an adapter has no risk and no action (CC-193): the flat object has no such keys, the hash differs from get-issue and no classification of the administrator changes it.',
+    { tool: def.tool, manifestEntry: { resourceRefs: [] }, server: JIRA_SERVER }, { differsFrom: 'get-issue.json' });
+}
+{
+  const def = structuredClone(jiraTools.get_issue);
   def.tool.title = 'Get any issue';
   hashVector('get-issue-title-changed', 'Only title changed; the hash changes and the tool needs approval again (title is hashed, CC-042, required by CC-115).',
     { ...def, server: JIRA_SERVER }, { differsFrom: 'get-issue.json' });
@@ -205,6 +211,38 @@ manifest('valid-no-credential', 'Server whose tools need no backend credential; 
 }), true);
 manifest('valid-environment-dev', 'Manifest of a dev stack server; environment is not part of the hashes, which stay those of test-vectors/definition-hash (CC-138).', { ...jiraManifest(), environment: 'dev' }, true);
 manifest('valid-environment-production', 'environment production is the same as no field (CC-138).', { ...jiraManifest(), environment: 'production' }, true);
+const adapterManifest = () => withHash({
+  serverId: 'mcp-jira',
+  version: '0.3.0',
+  system: 'jira',
+  source: 'adapter',
+  internalUrl: 'https://mcp-jira.internal:8443/mcp',
+  credential: structuredClone(JIRA_SERVER.credential),
+  resourceTypes: [],
+  tools: ['get_issue', 'update_issue'].map((name) => ({ name, resourceRefs: [], definition: structuredClone(jiraTools[name].tool), definitionHash: 'sha256:' + '0'.repeat(64) })),
+});
+manifest('valid-adapter', 'Manifest of an adapter (CC-193): source adapter, no risk and no action in the entries (the administrator classifies at approval), resourceRefs empty, hash over definition, resourceRefs, system and credential.', adapterManifest(), true);
+{
+  const m = adapterManifest(); m.tools[0].risk = 'READ_ONLY';
+  manifest('invalid-adapter-risk-claimed', 'An adapter does not classify: risk in an entry of an adapter manifest is refused (CC-193).', m, false, 'schema');
+}
+{
+  const m = adapterManifest(); m.tools[0].action = 'read';
+  manifest('invalid-adapter-action-claimed', 'An adapter does not classify: action in an entry of an adapter manifest is refused (CC-193).', m, false, 'schema');
+}
+{
+  const m = adapterManifest(); m.tools[0].resourceRefs = [{ argument: 'issueKey', type: 'Jira::Issue' }];
+  manifest('invalid-adapter-resource-refs', 'An adapter has no @ResourceRef: policies are per tool, resourceRefs must be empty (CC-193).', m, false, 'schema');
+}
+{
+  const m = adapterManifest(); m.source = 'starter';
+  manifest('invalid-adapter-source-value', 'source has one value, adapter; a manifest of a starter server has no source.', m, false, 'schema');
+}
+{
+  const m = adapterManifest();
+  m.tools[0].definitionHash = manifestEntryHash(m, { ...m.tools[0], risk: 'READ_ONLY', action: 'read' });
+  manifest('invalid-adapter-hash-covers-classification', 'The hash of an adapter entry does not cover risk and action: a hash computed with them does not match (CC-193).', m, false, 'definition-hash-matches');
+}
 {
   manifest('invalid-environment-staging', 'environment is production or dev, nothing else (CC-138).', { ...jiraManifest(), environment: 'staging' }, false, 'schema');
 }
@@ -499,8 +537,43 @@ audit('gateway-invalid-filter', 'A query that is not a filter: policy_decision w
 audit('gateway-audit-suppressed-summary', 'Summary written when the window of a user and reason closes: how many refusals of that reason were left out of the audit (CC-191). The refusals themselves were not throttled.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code',
-  decision: 'deny', reason: 'not_granted', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'not_found_or_denied', suppressedCount: 17,
+  decision: 'deny', reason: 'not_granted', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'not_found_or_denied', suppressedCount: 17, suppressedTargets: 4,
 }, true);
+audit('gateway-kill-switch-set', 'An administrator switched a tool off (CC-194); the free text of the administrator is not in the event.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
+  reason: 'kill_switch_set', outcome: 'ok',
+}, true);
+audit('gateway-kill-switch-cleared', 'An administrator lifted the switch of a whole server (CC-194).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira',
+  reason: 'kill_switch_cleared', outcome: 'ok',
+}, true);
+audit('gateway-kill-switch-refusal', 'A call of a switched tool: refused as tool_disabled, the reason kill_switch tells it from a definition waiting for approval (CC-194).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira', tool: 'update_issue', risk: 'UPDATE',
+  decision: 'deny', reason: 'kill_switch', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'tool_disabled', argsLength: 40,
+}, true);
+audit('gateway-registry-adapter-tool-classified', 'An administrator approved a tool of an adapter and gave it a risk (CC-193); the event is the same as for any approval, with the new risk.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
+  reason: 'definition_approved', risk: 'UPDATE', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
+}, true);
+audit('broker-connection-secret-missing', 'The secret of a connection is gone from the secret store: the connection goes to error (CC-205).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'connection_change',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', credentialType: 'user-secret', reason: 'secret_missing', outcome: 'error',
+}, true);
+audit('broker-connection-refresh-token-lost', 'The provider rotated the refresh token and it could not be stored: the connection goes to error, not revoked (CC-196).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'connection_change',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-gitlab', credentialType: 'user-oauth', reason: 'refresh_token_lost', outcome: 'error',
+}, true);
+audit('broker-resolve-database-unavailable', 'The database did not answer: the resolve is refused with 503 (CC-196).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'credential_resolve',
+  sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', reason: 'database_unavailable', outcome: 'error', errorCode: 'upstream_unavailable',
+}, true);
+audit('broker-authentication-jwks-unavailable', 'The broker cannot get the keys of the gateway: the same event and name as for a server, authentication, jwks_unavailable, denied (CC-197).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authentication', reason: 'jwks_unavailable', outcome: 'denied', errorCode: 'upstream_unavailable',
+}, true);
+audit('invalid-broker-authentication-key-source-unavailable', 'key_source_unavailable is not a defined name: the event authentication uses jwks_unavailable (CC-197).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'authentication', reason: 'key_source_unavailable', outcome: 'error', errorCode: 'upstream_unavailable',
+}, false);
 audit('gateway-filter-mismatch', 'The filter of a request differs from the filter bound to the session (CC-172); filter is the normalized filter of the request.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=gitlab',
@@ -1049,6 +1122,14 @@ gatewayAuth('jwks-unavailable-configured-retry-after', 'Retry-After is the confi
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '30' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The identity provider keys are temporarily unavailable. Try again in a few seconds.' } });
 
+gatewayAuth('overloaded', 'The gateway has too many requests in progress and sheds this one (CC-199): 503 with Retry-After (2 s by default), the C10 body, no challenge, nothing was called behind the gateway.',
+  { reason: 'overloaded', publicBaseUrl: BASE, resourcePath: '/mcp' },
+  { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '2' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
+    body: { error: 'upstream_unavailable', message: 'The gateway is busy. Try again in a few seconds.' } });
+gatewayAuth('session-store-unavailable', 'The store of the MCP sessions does not answer (CC-199): 503 with Retry-After, not a 404 (the session is not unknown, it cannot be read), no challenge.',
+  { reason: 'session_store_unavailable', publicBaseUrl: BASE, resourcePath: '/mcp' },
+  { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '10' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
+    body: { error: 'upstream_unavailable', message: 'Sessions are temporarily unavailable. Try again in a few seconds.' } });
 gatewayAuth('rate-limited', 'An MCP request that is not a tool call (tools/list, initialize) over a limit: 429 with Retry-After, the C10 body, no challenge and no X-RateLimit headers (CC-156).',
   { reason: 'rate_limited', publicBaseUrl: BASE, resourcePath: '/s/mcp-jira', retryAfterSeconds: 12 },
   { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '12' },
@@ -1156,6 +1237,7 @@ aggregation('ok', 'A read call without confirmation: one tool_call event, result
 for (const [n, reason, errorCode, result] of [
   [82, 'rate_limited_user', 'rate_limited', 'rate_limited'], [83, 'rate_limited_client', 'rate_limited', 'rate_limited'], [84, 'rate_limited_tool', 'rate_limited', 'rate_limited'],
   [85, 'definition_changed', 'tool_disabled', 'tool_disabled'], [86, 'tool_not_served', 'tool_disabled', 'tool_disabled'],
+  [88, 'kill_switch', 'tool_disabled', 'tool_disabled'],
 ]) {
   const expected = { ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result, errorCode };
   aggregation(`denied-${reason.replace(/_/g, '-')}`, `A policy_decision refusal with reason ${reason} is the row result ${result}, in the filter group denied (CC-165).`,
@@ -1172,6 +1254,12 @@ for (const [n, reason, errorCode, result] of [
     [gw(87, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-opensearch', tool: 'search', risk: 'READ_ONLY', resource: osRes, decision: 'allow', reason: 'exchange_denied', outcome: 'denied', errorCode: 'access_denied' })],
     { requestId: RID(87), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'opensearch__search', risk: 'READ_ONLY', resource: osRes, result: 'denied_not_granted', errorCode: 'access_denied' });
 }
+aggregation('denied-policy-forbid-tool-level', 'A forbid at the tool level (from the overrides bundle) is answered not_found_or_denied and audited as policy_forbid (CC-198); the row of the user is denied_not_granted, so it does not tell a forbidden tool from one the user was never granted (invariant 8).',
+  [gw(89, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'deny', reason: 'policy_forbid', outcome: 'denied', errorCode: 'not_found_or_denied' })],
+  { requestId: RID(89), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'denied_not_granted', errorCode: 'not_found_or_denied' });
+aggregation('denied-policy-forbid-with-arguments', 'policy_forbid answered access_denied (a forbid on the resource of the arguments) stays denied_policy (CC-165, CC-198).',
+  [gw(90, '2026-10-26T20:00:00.000Z', { event: 'policy_decision', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'deny', reason: 'policy_forbid', outcome: 'denied', errorCode: 'access_denied' })],
+  { requestId: RID(90), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'denied_policy', errorCode: 'access_denied' });
 aggregation('credential-required-tool-call', 'The gateway allowed the call, the broker had no credential: a tool_call event with reason credential_required is a credential_required row, not a plain error (CC-142).',
   [gw(80, '2026-10-26T20:00:00.000Z', { event: 'tool_call', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', resource: callRes, decision: 'allow', reason: 'credential_required', outcome: 'error', errorCode: 'credential_required' })],
   { requestId: RID(80), ts: '2026-10-26T20:00:00.000Z', client: 'claude-code', tool: 'jira__get_issue', risk: 'READ_ONLY', resource: callRes, result: 'credential_required', errorCode: 'credential_required' });

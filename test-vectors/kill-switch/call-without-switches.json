@@ -1,0 +1,11 @@
+{
+  "description": "No switch: the call goes on to the next checks.",
+  "input": {
+    "switches": [],
+    "tool": "jira__update_issue",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

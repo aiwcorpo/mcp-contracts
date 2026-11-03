@@ -1,0 +1,60 @@
+{
+  "description": "A percent sign that is no escape (%zz) is an invalid filter like any decoded percent sign (CC-202); the container does not reject the request and the BFF does not answer 500.",
+  "input": {
+    "publicBaseUrl": "https://mcp.aiwcorpo.pl",
+    "httpQuery": "systems=%zz",
+    "rawQuery": "systems=%zz",
+    "catalog": [
+      {
+        "name": "confluence__get_page",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "gitlab__get_project",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "gitlab__update_project",
+        "risk": "UPDATE",
+        "access": "denied",
+        "disabled": false
+      },
+      {
+        "name": "jira__create_issue",
+        "risk": "UPDATE",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "jira__delete_issue",
+        "risk": "DESTRUCTIVE",
+        "access": "denied",
+        "disabled": false
+      },
+      {
+        "name": "jira__get_issue",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": false
+      },
+      {
+        "name": "jira__search_issues",
+        "risk": "READ_ONLY",
+        "access": "granted",
+        "disabled": true
+      }
+    ]
+  },
+  "expected": {
+    "status": 400,
+    "body": {
+      "error": "invalid_request",
+      "reason": "invalid_filter",
+      "message": "The filter is not valid."
+    }
+  }
+}

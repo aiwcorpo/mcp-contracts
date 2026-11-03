@@ -1,0 +1,18 @@
+{
+  "description": "GET without Mcp-Session-Id is 405 with Allow (the stateless variant uses subscriptions/listen).",
+  "kind": "stream-open",
+  "input": {
+    "sessionId": null,
+    "accept": "text/event-stream",
+    "requestQuery": "systems=jira",
+    "route": "/mcp",
+    "callerSub": "user-a",
+    "session": null
+  },
+  "expected": {
+    "status": 405,
+    "headers": {
+      "Allow": "POST, DELETE, GET"
+    }
+  }
+}

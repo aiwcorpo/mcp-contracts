@@ -4,6 +4,47 @@ Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CON
 Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
 ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
 
+## 6.0.0 - 2026-11-03
+
+Major według tabeli SemVer (README, "Wersjonowanie"), bez wyjątków: nowa wartość enum (`PendingTool.source: adapter`), warunkowo wymagane `risk` i `action` we wpisie manifestu i zaostrzony kod wyjścia `PolicyLintCli`. Pakiet CC-192 ... CC-205, decyzje człowieka z 2026-11-03 (`mcp-platform-plan/m6-plan.md`, "Decyzje pakietu kontraktów").
+Bajty `cedar/mcp.cedarschema` bez zmian (SHA-256 `51d71b2d...`): paczki polityk zbudowane pod 5.x zostają ważne.
+
+### Nowe
+
+- **`list_changed` (CC-192):** `listChanged: true` w obu postaciach protokołu, strumień `GET` sesji z kolejnością kontroli CC-184, `subscriptions/listen` w postaci bezstanowej, okno 1 s, opóźnienie do 5 s, bez limitu strumieni (strumień nie liczy się do limitu żądań w toku, jest metryka). Wektory `endpoint-aggregate/list-changed-sequence-*` (7), `endpoint-filter/stream-open-*` (7); `list-changed-*` (11) bez zmian i normatywne. Referencje `listChangedSequence`, `streamOpenDecision`.
+- **Serwery obce przez adapter (CC-193):** `source: adapter` w manifeście, wpisy bez `risk`/`action` i z pustym `resourceRefs` (`AdapterToolEntry`), hash bez `risk`/`action`, klasyfikacja przy `approve` (`ApproveRequest.risk`, `.action`; `422 classification_required`, `classification_not_allowed`), `RegistryTool.classifiedBy`, `.classifiedAt`. Wektory `manifests/*-adapter-*` (6), `definition-hash/get-issue-adapter-without-classification`. Java `DefinitionHash` pomija `risk`/`action`, których wpis nie ma.
+- **Wyłącznik awaryjny (CC-194, A9):** C5 `putServerKillSwitch`, `deleteServerKillSwitch`, `putToolKillSwitch`, `deleteToolKillSwitch`, `listKillSwitches`; C12 `putAdminServerKillSwitch`, `deleteAdminServerKillSwitch`, `putAdminToolKillSwitch`, `deleteAdminToolKillSwitch`, `listAdminKillSwitches`; `disabledBy` w katalogu; powody `kill_switch`, `kill_switch_set`, `kill_switch_cleared`. Włączenie bez MFA, zdjęcie po świeżym MFA, propagacja do 5 s, fail-closed. Wektory `kill-switch/` (14), `audit-events/gateway-kill-switch-*`.
+- **Doprecyzowania (CC-195 ... CC-205):** `suppressedTargets` w podsumowaniu audytu i limit kluczy per (`sub`, powód); dziewięć powodów brokera w opisie `reason` (`database_unavailable`, `refresh_token_lost`, `user_offboarding` i sześć kolejnych) oraz `secret_missing`; nazwy `jwks_unavailable` i `replay_store_unavailable` obowiązują także w brokerze; `policy_forbid` w audycie przy zakazie na poziomie narzędzia, wiersz użytkownika `denied_not_granted`; `503` z `Retry-After` przy przeciążeniu i niedostępnym magazynie sesji; kursor `""` to `-32602`; claimy `vs`/`vsc` w tokenie IdP ignorowane; wektory `%zz`; `UPDATE` co najmniej raz i `502` balancera ze stałym tekstem (`BalancerError`); połączenie bez sekretu przechodzi w `error`.
+- **Wektory:** `kill-switch/`, `balancer-errors/`, `idp-token-claims/` (nowe katalogi), `audit-throttle-keys-limited-per-reason`, `cursor-empty-string`, `mcp-endpoint/http-broken-escape`, `http-lone-percent`, `http-half-escape`, `gateway-authentication/overloaded`, `session-store-unavailable`, `activity-calls/aggregation-denied-policy-forbid-*`, `aggregation-denied-kill-switch`, `audit-events/broker-*` (5).
+- **Java:** `PolicyLintCli.run(String[], PrintStream, PrintStream)` (testowalny kod wyjścia).
+
+### Niezgodne wstecz względem 5.1.2
+
+1. **`PendingTool.source`, `RegistryTool.source`:** enum `[ci, server, adapter]` (CC-193). Wygenerowane typy trzeba zregenerować; kod z wyczerpującym `switch` po `source` musi obsłużyć `adapter`.
+2. **`ToolEntryFields`:** `risk` i `action` nie są już wymagane w samym `ToolEntryFields`; wymaga ich `ToolEntry`, a `AdapterToolEntry` ich zabrania. W typach TS `RegistryTool.risk`/`action` są opcjonalne (brak tylko dla oczekującego wpisu adaptera). `PendingTool.pendingEntry` to `ToolEntry` albo `AdapterToolEntry`.
+3. **`server-manifest.schema.json`:** nowe pole `source`, `tools.items` to `oneOf` zależnie od `source`. Manifesty bez `source` przechodzą jak dotąd.
+4. **`PolicyLintCli` i `PolicyLint.impossible`:** kończą się błędem (kod `2`, wyjątek `IllegalStateException`), gdy schemat albo polityka nie przechodzą walidacji; wcześniej kod `0` (CC-203).
+5. **`listChanged`:** gateway musi deklarować `true` i wysyłać powiadomienia (CC-192); `GET` na `/mcp` przestaje być zawsze `405`.
+6. **Wektory `audit-throttle-*`:** podsumowania mają `suppressedTargets`; limit kluczy jest liczony per (`sub`, powód). Wektor `audit-events/gateway-audit-suppressed-summary` ma `suppressedTargets: 4`.
+7. **Odpowiedź wiersza aktywności:** `policy_forbid` z `errorCode: not_found_or_denied` to `denied_not_granted` (nie `denied_policy`); `kill_switch` to `tool_disabled`.
+8. **Nazwy powodów brokera:** `key_source_unavailable` i `jti_store_unavailable` nie są zdefiniowane; wektor `invalid-broker-authentication-key-source-unavailable` je odrzuca.
+
+### Migracja z 5.x
+
+**ws-01 stos dev i platforma:** zależności na 6.0.0 (`MCP_CONTRACTS_REF`); nginx: `proxy_next_upstream off` dla `POST /mcp`, strona błędu `502` w JSON z tekstem z `BalancerError` (nagłówki `nosniff` i CSP), buforowanie wyłączone i długi `proxy_read_timeout` dla `GET` strumienia SSE na `/mcp` i `/s/...`; Redis pub/sub (lub licznik wersji) dla zdarzeń rejestru, polityk i przełączników; alerty na `kill_switch_set` i `suppressedTargets`.
+**ws-02 starter:** zależność 6.0.0; `ManifestExport` bez zmian (serwer na starterze nie ustawia `source`); README: operacje `UPDATE` projektować tak, by powtórzenie było nieszkodliwe (CC-204); nazwy `jwks_unavailable` i `replay_store_unavailable` są już zgodne.
+**ws-03 szablon, ws-04 serwery (jira, confluence, gitlab, servicedesk, opensearch):** tylko zależność 6.0.0 i regeneracja manifestu (hashe bez zmian).
+**ws-05 gateway:** (1) `listChanged: true`, strumień `GET` z kolejnością CC-184 i `405` z `Allow: POST, DELETE, GET` poza nim, `subscriptions/listen`, okno 1 s, kanał zdarzeń między instancjami, opóźnienie do 5 s, strumień poza `MCP_MAX_CONCURRENT_REQUESTS`, metryka otwartych strumieni; (2) wyłącznik awaryjny: tabela w bazie, pięć operacji C5, cache nie starszy niż 5 s, odmowa `tool_disabled` z `kill_switch`, fail-closed, `approve`/`PUT` nie zdejmują, `disabledBy` w katalogu; (3) rejestr: `source: adapter`, klasyfikacja przy `approve`, `classification_required`/`classification_not_allowed`, niesklasyfikowane to `tool_disabled`, hash bez `risk`/`action` (Java `DefinitionHash`);
+(4) audyt: `policy_forbid` przy `forbid` na poziomie narzędzia (wiersz użytkownika `denied_not_granted`), `suppressedTargets`, limit kluczy per (`sub`, powód), `503` z `Retry-After` przy shed (2 s) i przy magazynie sesji (10 s, nie `404`); (5) kursor `""` to `-32602`; claimy IdP ignorowane i niekopiowane; (6) brak automatycznego ponowienia `tools/call` `UPDATE`/`DESTRUCTIVE`.
+**ws-06 broker:** zmienić `key_source_unavailable` na `jwks_unavailable` i `jti_store_unavailable` na `replay_store_unavailable`, w zdarzeniu `authentication` z wynikiem `denied` i `errorCode: upstream_unavailable`; po wykryciu braku sekretu stan `error` i zdarzenie `secret_missing` (wiersz wypada z batcha sweepu); sprawdzić zdarzenia 9 powodów z opisu `reason` na wektorach `audit-events/broker-*`.
+**ws-07 BFF:** operacje C12 wyłącznika (zdjęcie ze step-up jak `acceptRiskLowering`, włączenie bez), `approveAdminTool` z `risk` i `action`, `disabledBy`; `%zz` jako `invalid_filter` (już tak jest, wektory `http-broken-escape`).
+**ws-08 web:** ekran wyłącznika (lista aktywnych, włącz, zdejmij ze step-up), dialog klasyfikacji przy zatwierdzaniu wpisu `source: adapter` (sugestie z `annotations` jako tekst niezaufany), `risk`/`action` opcjonalne w `RegistryTool`, stan `error` połączenia z prośbą o ponowne połączenie; mock MSW z nowymi operacjami.
+**ws-09 polityki:** `PolicyLintCli` na 6.0.0 zwraca `2` dla polityk niezgodnych ze schematem (krok potoku musi to uznać za błąd); bajty schematu Cedar bez zmian, paczki 5.x ważne.
+**ws-10 e2e:** scenariusze: zatwierdzenie narzędzia w trakcie sesji daje `list_changed` (obie postaci, drugi klient), wygaśnięcie tokenu zamyka strumień; wyłącznik (efekt na dwóch instancjach w <= 5 s, restart, awaria bazy, zdjęcie po MFA); kursor `""`; token IdP z `vs`; zabicie instancji w trakcie `UPDATE` daje `502` z tekstem stałym; klasyfikacja narzędzia adaptera.
+**ws-11 dokumentacja:** sekcje: A9 (wyłącznik), semantyka dostarczenia `UPDATE`, `list_changed` dla klientów, klasyfikacja obcych narzędzi.
+**ws-12 testy obciążeniowe:** zdarzenia strumieni nie wchodzą do pomiaru limitu żądań w toku; `suppressedTargets` w analizie audytu.
+**ws-13 adapter (nowy):** manifest z `source: adapter`, bez `risk`/`action`, `resourceRefs: []`, definicje zamknięte i ograniczone, hash bez `risk`/`action` (Java `DefinitionHash.ofManifestTool`), walidacja argumentów przed przekazaniem, nazwy powodów uwierzytelnienia jak starter.
+
 ## 5.1.2 - 2026-11-01
 
 Patch z opisanym wyjątkiem SemVer (README, "Wersjonowanie"): CC-191, poprawka CC-190 po przeglądzie. Bajty `cedar/mcp.cedarschema` bez zmian.
