@@ -58,7 +58,10 @@ npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2
 
 The npm package is published from GitHub Actions with provenance; `npm audit signatures` shows the attestation that ties the
 tarball to the tag and the workflow run. Maven artifacts carry a GPG signature (`.asc`); the public key is published on
-`keyserver.ubuntu.com` and `keys.openpgp.org`. A version is immutable once it is on Central, so a fix is a new number.
+`keyserver.ubuntu.com`. A version is immutable once it is on Central, so a fix is a new number.
+
+If you built 6.3.2 locally or installed it from another source before it reached Central, delete
+`~/.m2/repository/pl/aiwcorpo/mcp/*/6.3.2` and let Maven fetch the published files; the local copies are not byte-identical.
 
 ## What is where
 
@@ -1395,13 +1398,22 @@ Per release (a maintainer):
    and `scripts/check-jar-contents.mjs`: the jars must contain exactly the files of the source tree).
 2. `./mvnw -Prelease -Dgpg.skip verify` builds the sources and javadoc jars Central requires (javadoc without errors; the
    module `mcp-contracts` has no Java API, its javadoc jar is a pointer to this README).
-3. Commit `Release X.Y.Z`, tag `vX.Y.Z`, push the tag. `.github/workflows/release.yml` then runs:
-   - `build` (read-only): verification, `npm pack`, jars with sources and javadoc, CycloneDX SBOMs.
-   - `publish` (environment `release`, needs approval): checks the exact file list of the artifact, signs the Maven files with
-     GPG, uploads one bundle to the Central Portal as `USER_MANAGED`, waits for `VALIDATED`, then `npm publish --provenance`.
-     No build tool runs in this job.
+3. Commit `Release X.Y.Z`, tag `vX.Y.Z`, and push only that one tag (`git push origin vX.Y.Z`, never `git push --tags`: old
+   local tags would start releases). The repository must be public by then: npm provenance does not work for a private
+   repository, and the workflow stops at its first step otherwise. `.github/workflows/release.yml` then runs:
+   - `build` (read-only, no cache): verification, `npm pack`, jars with sources and javadoc, CycloneDX SBOMs.
+   - `publish-maven` (environment `release`, needs approval): checks the exact file list of the artifact, the `package.json`
+     of the npm tarball and the npm client, signs the Maven files with GPG (every signature is verified against the fingerprint
+     in the repository variable `GPG_FINGERPRINT`), uploads one bundle to the Central Portal as `USER_MANAGED` and waits for
+     `VALIDATED`. If the version is already on Central, the upload is skipped. No build tool runs in this job.
+   - `publish-npm` (environment `release-npm`, needs approval): `npm publish --provenance`; skipped when the version is
+     already on npmjs.org.
 4. Open https://central.sonatype.com/publishing/deployments, look at the deployment and press **Publish** (or **Drop**).
    Publishing is the one step that cannot be undone, so it stays manual. It appears on Central within minutes to an hour.
+   Only after that does the reviewer of `release-npm` approve `publish-npm`, so the npm package never appears for a
+   release that was dropped.
+5. Re-running a failed workflow is safe. One exception: a deployment that is `VALIDATED` but neither published nor dropped
+   is not visible to the workflow, so drop it in the Portal before re-running, or the upload creates a second one.
 
 Without CI, from a maintainer's machine: put the Portal user token in `~/.m2/settings.xml` as server `central`, export
 `MAVEN_GPG_PASSPHRASE` (or use gpg-agent) and run `./mvnw -Prelease deploy`. `central.autoPublish` defaults to `false`;
@@ -1414,17 +1426,22 @@ One-time setup (a human):
    DNS TXT record on `aiwcorpo.pl` (exactly that host) and press Verify. Requires control of the domain.
 2. Portal user token (Account, Generate User Token): repository secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN`.
 3. GPG key dedicated to releases (`gpg --quick-generate-key "aiwcorpo releases" ed25519 sign 2y`; with a passphrase). Publish the
-   public key: `gpg --keyserver keyserver.ubuntu.com --send-keys <fingerprint>` and upload it at https://keys.openpgp.org (confirm the
-   e-mail there). Secrets `GPG_PRIVATE_KEY` (`gpg --armor --export-secret-keys <fingerprint>`) and `GPG_PASSPHRASE`. Keep an offline
-   copy of the key and its revocation certificate, and add the fingerprint to `SECURITY.md`.
-4. Put the four secrets in the GitHub environment `release` (not repository-wide), with required reviewers other than the person who
-   pushes the tag and a deployment rule that allows only tags `v*`.
+   public key: `gpg --keyserver keyserver.ubuntu.com --send-keys <fingerprint>`. keys.openpgp.org publishes a key only with a
+   confirmed e-mail address of a user ID, so use it only if the key has an organisational address as its UID; otherwise leave
+   that keyserver out. Secrets `GPG_PRIVATE_KEY` (`gpg --armor --export-secret-keys <fingerprint>`) and `GPG_PASSPHRASE`, and the
+   repository variable `GPG_FINGERPRINT` (the workflow refuses a key with another fingerprint). Keep an offline copy of the key
+   and its revocation certificate, and add the fingerprint to `SECURITY.md`.
+4. Put the four Maven secrets in the GitHub environment `release` (not repository-wide). In both environments (`release` and
+   `release-npm`): required reviewers other than the person who pushes the tag, the option **Prevent self-review**, and a
+   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that blocks deletion and
+   updates, so a released tag cannot be moved.
 5. npm: create the organization `aiwcorpo` on npmjs.org (free for public packages; check that the name is available) and turn on 2FA for it.
    The first version cannot use trusted publishing, because the trusted publisher is configured on an existing package: either put a
-   granular access token (read and write, package scope `@aiwcorpo`, short expiry) in the environment secret `NPM_TOKEN` for the first
-   release, or publish the first tarball by hand with `npm publish --provenance=false --access public` from a machine with 2FA.
+   granular access token (read and write, package scope `@aiwcorpo`, short expiry, with **Bypass two-factor authentication**
+   ticked: a token without it is rejected for publishing on an account with 2FA) in the secret `NPM_TOKEN` of the environment
+   `release-npm` for the first release, or publish the first tarball by hand with `npm publish --provenance=false --access public` from a machine with 2FA.
    Then, on the package page, Settings, Trusted Publisher: GitHub Actions, organization `aiwcorpo`, repository `mcp-contracts`,
-   workflow `release.yml`, environment `release`; delete `NPM_TOKEN`.
+   workflow `release.yml`, environment `release-npm`; delete `NPM_TOKEN`.
 
 ## Local validation and CI
 
