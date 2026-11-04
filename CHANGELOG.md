@@ -1,8 +1,9 @@
 # Changelog
 
-Format: wersje SemVer (README, "Wersjonowanie"). Numery CC odnoszą się do `CONTRACT_CHANGES.md`.
-Od 2.0.0 ścisły SemVer. Wydania 1.1.0 i 1.2.0 zawierały zmiany niezgodne oznaczone jako minor; są wymienione w
-ich sekcjach "Niezgodne z poprzednią wersją" i zebrane względem 1.1.0 w sekcji 2.0.0.
+Format: SemVer versions (README, "Versioning (SemVer)"). CC numbers refer to `CONTRACT_CHANGES.md`.
+Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatible changes labelled as minor; they are listed in
+their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
+versions are historical and are kept in the language they were written in.
 
 ## 6.3.2 - 2026-11-03
 

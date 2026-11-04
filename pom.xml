@@ -2,7 +2,7 @@
 <!--
   mcp-contracts: machine-readable contracts of the MCP platform.
 
-  Modules (all versioned together with the contracts, see README "Wersjonowanie"):
+  Modules (all versioned together with the contracts, see README "Versioning (SemVer)"):
     - java/mcp-contracts        pl.aiwcorpo.mcp:mcp-contracts                 resources jar (+ test-vectors classifier)
     - java/mcp-cedar-entities   pl.aiwcorpo.mcp:mcp-cedar-entities            shared Cedar entity builder (C7, C9)
     - java/mcp-policy-bundle    pl.aiwcorpo.mcp:mcp-policy-bundle             reference policy bundle receiver (C7)
