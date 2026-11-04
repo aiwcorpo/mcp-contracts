@@ -20,7 +20,14 @@
     <version>6.3.2</version>
     <packaging>pom</packaging>
     <name>Aiwcorpo MCP Platform :: Contracts (parent)</name>
+    <description>Parent of the machine-readable contracts of the MCP platform: OpenAPI, JSON Schema, Cedar schema, test vectors and the Java libraries built on them.</description>
     <url>https://github.com/aiwcorpo/mcp-contracts</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <organization>
+        <name>aiwcorpo</name>
+        <url>https://github.com/aiwcorpo</url>
+    </organization>
 
     <licenses>
         <license>
@@ -30,19 +37,27 @@
         </license>
     </licenses>
 
+    <!-- The organization stands in for a person: Central requires developer information but not an e-mail address,
+         and a published POM is public and permanent, so no private address goes into it. -->
+    <developers>
+        <developer>
+            <id>aiwcorpo</id>
+            <name>aiwcorpo</name>
+            <organization>aiwcorpo</organization>
+            <organizationUrl>https://github.com/aiwcorpo</organizationUrl>
+        </developer>
+    </developers>
+
     <scm>
         <url>https://github.com/aiwcorpo/mcp-contracts</url>
         <connection>scm:git:https://github.com/aiwcorpo/mcp-contracts.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/aiwcorpo/mcp-contracts.git</developerConnection>
     </scm>
 
-    <!-- Published from CI only (.github/workflows/release.yml); the server id "github" gets its credentials from settings.xml. -->
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages (aiwcorpo/mcp-contracts)</name>
-            <url>https://maven.pkg.github.com/aiwcorpo/mcp-contracts</url>
-        </repository>
-    </distributionManagement>
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/aiwcorpo/mcp-contracts/issues</url>
+    </issueManagement>
 
     <modules>
         <module>java/mcp-contracts</module>
@@ -146,6 +161,21 @@
                     <artifactId>maven-install-plugin</artifactId>
                     <version>3.2.0</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.8</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.10.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -191,4 +221,58 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Maven Central. Not part of the normal build: `./mvnw -Prelease -Dgpg.skip verify` checks that the sources and javadoc
+         jars build; the CI workflow signs and uploads the result itself (.github/workflows/release.yml). A manual release is
+         `./mvnw -Prelease deploy`: signed with gpg, uploaded to the Central Portal as one bundle and left there for a person
+         to publish (central.autoPublish=false, so a failed validation or a wrong version never reaches the public repository,
+         which is immutable). Credentials: server id "central" in settings.xml (a Portal user token). The signing passphrase
+         is read from the environment variable MAVEN_GPG_PASSPHRASE or from gpg-agent, never from the command line. -->
+    <profiles>
+        <profile>
+            <id>release</id>
+            <properties>
+                <central.autoPublish>false</central.autoPublish>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sources-jar</id>
+                                <phase>package</phase>
+                                <goals><goal>jar-no-fork</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <configuration>
+                            <bestPractices>true</bestPractices>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals><goal>sign</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>${central.autoPublish}</autoPublish>
+                            <deploymentName>mcp-contracts ${project.version}</deploymentName>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

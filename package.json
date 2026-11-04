@@ -3,12 +3,18 @@
   "version": "6.3.2",
   "description": "Kontrakty platformy MCP: OpenAPI, JSON Schema, schemat Cedar, wektory testowe, typy TS i handlery MSW.",
   "license": "Apache-2.0",
+  "homepage": "https://github.com/aiwcorpo/mcp-contracts#readme",
+  "bugs": {
+    "url": "https://github.com/aiwcorpo/mcp-contracts/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aiwcorpo/mcp-contracts.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "provenance": true
   },
   "type": "module",
   "engines": {
@@ -40,14 +46,19 @@
     "./security/*": "./security/*"
   },
   "files": [
-    "openapi/",
-    "schemas/",
-    "cedar/",
+    "openapi/*.yaml",
+    "openapi/bundled/*.yaml",
+    "schemas/*.json",
+    "cedar/mcp.cedarschema",
+    "cedar/entity-builder.md",
+    "cedar/examples/",
+    "security/published-test-keys.json",
     "test-vectors/",
     "!test-vectors/keys/*NOT-FOR-PRODUCTION*",
-    "security/",
-    "mocks/",
-    "dist/",
+    "mocks/msw/",
+    "mocks/wiremock/",
+    "dist/msw/",
+    "dist/types/",
     "CONTRACT_CHANGES.md",
     "README.md",
     "CHANGELOG.md",
@@ -62,9 +73,10 @@
     "build": "node scripts/build-npm.mjs",
     "lint:openapi": "spectral lint --fail-severity=warn openapi/*.yaml openapi/bundled/*.yaml",
     "test:node": "node --test \"test/*.test.mjs\"",
-    "test": "npm run lint:openapi && npm run build && npm run test:node",
+    "test": "npm run lint:openapi && npm run build && npm run test:node && npm run check:package",
     "smoke:wiremock": "scripts/smoke-wiremock.sh",
-    "pack": "npm run build && node scripts/pack-release.mjs"
+    "pack": "npm run build && node scripts/pack-release.mjs",
+    "check:package": "node scripts/check-npm-package.mjs"
   },
   "peerDependencies": {
     "msw": "^3.0.0"

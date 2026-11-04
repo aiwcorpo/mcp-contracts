@@ -7,6 +7,14 @@ SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 
 Walidacja 5.1.0: `./scripts/verify-all.sh` zielony (`npm test`: 270 testów Node; `./mvnw clean verify`: 579 testów JUnit,
 w tym 327 mcp-cedar-entities, 70 mcp-policy-bundle, 182 mcp-manifest).
 
+## Publikacja na Maven Central i npmjs.org (przygotowanie, 2026-11-04)
+
+- Decyzja człowieka 2026-11-04: Maven Central dla `pl.aiwcorpo.mcp:*`, npmjs.org dla `@aiwcorpo/mcp-contracts`; GitHub Packages przestaje być celem publikacji. Numer zostaje 6.3.2, treść kontraktów bez zmian.
+- Poms: opis, `developers` (organizacja `aiwcorpo`, bez adresu e-mail), `scm`, `issueManagement`; profil `release` (jary sources i javadoc, podpis GPG z `MAVEN_GPG_PASSPHRASE`, `central-publishing-maven-plugin` 0.10.0 z `autoPublish=false`). `./mvnw -Prelease -Dgpg.skip verify` przechodzi; `mcp-contracts` ma zastępczy jar javadoc.
+- npm: `publishConfig` na registry.npmjs.org (`access: public`, `provenance: true`), `files` jako dokładna lista (te same 1384 pliki co wcześniej), `scripts/check-npm-package.mjs` w `npm test` (brak skryptów install/prepare, brak kluczy prywatnych, lista plików).
+- `release.yml`: `build` tylko do odczytu; `publish` podpisuje i wysyła pakiet do Portalu (`USER_MANAGED`), potem `npm publish --provenance` (trusted publishing, `NPM_TOKEN` tylko na pierwszą wersję).
+- Niesprawdzone bez kont: wysyłka do Portalu, walidacja metadanych `developers` bez e-maila, trusted publishing i provenance dla tarballa, uprawnienia środowiska `release`. Kroki człowieka: README, "Releasing".
+
 ## 6.2.0 (wydane 2026-11-03)
 
 - CC-207 `accepted` (decyzje człowieka 2026-11-03, "Decyzje po przeglądzie 6.1.0"): punkt odniesienia bezstanowego `list_changed` = lista z chwili otwarcia strumienia, `POST subscriptions/listen` poza limitem i z heartbeatem, kolejność `403`/`400`/`422` kanału adaptera, odpowiedź adaptera bez pól administratora, `classification_inconsistent`, usuwanie narzędzi adaptera wraz z klasyfikacją.

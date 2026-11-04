@@ -106,4 +106,30 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Central requires a javadoc jar next to every jar; this module has no Java sources, so the jar carries a pointer to the README. -->
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>javadoc-placeholder-jar</id>
+                                <phase>package</phase>
+                                <goals><goal>jar</goal></goals>
+                                <configuration>
+                                    <classifier>javadoc</classifier>
+                                    <classesDirectory>${project.basedir}/src/javadoc</classesDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

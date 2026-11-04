@@ -8,40 +8,10 @@ schemat Cedar, specyfikacja entity buildera, testowe klucze, wektory testowe i m
 
 To biblioteka dla autorów komponentów platformy MCP (gateway, broker poświadczeń, portal, serwery MCP dla
 Jiry, Confluence, GitLaba, OpenSearch i service desku), nie produkt do uruchomienia. Inne repozytoria
-generują z niej klientów, mocki i testy kontraktowe. Artefakty są wydawane do GitHub Packages organizacji
-`aiwcorpo` (Maven i npm), z GitHub Actions po tagu `vX.Y.Z`. GitHub Packages wymaga uwierzytelnienia także
-do odczytu: token z uprawnieniem `read:packages`.
-
-Maven (`~/.m2/settings.xml`, serwer `github` z loginem GitHub i tokenem):
-
-```xml
-<repositories>
-  <repository>
-    <id>github</id>
-    <url>https://maven.pkg.github.com/aiwcorpo/mcp-contracts</url>
-  </repository>
-</repositories>
-<dependencies>
-  <dependency>
-    <groupId>pl.aiwcorpo.mcp</groupId>
-    <artifactId>mcp-contracts</artifactId>
-    <version>6.3.2</version>
-  </dependency>
-  <dependency>
-    <groupId>pl.aiwcorpo.mcp</groupId>
-    <artifactId>mcp-contracts</artifactId>
-    <version>6.3.2</version>
-    <classifier>test-vectors</classifier>
-    <scope>test</scope>
-  </dependency>
-</dependencies>
-```
-
-npm (`.npmrc` projektu: `@aiwcorpo:registry=https://npm.pkg.github.com` i `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}`):
-
-```bash
-npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2
-```
+generują z niej klientów, mocki i testy kontraktowe. Artefakty Maven są wydawane do Maven Central (grupa
+`pl.aiwcorpo.mcp`), paczka npm do npmjs.org (`@aiwcorpo/mcp-contracts`), z GitHub Actions po tagu `vX.Y.Z`;
+do odczytu nie trzeba tokenu ani konta. Współrzędne i przykłady: sekcja "Using the artifacts" niżej, proces
+wydania: "Releasing".
 
 Importy: `@aiwcorpo/mcp-contracts/msw`, `.../types/portal-bff`, `.../openapi/*`, `.../schemas/*`, `.../test-vectors/*`.
 Klucze prywatne testów nie wchodzą do paczki npm (zob. "Artefakty"). Zgłaszanie podatności: [`SECURITY.md`](SECURITY.md);
@@ -52,6 +22,43 @@ Kontrakty są zamrożone: zmiany zgłasza się w [`CONTRACT_CHANGES.md`](CONTRAC
 człowiek. Tam też są wszystkie miejsca, w których `01-contracts.md` był nieprecyzyjny, z przyjętym
 wariantem; CC-001 ... CC-034 wdrożone w 1.1.0, CC-036 ... CC-045 w 1.2.0, CC-046 ... CC-067 w 2.0.0,
 CC-068 ... CC-077 w 2.1.0, CC-035 odrzucone; CC-169 ... CC-177 w 5.0.0.
+
+## Using the artifacts
+
+Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials needed (Central is the default repository):
+
+| Artifact | Packaging | Use |
+| --- | --- | --- |
+| `pl.aiwcorpo.mcp:mcp-contracts` | jar, plus classifier `test-vectors` | contract files as classpath resources; the `test-vectors` jar holds the TEST keys and belongs in `<scope>test</scope>` only |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities` | jar | shared Cedar entity builder |
+| `pl.aiwcorpo.mcp:mcp-policy-bundle` | jar | verification and loading of signed policy bundles |
+| `pl.aiwcorpo.mcp:mcp-manifest` | jar | `definitionHash` and manifest rules |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent` | pom | parent of the modules above |
+
+```xml
+<dependency>
+  <groupId>pl.aiwcorpo.mcp</groupId>
+  <artifactId>mcp-contracts</artifactId>
+  <version>6.3.2</version>
+</dependency>
+<dependency>
+  <groupId>pl.aiwcorpo.mcp</groupId>
+  <artifactId>mcp-contracts</artifactId>
+  <version>6.3.2</version>
+  <classifier>test-vectors</classifier>
+  <scope>test</scope>
+</dependency>
+```
+
+npm, public registry, scope `@aiwcorpo`, no `.npmrc` needed:
+
+```bash
+npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2
+```
+
+The npm package is published from GitHub Actions with provenance; `npm audit signatures` shows the attestation that ties the
+tarball to the tag and the workflow run. Maven artifacts carry a GPG signature (`.asc`); the public key is published on
+`keyserver.ubuntu.com` and `keys.openpgp.org`. A version is immutable once it is on Central, so a fix is a new number.
 
 ## Co jest gdzie
 
@@ -159,7 +166,7 @@ skutki dla konsumentów opisuje `CHANGELOG.md`.
 
 Tarballe npm nie są w gicie. `npm run pack` zapisuje je lokalnie do `release/` (katalog w `.gitignore`), a
 tarballa wersji, która ma już tag, nie nadpisuje (odmawia), więc suma integralności w `package-lock.json`
-konsumenta, który wskazuje taki plik, pozostaje ważna. Wydane wersje są w GitHub Packages.
+konsumenta, który wskazuje taki plik, pozostaje ważna. Wydane wersje są na npmjs.org i w Maven Central.
 
 Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie wersji w `pom.xml`,
 `package.json` i polach `info.version`, tag `vX.Y.Z`. Paczka polityk wskazuje wersję kontraktów w
@@ -175,7 +182,7 @@ Każde wydanie: wpis w `CONTRACT_CHANGES.md` ze statusem `accepted`, podbicie we
 | `pl.aiwcorpo.mcp:mcp-policy-bundle:6.3.2` (jar + javadoc) | weryfikacja i ładowanie paczek polityk C7, `PolicyStore`, lint polityk | gateway, starter, potok ws-09 |
 | `pl.aiwcorpo.mcp:mcp-manifest:6.3.2` (jar + javadoc) | `definitionHash` (RFC 8785), reguły manifestu C6 i `EndpointFilter` (filtr w query `/mcp`, CC-170) | starter (generowanie), gateway (rejestracja, filtr), BFF (filtr) |
 | `pl.aiwcorpo.mcp:mcp-contracts-parent:6.3.2` (pom) | rodzic modułów | instalowany razem z nimi |
-| `@aiwcorpo/mcp-contracts@6.3.2` (npm, GitHub Packages) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2`; lokalnie `npm run pack` daje `release/aiwcorpo-mcp-contracts-<wersja>.tgz` |
+| `@aiwcorpo/mcp-contracts@6.3.2` (npm, npmjs.org) | wszystko powyżej poza jarami + typy TS (`dist/types`) + handlery MSW (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2`; lokalnie `npm run pack` daje `release/aiwcorpo-mcp-contracts-<wersja>.tgz` |
 
 W Mavenie klucze testowe (także prywatne, publiczne z założenia) są tylko w jarze `test-vectors`, żeby komponent
 produkcyjny nie mógł przypadkiem załadować testowego JWKS z classpath; testy odbiorców podpisują nimi tokeny i
@@ -1150,12 +1157,45 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
   `cedar/entity-builder.md` sekcja 8).
 - Odbiorca paczek: `mcp-policy-bundle` (CC-045).
 
-## Wydanie (proces)
+## Releasing
 
-1. Wersja dokładnie `X.Y.Z` w pomach, `package.json` i `info.version` OpenAPI; `./scripts/verify-all.sh` zielony (robi `./mvnw clean verify`
-   i `scripts/check-jar-contents.mjs`: jary muszą zawierać dokładnie pliki drzewa źródeł).
-2. Sprawdzić, że w `~/.m2` nie ma jeszcze `X.Y.Z` (wydane wersje są niezmienne), commit `Release X.Y.Z`, tag `vX.Y.Z`.
-3. Wypchnięcie tagu uruchamia `.github/workflows/release.yml` (job `build` tylko do odczytu: weryfikacja, `npm pack`, jary Maven, SBOM CycloneDX; job `publish` z `packages: write`: `npm publish` tarballa i `deploy:deploy-file` gotowych jarów, bez budowania); potem wersja `X.Y.(Z+1)-SNAPSHOT`. Lokalnie: `./mvnw clean install` (do `~/.m2`) i `npm run pack`.
+Per release (a maintainer):
+
+1. Version exactly `X.Y.Z` in the poms, `package.json` and OpenAPI `info.version`; entry in `CONTRACT_CHANGES.md` with status
+   `accepted`; `./scripts/verify-all.sh` green (it runs `./mvnw clean verify`, `npm test` including `scripts/check-npm-package.mjs`,
+   and `scripts/check-jar-contents.mjs`: the jars must contain exactly the files of the source tree).
+2. `./mvnw -Prelease -Dgpg.skip verify` builds the sources and javadoc jars Central requires (javadoc without errors; the
+   module `mcp-contracts` has no Java API, its javadoc jar is a pointer to this README).
+3. Commit `Release X.Y.Z`, tag `vX.Y.Z`, push the tag. `.github/workflows/release.yml` then runs:
+   - `build` (read-only): verification, `npm pack`, jars with sources and javadoc, CycloneDX SBOMs.
+   - `publish` (environment `release`, needs approval): checks the exact file list of the artifact, signs the Maven files with
+     GPG, uploads one bundle to the Central Portal as `USER_MANAGED`, waits for `VALIDATED`, then `npm publish --provenance`.
+     No build tool runs in this job.
+4. Open https://central.sonatype.com/publishing/deployments, look at the deployment and press **Publish** (or **Drop**).
+   Publishing is the one step that cannot be undone, so it stays manual. It appears on Central within minutes to an hour.
+
+Without CI, from a maintainer's machine: put the Portal user token in `~/.m2/settings.xml` as server `central`, export
+`MAVEN_GPG_PASSPHRASE` (or use gpg-agent) and run `./mvnw -Prelease deploy`. `central.autoPublish` defaults to `false`;
+`-Dcentral.autoPublish=true` publishes without the manual step and is meant for a release that was already validated once.
+`npm run pack` makes a local tarball in `release/` (git-ignored); it is not what CI publishes.
+
+One-time setup (a human, see also `plan-wydanie.md` in the platform plan):
+
+1. Account on https://central.sonatype.com and the namespace `pl.aiwcorpo`: the Portal shows a verification key; add it as a
+   DNS TXT record on `aiwcorpo.pl` (exactly that host) and press Verify. Requires control of the domain.
+2. Portal user token (Account, Generate User Token): repository secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN`.
+3. GPG key dedicated to releases (`gpg --quick-generate-key "aiwcorpo releases" ed25519 sign 2y`; with a passphrase). Publish the
+   public key: `gpg --keyserver keyserver.ubuntu.com --send-keys <fingerprint>` and upload it at https://keys.openpgp.org (confirm the
+   e-mail there). Secrets `GPG_PRIVATE_KEY` (`gpg --armor --export-secret-keys <fingerprint>`) and `GPG_PASSPHRASE`. Keep an offline
+   copy of the key and its revocation certificate, and add the fingerprint to `SECURITY.md`.
+4. Put the four secrets in the GitHub environment `release` (not repository-wide), with required reviewers other than the person who
+   pushes the tag and a deployment rule that allows only tags `v*`.
+5. npm: create the organization `aiwcorpo` on npmjs.org (free for public packages; check that the name is available) and turn on 2FA for it.
+   The first version cannot use trusted publishing, because the trusted publisher is configured on an existing package: either put a
+   granular access token (read and write, package scope `@aiwcorpo`, short expiry) in the environment secret `NPM_TOKEN` for the first
+   release, or publish the first tarball by hand with `npm publish --provenance=false --access public` from a machine with 2FA.
+   Then, on the package page, Settings, Trusted Publisher: GitHub Actions, organization `aiwcorpo`, repository `mcp-contracts`,
+   workflow `release.yml`, environment `release`; delete `NPM_TOKEN`.
 
 ## Walidacja lokalna i CI
 
@@ -1171,7 +1211,7 @@ Poza JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), sprawdzane przez ga
   decyzji i filtra wyników wykonywane przez `mcp-cedar-entities` (z walidacją encji schematem i drugim
   przebiegiem bez `forbid`), wektory paczek przez `mcp-policy-bundle`, budowa jarów.
 
-CI: wydania buduje GitHub Actions (`.github/workflows/release.yml`). Kontrole na co dzień: **GitLab CI** (`.gitlab-ci.yml`), bo firmowe repozytoria i serwer MCP dla GitLaba są w GitLabie;
+CI: wydania buduje i publikuje GitHub Actions (`.github/workflows/release.yml`). Kontrole na co dzień: **GitLab CI** (`.gitlab-ci.yml`), bo firmowe repozytoria i serwer MCP dla GitLaba są w GitLabie;
 joby `node`, `java`, `wiremock-smoke` (Docker-in-Docker) i na tagu `package-jar`, `package-npm`.
 Obrazy w CI: `node:24.18.0-bookworm`, `maven:3.9.12-eclipse-temurin-25`, `docker:28.3.2`.
 
