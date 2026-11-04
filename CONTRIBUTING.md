@@ -19,7 +19,7 @@ come from `npm run generate*`; do not edit them by hand, the drift tests fail ot
 ## Commits
 
 Subject in English, imperative, up to 72 characters. The body describes the change, not the process.
-SemVer rules and the release steps are in the README ("Wersjonowanie", "Wydanie").
+SemVer rules and the release steps are in the README ("Versioning (SemVer)", "Releasing").
 
 ## License
 

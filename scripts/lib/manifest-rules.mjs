@@ -1,4 +1,4 @@
-// Rules of C5/C6 that JSON Schema cannot express (README: "Reguły semantyczne manifestu", CC-005, CC-018).
+// Rules of C5/C6 that JSON Schema cannot express (README: "Manifest semantic rules", CC-005, CC-018).
 import { manifestEntryHash } from './definition-hash.mjs';
 
 export function manifestRuleViolations(manifest) {
