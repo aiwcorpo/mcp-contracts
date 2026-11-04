@@ -2,7 +2,7 @@
 
 **Wszystkie klucze prywatne w tym katalogu są publiczne** (repozytorium, jar `test-vectors`, paczka npm).
 Służą wyłącznie do podpisywania i weryfikacji wektorów testowych. Konfiguracja produkcyjna ani
-środowisko `mcp-platform-dev` poza testami nie mogą ich używać. Pliki prywatne mają w nazwie
+lokalne środowisko deweloperskie poza testami nie mogą ich używać. Pliki prywatne mają w nazwie
 `NOT-FOR-PRODUCTION`.
 
 | Klucz | Algorytm | `kid` | Do czego |
