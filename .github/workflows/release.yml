@@ -122,15 +122,15 @@ jobs:
           modules='mcp-contracts|mcp-cedar-entities|mcp-policy-bundle|mcp-manifest'
           cd "$RUNNER_TEMP/packages"
           if find . -mindepth 1 ! -type f ! -type d | grep -q .; then echo "artifact holds a non-regular file" >&2; exit 1; fi
-          unexpected="$(find . -type f | sed 's|^\./||' | grep -Evx "npm/aiwcorpo-mcp-contracts-$v\.tgz|parent\.pom\.xml|($modules)/(pom\.xml|($modules)-$v(-sources|-javadoc)?\.jar)|mcp-contracts/mcp-contracts-$v-test-vectors\.jar" || true)"
+          unexpected="$(find . -type f | sed 's|^\./||' | grep -Evx "npm/aiwcorpo-mcp-contracts-$v\.tgz|maven/parent\.pom\.xml|maven/($modules)/(pom\.xml|($modules)-$v(-sources|-javadoc)?\.jar)|maven/mcp-contracts/mcp-contracts-$v-test-vectors\.jar" || true)"
           if [ -n "$unexpected" ]; then echo "unexpected files in the artifact:" >&2; echo "$unexpected" >&2; exit 1; fi
-          test -f "npm/aiwcorpo-mcp-contracts-$version.tgz" -a -f parent.pom.xml
+          test -f "npm/aiwcorpo-mcp-contracts-$version.tgz" -a -f maven/parent.pom.xml
           for module in mcp-contracts mcp-cedar-entities mcp-policy-bundle mcp-manifest; do
             for file in pom.xml "$module-$version.jar" "$module-$version-sources.jar" "$module-$version-javadoc.jar"; do
-              test -f "$module/$file"
+              test -f "maven/$module/$file"
             done
           done
-          test -f "mcp-contracts/mcp-contracts-$version-test-vectors.jar"
+          test -f "maven/mcp-contracts/mcp-contracts-$version-test-vectors.jar"
           tar -xzOf "npm/aiwcorpo-mcp-contracts-$version.tgz" package/package.json \
             | jq -e --arg v "$version" '
                 .name == "@aiwcorpo/mcp-contracts" and .version == $v
@@ -164,7 +164,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          artifacts="$RUNNER_TEMP/packages"
+          artifacts="$RUNNER_TEMP/packages/maven"
           group_path=pl/aiwcorpo/mcp
           bundle="$RUNNER_TEMP/bundle"
           export GNUPGHOME="$RUNNER_TEMP/gnupg"
