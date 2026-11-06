@@ -44,6 +44,7 @@
         },
         "jsonBody": {
           "system": "notes",
+          "displayName": "Notes",
           "baseUrl": "https://notes.internal/api",
           "adapter": "generic-rest",
           "supportedTypes": [

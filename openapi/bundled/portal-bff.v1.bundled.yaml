@@ -1933,6 +1933,8 @@ paths:
                       type: user-oauth
                     enabled: true
                     adapter: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2023,6 +2025,8 @@ paths:
         - admin
       operationId: deleteAdminServer
       summary: Remove a server from the registry (proxy to C5); its tools disappear and its calls are refused.
+      description: |
+        Needs a fresh MFA (`step_up_required` otherwise); the gateway checks it too.
       security:
         - session: []
           csrf: []
@@ -2032,8 +2036,10 @@ paths:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
           description: Removed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2232,6 +2238,8 @@ paths:
                     text: forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };
                     setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                     setAt: 2026-11-06T09:30:00Z
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2245,6 +2253,9 @@ paths:
         - admin
       operationId: putAdminOverride
       summary: Create or replace a forbid-only emergency override (proxy to C5).
+      description: |
+        A replace (`If-Match`) needs a fresh MFA, because a weaker text widens access like a delete (`step_up_required` otherwise); a create
+        (`If-None-Match: *`) does not. The gateway checks it too.
       security:
         - session: []
           csrf: []
@@ -2285,7 +2296,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "412":
@@ -2325,6 +2336,8 @@ paths:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
           description: Removed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
@@ -2335,6 +2348,44 @@ paths:
           $ref: "#/components/responses/PreconditionFailed"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/policies:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    get:
+      tags:
+        - admin
+      operationId: getAdminServerPolicies
+      summary: The approved policies and resource type declarations of a server (proxy to C5).
+      description: |
+        Nothing approved yet is null values, not `404`; `404` is only for an unknown `serverId`.
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The approved policies and declarations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovedPolicies"
+              examples:
+                nothing_approved:
+                  value:
+                    approvedHash: null
+                    approvedPolicies: null
+                    approvedResourceTypes: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry/servers/{serverId}/policies/pending:
@@ -2397,6 +2448,8 @@ paths:
                           text: |
                             @id("jira-read")
                             permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2487,6 +2540,7 @@ paths:
                 one:
                   value:
                     - system: notes
+                      displayName: Notes
                       baseUrl: https://notes.internal/api
                       adapter: generic-rest
                       supportedTypes:
@@ -2533,6 +2587,7 @@ paths:
                 notes:
                   value:
                     system: notes
+                    displayName: Notes
                     baseUrl: https://notes.internal/api
                     adapter: generic-rest
                     supportedTypes:
@@ -2547,6 +2602,8 @@ paths:
                         - notes.read
                         - notes.write
                       clientSecretSet: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -2610,6 +2667,7 @@ paths:
                 notes:
                   value:
                     system: notes
+                    displayName: Notes
                     baseUrl: https://notes.internal/api
                     adapter: generic-rest
                     supportedTypes:
@@ -2671,6 +2729,8 @@ paths:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
           description: Removed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
@@ -4397,6 +4457,29 @@ components:
         parentAttribute:
           - parent
       additionalProperties: false
+    ApprovedPolicies:
+      type: object
+      description: The approved policies and declarations of a server; all three are null while nothing is approved.
+      required:
+        - approvedHash
+        - approvedPolicies
+        - approvedResourceTypes
+      properties:
+        approvedHash:
+          oneOf:
+            - $ref: "#/components/schemas/DefinitionHash"
+            - type: "null"
+        approvedPolicies:
+          oneOf:
+            - $ref: "#/components/schemas/policies"
+            - type: "null"
+        approvedResourceTypes:
+          oneOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/ResourceTypeDeclaration"
+            - type: "null"
+      additionalProperties: false
     PendingPolicies:
       type: object
       description: What an administrator approves is the policies and the declarations of the resource types together (policiesHash covers both), so both sides are shown.
@@ -4476,6 +4559,10 @@ components:
                 pattern: ^[a-z][a-z0-9_]*$
             additionalProperties: false
       additionalProperties: false
+    SystemDisplayName:
+      description: Name that the portal shows for the system (a short label, no control or format characters); the system id when the administrator gives none.
+      type: string
+      pattern: ^[^\p{Cc}\p{Cf}\p{Cs}\u2028\u2029]{1,64}$
     SystemAdapter:
       description: How the broker talks to the backend of a system.
       type: string
@@ -4534,6 +4621,7 @@ components:
       type: object
       required:
         - system
+        - displayName
         - baseUrl
         - adapter
         - supportedTypes
@@ -4542,6 +4630,8 @@ components:
       properties:
         system:
           $ref: "#/components/schemas/SystemId"
+        displayName:
+          $ref: "#/components/schemas/SystemDisplayName"
         baseUrl:
           type: string
           format: uri
@@ -4643,6 +4733,8 @@ components:
               required:
                 - exchangeAudience
       properties:
+        displayName:
+          $ref: "#/components/schemas/SystemDisplayName"
         baseUrl:
           type: string
           format: uri

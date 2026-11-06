@@ -57,6 +57,31 @@
       }
     },
     {
+      "name": "getServer 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
       "name": "getServer 401 unauthenticated",
       "priority": 2,
       "request": {

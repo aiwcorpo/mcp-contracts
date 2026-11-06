@@ -40,8 +40,10 @@ info:
 
     **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds AND proof of MFA in the token: `acr` in a list of MFA levels or `amr` containing one of `mfa`, `otp`, `hwk`, `totp` (both lists are configuration of the receiver); `auth_time` alone is not enough, because a fresh password-only login passes it. A token without either proof is not fresh, and the answer is `401 step_up_required`
     (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
-    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `createServer`, `deleteServer` and
+    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `deleteServer` and
     `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check).
+
+    **Malformed input (7.0.0).** Malformed input is `400 invalid_request`: an `If-Match` or `If-None-Match` that is not a well-formed value, and a path id that does not match its pattern (never `404`). A well-formed id that names nothing is `404` (a delete of a system that has none is `204`), and a well-formed `If-Match` that is stale is `412`.
 
     A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
     Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
@@ -1652,6 +1654,8 @@ paths:
                       type: user-oauth
                     enabled: true
                     adapter: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1740,6 +1744,8 @@ paths:
       responses:
         '204':
           description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
@@ -1922,6 +1928,8 @@ paths:
                     text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                     setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                     setAt: '2026-11-06T09:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1943,7 +1951,7 @@ paths:
         `all-servers`: validated against the fragment of every registered server (so it can use only what every server has, for
         example `context.client`), and it may not mention `Tool` or `call` either. The override id becomes the policy id; an
         `@id` in the text must be the same. A create sends `If-None-Match: *`, a replace sends `If-Match` with the `ETag` of the
-        override that was edited (`412` when it changed, `428` without either). The write raises the revision of the policy
+        override that was edited (`412` when it changed, `428` without either); a replace needs a fresh MFA (a weaker text widens access like a delete), a create does not. The write raises the revision of the policy
         data. The audit event is `admin_change`.
       security:
         - mtls: []
@@ -1983,7 +1991,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '422':
@@ -2016,6 +2024,8 @@ paths:
       responses:
         '204':
           description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
@@ -2026,6 +2036,63 @@ paths:
           $ref: '#/components/responses/PreconditionFailed'
         '428':
           $ref: '#/components/responses/PreconditionRequired'
+  /admin/v1/registry/servers/{serverId}/policies:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    get:
+      tags: [registry]
+      operationId: getServerPolicies
+      x-allowed-client-cn: [mcp-portal-bff]
+      summary: The approved policies and resource type declarations of a server (admin).
+      description: |
+        What the administrator approved last (the same pair `policiesHash` covers), for example to show the declared resource types
+        next to the scope mapping. Nothing approved yet is `approvedHash: null` with null policies and declarations, not `404`; `404`
+        is only for a `serverId` that is not in the registry. `GET .../policies/pending` shows what waits for approval.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        '200':
+          description: The approved policies and declarations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovedPolicies'
+              examples:
+                approved:
+                  value:
+                    approvedHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                    approvedResourceTypes:
+                      - type: Jira::Project
+                        attributes: [key, category]
+                        idPattern: ^[A-Z][A-Z0-9_]{1,9}$
+                        scopePattern: ^[A-Z][A-Z0-9_]{1,9}$
+                        earlyScopeCheck: true
+                        classification:
+                          attribute: category
+                          kind: string
+                          required: true
+                    approvedPolicies:
+                      namespace: Jira
+                      schema: |
+                        namespace Jira {
+                          entity Project { key: String, category: String, scopes: Set<ResourceScope> };
+                          action "read" appliesTo { principal: [User], resource: [Project], context: RequestContext };
+                        }
+                      files: []
+                nothing_approved:
+                  value:
+                    approvedHash: null
+                    approvedPolicies: null
+                    approvedResourceTypes: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /admin/v1/registry/servers/{serverId}/policies/pending:
     parameters:
       - $ref: '#/components/parameters/ServerId'
@@ -2081,6 +2148,8 @@ paths:
                           text: |
                             @id("jira-read")
                             permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -2135,6 +2204,8 @@ paths:
                       - group: mcp-jira-proj-ABC
                         scope: Jira::Project/ABCDEFGHIJ
                         reason: invalid_scope
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
@@ -3038,6 +3109,26 @@ components:
           description: Where the pending policies come from, as for a pending tool (ci or server).
           type: string
           enum: [ci, server]
+      additionalProperties: false
+    ApprovedPolicies:
+      type: object
+      description: The approved policies and declarations of a server; all three are null while nothing is approved.
+      required: [approvedHash, approvedPolicies, approvedResourceTypes]
+      properties:
+        approvedHash:
+          oneOf:
+            - $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
+            - type: 'null'
+        approvedPolicies:
+          oneOf:
+            - $ref: '../schemas/server-manifest.schema.json#/properties/policies'
+            - type: 'null'
+        approvedResourceTypes:
+          oneOf:
+            - type: array
+              items:
+                $ref: '../schemas/server-manifest.schema.json#/$defs/ResourceTypeDeclaration'
+            - type: 'null'
       additionalProperties: false
     ApprovePoliciesResult:
       type: object

@@ -1,0 +1,197 @@
+{
+  "mappings": [
+    {
+      "name": "getServerPolicies without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getServerPolicies 200 approved",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "approvedHash": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
+          "approvedResourceTypes": [
+            {
+              "type": "Jira::Project",
+              "attributes": [
+                "key",
+                "category"
+              ],
+              "idPattern": "^[A-Z][A-Z0-9_]{1,9}$",
+              "scopePattern": "^[A-Z][A-Z0-9_]{1,9}$",
+              "earlyScopeCheck": true,
+              "classification": {
+                "attribute": "category",
+                "kind": "string",
+                "required": true
+              }
+            }
+          ],
+          "approvedPolicies": {
+            "namespace": "Jira",
+            "schema": "namespace Jira {\n  entity Project { key: String, category: String, scopes: Set<ResourceScope> };\n  action \"read\" appliesTo { principal: [User], resource: [Project], context: RequestContext };\n}\n",
+            "files": []
+          }
+        }
+      }
+    },
+    {
+      "name": "getServerPolicies 200 nothing_approved",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=nothing_approved($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "approvedHash": null,
+          "approvedPolicies": null,
+          "approvedResourceTypes": null
+        }
+      }
+    },
+    {
+      "name": "getServerPolicies 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "getServerPolicies 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getServerPolicies 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "getServerPolicies 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    }
+  ]
+}

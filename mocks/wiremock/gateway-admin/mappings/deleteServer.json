@@ -39,6 +39,31 @@
       }
     },
     {
+      "name": "deleteServer 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
       "name": "deleteServer 401 step_up_required",
       "priority": 2,
       "request": {

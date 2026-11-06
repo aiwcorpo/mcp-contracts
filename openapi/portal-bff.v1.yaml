@@ -1847,6 +1847,8 @@ paths:
                         type: user-oauth
                       enabled: true
                       adapter: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1934,6 +1936,8 @@ paths:
       tags: [admin]
       operationId: deleteAdminServer
       summary: "Remove a server from the registry (proxy to C5); its tools disappear and its calls are refused."
+      description: |
+        Needs a fresh MFA (`step_up_required` otherwise); the gateway checks it too.
       security:
         - session: []
           csrf: []
@@ -1943,8 +1947,10 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
           description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2134,6 +2140,8 @@ paths:
                       text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                       setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                       setAt: '2026-11-06T09:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -2146,6 +2154,9 @@ paths:
       tags: [admin]
       operationId: putAdminOverride
       summary: "Create or replace a forbid-only emergency override (proxy to C5)."
+      description: |
+        A replace (`If-Match`) needs a fresh MFA, because a weaker text widens access like a delete (`step_up_required` otherwise); a create
+        (`If-None-Match: *`) does not. The gateway checks it too.
       security:
         - session: []
           csrf: []
@@ -2186,7 +2197,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '422':
@@ -2225,6 +2236,8 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
           description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
@@ -2235,6 +2248,43 @@ paths:
           $ref: '#/components/responses/PreconditionFailed'
         '428':
           $ref: '#/components/responses/PreconditionRequired'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/policies:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    get:
+      tags: [admin]
+      operationId: getAdminServerPolicies
+      summary: "The approved policies and resource type declarations of a server (proxy to C5)."
+      description: |
+        Nothing approved yet is null values, not `404`; `404` is only for an unknown `serverId`.
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The approved policies and declarations.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ApprovedPolicies'
+              examples:
+                nothing_approved:
+                  value:
+                    approvedHash: null
+                    approvedPolicies: null
+                    approvedResourceTypes: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry/servers/{serverId}/policies/pending:
@@ -2293,6 +2343,8 @@ paths:
                             text: |
                               @id("jira-read")
                               permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -2381,6 +2433,7 @@ paths:
                 one:
                   value:
                       - system: notes
+                        displayName: Notes
                         baseUrl: https://notes.internal/api
                         adapter: generic-rest
                         supportedTypes: [user-oauth]
@@ -2423,6 +2476,7 @@ paths:
                 notes:
                   value:
                     system: notes
+                    displayName: Notes
                     baseUrl: https://notes.internal/api
                     adapter: generic-rest
                     supportedTypes: [user-oauth]
@@ -2434,6 +2488,8 @@ paths:
                       tokenUrl: https://notes.internal/oauth/token
                       scopes: [notes.read, notes.write]
                       clientSecretSet: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -2493,6 +2549,7 @@ paths:
                 notes:
                   value:
                       system: notes
+                      displayName: Notes
                       baseUrl: https://notes.internal/api
                       adapter: generic-rest
                       supportedTypes: [user-oauth]
@@ -2550,6 +2607,8 @@ paths:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
           description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':

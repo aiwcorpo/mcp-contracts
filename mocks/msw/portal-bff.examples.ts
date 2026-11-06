@@ -2261,6 +2261,16 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 401,
         "name": "unauthenticated",
         "body": {
@@ -2316,10 +2326,21 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
-        "status": 401,
-        "name": "unauthenticated",
+        "status": 400,
+        "name": "invalid_request",
         "body": {
-          "error": "unauthenticated"
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2708,6 +2729,16 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 401,
         "name": "unauthenticated",
         "body": {
@@ -2782,9 +2813,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2858,6 +2890,16 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 401,
         "name": "step_up_required",
         "body": {
@@ -2903,6 +2945,76 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "required",
         "body": {
           "error": "precondition_required"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "getAdminServerPolicies",
+    "method": "GET",
+    "route": "/api/v1/admin/registry/servers/{serverId}/policies",
+    "defaultExample": "nothing_approved",
+    "responses": [
+      {
+        "status": 200,
+        "name": "nothing_approved",
+        "body": {
+          "approvedHash": null,
+          "approvedPolicies": null,
+          "approvedResourceTypes": null
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2972,6 +3084,16 @@ export const portalBffExamples: OperationExamples[] = [
               }
             ]
           }
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -3110,6 +3232,7 @@ export const portalBffExamples: OperationExamples[] = [
         "body": [
           {
             "system": "notes",
+            "displayName": "Notes",
             "baseUrl": "https://notes.internal/api",
             "adapter": "generic-rest",
             "supportedTypes": [
@@ -3176,6 +3299,7 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "notes",
         "body": {
           "system": "notes",
+          "displayName": "Notes",
           "baseUrl": "https://notes.internal/api",
           "adapter": "generic-rest",
           "supportedTypes": [
@@ -3197,6 +3321,16 @@ export const portalBffExamples: OperationExamples[] = [
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
           "ETag": "\"Zx8Tq2LmWk93vNpA\""
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
       },
       {
@@ -3252,6 +3386,7 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "notes",
         "body": {
           "system": "notes",
+          "displayName": "Notes",
           "baseUrl": "https://notes.internal/api",
           "adapter": "generic-rest",
           "supportedTypes": [
@@ -3359,6 +3494,16 @@ export const portalBffExamples: OperationExamples[] = [
       {
         "status": 204,
         "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }

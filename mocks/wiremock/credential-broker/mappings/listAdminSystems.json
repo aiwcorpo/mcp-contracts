@@ -44,6 +44,7 @@
         "jsonBody": [
           {
             "system": "jira",
+            "displayName": "Jira",
             "baseUrl": "https://jira.internal",
             "adapter": "atlassian-dc",
             "product": "jira",
@@ -56,6 +57,7 @@
           },
           {
             "system": "notes",
+            "displayName": "Notes",
             "baseUrl": "https://notes.internal/api",
             "adapter": "generic-rest",
             "supportedTypes": [

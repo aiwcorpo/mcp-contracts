@@ -4339,3 +4339,13 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zmiana:** opcjonalne `additionalGroup` we wpisie narzędzia manifestu (serwery zbudowane na starterze), wzorzec `mcp-<system>-<przyrostek>` z systemem tego serwera i przyrostkiem innym niż `read`, `write`, `destructive` (reguła `additional-group-valid`, schemat); część `definitionHash` (zmiana wymaga zatwierdzenia); zabronione w manifeście adaptera (administrator nie ustawia grup przy zatwierdzeniu). Encja `Tool` ma opcjonalny atrybut `additionalGroup: UserGroup`; polityka platformy `platform-call-additional-group` zabrania `call`, gdy `resource has additionalGroup && !(principal in resource.additionalGroup)`: tylko zawęża, grupa z ryzyka nadal jest potrzebna. `ToolDescriptor` ma składnik `additionalGroup` (`Optional<String>`; konstruktor bez niego i `withAdditionalGroup(String)` zostają). Nowe bajty `mcp.cedarschema`. Wektory: `definition-hash/get-issue-additional-group`, `manifests/*additional-group*`, `entity-builder/gateway-additional-group*`, `policy-decisions/gw-additional-group-*`.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-243 | C4/C5/C12 | Poprawki po wdrożeniu portalu
+
+- **Źródło:** wdrożenie portalu, decyzje koordynatora z 2026-11-06.
+- **MFA:** `putOverride`, który zastępuje istniejące nadpisanie (`If-Match`), wymaga świeżego MFA według CC-241, bo słabszy tekst poszerza dostęp jak usunięcie; utworzenie (`If-None-Match: *`) nie. Lista w gateway i opisy w gateway i BFF poprawione. BFF `deleteAdminServer` (i `putAdminOverride`) odpowiada 401 ze step-upem, jak pozostałe operacje ze świeżym MFA.
+- **Odczyt:** `GET /admin/v1/registry/servers/{serverId}/policies` (`getServerPolicies`, schemat `ApprovedPolicies`: `approvedHash`, `approvedPolicies`, `approvedResourceTypes`, null gdy nic nie zatwierdzono), lustro BFF `getAdminServerPolicies`; `404` tylko dla nieznanego `serverId`.
+- **Błędne dane wejściowe (jedna reguła):** źle zbudowany `If-Match` albo `If-None-Match` i identyfikator ścieżki niezgodny ze wzorcem to `400 invalid_request`, nigdy `404`; poprawny identyfikator bez zasobu to `404` (DELETE systemu bez systemu `204`); poprawny, ale nieaktualny `If-Match` to `412`. Dopisane `400` w operacjach z identyfikatorem w ścieżce: gateway, broker i BFF.
+- **`displayName`:** opcjonalne w `SystemAdminRequest`, zawsze obecne w `SystemAdminView` (id, gdy nie podano), opcjonalne w `SystemInfo`; 1 do 64 znaków bez znaków sterujących i formatujących.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
