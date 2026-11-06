@@ -90,6 +90,8 @@ się `upstream-unavailable-policy-data`. Opisy `PolicyRevision` i `prv` mówią 
 
 **Adapter generic-rest z sekretami użytkowników (CC-247, w 7.0.0).** `generic-rest` przyjmuje `user-secret` albo `service-account` (nigdy razem, nigdy `user-oauth`: `422 system_rejected`, powód `credential_type_not_supported_by_adapter`); opcjonalne `whoami {path, usernameField}` w `SystemAdminRequest` i widoku (`SystemWhoami`): z `whoami` zapis sekretu woła `GET baseUrl+path`, 2xx z polem zapisuje sekret z nazwą użytkownika, 401 i 403 to `secret_invalid`, reszta `upstream_unavailable`; bez `whoami` sekret jest zapisany bez weryfikacji, połączenie nie ma nazwy użytkownika (`Connection.verified` false, `backendUser` null, audyt `secret_stored_unverified`, portal pokazuje "not verified"); `SystemInfo.userSecretVerified`; zmiana `whoami` nie unieważnia połączeń, zmiana `baseUrl` tak. Przykład `notes` używa teraz `user-secret` z `whoami`.
 
+**Katalog użytkownika (CC-248, w 7.0.0).** `CatalogCredential` (C12) ma opcjonalne `displayName` (z `SystemInfo.displayName`) i `userSecretVerified` (z `SystemInfo.userSecretVerified`), żeby portal ostrzegał przed pierwszym tokenem systemu bez weryfikacji i pokazywał nazwę systemu.
+
 **Migracja per składnik.**
 - *gateway:* rejestr serwerów w PostgreSQL i API `/admin/v1/servers`; `ResourceTypes.union` z zarejestrowanych manifestów, `ScopeMapping.ofRegistered`; `EntityBuilder(types, mapping)`; decyzja `call` z
   `McpCedarSchema.platformPolicies()` i nadpisań; `GET /internal/v1/policy-data` i `prv`; zatwierdzenie `policiesHash`; walidacja fragmentu przy rejestracji; `MCP_ALLOWED_CLIENTS` w kodzie.

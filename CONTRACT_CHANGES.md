@@ -4380,3 +4380,10 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Pola:** `Connection`, `PutSecretResponse` i `OAuthCompleteResponse` mają wymagane `verified` (boolean); `backendUser` w `Connection` i `PutSecretResponse` może być null; `SystemInfo.userSecretVerified` mówi, czy zapis sekretu systemu jest weryfikowany (portal pokazuje "not verified" przed połączeniem). Przykłady `notes` używają `user-secret` z `whoami` (wcześniej pokazywały `generic-rest` z `user-oauth`).
 - **Zgodność wstecz (SemVer):** wymagane nowe pole `verified` w odpowiedziach i zaostrzenie typów generic-rest: część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-248 | C12 | `displayName` i `userSecretVerified` w katalogu użytkownika
+
+- **Źródło:** decyzja koordynatora z 2026-11-06 (portal: ostrzeżenie przed pierwszym tokenem systemu bez weryfikacji, nazwa systemu na stronach użytkownika).
+- **Zmiana:** `CatalogCredential` (pole `credential` wpisu serwera w katalogu portalu) ma opcjonalne `displayName` (`SystemInfo.displayName`, CC-243; brak = portal pokazuje id systemu) i `userSecretVerified` (`SystemInfo.userSecretVerified`, CC-247; false = sekret zapisywany bez weryfikacji, połączenie będzie miało `verified` false; brak = broker nie mówi, traktowane jak zweryfikowane). BFF kopiuje je z `GET /v1/systems`.
+- **Zgodność wstecz (SemVer):** nowe pola opcjonalne: minor; razem z resztą wydania: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

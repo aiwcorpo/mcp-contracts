@@ -3229,6 +3229,12 @@ components:
           enum:
             - dc
             - cloud
+        displayName:
+          description: Name of the system for user pages (C4 `SystemInfo.displayName`, CC-243); absent means the portal shows the system id.
+          $ref: "#/components/schemas/SystemDisplayName"
+        userSecretVerified:
+          description: Whether a user secret of the system is checked with a whoami when it is stored (C4 `SystemInfo.userSecretVerified`, CC-247). False means the secret is stored unverified and the connection will have `verified` false, so the portal warns before the first token; absent means the broker does not tell (treated as verified).
+          type: boolean
       additionalProperties: false
     ConnectErrorCode:
       type: string
@@ -3451,6 +3457,10 @@ components:
         - user-secret
         - token-exchange
         - service-account
+    SystemDisplayName:
+      description: Name that the portal shows for the system (a short label, no control or format characters); the system id when the administrator gives none.
+      type: string
+      pattern: ^[^\p{Cc}\p{Cf}\p{Cs}\u2028\u2029]{1,64}$
     SystemId:
       description: "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts). The ids gateway, offboarding, portal, broker, prometheus, platform, admin, registry, adapter, internal and ci are reserved: mcp-<system> is also the CN of a server certificate, and mcp-gateway, mcp-offboarding and the like are the CNs of platform components."
       type: string
@@ -4557,10 +4567,6 @@ components:
                 pattern: ^[a-z][a-z0-9_]*$
             additionalProperties: false
       additionalProperties: false
-    SystemDisplayName:
-      description: Name that the portal shows for the system (a short label, no control or format characters); the system id when the administrator gives none.
-      type: string
-      pattern: ^[^\p{Cc}\p{Cf}\p{Cs}\u2028\u2029]{1,64}$
     SystemAdapter:
       description: How the broker talks to the backend of a system.
       type: string
