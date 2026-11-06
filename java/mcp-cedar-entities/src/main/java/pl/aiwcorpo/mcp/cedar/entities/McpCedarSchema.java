@@ -23,7 +23,7 @@ public final class McpCedarSchema {
     public static final String PLATFORM_DIRECTORY = "/mcp-contracts/cedar/platform/";
 
     /** Files of {@code cedar/platform}; a test keeps this list equal to the directory. */
-    public static final List<String> PLATFORM_POLICY_FILES = List.of("call-by-group.cedar", "call-write-outside-scope.cedar");
+    public static final List<String> PLATFORM_POLICY_FILES = List.of("call-additional-group.cedar", "call-by-group.cedar", "call-write-outside-scope.cedar");
 
     private McpCedarSchema() {
     }

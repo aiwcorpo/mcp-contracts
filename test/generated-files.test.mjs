@@ -34,7 +34,7 @@ import { readdirSync } from 'node:fs';
 
 test('cedar/mcp.cedarschema is frozen for the 7.0 line (byte hash, LF only)', () => {
   const bytes = readFileSync(path('cedar', 'mcp.cedarschema'));
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), '48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5');
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), '6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1');
   assert.ok(!bytes.includes(0x0d));
 });
 

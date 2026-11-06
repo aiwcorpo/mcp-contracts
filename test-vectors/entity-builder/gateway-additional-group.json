@@ -1,0 +1,111 @@
+{
+  "description": "A tool whose manifest names an additionalGroup: the Tool entity carries it next to requiredGroup (7.0.0).",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000d",
+      "usr": "notesops",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-ops"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_backend_info",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [],
+      "additionalGroup": "mcp-notes-ops"
+    },
+    "arguments": {}
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000d"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "notes__get_backend_info"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "notes__get_backend_info"
+        },
+        "attrs": {
+          "server": "mcp-notes",
+          "name": "get_backend_info",
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-read"
+            }
+          },
+          "additionalGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-ops"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000d"
+        },
+        "attrs": {
+          "username": "notesops",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-ops"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-ops"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

@@ -24,6 +24,11 @@ export function manifestRuleViolations(manifest) {
   violations.push(...resourceTypeViolations(manifest));
   violations.push(...policiesViolations(manifest));
   for (const tool of manifest.tools) {
+    if (tool.additionalGroup !== undefined) {
+      const prefix = `mcp-${manifest.system}-`;
+      const suffix = tool.additionalGroup.startsWith(prefix) ? tool.additionalGroup.slice(prefix.length) : '';
+      if (!/^[a-z][a-z0-9-]{0,30}$/.test(suffix) || ['read', 'write', 'destructive'].includes(suffix)) violations.push('additional-group-valid');
+    }
     for (const { argument } of tool.resourceRefs) {
       if (!idArgument(tool.definition.inputSchema?.properties?.[argument])) violations.push('resource-ref-argument-declared');
     }

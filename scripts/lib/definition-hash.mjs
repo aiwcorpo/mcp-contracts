@@ -20,6 +20,7 @@ export function hashInput({ tool, manifestEntry, server }) {
   // An entry of an adapter has no risk and no action (CC-193); the administrator's classification is not part of the hash.
   if (manifestEntry.risk !== undefined) flat.risk = manifestEntry.risk;
   if (manifestEntry.action !== undefined) flat.action = manifestEntry.action;
+  if (manifestEntry.additionalGroup !== undefined) flat.additionalGroup = manifestEntry.additionalGroup;
   flat.resourceRefs = manifestEntry.resourceRefs ?? [];
   flat.system = server.system;
   flat.credential = server.credential;
@@ -38,7 +39,7 @@ export function manifestEntryHash(manifest, entry) {
   const classified = manifest.source === 'adapter' ? {} : { risk: entry.risk, action: entry.action };
   return definitionHash({
     tool: entry.definition,
-    manifestEntry: { ...classified, resourceRefs: entry.resourceRefs },
+    manifestEntry: { ...classified, resourceRefs: entry.resourceRefs, ...(entry.additionalGroup !== undefined && { additionalGroup: entry.additionalGroup }) },
     server: { system: manifest.system, credential: manifest.credential },
   }).hash;
 }

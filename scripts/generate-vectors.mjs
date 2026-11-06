@@ -140,6 +140,12 @@ for (const [toolName, def] of Object.entries(jiraTools)) {
     { ...def, server: { system: 'jira', credential: { required: true, acceptedTypes: ['user-oauth'] } } },
     { differsFrom: 'get-issue.json' });
 }
+{
+  const def = structuredClone(jiraTools.get_issue);
+  def.manifestEntry.additionalGroup = 'mcp-jira-ops';
+  hashVector('get-issue-additional-group', 'A tool with an additionalGroup: the group is part of the hash, so adding or changing it needs approval (7.0.0).',
+    { ...def, server: JIRA_SERVER }, { differsFrom: 'get-issue.json' });
+}
 hashVector('search-issues-with-title', 'Definition with title: title is part of the hashed object (CC-042).',
   { ...jiraTools.search_issues, server: JIRA_SERVER });
 hashVector('canonicalization-unicode-and-numbers',
@@ -452,6 +458,14 @@ manifest('invalid-credential-types-mixed', 'acceptedTypes mixes service-account 
   redos('id-pattern-lookahead', 'Lookaround is outside the grammar (the id length is capped in code, so no lookahead is needed for it).', '^(?=[a-z]{1,9}$)[a-z]+$');
   redos('id-pattern-too-long', 'A pattern longer than 512 characters.', `^${'a'.repeat(520)}$`);
   manifest('valid-resource-type-disjoint-alternatives', 'A quantified group with alternatives that start with disjoint characters is linear and stays valid.', mutated((m) => { m.resourceTypes[0].idPattern = '^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$'; }), true);
+  const withGroup = (group, rehash = true) => mutated((m) => { m.tools[0].additionalGroup = group; }, rehash);
+  manifest('valid-additional-group', 'A tool that needs mcp-notes-ops next to the group of its risk.', withGroup('mcp-notes-ops'), true);
+  manifest('invalid-additional-group-other-system', 'The group of another system: a server cannot add groups of a system it does not serve.', withGroup('mcp-jira-ops'), false, 'additional-group-valid');
+  manifest('invalid-additional-group-risk-suffix', 'A risk group as additionalGroup would only repeat the required one.', withGroup('mcp-notes-write'), false, 'additional-group-valid');
+  manifest('invalid-additional-group-component-group', 'A group of a platform component is not the group of this system.', withGroup('mcp-platform-admin'), false, 'additional-group-valid');
+  manifest('invalid-additional-group-format', 'The pattern of a group: lower case.', withGroup('mcp-notes-Ops'), false, 'schema');
+  manifest('invalid-additional-group-stale-hash', 'additionalGroup added without recomputing definitionHash.', (() => { const m = structuredClone(notesManifest); m.tools[0].additionalGroup = 'mcp-notes-ops'; return m; })(), false, 'definition-hash-matches');
+  manifest('invalid-adapter-with-additional-group', 'An adapter tool has no additionalGroup (the administrator does not set groups at approval).', (() => { const m = adapterManifest(); m.tools[0].additionalGroup = 'mcp-jira-ops'; return m; })(), false, 'schema');
   manifest('invalid-adapter-with-policies', 'An adapter has no policies member: its policies are its own.', (() => { const m = adapterManifest(); m.policies = { namespace: 'Jira', schema: 'namespace Jira {}', files: [] }; m.policiesHash = policiesHash(m.policies, m.resourceTypes).hash; return m; })(), false, 'schema');
   manifest('invalid-adapter-with-resource-types', 'An adapter has no resourceRefs, so it declares no resource type.', (() => { const m = adapterManifest(); m.resourceTypes = [{ type: 'Jira::Issue', attributes: [], idPattern: '^[A-Z]+$' }]; return m; })(), false, 'schema');
 }

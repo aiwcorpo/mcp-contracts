@@ -34,6 +34,8 @@ public final class ManifestRules {
     public static final String POLICIES_FILES_SORTED_UNIQUE = "policies-files-sorted-unique";
     /** Recomputed policiesHash equals the declared one. */
     public static final String POLICIES_HASH_MATCHES = "policies-hash-matches";
+    /** additionalGroup of a tool is mcp-&lt;system&gt;-&lt;suffix&gt; with the system of the server and a suffix other than read, write and destructive. */
+    public static final String ADDITIONAL_GROUP_VALID = "additional-group-valid";
     /** resourceRefs[].argument is a declared argument of type string, integer or array of those (CC-043). */
     public static final String RESOURCE_REF_ARGUMENT_DECLARED = "resource-ref-argument-declared";
     /** definition.name == name. */
@@ -112,6 +114,14 @@ public final class ManifestRules {
         violations.addAll(resourceTypeViolations(manifest));
         violations.addAll(policiesViolations(manifest));
         for (JsonNode tool : manifest.path("tools")) {
+            if (tool.has("additionalGroup")) {
+                String prefix = "mcp-" + manifest.path("system").asText() + "-";
+                String group = tool.get("additionalGroup").asText();
+                String suffix = group.startsWith(prefix) ? group.substring(prefix.length()) : "";
+                if (!suffix.matches("[a-z][a-z0-9-]{0,30}") || Set.of("read", "write", "destructive").contains(suffix)) {
+                    violations.add(ADDITIONAL_GROUP_VALID);
+                }
+            }
             JsonNode definition = tool.path("definition");
             JsonNode properties = definition.path("inputSchema").path("properties");
             for (JsonNode ref : tool.path("resourceRefs")) {

@@ -102,6 +102,7 @@ public final class EntityBuilder {
         attrs.put("name", new PrimString(tool.name()));
         attrs.put("risk", new PrimString(tool.risk()));
         attrs.put("requiredGroup", uid("UserGroup", tool.requiredGroup()));
+        tool.additionalGroup().ifPresent(group -> attrs.put("additionalGroup", uid("UserGroup", group)));
         entities.add(new Entity(resource, attrs, Set.of()));
         return result(caller, uid("Action", "call"), resource, context, entities);
     }

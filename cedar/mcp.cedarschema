@@ -32,12 +32,14 @@ entity User in [UserGroup] {
 
 // Entity id = client-visible tool name <system>__<tool> (C5). requiredGroup is mcp-<system>-read for READ_ONLY,
 // mcp-<system>-write for UPDATE and mcp-<system>-destructive for DESTRUCTIVE (C9): the only place where a group name is
-// derived.
+// derived. additionalGroup is the optional group the manifest names for one tool (mcp-<system>-<suffix>, e.g. an ops-only
+// tool); it can only narrow, because the risk-derived requiredGroup is still needed.
 entity Tool {
   server: String,
   name: String,
   risk: String,
   requiredGroup: UserGroup,
+  additionalGroup?: UserGroup,
 };
 
 // credentialType: the type of the credential used for the call (user-oauth, user-secret, token-exchange or

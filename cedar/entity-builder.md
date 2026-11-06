@@ -118,9 +118,9 @@ Reguły:
 ## 5. Akcja, zasób i kontekst
 
 **Gateway:** `Action::"call"`, zasób `Tool::"<system>__<name>"` z atrybutami `server` = `serverId`,
-`name` = nazwa po stronie serwera, `risk`, `requiredGroup`. `requiredGroup` to `UserGroup::"mcp-<system>-read"` dla
+`name` = nazwa po stronie serwera, `risk`, `requiredGroup` i opcjonalnie `additionalGroup` (z wpisu manifestu, `ToolDescriptor.additionalGroup()`). `requiredGroup` to `UserGroup::"mcp-<system>-read"` dla
 `READ_ONLY`, `-write` dla `UPDATE` i `-destructive` dla `DESTRUCTIVE` (konwencja C9; jedyne miejsce, w którym nazwa grupy jest
-wyprowadzana; `ToolDescriptor.requiredGroup()`). Narzędzie spoza rejestru nie ma encji `Tool`; gateway odmawia
+wyprowadzana; `ToolDescriptor.requiredGroup()`). `additionalGroup` to pole wpisu narzędzia w manifeście (`mcp-<system>-<przyrostek>`, system tego serwera, przyrostek inny niż `read`, `write`, `destructive`; reguła `additional-group-valid`), wchodzi do `definitionHash`, więc zmiana wymaga zatwierdzenia; w manifeście adaptera jest zabronione. Narzędzie spoza rejestru nie ma encji `Tool`; gateway odmawia
 przed Cedar, a wektor `gw-unknown-tool-denied` pokazuje, że polityki też dają `deny`. O `call` decydują polityki platformy
 (sekcja 7), nie polityki serwerów.
 
@@ -235,6 +235,7 @@ Gateway decyduje o `call` na `Tool` wyłącznie politykami z `cedar/platform/*.c
 i starter, `McpCedarSchema.platformPolicies()`) i nadpisaniami administratora:
 
 - `platform-call-by-group`: `permit`, gdy `principal in resource.requiredGroup`;
+- `platform-call-additional-group`: `forbid`, gdy `resource has additionalGroup && !(principal in resource.additionalGroup)`; narzędzie z dodatkową grupą (np. `mcp-opensearch-ops` dla narzędzi tylko dla operatorów) wymaga jej obok grupy wynikającej z ryzyka, więc dodatkowa grupa może tylko zawęzić dostęp (`mcp-opensearch-read` sam nie otwiera narzędzia);
 - `platform-call-write-outside-scope`: `forbid`, gdy `risk != "READ_ONLY"` i zbiór `context.refs` nie mieści się w `principal.scopes`;
 - `platform-call-write-without-refs`: `forbid` zapisu, gdy kontekst nie ma `refs` (gateway zawsze je daje; brak to odmowa, nie "nic do sprawdzenia").
 

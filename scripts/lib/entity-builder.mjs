@@ -144,6 +144,13 @@ export function resourceValues(types, tool, args = {}) {
 }
 
 function buildContext(types, { caller, tool, arguments: args = {}, credentialType }) {
+  if (tool.additionalGroup !== undefined) {
+    const prefix = `mcp-${tool.system}-`;
+    const suffix = tool.additionalGroup.startsWith(prefix) ? tool.additionalGroup.slice(prefix.length) : '';
+    if (!/^[a-z][a-z0-9-]{0,30}$/.test(suffix) || ['read', 'write', 'destructive'].includes(suffix)) {
+      throw new BuilderError('internal_error', 'additionalGroup must be mcp-<system>-<suffix> with a suffix other than read, write and destructive');
+    }
+  }
   if (!RISKS.has(tool.risk)) throw new BuilderError('internal_error', `unknown risk ${tool.risk}`);
   if (!ACTIONS.has(tool.action)) throw new BuilderError('internal_error', `unknown action ${tool.action}`);
   const context = { client: caller.azp };
@@ -236,7 +243,10 @@ export function build(level, input, types, mapping) {
     resource = uid('Tool', `${tool.system}__${tool.name}`);
     entities.push({
       uid: resource,
-      attrs: { server: tool.serverId, name: tool.name, risk: tool.risk, requiredGroup: ref('UserGroup', `mcp-${tool.system}-${REQUIRED_GROUP_SUFFIX[tool.risk]}`) },
+      attrs: {
+        server: tool.serverId, name: tool.name, risk: tool.risk, requiredGroup: ref('UserGroup', `mcp-${tool.system}-${REQUIRED_GROUP_SUFFIX[tool.risk]}`),
+        ...(tool.additionalGroup !== undefined && { additionalGroup: ref('UserGroup', tool.additionalGroup) }),
+      },
       parents: [],
     });
   } else {

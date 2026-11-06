@@ -189,7 +189,7 @@ class PolicyFragmentsTest {
         com.cedarpolicy.model.policy.PolicySet clash = PolicyFragments.policySet(Map.of("o.cedar",
                 "@id(\"platform-call-write-outside-scope\") forbid (principal, action, resource);"));
         assertThrows(IllegalArgumentException.class, () -> PolicyFragments.merge(platform, clash));
-        assertEquals(3, PolicyFragments.merge(platform).policies.size());
+        assertEquals(4, PolicyFragments.merge(platform).policies.size());
     }
 
     @Test

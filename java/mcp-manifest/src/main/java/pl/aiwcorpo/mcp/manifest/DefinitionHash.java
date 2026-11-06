@@ -99,6 +99,9 @@ public final class DefinitionHash {
         if (entry.has("action")) {
             flat.set("action", entry.get("action"));
         }
+        if (entry.has("additionalGroup")) {
+            flat.set("additionalGroup", entry.get("additionalGroup"));
+        }
         flat.set("resourceRefs", entry.has("resourceRefs") ? entry.get("resourceRefs") : JSON.createArrayNode());
         flat.put("system", system);
         flat.set("credential", credential);

@@ -75,8 +75,9 @@ final class VectorInputs {
         JsonNode t = input.get("tool");
         List<ResourceRef> refs = new ArrayList<>();
         t.get("resourceRefs").forEach(r -> refs.add(new ResourceRef(r.get("argument").asText(), r.get("type").asText())));
-        return new ToolDescriptor(t.get("serverId").asText(), t.get("system").asText(),
+        ToolDescriptor tool = new ToolDescriptor(t.get("serverId").asText(), t.get("system").asText(),
                 t.get("name").asText(), t.get("risk").asText(), t.get("action").asText(), refs);
+        return t.has("additionalGroup") ? tool.withAdditionalGroup(t.get("additionalGroup").asText()) : tool;
     }
 
     static Map<String, Object> arguments(JsonNode input) {

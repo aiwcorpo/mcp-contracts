@@ -23,7 +23,7 @@ class FrozenArtifactsTest {
      * The base schema is composed with the fragment text of every server, so a change of a single byte can make a
      * fragment that validated yesterday fail today: the file is frozen within a major line and its hash is checked.
      */
-    private static final String MCP_CEDARSCHEMA_SHA256 = "48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5";
+    private static final String MCP_CEDARSCHEMA_SHA256 = "6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1";
 
     @Test
     void cedarSchemaIsFrozenForTheWhole7xLine() throws Exception {

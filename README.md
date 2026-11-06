@@ -185,7 +185,7 @@ Exceptions to the table, each decided by the maintainers and described in `CHANG
 
 7.0.0 (CC-229 ... CC-236) is a major release by the table, with no exceptions: the system, server and resource type enumerations
 become patterns, the Cedar base schema loses every system namespace (new bytes, SHA-256
-`48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5`), `User.scopes`, `Tool.requiredGroup` and `context.refs` change shape,
+`6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`), `User.scopes`, `Tool.requiredGroup` and `context.refs` change shape,
 the manifest gains `policies`, `policiesHash` and required declarations, the entity builder API takes `ResourceTypes`, and policy
 bundles, their receiver module and their signing keys are removed. Migration per component: `CHANGELOG.md` ("7.0.0").
 
@@ -323,7 +323,7 @@ Each IGA adapter chooses the requester identifier from configuration (for exampl
 `cedar/mcp.cedarschema` is the base schema, in the empty namespace. Every server's fragment is appended to its text and validated
 against the result, so the file is frozen byte for byte within a major line, including the header comment and LF line endings:
 a change of one byte could make a fragment that validated yesterday fail today. The tests (Node and Java) compare the SHA-256 of
-the file (`.gitattributes` enforces LF). SHA-256 of the 7.0.0 schema: `48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5`.
+the file (`.gitattributes` enforces LF). SHA-256 of the 7.0.0 schema: `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`.
 It names no system, server or resource type; it has `ResourceScope`, `UserGroup`, `User` (with one flat `scopes` set), `Tool` (with
 `requiredGroup`), `RequestContext` (`refs` is a set of `ResourceScope`) and the action `call`. The previous bytes
 (`51d71b2d...`, 5.0.0 ... 6.3.2) are not valid on this line, and policy bundles no longer exist.

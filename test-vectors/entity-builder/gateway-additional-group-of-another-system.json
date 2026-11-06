@@ -1,0 +1,33 @@
+{
+  "description": "An additionalGroup that does not belong to the system of the tool is internal_error.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000d",
+      "usr": "notesops",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-ops"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_backend_info",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [],
+      "additionalGroup": "mcp-jira-ops"
+    },
+    "arguments": {}
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

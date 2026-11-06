@@ -1,0 +1,114 @@
+{
+  "description": "The additional group alone is not enough: the risk-derived group is still needed.",
+  "covers": [
+    "no_group"
+  ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-00000000000e",
+        "usr": "notesopsonly",
+        "grp": [
+          "mcp-notes-ops"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "get_backend_info",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [],
+        "additionalGroup": "mcp-notes-ops"
+      },
+      "arguments": {}
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000e"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "notes__get_backend_info"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "notes__get_backend_info"
+      },
+      "attrs": {
+        "server": "mcp-notes",
+        "name": "get_backend_info",
+        "risk": "READ_ONLY",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        },
+        "additionalGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-ops"
+          }
+        }
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-00000000000e"
+      },
+      "attrs": {
+        "username": "notesopsonly",
+        "client": "claude-code",
+        "scopes": []
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-ops"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-ops"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

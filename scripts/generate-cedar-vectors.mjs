@@ -31,6 +31,8 @@ const SUB = {
   weatherReader: 'b1a7c0de-0000-4000-8000-00000000000a',
   confluenceReader: 'b1a7c0de-0000-4000-8000-00000000000b',
   gitlabWriter: 'b1a7c0de-0000-4000-8000-00000000000c',
+  notesOps: 'b1a7c0de-0000-4000-8000-00000000000d',
+  notesOpsOnly: 'b1a7c0de-0000-4000-8000-00000000000e',
 };
 const caller = (name, grp, extra = {}) => ({ sub: SUB[name], usr: name.toLowerCase(), grp, azp: 'claude-code', ...extra });
 const users = {
@@ -42,6 +44,8 @@ const users = {
   notesReader: () => caller('notesReader', ['mcp-notes-read']),
   notesWriter: () => caller('notesWriter', ['mcp-notes-read', 'mcp-notes-write', 'mcp-notes-nb-alpha', 'mcp-notes-folder-team']),
   notesDestroyer: () => caller('notesDestroyer', ['mcp-notes-read', 'mcp-notes-destructive', 'mcp-notes-nb-alpha']),
+  notesOps: () => caller('notesOps', ['mcp-notes-read', 'mcp-notes-ops']),
+  notesOpsOnly: () => caller('notesOpsOnly', ['mcp-notes-ops']),
   weatherReader: () => caller('weatherReader', ['mcp-weather-read']),
 };
 
@@ -69,6 +73,7 @@ const tools = {
   moveFolder: tool('notes', 'move_folder', 'UPDATE', 'update', [
     { argument: 'folderPath', type: 'Notes::Folder' }, { argument: 'targetFolder', type: 'Notes::Folder' }]),
   archiveFolders: tool('notes', 'archive_folders', 'UPDATE', 'update', [{ argument: 'folderPaths', type: 'Notes::Folder' }]),
+  getBackendInfo: { ...tool('notes', 'get_backend_info', 'READ_ONLY', 'read'), additionalGroup: 'mcp-notes-ops' },
   forecast: tool('weather', 'forecast', 'READ_ONLY', 'read'),
 };
 
@@ -126,6 +131,12 @@ builderVector('gateway-required-group-update', 'Tool.requiredGroup of an UPDATE 
   { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' } });
 builderVector('gateway-required-group-destructive', 'Tool.requiredGroup of a DESTRUCTIVE tool is mcp-<system>-destructive, for a system the contracts have never heard of.', 'gateway',
   { caller: users.notesDestroyer(), tool: tools.deleteNote, arguments: { noteId: '17' } });
+builderVector('gateway-additional-group', 'A tool whose manifest names an additionalGroup: the Tool entity carries it next to requiredGroup (7.0.0).', 'gateway',
+  { caller: users.notesOps(), tool: tools.getBackendInfo, arguments: {} });
+builderVector('gateway-additional-group-of-another-system', 'An additionalGroup that does not belong to the system of the tool is internal_error.', 'gateway',
+  { caller: users.notesOps(), tool: { ...tools.getBackendInfo, additionalGroup: 'mcp-jira-ops' }, arguments: {} });
+builderVector('gateway-additional-group-risk-suffix', 'An additionalGroup with the suffix of a risk group is internal_error: it would only repeat the required one.', 'gateway',
+  { caller: users.notesOps(), tool: { ...tools.getBackendInfo, additionalGroup: 'mcp-notes-write' }, arguments: {} });
 builderVector('gateway-unlisted-system', 'A system that appears nowhere in the contracts: the Tool entity is built from the tool entry alone.', 'gateway',
   { caller: users.weatherReader(), tool: tools.forecast, arguments: {} });
 builderVector('scopes-from-mapping', 'User.scopes is one flat set of every scope of the mapped groups: unmapped groups (even with a conventional name), names differing in case and non-mcp groups grant nothing; mcp-team-platform shows a name that does not encode its scopes.', 'gateway', {
@@ -311,6 +322,12 @@ decision('gw-write-without-refs-denied', 'A write whose context has no refs is r
   { covers: ['forbid_overrides_permit'], adjustment: 'remove-refs' });
 decision('gw-read-without-refs-allowed', 'A read does not need refs.', 'gateway',
   { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'), { adjustment: 'remove-refs' });
+decision('gw-additional-group-both-groups-allowed', 'A tool with an additionalGroup is called by a member of the risk group and of the additional group.', 'gateway',
+  { caller: users.notesOps(), tool: tools.getBackendInfo, arguments: {} }, allow('platform-call-by-group'));
+decision('gw-additional-group-only-risk-group-denied', 'The risk group alone (mcp-notes-read) does not open an ops-only tool.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getBackendInfo, arguments: {} }, deny('platform-call-additional-group'), { covers: ['forbid_overrides_permit'] });
+decision('gw-additional-group-only-additional-group-denied', 'The additional group alone is not enough: the risk-derived group is still needed.', 'gateway',
+  { caller: users.notesOpsOnly(), tool: tools.getBackendInfo, arguments: {} }, deny(), { covers: ['no_group'] });
 decision('gw-unknown-tool-denied', 'A tool that is not in the registry has no Tool entity: deny, also for a user in every group.', 'gateway',
   { caller: users.writer(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['unknown_tool'], adjustment: 'remove-tool-entity' });
 decision('gw-destructive-allowed-with-fresh-mfa', 'DESTRUCTIVE tool with the destructive group and an MFA 60 seconds old.', 'gateway',

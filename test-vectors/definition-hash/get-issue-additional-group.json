@@ -1,0 +1,52 @@
+{
+  "description": "A tool with an additionalGroup: the group is part of the hash, so adding or changing it needs approval (7.0.0).",
+  "input": {
+    "tool": {
+      "name": "get_issue",
+      "title": "Get issue",
+      "description": "Returns one Jira issue by key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issueKey": {
+            "type": "string",
+            "description": "Issue key, e.g. ABC-123",
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$",
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "issueKey"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    },
+    "manifestEntry": {
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ],
+      "additionalGroup": "mcp-jira-ops"
+    },
+    "server": {
+      "system": "jira",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "user-oauth",
+          "user-secret"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"action\":\"read\",\"additionalGroup\":\"mcp-jira-ops\",\"annotations\":{\"readOnlyHint\":true},\"credential\":{\"acceptedTypes\":[\"user-oauth\",\"user-secret\"],\"required\":true},\"description\":\"Returns one Jira issue by key.\",\"inputSchema\":{\"additionalProperties\":false,\"properties\":{\"issueKey\":{\"description\":\"Issue key, e.g. ABC-123\",\"maxLength\":32,\"pattern\":\"^[A-Z][A-Z0-9]+-[0-9]+$\",\"type\":\"string\"}},\"required\":[\"issueKey\"],\"type\":\"object\"},\"name\":\"get_issue\",\"resourceRefs\":[{\"argument\":\"issueKey\",\"type\":\"Jira::Issue\"}],\"risk\":\"READ_ONLY\",\"system\":\"jira\",\"title\":\"Get issue\"}",
+  "expected": "sha256:8f144f242a325498ee14c24284e715871520eeaf4c278843997cb294ca1c3986",
+  "differsFrom": "get-issue.json"
+}

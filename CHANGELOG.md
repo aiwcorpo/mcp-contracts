@@ -9,7 +9,7 @@ versions are historical and are kept in the language they were written in.
 
 Serwery, systemy i typy zasobów przestają być listą w kontraktach: są danymi uruchomieniowymi (rejestr gatewaya, systemy brokera,
 deklaracje w manifeście serwera). Decyzja właściciela platformy z 2026-11-06 ("dynamic servers"), CC-229 ... CC-236. Wydanie **major**
-według tabeli SemVer, bez wyjątków. Bajty `cedar/mcp.cedarschema` są nowe (SHA-256 `48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5`).
+według tabeli SemVer, bez wyjątków. Bajty `cedar/mcp.cedarschema` są nowe (SHA-256 `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`).
 
 **Identyfikatory (CC-229).** `SystemId` to wzorzec `^[a-z][a-z0-9]{1,30}$`, `ServerId` to `^mcp-<SystemId>$`, `QualifiedToolName` ma ten sam wzorzec
 systemu, `ResourceType` to `^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$`; wszystkie cztery były wyliczeniami pięciu systemów. Usunięte z
@@ -75,6 +75,8 @@ się `upstream-unavailable-policy-data`. Opisy `PolicyRevision` i `prv` mówią 
 **Poprawki po przeglądzie bezpieczeństwa gatewaya (CC-240, w 7.0.0).** `tlsName` usunięte (gateway przypina certyfikat do SAN `<serverId>.internal` i CN `serverId`), `adapter` tylko przy tworzeniu, każdy `updateServer` poza samym `enabled: false` wymaga świeżego MFA; przestrzeń należy do pierwszego zatwierdzonego `serverId`, a zwolnienie jej czyści mapowanie; pola audytu `overrideId`, `overrideTarget`, `textSha256`, `textSha256Before`, `changedFields`; progi ryzyka (CC-167) przeżywają `deleteServer`; certyfikat serwera ma EKU `serverAuth` i `clientAuth`; przykład `step-up.cedar` ma id `override-destructive-requires-fresh-mfa` (reguła zawodzi zamknięcie przy braku `mfaAge`, więc zostaje); rewizja danych polityki to `max(poprzednia + 1, czas w ms)`, kontrole zastępujące podpisane paczki i zalecenie przeglądu dwóch osób.
 
 **Doprecyzowanie świeżego MFA (CC-241, w 7.0.0).** Świeże MFA gatewaya i brokera to `auth_time` do 300 s ORAZ dowód MFA w tokenie (`acr` z listy poziomów MFA albo `amr` z `mfa`, `otp`, `hwk` lub `totp`; listy to konfiguracja odbiorcy), bo samo `auth_time` przechodzi po świeżym logowaniu samym hasłem; mapper IdP musi dawać `acr` i `amr`. `userSecretScheme` bez `Token` (broker go nie obsługuje); punkt końcowy tokenu dostawcy tożsamości broker bierze z własnej konfiguracji.
+
+**Dodatkowa grupa narzędzia (CC-242, w 7.0.0).** Opcjonalne `additionalGroup` we wpisie narzędzia (`mcp-<system>-<przyrostek>`, przyrostek inny niż `read`, `write`, `destructive`), w `definitionHash`; encja `Tool` ma opcjonalny atrybut `additionalGroup: UserGroup` (nowe bajty `mcp.cedarschema`, SHA-256 `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`); nowa polityka platformy `platform-call-additional-group` (`forbid`, gdy użytkownik nie jest w tej grupie; grupa z ryzyka nadal jest potrzebna); `ToolDescriptor.additionalGroup()` i `withAdditionalGroup(String)`; reguła manifestu `additional-group-valid`; zabronione w manifeście adaptera. Przywraca zachowanie 1.x: narzędzia tylko dla operatorów OpenSearch za `mcp-opensearch-ops`.
 
 **Migracja per składnik.**
 - *gateway:* rejestr serwerów w PostgreSQL i API `/admin/v1/servers`; `ResourceTypes.union` z zarejestrowanych manifestów, `ScopeMapping.ofRegistered`; `EntityBuilder(types, mapping)`; decyzja `call` z

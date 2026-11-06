@@ -41,7 +41,7 @@ class CedarSchemaTest {
     @Test
     void platformPoliciesValidateAgainstTheBaseSchemaWithoutWarnings() throws Exception {
         PolicySet set = McpCedarSchema.platformPolicies();
-        assertEquals(3, set.policies.size());
+        assertEquals(4, set.policies.size());
         ValidationResponse response = engine.validate(new ValidationRequest(McpCedarSchema.schema(), set));
         assertTrue(response.validationPassed(), response::toString);
         assertEquals(0, response.success.orElseThrow().validationWarnings.size(), response::toString);

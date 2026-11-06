@@ -37,6 +37,7 @@ test('definition-hash vectors: canonical form and sha256', () => {
       ...(tool.outputSchema !== undefined && { outputSchema: tool.outputSchema }),
       ...(tool.annotations !== undefined && { annotations: tool.annotations }),
       ...(manifestEntry.risk !== undefined && { risk: manifestEntry.risk }), ...(manifestEntry.action !== undefined && { action: manifestEntry.action }),
+      ...(manifestEntry.additionalGroup !== undefined && { additionalGroup: manifestEntry.additionalGroup }),
       resourceRefs: manifestEntry.resourceRefs ?? [],
       system: server.system, credential: server.credential,
     };
