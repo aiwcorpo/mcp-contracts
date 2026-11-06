@@ -44,7 +44,6 @@
             "serverId": "mcp-jira",
             "system": "jira",
             "internalUrl": "https://mcp-jira.internal:8443/mcp/jira",
-            "tlsName": "mcp-jira.internal",
             "credential": {
               "required": true,
               "acceptedTypes": [
@@ -60,7 +59,6 @@
             "serverId": "mcp-notes",
             "system": "notes",
             "internalUrl": "https://mcp-notes.internal:8443/mcp",
-            "tlsName": "mcp-notes.internal",
             "credential": {
               "required": true,
               "acceptedTypes": [

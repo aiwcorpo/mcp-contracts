@@ -316,9 +316,9 @@ decision('gw-unknown-tool-denied', 'A tool that is not in the registry has no To
 decision('gw-destructive-allowed-with-fresh-mfa', 'DESTRUCTIVE tool with the destructive group and an MFA 60 seconds old.', 'gateway',
   { caller: users.destroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'));
 decision('gw-destructive-without-mfa', 'DESTRUCTIVE tool, no mfa claim: step-up override forbids.', 'gateway',
-  { caller: users.destroyer(), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
+  { caller: users.destroyer(), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('override-destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
 decision('gw-destructive-with-stale-mfa', 'DESTRUCTIVE tool, MFA two hours old: step-up override forbids.', 'gateway',
-  { caller: users.destroyer({ mfa: 7200 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
+  { caller: users.destroyer({ mfa: 7200 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('override-destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
 decision('gw-notes-read-allowed', 'A neutral system: the same two platform policies decide, nothing names it.', 'gateway',
   { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' } }, allow('platform-call-by-group'));
 decision('gw-notes-update-notebook-in-scope', 'Notes notebook is an early-check type: granted notebook passes.', 'gateway',

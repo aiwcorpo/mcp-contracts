@@ -479,7 +479,7 @@ the AI client (CC-091). The broker verifies the code (C4 `verifyAuthenticatorCod
    cancel an unwanted operation in the preview (item 2), which lifts the block. A consequence of the daily limit: an agent can
    disable the Authenticator with about 20 wrong codes (about an hour), which denies confirmations until re-registration with
    Entra step-up MFA (CC-126).
-8. The rule `destructive-requires-fresh-mfa` (`cedar/examples/step-up.cedar`, vectors `gw-destructive-*-mfa`) stays in the
+8. The rule `override-destructive-requires-fresh-mfa` (`cedar/examples/overrides/step-up.cedar`, kept as the example of a gateway override: it forbids when `context.mfaAge` is missing or stale, so a token without the `mfa` claim is refused, vectors `gw-destructive-*-mfa`) stays in the
    examples unchanged but **is not part of the production bundle**: a user is not meant to have two mechanisms.
 
 **Clocks:** the block and burn windows are counted by the gateway clock and the validity of a code by the broker clock. Both

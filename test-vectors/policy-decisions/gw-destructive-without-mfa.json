@@ -148,7 +148,7 @@
   "expected": {
     "decision": "deny",
     "determiningPolicies": [
-      "destructive-requires-fresh-mfa"
+      "override-destructive-requires-fresh-mfa"
     ]
   }
 }

@@ -32,10 +32,16 @@ info:
     `/admin/v1/policy/overrides`; the mapping of groups to resource scopes is `/admin/v1/policy/scope-mapping`. Servers read
     all of it from `GET /internal/v1/policy-data`.
 
+    **Policy distribution without signatures (7.0.0).** Signed bundles had two-party control (the pipeline signed, the gateway verified); policy data
+    served by the gateway does not. The compensating controls are fresh MFA on the widening operations (below), the audit events of every
+    change and the approval of `policiesHash`. As an operational practice, a change of the scope mapping and an approval of policies should
+    be reviewed by a second person. The revision of the policy data is `max(previous + 1, current epoch milliseconds)`, so a restore of
+    the database never lowers it below what servers already hold.
+
     **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds, otherwise `401 step_up_required`
     (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
     change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `createServer`, `deleteServer` and
-    `updateServer` when the body changes `internalUrl` or `tlsName`.
+    `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check).
 
     A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
     Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
@@ -303,8 +309,10 @@ paths:
         validates them (the base schema `cedar/mcp.cedarschema` and the fragment compose and validate in strict mode, the
         fragment declares nothing outside its one namespace, every entity type has `scopes`, no policy mentions `Action::"call"`
         or `Tool`, the declarations match the schema) and rejects the manifest with 422 and reason `policies_invalid` or
-        `resource_types_invalid`; a namespace that another registered `serverId` already uses is `namespace_conflict` (a namespace belongs to the first server that
-        declared it, and only to its serverId, until that server is deleted). The gateway builds the union of resource types only from
+        `resource_types_invalid`; a namespace that another `serverId` already owns is `namespace_conflict`. A namespace belongs to the first `serverId` whose policies
+        are approved with it; registration only checks against approved owners and claims nothing, so a manifest that arrives first
+        cannot take a namespace before an approval does. When an approval changes or frees the namespace of a server, the mapping
+        entries of the freed namespace are removed and audited (`scope_mapping_entry_removed`), as `deleteServer` does. The gateway builds the union of resource types only from
         approved declarations; an exception while building the union or the scope mapping is a deny with an audit event, never a
         partial result. A server
         whose `policiesHash` differs from the approved one is `pending_approval` for its policies: its tools are blocked until
@@ -1513,7 +1521,6 @@ paths:
                     - serverId: mcp-jira
                       system: jira
                       internalUrl: https://mcp-jira.internal:8443/mcp/jira
-                      tlsName: mcp-jira.internal
                       credential:
                         required: true
                         acceptedTypes: [user-oauth, user-secret]
@@ -1523,7 +1530,6 @@ paths:
                     - serverId: mcp-notes
                       system: notes
                       internalUrl: https://mcp-notes.internal:8443/mcp
-                      tlsName: mcp-notes.internal
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]
@@ -1541,13 +1547,14 @@ paths:
       summary: Add a server to the registry (group mcp-platform-admin).
       description: |
         Adds a server without restarting any component. The server has no tools until it registers its manifest
-        (`registerServer`, or the manifest the gateway fetches at start) and an administrator approves them. `tlsName` is
-        the name the gateway expects in the certificate of the server (default `<serverId>.internal`); the certificate comes
-        from the internal CA and its CN is the `serverId`.
+        (`registerServer`, or the manifest the gateway fetches at start) and an administrator approves them.
+        **Certificate of the server.** The name to expect is not configurable: the gateway pins the certificate of the server to the
+        SAN `<serverId>.internal` and to a leaf CN equal to the `serverId`. The certificate comes from the internal CA and carries both
+        the `serverAuth` and the `clientAuth` extended key usage (the server uses `clientAuth` for `GET /internal/v1/policy-data`).
         The `system` must not be a reserved id (`gateway`, `offboarding`, `portal`, `broker`, `prometheus`, `platform`, `admin`,
         `registry`, `adapter`, `internal`, `ci`): `mcp-<system>` is a certificate CN, and a server named like a component would inherit the
         authorization of that component (`422 server_rejected`, reason `system_reserved`). A namespace that another `serverId` holds cannot
-        be declared by this one (`namespace_conflict` at registration). The audit event is `admin_change`.
+        be declared by this one (`namespace_conflict`, see `registerServer`). The audit event is `admin_change`.
       security:
         - mtls: []
           bffUserToken: []
@@ -1588,7 +1595,6 @@ paths:
                     serverId: mcp-notes
                     system: notes
                     internalUrl: https://mcp-notes.internal:8443/mcp
-                    tlsName: mcp-notes.internal
                     credential:
                       required: true
                       acceptedTypes: [user-oauth]
@@ -1640,7 +1646,6 @@ paths:
                     serverId: mcp-notes
                     system: notes
                     internalUrl: https://mcp-notes.internal:8443/mcp
-                    tlsName: mcp-notes.internal
                     credential:
                       required: true
                       acceptedTypes: [user-oauth]
@@ -1659,11 +1664,12 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Change the connection settings of a server (group mcp-platform-admin).
       description: |
-        Only the fields in the body change. `serverId` and `system` never change (remove the server and add it again). Switching
-        `enabled` to false hides all tools of the server and refuses its calls as `tool_disabled`, which is the way to take
-        a server out of service without losing its approvals. A change of `credential` applies to the next call, and the
-        manifest of the server must accept the new types; `If-Match` is the `ETag` of the server that was edited (otherwise its tools are refused until it registers a matching
-        manifest).
+        Only the fields in the body change. `serverId`, `system` and `adapter` never change (remove the server and add it again), and
+        the certificate name is not configurable (see `createServer`). Switching `enabled` to false hides all tools of the server
+        and refuses its calls as `tool_disabled`, which is the way to take a server out of service without losing its approvals;
+        it is the one change that needs no fresh MFA. Every other change needs it (`auth_time` within 300 s, checked by the gateway).
+        A change of `credential` applies to the next call, and the manifest of the server must accept the new types (otherwise its
+        tools are refused until it registers a matching manifest). `If-Match` is the `ETag` of the server that was edited.
       security:
         - mtls: []
           bffUserToken: []
@@ -1695,7 +1701,6 @@ paths:
                     serverId: mcp-notes
                     system: notes
                     internalUrl: https://mcp-notes.internal:8443/mcp
-                    tlsName: mcp-notes.internal
                     credential:
                       required: true
                       acceptedTypes: [user-oauth]
@@ -1725,7 +1730,9 @@ paths:
         Removes the server and what the gateway holds about it: its manifests, approvals, emergency switches and its
         policy fragment. Its tools disappear from `tools/list` and a call is refused as for an unknown tool; its certificate
         no longer gets policy data. The entries of the scope mapping for the types of its namespace are removed with it, so that a server added later under the
-        same namespace does not inherit grants given to the old one; the audit event lists the removed entries. The system in the credential broker is
+        same namespace does not inherit grants given to the old one; the audit event lists the removed entries. The risk floors of
+        its tools (CC-167) are kept, keyed by serverId and tool: a server created again under the same serverId cannot bring a
+        former DESTRUCTIVE tool back as READ_ONLY without `acceptRiskLowering` by an administrator. The system in the credential broker is
         removed separately (`deleteAdminSystem`). The audit event is `admin_change`.
       security:
         - mtls: []
@@ -2096,7 +2103,8 @@ paths:
         is allowed even when it makes existing scope mapping entries invalid (a narrower `scopePattern`, a removed type); the
         answer lists the entries that will be ignored, so the administrator sees the effect, and every one is audited when the
         gateway evaluates. The tools of the server follow their own approvals again. The BFF asks for a fresh MFA. The audit
-        event is `admin_change` with reason `policies_approved`.
+        event is `admin_change` with reason `policies_approved`. If the approved declarations change or free a namespace, the entries of
+        the scope mapping for the freed namespace are removed and audited (`scope_mapping_entry_removed`).
       security:
         - mtls: []
           bffUserToken: []
@@ -2150,8 +2158,8 @@ paths:
       x-allowed-client-cn: ['{registeredServerId}']
       summary: Policy data for a server (internal TLS port).
       description: |
-        For servers, not for people. The certificate must come from the internal CA and its CN must be the `serverId` of a
-        server in the registry; any other CN is `403`. The answer is the administrator data a server needs to evaluate its
+        For servers, not for people. The certificate must come from the internal CA, carry the `clientAuth` extended key usage (next to `serverAuth`), have the CN
+        `<serverId>` and the SAN `<serverId>.internal`, and the `serverId` must be a server in the registry; any other certificate is `403`. The answer is the administrator data a server needs to evaluate its
         own policies: the scope mapping reduced to the scopes of the namespace of this server (it never learns the grants of
         another system), `approvedPoliciesHash` (the hash the administrator approved for this server; absent while nothing is
         approved), the allowed AI clients (`azp`, from the configuration of the gateway) and the
@@ -2833,7 +2841,7 @@ components:
     ServerConfig:
       type: object
       description: A server in the registry of the gateway (7.0.0).
-      required: [serverId, system, internalUrl, tlsName, credential, enabled, adapter]
+      required: [serverId, system, internalUrl, credential, enabled, adapter]
       properties:
         serverId:
           $ref: '../schemas/common.schema.json#/$defs/ServerId'
@@ -2844,10 +2852,6 @@ components:
           format: uri
           pattern: '^https://'
           maxLength: 255
-        tlsName:
-          description: Name the gateway expects in the certificate of the server.
-          type: string
-          pattern: '^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$'
         credential:
           $ref: '#/components/schemas/ServerCredentialConfig'
         enabled:
@@ -2869,10 +2873,6 @@ components:
           format: uri
           pattern: '^https://'
           maxLength: 255
-        tlsName:
-          description: Default `<serverId>.internal`.
-          type: string
-          pattern: '^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$'
         credential:
           $ref: '#/components/schemas/ServerCredentialConfig'
         enabled:
@@ -2891,14 +2891,9 @@ components:
           format: uri
           pattern: '^https://'
           maxLength: 255
-        tlsName:
-          type: string
-          pattern: '^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$'
         credential:
           $ref: '#/components/schemas/ServerCredentialConfig'
         enabled:
-          type: boolean
-        adapter:
           type: boolean
       additionalProperties: false
     ServerRejected:

@@ -592,6 +592,28 @@ audit('gateway-scope-mapping-entry-group-not-a-group', 'group follows GroupName.
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira',
   reason: 'scope_mapping_entry_ignored', group: 'jira admins', resource: { type: 'Jira::Project', id: 'ABC' }, outcome: 'ok',
 }, false);
+const H1 = 'sha256:' + 'c3'.repeat(32);
+const H2 = 'sha256:' + 'd4'.repeat(32);
+audit('gateway-override-set', 'An override was replaced: id, target and the hashes of the text before and after, never the text (7.0.0).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin',
+  reason: 'override_set', overrideId: 'override-block-drop-table', overrideTarget: 'gateway', textSha256: H2, textSha256Before: H1, outcome: 'ok',
+}, true);
+audit('gateway-override-removed', 'An override was removed: the hash of the removed text.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin',
+  reason: 'override_removed', overrideId: 'override-no-claude-ai', overrideTarget: 'all-servers', textSha256: H1, outcome: 'ok',
+}, true);
+audit('gateway-server-updated', 'A PATCH of a server: the names of the changed fields, not their values.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
+  reason: 'server_updated', changedFields: ['internalUrl', 'enabled'], outcome: 'ok',
+}, true);
+audit('gateway-server-updated-unknown-field', 'changedFields names only fields that a PATCH can change.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-notes',
+  reason: 'server_updated', changedFields: ['tlsName'], outcome: 'ok',
+}, false);
+audit('gateway-override-bad-id', 'overrideId is override-<name>.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change',
+  reason: 'override_set', overrideId: 'block-drop-table', overrideTarget: 'gateway', textSha256: H1, outcome: 'ok',
+}, false);
 audit('gateway-registry-tool-removed', 'A tool left the registered manifest (CC-133).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'delete_issue',
   reason: 'tool_removed', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',

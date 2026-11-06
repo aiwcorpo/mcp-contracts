@@ -110,6 +110,39 @@
       "description": "Group (C9) of a scope mapping entry, on admin_change events with reason scope_mapping_entry_removed (the entry of a deleted server's namespace), scope_mapping_entry_ignored (an entry that evaluation skipped because its scope no longer fits the declarations) or scope_mapping_changed. The scope id goes to resource: type is the resource type of the scope (the part before the slash, e.g. Jira::Project) and id the part after it, so the pair is the ResourceScope id <type>/<id>. Absent on every other event.",
       "$ref": "common.schema.json#/$defs/GroupName"
     },
+    "overrideId": {
+      "description": "Id of the emergency override on admin_change events with reason override_set, override_removed, override_invalid or override_rejected (7.0.0). Absent on every other event.",
+      "type": "string",
+      "pattern": "^override-[a-z0-9][a-z0-9-]{0,54}$"
+    },
+    "overrideTarget": {
+      "description": "Target of the override: gateway, all-servers or a serverId (same events as overrideId).",
+      "type": "string",
+      "pattern": "^(gateway|all-servers|mcp-[a-z][a-z0-9]{1,30})$"
+    },
+    "textSha256": {
+      "description": "sha256 of the Cedar text of the override after the change (override_set, override_invalid, override_rejected) or removed (override_removed); never the text itself.",
+      "$ref": "common.schema.json#/$defs/DefinitionHash"
+    },
+    "textSha256Before": {
+      "description": "sha256 of the text before a replacement (override_set that replaces an override); absent for a create.",
+      "$ref": "common.schema.json#/$defs/DefinitionHash"
+    },
+    "changedFields": {
+      "description": "Names of the fields a PATCH of a server changed, on admin_change with reason server_updated (internalUrl, credential, enabled); never their values.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "internalUrl",
+          "credential",
+          "enabled"
+        ]
+      }
+    },
     "decision": {
       "type": "string",
       "enum": [

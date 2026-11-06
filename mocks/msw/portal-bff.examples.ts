@@ -2092,7 +2092,6 @@ export const portalBffExamples: OperationExamples[] = [
             "serverId": "mcp-notes",
             "system": "notes",
             "internalUrl": "https://mcp-notes.internal:8443/mcp",
-            "tlsName": "mcp-notes.internal",
             "credential": {
               "required": true,
               "acceptedTypes": [
@@ -2153,7 +2152,6 @@ export const portalBffExamples: OperationExamples[] = [
           "serverId": "mcp-notes",
           "system": "notes",
           "internalUrl": "https://mcp-notes.internal:8443/mcp",
-          "tlsName": "mcp-notes.internal",
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -2247,7 +2245,6 @@ export const portalBffExamples: OperationExamples[] = [
           "serverId": "mcp-notes",
           "system": "notes",
           "internalUrl": "https://mcp-notes.internal:8443/mcp",
-          "tlsName": "mcp-notes.internal",
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -2373,7 +2370,6 @@ export const portalBffExamples: OperationExamples[] = [
           "serverId": "mcp-notes",
           "system": "notes",
           "internalUrl": "https://mcp-notes.internal:8443/mcp",
-          "tlsName": "mcp-notes.internal",
           "credential": {
             "required": true,
             "acceptedTypes": [

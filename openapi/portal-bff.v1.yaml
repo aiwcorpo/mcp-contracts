@@ -1719,7 +1719,6 @@ paths:
                       - serverId: mcp-notes
                         system: notes
                         internalUrl: https://mcp-notes.internal:8443/mcp
-                        tlsName: mcp-notes.internal
                         credential:
                           required: true
                           acceptedTypes: [user-oauth]
@@ -1773,7 +1772,6 @@ paths:
                       serverId: mcp-notes
                       system: notes
                       internalUrl: https://mcp-notes.internal:8443/mcp
-                      tlsName: mcp-notes.internal
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]
@@ -1843,7 +1841,6 @@ paths:
                       serverId: mcp-notes
                       system: notes
                       internalUrl: https://mcp-notes.internal:8443/mcp
-                      tlsName: mcp-notes.internal
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]
@@ -1862,6 +1859,9 @@ paths:
       tags: [admin]
       operationId: updateAdminServer
       summary: "Change the connection settings of a server (proxy to C5; enabled false takes it out of service)."
+      description: |
+        Every change needs a fresh MFA (`step_up_required` otherwise) except a body that only sets `enabled: false`; the gateway checks it too.
+        `tlsName` and `adapter` cannot be changed.
       security:
         - session: []
           csrf: []
@@ -1895,7 +1895,6 @@ paths:
                       serverId: mcp-notes
                       system: notes
                       internalUrl: https://mcp-notes.internal:8443/mcp
-                      tlsName: mcp-notes.internal
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]

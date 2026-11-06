@@ -268,6 +268,14 @@ nadpisanie o id polityki platformy zastąpiłoby ją.
   `ScopeMapping.ofRegistered`: nieważny zakres jest pomijany osobno i zgłaszany (`ignored()`), pozostałe granty zostają; ścisłe `of`
   służy walidacji zapisu administratora. Dane polityki dla serwera zawężone do jego przestrzeni (`forNamespace`), z
   `approvedPoliciesHash`.
+- **Własność przestrzeni:** przestrzeń należy do pierwszego `serverId`, którego polityki są ZATWIERDZONE z tą przestrzenią; rejestracja
+  sprawdza tylko względem zatwierdzonych właścicieli i niczego nie zajmuje. Gdy zatwierdzenie zmienia albo zwalnia przestrzeń serwera,
+  wpisy mapowania zwolnionej przestrzeni są usuwane i audytowane (`scope_mapping_entry_removed`), tak jak przy `deleteServer`.
+- **Certyfikat serwera MCP:** `serverAuth` i `clientAuth` w EKU (polityki danych wymagają `clientAuth`), CN = `serverId`, SAN
+  `<serverId>.internal`; gateway przypina certyfikat do SAN i do CN, nazwa nie jest konfigurowalna.
+- **Rewizja danych polityki:** `max(poprzednia + 1, bieżący czas w milisekundach epoki)`, żeby odtworzenie bazy nie obniżyło jej poniżej
+  wartości, które serwery już trzymają. Podpisane paczki dawały kontrolę dwóch stron; ich brak zastępują świeże MFA, audyt każdej zmiany i
+  zatwierdzenie `policiesHash`, a operacyjnie zalecany jest przegląd dwóch osób dla zmian mapowania zakresów i zatwierdzeń polityk.
 - **Starter (serwer):** oblicza `policiesHash` własnych polityk i `resourceTypes` i odmawia każdego wywołania
   (`upstream_unavailable`), gdy różni się od `approvedPoliciesHash` albo tego brak; nigdy nie przyjmuje rewizji niższej ani równej
   trzymanej jako nowych danych; gdy `prv` w tokenie jest nowsze niż dane, odświeża przed oceną albo odmawia; nadpisanie, które nie

@@ -1,0 +1,18 @@
+{
+  "description": "overrideId is override-<name>.",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "admin_change",
+    "reason": "override_set",
+    "overrideId": "block-drop-table",
+    "overrideTarget": "gateway",
+    "textSha256": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "outcome": "ok"
+  }
+}

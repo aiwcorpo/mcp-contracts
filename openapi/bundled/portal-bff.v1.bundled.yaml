@@ -1799,7 +1799,6 @@ paths:
                     - serverId: mcp-notes
                       system: notes
                       internalUrl: https://mcp-notes.internal:8443/mcp
-                      tlsName: mcp-notes.internal
                       credential:
                         required: true
                         acceptedTypes:
@@ -1856,7 +1855,6 @@ paths:
                     serverId: mcp-notes
                     system: notes
                     internalUrl: https://mcp-notes.internal:8443/mcp
-                    tlsName: mcp-notes.internal
                     credential:
                       required: true
                       acceptedTypes:
@@ -1928,7 +1926,6 @@ paths:
                     serverId: mcp-notes
                     system: notes
                     internalUrl: https://mcp-notes.internal:8443/mcp
-                    tlsName: mcp-notes.internal
                     credential:
                       required: true
                       acceptedTypes:
@@ -1949,6 +1946,9 @@ paths:
         - admin
       operationId: updateAdminServer
       summary: Change the connection settings of a server (proxy to C5; enabled false takes it out of service).
+      description: |
+        Every change needs a fresh MFA (`step_up_required` otherwise) except a body that only sets `enabled: false`; the gateway checks it too.
+        `tlsName` and `adapter` cannot be changed.
       security:
         - session: []
           csrf: []
@@ -1982,7 +1982,6 @@ paths:
                     serverId: mcp-notes
                     system: notes
                     internalUrl: https://mcp-notes.internal:8443/mcp
-                    tlsName: mcp-notes.internal
                     credential:
                       required: true
                       acceptedTypes:
@@ -3763,8 +3762,12 @@ components:
       type: string
       pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
       maxLength: 64
+    DefinitionHash:
+      description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
     PolicyRevision:
-      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7). A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
+      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
       type: integer
       minimum: 0
       maximum: 9007199254740991
@@ -3787,10 +3790,6 @@ components:
         - step_up_required
         - upstream_unavailable
         - internal_error
-    DefinitionHash:
-      description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
-      type: string
-      pattern: ^sha256:[0-9a-f]{64}$
     ActivityCall:
       type: object
       required:
@@ -4109,7 +4108,6 @@ components:
         - serverId
         - system
         - internalUrl
-        - tlsName
         - credential
         - enabled
         - adapter
@@ -4123,10 +4121,6 @@ components:
           format: uri
           pattern: ^https://
           maxLength: 255
-        tlsName:
-          description: Name the gateway expects in the certificate of the server.
-          type: string
-          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
@@ -4152,10 +4146,6 @@ components:
           format: uri
           pattern: ^https://
           maxLength: 255
-        tlsName:
-          description: Default `<serverId>.internal`.
-          type: string
-          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
@@ -4189,14 +4179,9 @@ components:
           format: uri
           pattern: ^https://
           maxLength: 255
-        tlsName:
-          type: string
-          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
-          type: boolean
-        adapter:
           type: boolean
       additionalProperties: false
     ResourceScopeId:
@@ -4843,6 +4828,32 @@ components:
         group:
           description: "Group (C9) of a scope mapping entry, on admin_change events with reason scope_mapping_entry_removed (the entry of a deleted server's namespace), scope_mapping_entry_ignored (an entry that evaluation skipped because its scope no longer fits the declarations) or scope_mapping_changed. The scope id goes to resource: type is the resource type of the scope (the part before the slash, e.g. Jira::Project) and id the part after it, so the pair is the ResourceScope id <type>/<id>. Absent on every other event."
           $ref: "#/components/schemas/GroupName"
+        overrideId:
+          description: Id of the emergency override on admin_change events with reason override_set, override_removed, override_invalid or override_rejected (7.0.0). Absent on every other event.
+          type: string
+          pattern: ^override-[a-z0-9][a-z0-9-]{0,54}$
+        overrideTarget:
+          description: "Target of the override: gateway, all-servers or a serverId (same events as overrideId)."
+          type: string
+          pattern: ^(gateway|all-servers|mcp-[a-z][a-z0-9]{1,30})$
+        textSha256:
+          description: sha256 of the Cedar text of the override after the change (override_set, override_invalid, override_rejected) or removed (override_removed); never the text itself.
+          $ref: "#/components/schemas/DefinitionHash"
+        textSha256Before:
+          description: sha256 of the text before a replacement (override_set that replaces an override); absent for a create.
+          $ref: "#/components/schemas/DefinitionHash"
+        changedFields:
+          description: Names of the fields a PATCH of a server changed, on admin_change with reason server_updated (internalUrl, credential, enabled); never their values.
+          type: array
+          minItems: 1
+          maxItems: 8
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - internalUrl
+              - credential
+              - enabled
         decision:
           type: string
           enum:

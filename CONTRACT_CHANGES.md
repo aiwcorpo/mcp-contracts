@@ -4312,3 +4312,16 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Audyt (C8):** powody `server_created`, `server_updated`, `server_deleted`, `scope_mapping_changed`, `scope_mapping_entry_removed`, `scope_mapping_entry_ignored`, `override_set`, `override_removed`, `override_invalid`, `override_rejected`, `policies_submitted`, `policies_approved`, `policies_changed`, `policy_data_invalid`. Nowe opcjonalne pole zdarzenia `group` (`GroupName`); zakres wpisu mapowania zapisuje się w `resource`: `type` to typ zasobu zakresu (część przed ukośnikiem, np. `Jira::Project`), `id` część po ukośniku, razem identyfikator `ResourceScope`. Wektory `audit-events/gateway-scope-mapping-entry-*`.
 - **Zgodność wstecz (SemVer):** nowe pole i powody (powód to otwarty napis): część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-240 | C5/C8/C12 | Poprawki po przeglądzie bezpieczeństwa gatewaya
+
+- **Źródło:** przegląd bezpieczeństwa implementacji gatewaya, decyzje koordynatora z 2026-11-06. Wydanie 7.0.0 nie było opublikowane.
+- **C1:** `tlsName` usunięte z `ServerConfig`, `ServerConfigCreate`, `ServerConfigPatch` i z BFF; gateway przypina certyfikat serwera do SAN `<serverId>.internal` i CN liścia równego `serverId`. `adapter` tylko przy tworzeniu. Każdy `updateServer` wymaga świeżego MFA (`auth_time` do 300 s) poza ciałem, które tylko ustawia `enabled: false`; sekcja "Fresh MFA" i opis operacji w BFF poprawione.
+- **C2:** przestrzeń należy do pierwszego `serverId`, którego polityki są zatwierdzone z nią; rejestracja sprawdza tylko względem zatwierdzonych właścicieli i niczego nie zajmuje; zatwierdzenie, które zmienia albo zwalnia przestrzeń, usuwa wpisy mapowania zwolnionej przestrzeni z audytem `scope_mapping_entry_removed`, jak `deleteServer`.
+- **C3:** audyt: pola `overrideId`, `overrideTarget`, `textSha256`, `textSha256Before` (zdarzenia `override_*`; skrót, nigdy tekst) i `changedFields` (`server_updated`: nazwy zmienionych pól). Wektory `audit-events/gateway-override-*` i `gateway-server-updated*`.
+- **C4:** progi ryzyka (CC-167) przeżywają `deleteServer`, kluczem pozostaje serverId i narzędzie; ponownie utworzony serwer nie przywróci dawnego `DESTRUCTIVE` jako `READ_ONLY` bez `acceptRiskLowering`.
+- **C5:** certyfikat serwera MCP ma EKU `serverAuth` i `clientAuth`, CN = `serverId`, SAN `<serverId>.internal`.
+- **C6:** `cedar/examples/overrides/step-up.cedar` zostaje (reguła `unless { context has mfaAge && context.mfaAge < 3600 }` jest zamykająca, więc działa i bez claimu `mfa`: odmawia), z id `override-destructive-requires-fresh-mfa`, które spełnia wymóg id nadpisania.
+- **C7:** rewizja danych polityki to `max(poprzednia + 1, bieżący czas w ms)`; opisano, że brak podpisanych paczek odbiera kontrolę dwóch stron, a zastępują ją świeże MFA, audyt i zatwierdzenie skrótu; zalecenie operacyjne przeglądu dwóch osób dla mapowania zakresów i zatwierdzeń.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
