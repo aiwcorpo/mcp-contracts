@@ -325,7 +325,7 @@
       ],
       "properties": {
         "error": {
-          "description": "A system, the secret store or the policy source is unavailable. On a server this is also the answer when the policy bundle is not available (no bundle after a restart, or the policy store failed itself), and the audit reason is policy_unavailable (CC-141).",
+          "description": "A system, the secret store or the policy source is unavailable. On a server this is also the answer when its policy data is not available (no data after a restart, or the gateway cannot be asked), and the audit reason is policy_unavailable (CC-141).",
           "const": "upstream_unavailable"
         },
         "message": {

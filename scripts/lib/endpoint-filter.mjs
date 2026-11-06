@@ -6,7 +6,7 @@ export const PARAMETERS = ['systems', 'tools', 'access', 'exclude'];
 // The query is limited in bytes, not in entries (CC-185): "tools=" and the separators leave 506 bytes, so 16 names of 30
 // characters or 31 names of 15 characters fit, not 100. A larger selection is expressed with systems and exclude.
 export const MAX_QUERY_BYTES = 512;
-export const MAX_SYSTEMS = 5;
+export const MAX_SYSTEMS = 20;
 export const MAX_TOOLS = 100;
 export const MAX_EXCLUDE = 100;
 

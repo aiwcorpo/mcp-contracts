@@ -7,7 +7,6 @@ import YAML from 'yaml';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const SYSTEMS = ['jira', 'confluence', 'gitlab', 'servicedesk', 'opensearch'];
 export const OPENAPI_FILES = ['credential-broker.v1.yaml', 'gateway-admin.v1.yaml', 'portal-bff.v1.yaml'];
 
 export function path(...parts) {

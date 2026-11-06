@@ -51,7 +51,7 @@
           "$ref": "common.schema.json#/$defs/RequestId"
         },
         "prv": {
-          "description": "Policy revision of the gateway (C7). 00000000000000-0000000 means a gateway without a loaded bundle (M1 only); receivers must not infer anything about policy from it (CC-068).",
+          "description": "Revision of the policy data of the gateway (C7): a server that sees a revision newer than the one it holds refreshes its policy data at once. 00000000000000-0000000 means a gateway without policy data; receivers must not infer anything about policy from it (CC-068).",
           "$ref": "common.schema.json#/$defs/PolicyRevision"
         },
         "iat": {

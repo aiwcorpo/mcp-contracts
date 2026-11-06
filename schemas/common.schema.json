@@ -4,26 +4,14 @@
   "description": "Shared value types referenced by the other contract schemas (mcp-contracts 1.0.0).",
   "$defs": {
     "SystemId": {
-      "description": "Target system identifier, lower case (01-contracts conventions).",
+      "description": "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts).",
       "type": "string",
-      "enum": [
-        "jira",
-        "confluence",
-        "gitlab",
-        "servicedesk",
-        "opensearch"
-      ]
+      "pattern": "^[a-z][a-z0-9]{1,30}$"
     },
     "ServerId": {
       "description": "MCP server id; always mcp-<system>, one server per system (C5).",
       "type": "string",
-      "enum": [
-        "mcp-jira",
-        "mcp-confluence",
-        "mcp-gitlab",
-        "mcp-servicedesk",
-        "mcp-opensearch"
-      ]
+      "pattern": "^mcp-[a-z][a-z0-9]{1,30}$"
     },
     "ComponentId": {
       "description": "Identifier of a platform component, e.g. mcp-gateway, mcp-credential-broker, mcp-jira.",
@@ -38,10 +26,10 @@
       "maxLength": 64
     },
     "QualifiedToolName": {
-      "description": "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>.",
+      "description": "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>, with the system pattern of SystemId.",
       "type": "string",
-      "pattern": "^(jira|confluence|gitlab|servicedesk|opensearch)__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
-      "maxLength": 80
+      "pattern": "^[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 100
     },
     "EndpointFilterQuery": {
       "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter, no leading or trailing ampersand. Entries of systems are system ids, entries of tools are qualified tool names (<system>__<tool>, one double underscore), entries of exclude are either. Reference: scripts/lib/endpoint-filter.mjs. Sorting, absence of duplicates and the limits (at most 5 entries in systems, 100 in tools, 100 in exclude, 512 bytes in all) cannot be written as a pattern; the reference parser checks them and the vectors pin them (CC-186). Appears without the leading '?'.",
@@ -149,30 +137,15 @@
       ]
     },
     "ResourceType": {
-      "description": "Cedar entity type of a system resource (C7).",
+      "description": "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in.",
       "type": "string",
-      "enum": [
-        "Jira::Project",
-        "Jira::Issue",
-        "Confluence::Space",
-        "Confluence::Page",
-        "GitLab::Group",
-        "GitLab::Project",
-        "OpenSearch::Index",
-        "ServiceDesk::Queue",
-        "ServiceDesk::Ticket"
-      ]
+      "pattern": "^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$"
     },
-    "ScopeResourceType": {
-      "description": "Resource types that scope groups (C9) can grant.",
+    "ResourceScopeId": {
+      "description": "Id of a ResourceScope (C7): <Type>/<local part>, where the type is declared by a registered server and the local part matches its scopePattern (checked by the gateway against the registry, not by this pattern). ASCII only.",
       "type": "string",
-      "enum": [
-        "Jira::Project",
-        "Confluence::Space",
-        "GitLab::Group",
-        "OpenSearch::Index",
-        "ServiceDesk::Queue"
-      ]
+      "pattern": "^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}/[!-~]{1,1024}$",
+      "maxLength": 1100
     },
     "GroupName": {
       "description": "Group / entitlement name from C9. Only the mcp- prefix is used by the platform.",
@@ -186,7 +159,7 @@
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "PolicyRevision": {
-      "description": "Policy bundle revision YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without a loaded bundle' (M1 only, CC-068); it is not the revision of any bundle and a receiver must not infer anything about policy from it.",
+      "description": "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides; GET /internal/v1/policy-data), YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.",
       "type": "string",
       "pattern": "^[0-9]{14}-[0-9a-f]{7}$"
     },
@@ -266,96 +239,6 @@
         }
       },
       "additionalProperties": true
-    },
-    "JiraProjectKey": {
-      "description": "Jira Data Center project key: first character an upper-case letter, then upper-case letters, digits or underscore (Jira project key format rules; hyphens not supported). Length 2..10 (Jira default maximum project key size; configurable in Jira, a larger limit needs a contract change).",
-      "type": "string",
-      "pattern": "^[A-Z][A-Z0-9_]{1,9}$"
-    },
-    "JiraIssueKey": {
-      "description": "Jira issue key <project key>-<number>.",
-      "type": "string",
-      "pattern": "^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$"
-    },
-    "ConfluenceSpaceKey": {
-      "description": "Confluence Data Center space key of a global space: letters and digits only. Personal spaces (~user) cannot be granted or narrowed.",
-      "type": "string",
-      "pattern": "^[A-Za-z0-9]{1,255}$"
-    },
-    "ConfluencePageId": {
-      "description": "Confluence content id (positive 64-bit integer as decimal string).",
-      "type": "string",
-      "pattern": "^[1-9][0-9]{0,18}$"
-    },
-    "GitLabGroupPath": {
-      "description": "Full path of a GitLab group: 1..20 segments separated by / (subgroups nest up to 20 levels). A segment has only letters, digits, _, . and -, starts and ends with a letter or digit and has no consecutive special characters; the path does not end in .git or .atom (GitLab reserved names / path rules).",
-      "type": "string",
-      "pattern": "^(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){0,19}$",
-      "maxLength": 1024
-    },
-    "GitLabProjectPath": {
-      "description": "Full path of a GitLab project: group path plus the project segment (2..21 segments), same segment rules as GitLabGroupPath.",
-      "type": "string",
-      "pattern": "^(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){1,20}$",
-      "maxLength": 1024
-    },
-    "OpenSearchIndexName": {
-      "description": "One concrete OpenSearch index name: lower-case, no spaces, commas or : \" * + / \\ | ? # > <, not starting with _ or - (OpenSearch index naming restrictions); additionally ASCII only, max 255, and starting with a letter or digit, so hidden and system indices (.security, .kibana, .ds-*) are excluded (CC-074). Excludes aliases-by-pattern, wildcards, lists, date math and remote cluster prefixes.",
-      "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9._-]{0,254}$"
-    },
-    "OpenSearchIndexPrefix": {
-      "description": "Grantable index prefix: OpenSearchIndexName that does not end with '-' or '.'. Covers the index named exactly like the prefix and every index starting with '<prefix>-'. One anchored expression without an alternation at the top level, so that it satisfies the input-schema-bounded rule when a tool uses it as a contractPattern (CC-139); it matches the same strings as before.",
-      "type": "string",
-      "pattern": "^(?:[a-z0-9][a-z0-9._-]{0,253}[a-z0-9_]|[a-z0-9])$"
-    },
-    "ServiceDeskQueueId": {
-      "description": "Queue id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version.",
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
-    },
-    "ServiceDeskTicketId": {
-      "description": "Ticket id of the generic service desk adapter (D10): conservative alphabet, to be made configurable per adapter in a later version.",
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
-    },
-    "ResourceIdPatterns": {
-      "description": "Which pattern applies to an id of each resource type: ids in tool arguments (refs) and resolved resources use 'resource', grants (static.json) use 'scope'. Builders reject non-matching ids (refs: invalid_argument; other inputs: internal_error).",
-      "const": {
-        "Jira::Project": {
-          "resource": "JiraProjectKey",
-          "scope": "JiraProjectKey"
-        },
-        "Jira::Issue": {
-          "resource": "JiraIssueKey"
-        },
-        "Confluence::Space": {
-          "resource": "ConfluenceSpaceKey",
-          "scope": "ConfluenceSpaceKey"
-        },
-        "Confluence::Page": {
-          "resource": "ConfluencePageId",
-          "scope": "ConfluencePageId"
-        },
-        "GitLab::Group": {
-          "resource": "GitLabGroupPath",
-          "scope": "GitLabGroupPath"
-        },
-        "GitLab::Project": {
-          "resource": "GitLabProjectPath"
-        },
-        "OpenSearch::Index": {
-          "resource": "OpenSearchIndexName",
-          "scope": "OpenSearchIndexPrefix"
-        },
-        "ServiceDesk::Queue": {
-          "resource": "ServiceDeskQueueId",
-          "scope": "ServiceDeskQueueId"
-        },
-        "ServiceDesk::Ticket": {
-          "resource": "ServiceDeskTicketId"
-        }
-      }
     }
   }
 }

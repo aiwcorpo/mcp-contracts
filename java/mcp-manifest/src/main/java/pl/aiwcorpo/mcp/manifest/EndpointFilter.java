@@ -21,7 +21,7 @@ public final class EndpointFilter {
     /** Longest query accepted, in bytes. */
     public static final int MAX_QUERY_BYTES = 512;
     /** Most distinct entries of {@code systems}. */
-    public static final int MAX_SYSTEMS = 5;
+    public static final int MAX_SYSTEMS = 20;
     /** Most distinct entries of {@code tools}. */
     public static final int MAX_TOOLS = 100;
     /** Most distinct entries of {@code exclude}. */

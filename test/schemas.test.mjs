@@ -10,18 +10,36 @@ test('every JSON Schema compiles under draft 2020-12 in strict mode', () => {
   }
 });
 
-// CC-079: servers read these definitions from the contracts jar (starter @ArgumentLimits contractPattern), so their
-// names are API: removing or renaming one is a major change. README lists them.
-const STABLE_DEFS = ['JiraProjectKey', 'JiraIssueKey', 'ConfluenceSpaceKey', 'ConfluencePageId', 'GitLabGroupPath', 'GitLabProjectPath',
-  'OpenSearchIndexName', 'OpenSearchIndexPrefix', 'ServiceDeskQueueId', 'ServiceDeskTicketId'];
-
-test('common.schema.json keeps the definitions used by servers (CC-079)', () => {
+test('common.schema.json names no system, server or resource type', () => {
   const defs = readJson('schemas', 'common.schema.json').$defs;
-  const readme = readFileSync(path('README.md'), 'utf8');
-  for (const name of STABLE_DEFS) {
-    assert.equal(typeof defs[name]?.pattern, 'string', `${name} with a pattern`);
-    assert.ok(readme.includes(`\`${name}\``), `${name} listed in README`);
-  }
-  const used = new Set(Object.values(defs.ResourceIdPatterns.const).flatMap((kinds) => Object.values(kinds)));
-  for (const name of used) assert.ok(STABLE_DEFS.includes(name), `${name} is used by ResourceIdPatterns and must be on the stable list`);
+  assert.equal(defs.SystemId.enum, undefined);
+  assert.equal(defs.ServerId.enum, undefined);
+  assert.equal(defs.ResourceType.enum, undefined);
+  for (const name of ['SystemId', 'ServerId', 'QualifiedToolName', 'ResourceType']) assert.equal(typeof defs[name].pattern, 'string', name);
+  // Descriptions may use a system as an example; no enumeration or constant may name one.
+  const named = [];
+  const walk = (node, where) => {
+    if (Array.isArray(node)) return node.forEach((child, i) => walk(child, `${where}/${i}`));
+    if (node === null || typeof node !== 'object') return;
+    for (const [key, value] of Object.entries(node)) {
+      if ((key === 'enum' || key === 'const') && JSON.stringify(value).match(/jira|confluence|gitlab|servicedesk|opensearch/i)) named.push(`${where}/${key}`);
+      walk(value, `${where}/${key}`);
+    }
+  };
+  walk(readJson('schemas', 'common.schema.json'), '#');
+  assert.deepEqual(named, []);
+});
+
+test('system, server and tool name patterns of the identifiers (7.0.0)', () => {
+  const ajv = createAjv();
+  const check = (def) => ajv.compile({ $ref: `common.schema.json#/$defs/${def}` });
+  const system = check('SystemId');
+  for (const id of ['jira', 'notes', 'ab', 'a1', 'weather2']) assert.ok(system(id), id);
+  for (const id of ['', 'a', 'Notes', '1ab', 'my-notes', 'my_notes', 'a'.repeat(32)]) assert.ok(!system(id), id);
+  const server = check('ServerId');
+  assert.ok(server('mcp-notes') && !server('mcp-n') && !server('notes') && !server('mcp-my-notes'));
+  const tool = check('QualifiedToolName');
+  assert.ok(tool('notes__get_folder') && tool('jira__get_issue') && !tool('Notes__get') && !tool('notes_get') && !tool('notes__get__x'));
+  const type = check('ResourceType');
+  assert.ok(type('Notes::Folder') && type('GitLab::Project') && !type('notes::Folder') && !type('Notes') && !type('Notes::folder'));
 });

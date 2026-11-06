@@ -1,8 +1,8 @@
 {
-  "description": "Six systems are over the limit of 5.",
+  "description": "Twenty-one systems are over the limit of 20.",
   "kind": "parse",
   "input": {
-    "query": "systems=a,b,c,d,e,f"
+    "query": "systems=s00,s01,s02,s03,s04,s05,s06,s07,s08,s09,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20"
   },
   "expected": {
     "valid": false,

@@ -47,8 +47,9 @@ parseVector('access-read', 'access=read.', 'access=read');
 parseVector('access-write', 'access=write.', 'access=write');
 parseVector('all-four', 'All four parameters.', 'exclude=gitlab&tools=jira__get_issue,jira__create_issue&access=write&systems=jira');
 parseVector('unknown-system-is-syntax-only', 'A system the platform does not know is a valid entry; it is skipped when the list is computed (invariant 8).', 'systems=jira,nosuchsystem');
-parseVector('systems-five', 'Five systems are at the limit.', 'systems=confluence,gitlab,jira,opensearch,servicedesk');
-parseVector('systems-six', 'Six systems are over the limit of 5.', 'systems=a,b,c,d,e,f');
+const systemIds = (count) => Array.from({ length: count }, (_, i) => `s${String(i).padStart(2, '0')}`).join(',');
+parseVector('systems-at-limit', 'Twenty systems are at the limit; the platform has no fixed list of systems, so the limit is a number, not the count of today\'s systems.', `systems=${systemIds(20)}`);
+parseVector('systems-over-limit', 'Twenty-one systems are over the limit of 20.', `systems=${systemIds(21)}`);
 parseVector('exclude-over-limit', 'More than 100 entries in exclude (the query itself is under 512 bytes).', `exclude=${Array.from({ length: 101 }, (_, i) => `a${i}`).join(',')}`);
 const longEntries = (extra) => {
   const entries = Array.from({ length: 20 }, (_, i) => `a${String(i).padStart(2, '0')}${'x'.repeat(21)}`);

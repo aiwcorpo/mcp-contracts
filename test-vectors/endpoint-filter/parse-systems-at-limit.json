@@ -1,0 +1,38 @@
+{
+  "description": "Twenty systems are at the limit; the platform has no fixed list of systems, so the limit is a number, not the count of today's systems.",
+  "kind": "parse",
+  "input": {
+    "query": "systems=s00,s01,s02,s03,s04,s05,s06,s07,s08,s09,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19"
+  },
+  "expected": {
+    "valid": true,
+    "canonical": "systems=s00,s01,s02,s03,s04,s05,s06,s07,s08,s09,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19",
+    "filter": {
+      "systems": [
+        "s00",
+        "s01",
+        "s02",
+        "s03",
+        "s04",
+        "s05",
+        "s06",
+        "s07",
+        "s08",
+        "s09",
+        "s10",
+        "s11",
+        "s12",
+        "s13",
+        "s14",
+        "s15",
+        "s16",
+        "s17",
+        "s18",
+        "s19"
+      ],
+      "tools": null,
+      "access": null,
+      "exclude": null
+    }
+  }
+}
