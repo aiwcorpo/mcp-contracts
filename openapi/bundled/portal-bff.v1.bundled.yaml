@@ -4303,9 +4303,9 @@ components:
       type: string
       pattern: ^override-[a-z0-9][a-z0-9-]{0,54}$
     OverrideTarget:
-      description: gateway (the decision on call), all-servers (every server evaluates it) or the serverId of one server.
+      description: gateway (the decision on call), all-servers (every server evaluates it) or the serverId of one server (the same pattern as `ServerId`, so a reserved id is no target).
       type: string
-      pattern: ^(gateway|all-servers|mcp-[a-z][a-z0-9]{1,30})$
+      pattern: ^(gateway|all-servers|mcp-(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)$)[a-z][a-z0-9]{1,30})$
     Override:
       type: object
       required:
@@ -4753,7 +4753,7 @@ components:
         timeout:
           $ref: "#/components/schemas/SystemTimeout"
         exchangeAudience:
-          description: Audience of the token the broker asks the identity provider for; token-exchange only, and required there.
+          description: Audience of the token the broker asks the identity provider for; token-exchange only, and required there. It must be allowed by the configuration of the broker (audience_not_allowed otherwise).
           type: string
           minLength: 1
           maxLength: 255
@@ -4775,7 +4775,7 @@ components:
       additionalProperties: false
     SystemRejected:
       type: object
-      description: 422 of a write of a system. Known reasons are client_secret_required (baseUrl, authorizeUrl, tokenUrl, clientId or revokeUrl changed without a new clientSecret), token_url_not_settable (tokenUrl for a token-exchange system), product_required, exchange_audience_required, system_reserved (the system id is reserved, see SystemId), default_type_not_supported (defaultType is not in supportedTypes), credential_types_mixed (service-account next to a user type, CC-168) and oauth_required (user-oauth without an oauth client).
+      description: 422 of a write of a system. Known reasons are client_secret_required (baseUrl, authorizeUrl, tokenUrl, clientId or revokeUrl changed without a new clientSecret), token_url_not_settable (tokenUrl for a token-exchange system), audience_not_allowed (exchangeAudience is not on the allowlist in the configuration of the broker), product_required, exchange_audience_required, system_reserved (the system id is reserved, see SystemId), default_type_not_supported (defaultType is not in supportedTypes), credential_types_mixed (service-account next to a user type, CC-168) and oauth_required (user-oauth without an oauth client).
       required:
         - error
       properties:

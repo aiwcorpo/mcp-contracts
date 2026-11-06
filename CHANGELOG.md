@@ -7,6 +7,8 @@ versions are historical and are kept in the language they were written in.
 
 ## 7.0.0 - 2026-11-06
 
+**7.0.0 is not released.** Its content may still change until the release tag `v7.0.0`; nothing was pushed or tagged, and the artifacts in `~/.m2` and `release/` are local builds that are replaced when it changes.
+
 Serwery, systemy i typy zasobów przestają być listą w kontraktach: są danymi uruchomieniowymi (rejestr gatewaya, systemy brokera,
 deklaracje w manifeście serwera). Decyzja właściciela platformy z 2026-11-06 ("dynamic servers"), CC-229 ... CC-236. Wydanie **major**
 według tabeli SemVer, bez wyjątków. Bajty `cedar/mcp.cedarschema` są nowe (SHA-256 `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`).
@@ -79,6 +81,8 @@ się `upstream-unavailable-policy-data`. Opisy `PolicyRevision` i `prv` mówią 
 **Dodatkowa grupa narzędzia (CC-242, w 7.0.0).** Opcjonalne `additionalGroup` we wpisie narzędzia (`mcp-<system>-<przyrostek>`, przyrostek inny niż `read`, `write`, `destructive`), w `definitionHash`; encja `Tool` ma opcjonalny atrybut `additionalGroup: UserGroup` (nowe bajty `mcp.cedarschema`, SHA-256 `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`); nowa polityka platformy `platform-call-additional-group` (`forbid`, gdy użytkownik nie jest w tej grupie; grupa z ryzyka nadal jest potrzebna); `ToolDescriptor.additionalGroup()` i `withAdditionalGroup(String)`; reguła manifestu `additional-group-valid`; zabronione w manifeście adaptera. Przywraca zachowanie 1.x: narzędzia tylko dla operatorów OpenSearch za `mcp-opensearch-ops`.
 
 **Poprawki po wdrożeniu portalu (CC-243, w 7.0.0).** `putOverride`, który zastępuje nadpisanie (`If-Match`), wymaga świeżego MFA (słabszy tekst poszerza dostęp jak usunięcie), utworzenie nie; BFF `deleteAdminServer` i `putAdminOverride` pokazują 401 ze step-upem; nowa operacja odczytu zatwierdzonych polityk i deklaracji typów serwera (`getServerPolicies`, `GET /admin/v1/registry/servers/{serverId}/policies`, lustro BFF `getAdminServerPolicies`); jedna reguła dla błędnych danych wejściowych w operacjach administratora: źle zbudowany `If-Match`/`If-None-Match` i identyfikator ścieżki niezgodny ze wzorcem to `400 invalid_request` (nigdy `404`), poprawny identyfikator bez zasobu to `404` (DELETE systemu bez systemu `204`), nieaktualny `If-Match` to `412`; opcjonalne `displayName` systemu brokera (żądanie, widok, `SystemInfo`).
+
+**Poprawki po przeglądzie bezpieczeństwa portalu (CC-244, w 7.0.0).** `exchangeAudience` musi być na liście dozwolonych odbiorców w konfiguracji brokera (inaczej `422 system_rejected`, powód `audience_not_allowed`); wzorzec `OverrideTarget` ma ten sam negatywny lookahead zarezerwowanych id co `ServerId`; 7.0.0 jest niewydane i jego treść może się zmieniać do tagu.
 
 **Migracja per składnik.**
 - *gateway:* rejestr serwerów w PostgreSQL i API `/admin/v1/servers`; `ResourceTypes.union` z zarejestrowanych manifestów, `ScopeMapping.ofRegistered`; `EntityBuilder(types, mapping)`; decyzja `call` z

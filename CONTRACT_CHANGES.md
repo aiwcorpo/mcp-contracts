@@ -4349,3 +4349,10 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **`displayName`:** opcjonalne w `SystemAdminRequest`, zawsze obecne w `SystemAdminView` (id, gdy nie podano), opcjonalne w `SystemInfo`; 1 do 64 znaków bez znaków sterujących i formatujących.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-244 | C4/C5 | Poprawki po przeglądzie bezpieczeństwa portalu
+
+- **Źródło:** przegląd bezpieczeństwa portalu, decyzje koordynatora z 2026-11-06.
+- **Zmiana:** `exchangeAudience` w `SystemAdminRequest` musi być na liście dozwolonych odbiorców (lub wzorców) w konfiguracji brokera; inna wartość to `422 system_rejected` z powodem `audience_not_allowed` (opis `putAdminSystem`, `SystemRejected`). Wzorzec `OverrideTarget` ma negatywny lookahead zarezerwowanych id jak `ServerId` (CC-237 A1); BFF używa schematu gatewaya. README i CHANGELOG mówią, że 7.0.0 jest niewydane.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

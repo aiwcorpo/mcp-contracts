@@ -6,6 +6,8 @@ Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
 
 ## Who this is for and how to use it
 
+**Status: 7.0.0 is unreleased.** The current content is the 7.0.0 work in progress (dynamic servers); it may still change until the release tag `v7.0.0`, so a component that builds against a local 7.0.0 must rebuild when it changes.
+
 This is a library for the authors of platform components (the gateway, the credential broker, the portal, and every MCP server
 of the platform), not a product to run. Other repositories generate clients,
 mocks and contract tests from it. The Maven artifacts are released to Maven Central (group `pl.aiwcorpo.mcp`) and the npm
