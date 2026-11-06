@@ -39,7 +39,7 @@
       }
     },
     {
-      "name": "deleteServer 401 unauthenticated",
+      "name": "deleteServer 401 step_up_required",
       "priority": 2,
       "request": {
         "method": "DELETE",
@@ -49,7 +49,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
           }
         }
       },
@@ -59,7 +59,7 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "unauthenticated"
+          "error": "step_up_required"
         }
       }
     },

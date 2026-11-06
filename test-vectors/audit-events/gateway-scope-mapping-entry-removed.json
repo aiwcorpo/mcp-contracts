@@ -1,0 +1,23 @@
+{
+  "description": "deleteServer removed a mapping entry of the namespace of the deleted server: the group goes to group, the scope id <type>/<id> to resource (7.0.0).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "admin_change",
+    "sub": "3b0d6f2e-91c4-4d7a-8a52-6c1e4f7a9d10",
+    "username": "a.admin",
+    "server": "mcp-jira",
+    "reason": "scope_mapping_entry_removed",
+    "group": "mcp-jira-proj-ABC",
+    "resource": {
+      "type": "Jira::Project",
+      "id": "ABC"
+    },
+    "outcome": "ok"
+  }
+}

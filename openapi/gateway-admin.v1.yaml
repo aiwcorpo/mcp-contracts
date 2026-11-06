@@ -32,6 +32,11 @@ info:
     `/admin/v1/policy/overrides`; the mapping of groups to resource scopes is `/admin/v1/policy/scope-mapping`. Servers read
     all of it from `GET /internal/v1/policy-data`.
 
+    **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds, otherwise `401 step_up_required`
+    (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
+    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `createServer`, `deleteServer` and
+    `updateServer` when the body changes `internalUrl` or `tlsName`.
+
     A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
     Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
   license:
@@ -1593,7 +1598,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
@@ -1700,7 +1705,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1729,7 +1734,7 @@ paths:
         '204':
           description: Removed.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1816,7 +1821,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '412':
@@ -2005,7 +2010,7 @@ paths:
         '204':
           description: Removed.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2123,7 +2128,7 @@ paths:
                         scope: Jira::Project/ABCDEFGHIJ
                         reason: invalid_scope
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2260,7 +2265,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin.
+      description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin. It carries `auth_time` (OIDC claim, seconds since the epoch of the last authentication of the user, which a step-up login renews); the gateway needs it for the freshness check of the operations that widen access (see the description of this API). The IdP mapper that issues the exchanged token must copy `auth_time`; a token without it is treated as not fresh.
   parameters:
     IfMatchOptional:
       name: If-Match
@@ -2327,6 +2332,16 @@ components:
         maximum: 200
         default: 50
   responses:
+    StepUpOrUnauthenticated:
+      description: Missing or invalid token or client certificate, or the token has no `auth_time` within 300 seconds (`step_up_required`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            step_up_required:
+              value:
+                error: step_up_required
     PreconditionFailed:
       description: The resource changed since the ETag; read it again.
       content:

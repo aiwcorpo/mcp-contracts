@@ -580,6 +580,18 @@ audit('gateway-registry-definition-approved', 'An administrator approved a pendi
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'create_issue',
   reason: 'definition_approved', definitionHash: 'sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2', outcome: 'ok',
 }, true);
+audit('gateway-scope-mapping-entry-removed', 'deleteServer removed a mapping entry of the namespace of the deleted server: the group goes to group, the scope id <type>/<id> to resource (7.0.0).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira',
+  reason: 'scope_mapping_entry_removed', group: 'mcp-jira-proj-ABC', resource: { type: 'Jira::Project', id: 'ABC' }, outcome: 'ok',
+}, true);
+audit('gateway-scope-mapping-entry-ignored', 'Evaluation skipped a mapping entry whose scope no longer fits the declarations (7.0.0).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira',
+  reason: 'scope_mapping_entry_ignored', group: 'mcp-jira-proj-ABC', resource: { type: 'Jira::Project', id: 'ABCDEFGHIJ' }, outcome: 'ok',
+}, true);
+audit('gateway-scope-mapping-entry-group-not-a-group', 'group follows GroupName.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira',
+  reason: 'scope_mapping_entry_ignored', group: 'jira admins', resource: { type: 'Jira::Project', id: 'ABC' }, outcome: 'ok',
+}, false);
 audit('gateway-registry-tool-removed', 'A tool left the registered manifest (CC-133).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'delete_issue',
   reason: 'tool_removed', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',

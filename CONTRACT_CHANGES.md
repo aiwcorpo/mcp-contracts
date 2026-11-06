@@ -4304,3 +4304,11 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Dodatkowo:** utworzenie systemu, którego id ma pozostałe połączenia albo przepływy po wcześniejszym usunięciu, czyści je najpierw bez wysyłania czegokolwiek (z audytem); DELETE id bez systemu to `204` i nie usuwa żadnego sekretu; powody audytu `system_created`, `system_updated`, `system_deleted`, `system_imported`, `connections_invalidated`, `not_admin` dopisane do listy.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-239 | C5/C8 | Świeże MFA sprawdzane przez gateway i powody audytu administracji serwerami i polityką
+
+- **Źródło:** wdrożenie gatewaya, decyzja koordynatora z 2026-11-06.
+- **MFA:** jak w CC-238 (broker), gateway sam sprawdza `auth_time` tokenu administratora (do 300 s, inaczej `401 step_up_required`) dla operacji poszerzających dostęp z CC-237 A11 (`approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `createServer`, `updateServer` ze zmianą `internalUrl` albo `tlsName`) i dla `deleteServer`. Opis schematu `bffUserToken` (C4 i C5) nie podawał `auth_time`: dopisano, że token wymieniony dla gatewaya i brokera go niesie (mapper IdP kopiuje claim), a token bez niego jest nieświeży.
+- **Audyt (C8):** powody `server_created`, `server_updated`, `server_deleted`, `scope_mapping_changed`, `scope_mapping_entry_removed`, `scope_mapping_entry_ignored`, `override_set`, `override_removed`, `override_invalid`, `override_rejected`, `policies_submitted`, `policies_approved`, `policies_changed`, `policy_data_invalid`. Nowe opcjonalne pole zdarzenia `group` (`GroupName`); zakres wpisu mapowania zapisuje się w `resource`: `type` to typ zasobu zakresu (część przed ukośnikiem, np. `Jira::Project`), `id` część po ukośniku, razem identyfikator `ResourceScope`. Wektory `audit-events/gateway-scope-mapping-entry-*`.
+- **Zgodność wstecz (SemVer):** nowe pole i powody (powód to otwarty napis): część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

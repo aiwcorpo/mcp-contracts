@@ -76,7 +76,7 @@
       }
     },
     {
-      "name": "approveServerPolicies 401 unauthenticated",
+      "name": "approveServerPolicies 401 step_up_required",
       "priority": 2,
       "request": {
         "method": "POST",
@@ -86,7 +86,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
           }
         }
       },
@@ -96,7 +96,7 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "unauthenticated"
+          "error": "step_up_required"
         }
       }
     },
