@@ -238,7 +238,7 @@
         },
         "jsonBody": {
           "error": "manifest_rejected",
-          "message": "system does not match gateway configuration for mcp-jira"
+          "message": "system does not match the registry entry of mcp-jira"
         }
       }
     },

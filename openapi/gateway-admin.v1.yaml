@@ -319,7 +319,7 @@ paths:
         an administrator approves them with `approveServerPolicies`; the first registration of a server needs the same
         approval. Policies are never taken from a server that is not in the registry.
 
-        **Adapter mode (CC-206).** For a `serverId` that gateway configuration serves through an adapter this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`. The certificate is checked before the mode, so this `422` is seen only by the holder of the CN of that `serverId`.
+        **Adapter mode (CC-206).** For a `serverId` that was created with `adapter: true` (`createServer`) this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`. The certificate is checked before the mode, so this `422` is seen only by the holder of the CN of that `serverId`.
       security:
         - mtls: []
       requestBody:
@@ -545,7 +545,7 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '422':
-          description: Manifest conflicts with gateway configuration (system, internalUrl, serverId or credential type), fails a rule, or declares environment dev on a gateway in production mode.
+          description: Manifest conflicts with the server in the registry (system, serverId or credential type), fails a rule, or declares environment dev on a gateway in production mode.
           content:
             application/json:
               schema:
@@ -554,7 +554,7 @@ paths:
                 manifest_rejected:
                   value:
                     error: manifest_rejected
-                    message: system does not match gateway configuration for mcp-jira
+                    message: system does not match the registry entry of mcp-jira
                 environment_mismatch:
                   value:
                     error: manifest_rejected
@@ -582,7 +582,7 @@ paths:
         `mcp-registry-ci-<serverId>`, so a pipeline cannot use this operation and an adapter cannot use `registerServer`. Another CN is `403` and
         `client_certificate_rejected` in the audit. The answers come in this order (CC-207): the certificate (`403`) first, so that a caller without the right CN learns nothing about the mode of any server; then `serverId` in the body against the path (`400`); then the mode and the `source` (`422`).
 
-        **Adapter mode is gateway configuration.** Which `serverId` is served by an adapter is set in the configuration of the gateway, never by a
+        **Adapter mode is a flag of the server.** Whether a `serverId` is served by an adapter is the flag `adapter` given when the server is created (`createServer`, `ServerConfigCreate`), and it cannot be changed later; it is never set by a
         manifest. For a `serverId` in adapter mode this operation is the only way to submit a manifest and `registerServer` answers `422`,
         `manifest_rejected`, reason `adapter_mode_mismatch`; for any other `serverId` this operation answers `422` with the same reason, and so does
         a manifest without `source: adapter` sent here or with it sent to `registerServer`. Nothing is stored in these cases.
@@ -2498,7 +2498,7 @@ components:
     DisabledBy:
       type: string
       enum: [kill_switch, approval, configuration]
-      description: Why a tool or server is disabled, present only when disabled is true (CC-194). kill_switch is an emergency switch of an administrator, approval a definition waiting for approval or classification, configuration the gateway configuration or an overrides policy. When more than one applies the first of the list is shown.
+      description: Why a tool or server is disabled, present only when disabled is true (CC-194). kill_switch is an emergency switch of an administrator, approval a definition waiting for approval or classification, configuration the server in the registry or an overrides policy. When more than one applies the first of the list is shown.
     ManifestRejected:
       type: object
       description: 422 of a registration or an approval (CC-133). reason is a known value or absent for the older rejections (a hash that does not match, a rule of the manifest).
@@ -2627,7 +2627,7 @@ components:
         enabled:
           type: boolean
           default: true
-          description: False when the server is disabled in gateway configuration or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only here; the emergency switch of a server is a separate resource (CC-194).
+          description: False when the server is disabled in the registry of servers (enabled false) or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only here; the emergency switch of a server is a separate resource (CC-194).
         policiesStatus:
           description: approved when the policies of the manifest are the approved ones; pending_approval when they changed or were never approved, and the tools of the server are blocked (7.0.0). Absent for an adapter, which has no policies.
           type: string

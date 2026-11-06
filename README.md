@@ -920,7 +920,7 @@ The adapter (`mcp-server-adapter`, the sidecar of a foreign MCP server) sends th
 adapter` using the operation `PUT /admin/v1/registry/adapters/{serverId}` (`submitAdapterManifest`, CC-206). The adapter
 certificate has the CN `mcp-adapter-<serverId>` (the whole CN is compared, as for the pipeline, CC-161), different from
 `mcp-registry-ci-<serverId>`: the pipeline cannot use this operation, and the adapter cannot use `registerServer`. Which
-`serverId` values an adapter serves is decided by gateway configuration, never by the manifest: for such a `serverId`,
+`serverId` values an adapter serves is decided by the flag `adapter` given when the server is created (`createServer`), never by the manifest: for such a `serverId`,
 `registerServer` answers `422` (`adapter_mode_mismatch`), for any other `serverId` `submitAdapterManifest` answers the same, and a
 manifest without `source: adapter` on the adapter channel, or with it on the pipeline channel, is also `422`. Order of answers
 (CC-207): first the certificate (`403`), so a caller without the right CN does not learn which mode the server is in; then the
@@ -1077,7 +1077,7 @@ Descriptions in `resolveCredential` (C4):
   set is a refusal (`internal_error` without details, audit `policy_decision`/`tool_call` with the reason
   `credential_type_mismatch`); a server with no configured type that receives a credential also refuses. Requests without a
   credential (`initialize`, `tools/list`, registry calls) are not checked. **`context.credentialType` in Cedar** is the system's
-  default type from the gateway configuration (on the server side: the first type of `accepted-credential-types`; there is no
+  default type from the configuration of the server in the registry, `credential.type` (on the server side: the first type of `accepted-credential-types`; there is no
   separate property): Cedar is evaluated before the broker is asked, so the type actually used is not known yet; the
   `credential-type.cedar` rules tell a service account from a user credential by this default type, and a system's set never
   combines both kinds. Vectors `credential-type-header/` (including GitLab with two types). The header has been in C3 from the
@@ -1086,7 +1086,7 @@ Descriptions in `resolveCredential` (C4):
   (C2), and the gateway removes incoming `X-MCP-*`, so this is considered sufficient: the type header is not signed and there is no
   type claim in the JWT. The check protects against a configuration mismatch, not against an attacker on the path between the
   gateway and the server; that would need a separate decision (a type claim and a credential hash in the JWT).
-- **Manifest versus gateway configuration:** at registration and at startup the gateway checks that the credential type the broker
+- **Manifest versus the server in the registry:** at registration and at startup the gateway checks that the credential type the broker
   will be asked for the system is in the manifest's `credential.acceptedTypes`; otherwise `422 manifest_rejected` with the reason
   `credential_type_mismatch`. This applies to **every type in the system's set** (GitLab with `user-oauth` and `user-secret`
   needs both in `acceptedTypes`), not only the default. A held manifest that does not pass the check at startup is neither
