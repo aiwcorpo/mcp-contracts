@@ -6,8 +6,8 @@ Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
 
 ## Who this is for and how to use it
 
-This is a library for the authors of platform components (the gateway, the credential broker, the portal, and the MCP servers
-for Jira, Confluence, GitLab, OpenSearch and the service desk), not a product to run. Other repositories generate clients,
+This is a library for the authors of platform components (the gateway, the credential broker, the portal, and every MCP server
+of the platform), not a product to run. Other repositories generate clients,
 mocks and contract tests from it. The Maven artifacts are released to Maven Central (group `pl.aiwcorpo.mcp`) and the npm
 package to npmjs.org (`@aiwcorpo/mcp-contracts`), both from GitHub Actions after a `vX.Y.Z` tag; reading them needs no token
 and no account. Coordinates and examples are in "Using the artifacts" below, the release process in "Releasing".
@@ -15,13 +15,13 @@ and no account. Coordinates and examples are in "Using the artifacts" below, the
 npm imports: `@aiwcorpo/mcp-contracts/msw`, `.../types/portal-bff`, `.../openapi/*`, `.../schemas/*`, `.../test-vectors/*`.
 Private test keys are not part of the npm package (see "Artifacts"). Report vulnerabilities as described in
 [`SECURITY.md`](SECURITY.md); contribution rules are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Java modules:
-`mcp-cedar-entities` (the Cedar entity builder shared by the gateway and the starter), `mcp-policy-bundle` (the reference
-receiver of policy bundles) and `mcp-manifest`.
+`mcp-cedar-entities` (the Cedar entity builder and the validation of server policy fragments, shared by the gateway and the
+starter) and `mcp-manifest`.
 
 The contracts are frozen: a change is proposed in [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md) and approved by a person.
 That file also records every place where the original contract text was imprecise, with the variant that was adopted.
 CC-001 ... CC-034 shipped in 1.1.0, CC-036 ... CC-045 in 1.2.0, CC-046 ... CC-067 in 2.0.0, CC-068 ... CC-077 in 2.1.0,
-CC-169 ... CC-177 in 5.0.0; CC-035 was rejected.
+CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0; CC-035 was rejected.
 
 ## Using the artifacts
 
@@ -30,8 +30,7 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 | Artifact | Packaging | Use |
 | --- | --- | --- |
 | `pl.aiwcorpo.mcp:mcp-contracts` | jar, plus classifier `test-vectors` | contract files as classpath resources; the `test-vectors` jar holds the TEST keys and belongs in `<scope>test</scope>` only |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities` | jar | shared Cedar entity builder |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle` | jar | verification and loading of signed policy bundles |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities` | jar | shared Cedar entity builder and validation of policy fragments |
 | `pl.aiwcorpo.mcp:mcp-manifest` | jar | `definitionHash` and manifest rules |
 | `pl.aiwcorpo.mcp:mcp-contracts-parent` | pom | parent of the modules above |
 
@@ -39,12 +38,12 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>6.3.2</version>
+  <version>7.0.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>6.3.2</version>
+  <version>7.0.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -53,15 +52,15 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 npm, public registry, scope `@aiwcorpo`, no `.npmrc` needed:
 
 ```bash
-npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2
+npm install --save-dev @aiwcorpo/mcp-contracts@7.0.0
 ```
 
 The npm package is published from GitHub Actions with provenance; `npm audit signatures` shows the attestation that ties the
 tarball to the tag and the workflow run. Maven artifacts carry a GPG signature (`.asc`); the public key is published on
 `keyserver.ubuntu.com`. A version is immutable once it is on Central, so a fix is a new number.
 
-If you built 6.3.2 locally or installed it from another source before it reached Central, delete
-`~/.m2/repository/pl/aiwcorpo/mcp/*/6.3.2` and let Maven fetch the published files; the local copies are not byte-identical.
+If you built 7.0.0 locally or installed it from another source before it reached Central, delete
+`~/.m2/repository/pl/aiwcorpo/mcp/*/7.0.0` and let Maven fetch the published files; the local copies are not byte-identical.
 
 ## What is where
 
@@ -72,8 +71,8 @@ If you built 6.3.2 locally or installed it from another source before it reached
 | C5 gateway admin | `openapi/gateway-admin.v1.yaml` |
 | The `/mcp` address and its filter (C1, C5) | section "One address for the whole platform", `scripts/lib/endpoint-filter.mjs`, `java/mcp-manifest` (`EndpointFilter`), `test-vectors/endpoint-filter/`, `test-vectors/endpoint-aggregate/` |
 | C6 server manifest | `schemas/server-manifest.schema.json`, vectors in `test-vectors/manifests/` and `test-vectors/definition-hash/` |
-| C7 policy bundle | `schemas/policy-bundle-manifest.schema.json`, `schemas/policy-bundle-latest.schema.json`, vectors in `test-vectors/bundles/` |
-| C7 Cedar model | `cedar/mcp.cedarschema`, `cedar/examples/*.cedar`, `cedar/entity-builder.md` |
+| C7 Cedar model | `cedar/mcp.cedarschema` (base schema), `cedar/platform/*.cedar` (policies of the gateway), `cedar/examples/` (server fragments and overrides as models), `cedar/entity-builder.md` |
+| C7 policy data and servers | `openapi/gateway-admin.v1.yaml` (`/internal/v1/policy-data`, `/admin/v1/servers`, `/admin/v1/policy/*`), `openapi/credential-broker.v1.yaml` (`/v1/admin/systems`) |
 | C8 audit | `schemas/audit-event.schema.json`, vectors in `test-vectors/audit-events/` |
 | C9 groups | `cedar/entity-builder.md` (parsing), `java/mcp-cedar-entities` (implementation), `schemas/common.schema.json#/$defs/GroupName` |
 | C10 tool errors | `schemas/tool-error.schema.json`, vectors in `test-vectors/tool-errors/` |
@@ -87,10 +86,11 @@ single-file versions for code generators (generated, do not edit).
 mcp-contracts/
 ├── openapi/                 # C4, C5, C12 + bundled/ for generators
 ├── schemas/                 # JSON Schema 2020-12 (no $id: relative references between files)
-├── cedar/                   # schema, example policies, entity builder specification
+├── cedar/                   # base schema, platform policies, example fragments, entity builder specification
 ├── test-vectors/
 │   ├── keys/                # TEST KEYS, NOT FOR PRODUCTION
-│   ├── jwt/  manifests/  definition-hash/  audit-events/  tool-errors/  bundles/
+│   ├── jwt/  manifests/  definition-hash/  policies-hash/  audit-events/  tool-errors/
+│   ├── fixtures/            # the neutral Notes fragment and the scope mapping that the Cedar vectors run on
 │   ├── untrusted-text/      # shape of UntrustedText (CC-072)
 │   ├── confirmation-binding/  # pending call and code verification result (C11, CC-091)
 │   ├── totp/  text-hygiene/  gateway-authentication/  # CC-092, CC-126 / CC-121, CC-122 / CC-124
@@ -105,7 +105,6 @@ mcp-contracts/
 ├── mocks/msw/               # MSW handlers for C12 (TS)
 ├── java/mcp-contracts/      # Maven module: jar with resources + test-vectors jar (pom, no code)
 ├── java/mcp-cedar-entities/ # Maven module: entity builder + JUnit tests (Cedar, decision vectors, result filter)
-├── java/mcp-policy-bundle/  # Maven module: policy bundle receiver, PolicyStore, lint + tests on bundle vectors
 ├── java/mcp-manifest/       # Maven module: RFC 8785, definitionHash, manifest rules, EndpointFilter + tests on vectors
 ├── spectral-functions/      # Spectral rule for x-allowed-client-cn
 ├── scripts/                 # generators and verify-all.sh
@@ -118,7 +117,7 @@ The version applies to the whole repository at once: the jars, the npm package a
 
 | Change | Version | Example |
 | --- | --- | --- |
-| removing or renaming a field, endpoint or enum value; a new enum value (for example a new system, which also changes the Cedar schema); stricter validation; a Cedar schema change after which existing policies or entities no longer validate; a changed expectation in an existing vector | **major** | `2.0.0` |
+| removing or renaming a field, endpoint or enum value; a new enum value (a system is not one: systems, servers and resource types are runtime data); stricter validation; a Cedar schema change after which existing policies or entities no longer validate; a changed expectation in an existing vector | **major** | `2.0.0` |
 | a new optional field in a response or request, a new endpoint, new vectors | **minor** | `1.1.0` |
 | a description fix, typos, a new example that conforms to the schema | **patch** | `1.0.1` |
 
@@ -184,6 +183,12 @@ Exceptions to the table, each decided by the maintainers and described in `CHANG
   since 5.0.0, CC-173) is stricter validation released as minor by decision, since there were no consumers. In 2.2.1 the `400
   expires_at_invalid` response added in 2.2.0 was removed (CC-084, no consumers). Details in `CHANGELOG.md`.
 
+7.0.0 (CC-229 ... CC-236) is a major release by the table, with no exceptions: the system, server and resource type enumerations
+become patterns, the Cedar base schema loses every system namespace (new bytes, SHA-256
+`48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5`), `User.scopes`, `Tool.requiredGroup` and `context.refs` change shape,
+the manifest gains `policies`, `policiesHash` and required declarations, the entity builder API takes `ResourceTypes`, and policy
+bundles, their receiver module and their signing keys are removed. Migration per component: `CHANGELOG.md` ("7.0.0").
+
 6.0.0 (CC-192 ... CC-205) is a major release by the table, with no exceptions: a new enum value `PendingTool.source` and
 `risk`/`action` conditionally required in a manifest entry (CC-193), `PolicyLintCli` failing when the schema or a policy does
 not validate (CC-203), changed expectations of the `audit-throttle-*` vectors (CC-195). The bytes of `mcp.cedarschema` are
@@ -197,22 +202,21 @@ overwrite the tarball of a version that already has a tag, so the integrity hash
 points at such a file stays valid. Released versions are on npmjs.org and in Maven Central.
 
 Every release needs an entry in `CONTRACT_CHANGES.md` with status `accepted`, the version raised in `pom.xml`, `package.json`
-and the `info.version` fields, and the tag `vX.Y.Z`. A policy bundle names the contracts version in `manifest.json.schemaVersion`.
+and the `info.version` fields, and the tag `vX.Y.Z`.
 
 ## Artifacts
 
 | Artifact | Contents | Use |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:6.3.2` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` under the classpath prefix `mcp-contracts/` | may be on the runtime classpath (for example the Cedar schema, manifest validation) |
-| `pl.aiwcorpo.mcp:mcp-contracts:6.3.2:test-vectors` (jar, classifier) | `test-vectors/` including the test keys, under `mcp-contracts/test-vectors/` | **only** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:6.3.2` (jar + javadoc) | Cedar entity builder (C7, C9) | gateway and starter, runtime |
-| `pl.aiwcorpo.mcp:mcp-policy-bundle:6.3.2` (jar + javadoc) | verification and loading of C7 policy bundles, `PolicyStore`, policy lint | gateway, starter, bundle pipeline |
-| `pl.aiwcorpo.mcp:mcp-manifest:6.3.2` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:6.3.2` (pom) | parent of the modules | installed together with them |
-| `@aiwcorpo/mcp-contracts@6.3.2` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:7.0.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` under the classpath prefix `mcp-contracts/` | may be on the runtime classpath (for example the Cedar schema, manifest validation) |
+| `pl.aiwcorpo.mcp:mcp-contracts:7.0.0:test-vectors` (jar, classifier) | `test-vectors/` including the test keys, under `mcp-contracts/test-vectors/` | **only** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:7.0.0` (jar + javadoc) | Cedar entity builder (C7, C9), validation of policy fragments and overrides | gateway and starter, runtime |
+| `pl.aiwcorpo.mcp:mcp-manifest:7.0.0` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:7.0.0` (pom) | parent of the modules | installed together with them |
+| `@aiwcorpo/mcp-contracts@7.0.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
 
 In Maven the test keys (private ones too, which are public by design) are only in the `test-vectors` jar, so that a production
-component cannot load a test JWKS from the classpath by accident. Receiver tests sign tokens and bundles with them, so the jar
+component cannot load a test JWKS from the classpath by accident. Receiver tests sign tokens with them, so the jar
 stays a separate artifact with `<scope>test</scope>`. The npm package contains `test-vectors/` without the
 `*NOT-FOR-PRODUCTION*` files (private keys); public keys and the JWKS stay, because the vectors use them for verification. Node
 tests that need the private keys take them from the `test-vectors` jar or from the repository.
@@ -220,132 +224,80 @@ tests that need the private keys take them from the `test-vectors` jar or from t
 Local installation:
 
 ```bash
-./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-policy-bundle,mcp-manifest,mcp-contracts-parent}/<version>/
+./mvnw install          # ~/.m2/repository/pl/aiwcorpo/mcp/{mcp-contracts,mcp-cedar-entities,mcp-manifest,mcp-contracts-parent}/<version>/
 npm ci && npm run pack  # release/aiwcorpo-mcp-contracts-<version>.tgz (outside git)
 ```
 
 Reading from the classpath: `getResource("/mcp-contracts/cedar/mcp.cedarschema")`,
 `/mcp-contracts/test-vectors/jwt/valid.json` and so on.
 
-## mcp-cedar-entities (entity builder)
+## mcp-cedar-entities (entity builder and policy fragments)
 
 The shared implementation of `cedar/entity-builder.md` for the gateway and the starter (CC-019). Dependencies: cedar-java
 4.10.0 (the `uber` classifier with native libraries), jackson-databind 2.x (required by cedar-java anyway, not exposed in the
 API) and `mcp-contracts`. No Spring. Input records are immutable; `CedarRequest` contains cedar-java objects, which cedar-java
-keeps mutable (do not modify them). `EntityBuilder` holds only the scope mapping and is thread-safe; after a new bundle is
-loaded, a new builder is created.
+keeps mutable (do not modify them). `EntityBuilder` holds the declared resource types and the scope mapping and is thread-safe;
+when a server is added or removed, a manifest changes or the administrator writes a new mapping, a new builder is created.
+
+**No type is built in.** `ResourceTypes` holds the `resourceTypes` declarations of the registered manifests
+(`ResourceTypes.fromJson`, `ResourceTypes.union` for the gateway), `ScopeMapping` the administrator's group -> scope mapping
+(`ScopeMapping.of` to validate a document, `ScopeMapping.ofRegistered` to evaluate, `ScopeMapping.fromJson` for the `scopeMapping`
+of the policy data). `Scopes.pathPrefixes` and `Scopes.dashPrefixes` are helpers for the server that derives `scopes` of a resource.
 
 **API compatibility (CC-039):** the public records (`Caller`, `ToolDescriptor`, `ResourceRef`, `ResolvedResource`,
-`CedarRequest`, `QueryConstraint`; since 5.0.0 without `VirtualServerScope`, without `Caller.withVirtualServer` and without the
-`virtualServer` fields in `QueryConstraint`, CC-173) and the cedar-java types in signatures are part of the API. Adding a record
-component, or moving to a new major version of cedar-java, is a new major version of the library.
+`ResourceTypeDeclaration`, `CedarRequest`, `QueryConstraint`) and the cedar-java types in signatures are part of the API. Adding
+a record component, or moving to a new major version of cedar-java, is a new major version of the library.
 
 **Environment:** Spring Boot 4.1.0 manages jackson-databind 2.x at 2.21.4 (next to Jackson 3) and overrides the 2.20.0 of this
 module; the module tests pass with 2.21.4 (`./mvnw verify -Djackson.version=2.21.4`). cedar-java 4.10.0 `uber` has native
 libraries for macOS (x86_64, aarch64), Linux with glibc (x86_64, aarch64) and Windows x86_64. There is no musl build, so Alpine
-images do not work; use a glibc image such as `eclipse-temurin:25-jre`.
+images do not work; use a glibc image such as `eclipse-temurin:25-jre`. Compiling against the validation response of cedar-java
+needs Guava on the compile classpath (it is a runtime dependency of cedar-java already; this module declares it `provided`).
 
 ```xml
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>6.3.2</version>
+  <version>7.0.0</version>
 </dependency>
 ```
 
 ```java
-EntityBuilder builder = new EntityBuilder(loadedBundle.scopeMapping());   // mapping from entities/static.json
-Caller caller = Caller.of(claims.sub(), claims.usr(), claims.grp(), claims.azp())
-        .withMfaAge(120);
+// gateway: the types of every registered server, the mapping from the policy data
+ResourceTypes types = ResourceTypes.union(registeredManifests.stream().map(m -> ResourceTypes.fromJson(m.resourceTypesJson())).toList());
+ScopeMapping mapping = ScopeMapping.fromJson(types, policyData.scopeMappingJson(), true);
+EntityBuilder builder = new EntityBuilder(types, mapping);
+Caller caller = Caller.of(claims.sub(), claims.usr(), claims.grp(), claims.azp()).withMfaAge(120);
 ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read",
         List.of(new ResourceRef("issueKey", "Jira::Issue")));
 
-// gateway: Action::"call" on Tool
+// gateway: Action::"call" on Tool, decided by the platform policies and the overrides
 CedarRequest call = builder.forToolCall(caller, tool, arguments);
-// server: the tool's action on a resource resolved from the system
-ResolvedResource issue = ResolvedResource.of("Jira::Issue", "ABC-123", Map.of("key", "ABC-123"))
-        .withParent(ResolvedResource.of("Jira::Project", "HR", Map.of("key", "HR", "category", "Restricted")));
-CedarRequest onResource = builder.forResource(caller, tool, arguments, issue);
+AuthorizationResponse decision = engine.isAuthorized(call.toAuthorizationRequest(McpCedarSchema.schema()),
+        McpCedarSchema.platformPolicies(), call.cedarEntities());
 
-AuthorizationResponse r = engine.isAuthorized(
-        onResource.toAuthorizationRequest(bundleSchema), bundlePolicies, onResource.cedarEntities());
+// server: the tool's action on a resource resolved from the system, decided by the server's own policies
+ResolvedResource issue = ResolvedResource.of("Jira::Issue", "ABC-123", Map.of("key", "ABC-123"))
+        .withScopes(List.of("Jira::Project/HR"))
+        .withParent(ResolvedResource.of("Jira::Project", "HR", Map.of("key", "HR", "category", "Restricted"))
+                .withScopes(List.of("Jira::Project/HR")));
+CedarRequest onResource = builder.forResource(caller, tool, arguments, issue);
+AuthorizationResponse r = engine.isAuthorized(onResource.toAuthorizationRequest(PolicyFragments.composeSchema(fragmentSchemaText)),
+        PolicyFragments.policySet(policyFileTexts), onResource.cedarEntities());
 ```
 
 Search and lists (CC-036): `builder.queryConstraint(caller, "Jira::Project")` says what to limit the query to the system to,
 and `new ResultFilter(builder, authorizer).allowed(caller, tool, arguments, items, item -> resolvedResourceOf(item))` keeps only
 the items the policy allows (the rest are dropped, also when evaluation fails).
 
+Policy fragments (C6, C7): `PolicyFragments.validateFragment(namespace, schemaText, policyFiles, types)` is the check that the
+starter runs at build and at start and the gateway at registration (strict validation of the composition, one namespace, `scopes` on
+every type, no `Action::"call"` or `Tool`, no impossible policy, declarations that match the schema);
+`PolicyFragments.validateOverride(id, text, targetFragmentSchema)` validates an emergency override. `McpCedarSchema.text()` is the
+base schema, `McpCedarSchema.platformPolicies()` the policies of the gateway.
+
 `EntityBuilderException` (code `INVALID_ARGUMENT` or `INTERNAL_ERROR`, `wireCode()` is the C10 code) means the call is refused.
-`McpCedarSchema.schema()` returns the schema of this contracts version; to evaluate policies, use the schema from the loaded
-bundle.
-
-## mcp-policy-bundle (policy bundle receiver)
-
-The reference receiver of C7 (CC-045): it verifies and loads a bundle from bytes. Fetching `latest.json` and the files (ETag,
-interval) is the component's job. Dependencies: `mcp-cedar-entities`, cedar-java, jackson-databind. No Spring.
-
-```java
-PublicKey mainKey = BundleVerifier.ed25519PublicKeyFromPem(config.mainKeyPem());
-BundleVerifier main = BundleVerifier.of(Channel.MAIN, mainKey, config.mainKeyId(), config.allowTestKeys())
-        .withDevstackProfile(config.devstackProfile()); // dev-* keys only with both consents (CC-137)
-BundleVerifier overrides = BundleVerifier.of(Channel.OVERRIDES, overridesKey, config.overridesKeyId(), config.allowTestKeys())
-        .withDevstackProfile(config.devstackProfile());
-
-BundlePointer pointer = BundlePointer.parse(latestJsonBytes);
-try {
-    PolicyBundle bundle = main.verifyMain(pointer, archiveBytes, signatureBytes, Optional.ofNullable(loadedMainRevision));
-    // do not merge static entities: the builder creates UserGroup from bundle.scopeMapping() (CC-059)
-} catch (BundleRejectedException e) {
-    // the previous bundle stays; e.reason().wireCode() goes to the metric and the log
-}
-PolicyBundle emergency = overrides.verifyOverrides(pointerO, archiveO, signatureO,
-        Optional.ofNullable(loadedOverridesRevision), currentMain);
-```
-
-Order of checks: `latest.json` (CC-026); the key (an identifier `test-*` and the published test keys by SPKI only with
-`allowTestKeys`, CC-044; an identifier `dev-*` only in dev mode, that is `allowTestKeys` and `withDevstackProfile(true)`,
-CC-137); the Ed25519 signature; the archive (`TarReader`: ustar prefix, checksums, only regular files and directories, no
-absolute names, `.`/`..` or duplicates, limits of 1000 entries, 4 MiB per file and 16 MiB in total); `manifest.json` and the
-matching revision; the contents (overrides: only `manifest.json` and `policies/**`, CC-028); a revision strictly higher within
-the channel; the policies (no templates, no `permit` in overrides; since 5.0.0 no lint of `vsScopes` and `virtualServer`,
-because those fields are not in the schema, CC-173); a schema byte-equal to `cedar/mcp.cedarschema` (`schema_mismatch`,
-CC-059); strict validation (overrides against the schema of the main bundle, CC-040); `static.json` containing only `UserGroup`
-entities and the scope mapping (CC-037, CC-059).
-
-The module does not check the archive size before decompression: the component limits the download (for example to 16 MiB, the
-same as the limit after unpacking) before it passes the bytes on. `TarReader` accepts only strict ustar; the bundle pipeline
-builds the bundle without pax extensions (macOS: `COPYFILE_DISABLE=1 tar --no-xattrs --format=ustar -czf ...`, GNU tar: `tar
---format=ustar -czf ...`), otherwise the bundle is rejected (`archive_invalid`).
-
-Instead of swapping bundles itself, a component can use `PolicyStore` (CC-060): `store.loadMain(...)`,
-`store.loadOverrides(...)` and `store.current()` give one consistent snapshot (`policies()` from both channels, `schema()`,
-`entityBuilder()`). Updates are serialized, `@id` values must be unique across channels, and a new main bundle that conflicts
-with the loaded `overrides` is rejected (the state does not change). The main bundle must carry a schema equal to
-`cedar/mcp.cedarschema` of this contracts version, and `static.json` must contain only `UserGroup` entities (CC-059).
-
-Readiness after a restart: if the state file shows that an `overrides` bundle was active, `store.awaitingOverrides()` returns
-`true` and `store.isReady()` returns `false` until `overrides` is loaded again. The component does not serve traffic while the
-store is not ready, or up to a configured time limit, after which it raises an alarm (emergency `forbid` rules must not
-disappear silently). The state directory belongs to one component instance (a separate directory per replica). The store
-nevertheless reads the file before every decision and takes the newer of the in-memory and on-disk values; it writes with
-`fsync` of the file and the directory, and a write failure gives `state_write_failed`.
-
-Rollback protection after a restart (CC-066): `new PolicyStore(main, overrides, new PolicyStore.Persistence(stateDir,
-Map.of(Channel.MAIN, minimumRevision), auditLog::warn))` records the last revision and the archive hash per channel in
-`stateDir` (atomically). After a restart only a newer revision, or the same revision with the same archive, is accepted; the
-minimum revision from configuration always applies; a missing or damaged state file gives a warning for the audit and operation
-by the minimum.
-
-Lint for the bundle pipeline: `java -cp <classpath> pl.aiwcorpo.mcp.policy.bundle.PolicyLintCli [--overrides] [--schema <file>]
-policies/` (exit code 0 = clean, 1 = violations, 2 = error; since 6.0.0 also when the schema or a policy does not validate at
-all: such a run used to exit with 0, CC-203). It reports templates, and with `--overrides` every `permit`. Since 5.0.0 it no
-longer checks `context.vsScopes` and `context.virtualServer` (CC-173): a policy that reads them without a `has` guard fails
-schema validation in the receiver. It also reports every policy that the Cedar validator calls impossible ("policy is
-impossible", `PolicyLint.impossible`, CC-183): a `forbid` guarded by `context has vsScopes && ...`, or with a typo in the
-guard, passes validation and never matches, which is a silent fail-open. The schema is `cedar/mcp.cedarschema` of this version
-unless `--schema` is given. This is a pipeline gate; the bundle receiver (`BundleVerifier`) does not reject such a policy (the
-vector `main-forbid-guarded-by-has-removed-vsscopes-accepted` stays). Limitation: Cedar warns only when it can prove that the
-condition is false for every request, so `(context has virtualServer) || principal has username` passes without a warning.
+A malformed declaration or fragment is an `IllegalArgumentException` or a failed `Result`: those are registration-time errors.
 
 ## IGA port (C13)
 
@@ -366,31 +318,24 @@ Each IGA adapter chooses the requester identifier from configuration (for exampl
 `preferred_username`); a missing claim in `Requester` is an adapter error and a refusal (fail-closed). The shapes of
 `AccessRequest` and `RequestResult`: CC-024.
 
-## Frozen Cedar schema (4.0 line)
+## Frozen Cedar schema (7.0 line)
 
-`cedar/mcp.cedarschema` is frozen byte for byte within a line, including the header comment and LF line endings. A policy
-bundle must carry exactly this file (CC-059), so any change, even to a comment, makes components on different releases reject
-each other's bundles (`schema_mismatch`). The tests (Node and Java) compare the SHA-256 of the file. The bundle pipeline copies
-the file without converting line endings (`.gitattributes` enforces LF). The schema was the same in 2.0.0 ... 3.0.2. **3.1.0
-adds the attribute `inheritedClassification` (CC-129) to `GitLab::Group` and `GitLab::Project`**, so bundles built on the 3.0.x
-schema must be rebuilt (the `schemaVersion` input of the bundle and the schema bytes), and the gateway, the starter and the
-servers must use 3.1.0 libraries. SHA-256 of the 3.1.0 schema: `cf79068bc845d392a12a96c88431564afc4eb5afc1697cda083180717b7e4d8a`.
-
-**4.0.0 adds the optional context attribute `credentialType` (CC-136)** and changes the header comment, so the bytes of the file
-differ (SHA-256 `902b254090cc7bd5b8f4ff3fa26b76850f516e9d07da0f9faed1729deb1412f7`). The attribute is optional in the model: a
-bundle built on the 3.1.x schema does not pass on the 4.0.0 schema (bytes), but policies without `credentialType` work
-unchanged. A policy that reads it must guard the read with `has` (the gateway and the starter 4.0.0 always supply it). Libraries,
-policy bundles and servers move to 4.0.0 together (the `schemaVersion` input of the bundle and the schema bytes).
+`cedar/mcp.cedarschema` is the base schema, in the empty namespace. Every server's fragment is appended to its text and validated
+against the result, so the file is frozen byte for byte within a major line, including the header comment and LF line endings:
+a change of one byte could make a fragment that validated yesterday fail today. The tests (Node and Java) compare the SHA-256 of
+the file (`.gitattributes` enforces LF). SHA-256 of the 7.0.0 schema: `48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5`.
+It names no system, server or resource type; it has `ResourceScope`, `UserGroup`, `User` (with one flat `scopes` set), `Tool` (with
+`requiredGroup`), `RequestContext` (`refs` is a set of `ResourceScope`) and the action `call`. The previous bytes
+(`51d71b2d...`, 5.0.0 ... 6.3.2) are not valid on this line, and policy bundles no longer exist.
 
 ## Resource identifiers
 
-Identifiers of every resource type have a pattern that matches the documentation of the system (CC-056; the table is in
-`cedar/entity-builder.md` section 9, `schemas/common.schema.json` `ResourceIdPatterns`, and `ResourceIds` in Java). OpenSearch
-index names start with a letter or digit, so hidden and system indices (`.security`, `.ds-*`) do not pass (CC-074).
-Non-matching identifiers are rejected in tool arguments, in resources from the resolver and in the scope mapping. Java JSON
-Schema validators often match a pattern with `Matcher.find()`, where `$` lets a trailing `\n` through (`"ABC\n"`); components
-that validate identifiers with the JSON schema alone also call `ResourceIds.isValid`, which matches the whole value. The server
-still quotes identifiers in JQL/CQL and builds OpenSearch patterns in the form `p,p-*`.
+Identifiers of a resource type have the pattern that the server declares in `resourceTypes[].idPattern` (CC-056, CC-229); the
+patterns of the former built-in systems are data in `cedar/examples/systems/*/resource-types.json` and described in
+`cedar/entity-builder.md` section 12. Non-matching identifiers are rejected in tool arguments, in resources from the resolver
+and in the scope mapping (`scopePattern`). Patterns are matched against the whole value (`ResourceTypes.isValidId`): a Java JSON
+Schema validator that matches with `Matcher.find()` lets `$` accept a trailing `\n` (`"ABC\n"`), so a component must not rely on the
+JSON schema of a tool argument alone. The server still quotes identifiers in the query language of its system.
 
 ## MCP methods and JWT (C2, C11)
 
@@ -408,8 +353,9 @@ Rules for the JWT variants (CC-030, CC-033, CC-038, CC-069, CC-070):
 The service variant is used only without a session (statelessly): all requests within a session, including
 `notifications/initialized` and `notifications/cancelled`, use the user variant (CC-070).
 
-A `prv` of `00000000000000-0000000` means a gateway with no policy bundle loaded. It is not the revision of any bundle, and a
-receiver draws no conclusion about policy from it. A gateway without a bundle does not start (CC-068).
+A `prv` of `00000000000000-0000000` means a gateway without policy data. It is not the revision of any data, and a receiver draws no
+conclusion about policy from it. Since 7.0.0 `prv` is the revision of the policy data of the gateway (`GET /internal/v1/policy-data`,
+CC-234): a server that sees a newer one than it holds refreshes at once.
 
 C11: in the MCP 2026-07-28 era, the "elicitation URL" confirmation channel is an `InputRequiredResult` with an elicitation
 request in URL mode, and the retried `tools/call` carries `inputResponses`. Elicitation may only open `previewUrl`; the human
@@ -619,7 +565,7 @@ duplicates, an unencoded comma, for example `systems=gitlab,jira&access=read`. C
 reading. `400` (`{"error":"invalid_request","reason":"invalid_filter"}`, schema `EndpointFilterError`, no `WWW-Authenticate`) is
 given for: an unknown parameter (a typo `system=` must not silently drop the filter), a repeated parameter, an empty value or
 entry, `%` in the query (also an encoded comma `%2c`), a character outside `[A-Za-z0-9_,=&]`, an entry that does not match the
-syntax, `access` other than `read` and `write`, more than 5 `systems` entries, 100 `tools` or 100 `exclude` entries (after
+syntax, `access` other than `read` and `write`, more than 20 `systems` entries, 100 `tools` or 100 `exclude` entries (after
 removing duplicates), and a query longer than 512 bytes. The token is checked first (without a valid token the response is `401`
 with a challenge, also for a bad filter), then the filter. An entry that is syntactically correct but nonexistent, without
 permission, disabled, pending approval or from an omitted server is skipped just like a tool without access (a denied tool must
@@ -629,7 +575,7 @@ filter_scope` when the user has the right to the tool and the filter cuts it off
 (`not_granted` and so on).
 **Order on a call (CC-178):** first `mayCall`, that is the registry entry (in any state) and the Cedar decision at tool level (the
 same one that qualifies it for `tools/list`, without arguments), independent of server availability: a missing grant is
-`not_found_or_denied` with `not_granted`, and a prohibition (`forbid`, for example from an `overrides` bundle) is the same client
+`not_found_or_denied` with `not_granted`, and a prohibition (`forbid`, for example an emergency override) is the same client
 code with the audit reason `policy_forbid` (CC-198); the user's activity row in both cases is `denied_not_granted`, so that it does
 not reveal that the tool exists. Then the filter: a tool cut by the filter is `not_found_or_denied` with `filter_scope`, regardless
 of the state of the server, the tool and the account (the state does not leak). Only a tool that the filter leaves gets
@@ -711,17 +657,17 @@ gateway stays (pending confirmations, code traces, MCP sessions in Redis, the cr
 `capabilities.tools.listChanged: true` on `/mcp` and `/s/<serverId>/mcp`, in both forms of the protocol (with a session and
 stateless), and sends an empty `notifications/tools/list_changed` when the `tools/list` result of a given session changes.
 - **Triggers:** approval, disabling (also the kill switch, CC-194), enabling, a definition change and removal of a tool; a change
-  of the user's groups or of the policy bundle revision (detected on token refresh or on a request, so an idle session may get the
+  of the user's groups or of the policy data revision (detected on token refresh or on a request, so an idle session may get the
   notification late); a change of server availability. A change of the account connection is not a trigger (the list does not
   change, only the result of a call does).
 - **Rules:** at most one notification per session in a 1 s window (changes within the window merge into one, sent at the end of
   the window, also when the list returned to the previous one); a notification does not reach a session whose filter cuts out the
   changed tools; notifications are not audited; the delay from the event to the notification is at most 5 s, also with several
   instances (maintainer decision of 2026-11-03; registry and kill switch events reach all instances through Redis pub/sub or a
-  version counter). **A policy bundle change is an exception (CC-228, a weakening of the 5 s promise of 6.0.0 and 6.2.0 that a
-  consumer may have relied on):** an instance sends `list_changed` after it has loaded the new bundle itself, so the delay depends
-  on its bundle polling and there is no 5 s guarantee; the gateway does not wait for all instances, and the list from `tools/list`
-  is always computed from the bundle loaded on the instance that answers. Vectors: `endpoint-aggregate/list-changed-*` (the
+  version counter). **A change of the policy data (the scope mapping, an override, an approved policy fragment) is an exception (CC-228, a weakening of the 5 s promise of 6.0.0 and 6.2.0 that a
+  consumer may have relied on):** an instance sends `list_changed` after it has loaded the new policy data itself, so the delay depends
+  on its polling of the data and there is no 5 s guarantee; the gateway does not wait for all instances, and the list from `tools/list`
+  is always computed from the policy data loaded on the instance that answers. Vectors: `endpoint-aggregate/list-changed-*` (the
   decision about the list) and `list-changed-sequence-*` (the 1 s window).
 - **`GET` on `/mcp` and `/s/<serverId>/mcp`** with `Accept: text/event-stream` and `Mcp-Session-Id` opens a stream. The order of
   checks is as in CC-184 (token `401`/`503`, syntax `400`, `sub` of the session `404`, route `404`, filter `404` with
@@ -889,19 +835,16 @@ Free-form content that comes from a system (a page description, a comment, the b
 returns such content should declare an `outputSchema` with this shape, which then enters `definitionHash` (C6, CC-004). The
 gateway, clients and tests check one rule instead of a shape per server.
 
-## Service desk service account (C7)
+## Credential type in Cedar (CC-076, CC-136, CC-163, CC-164)
 
-For the `service-account` credential, the server evaluates every `ServiceDesk::*` resource against the queue the system returned
-at the time of the call (an issue moved to another queue has the new queue; the argument does not count); no queue grant in the
-policy bundle means a refusal (CC-076). The only source of queue grants is the bundle: the list of queues from the server
-configuration (`serverConfiguredQueues`, `MCP_SERVICEDESK_ALLOWED_QUEUES`) is not a grant and does not open a queue (CC-163). The
-rule works before Cedar and stays; the vectors are in `test-vectors/servicedesk-service-account/`, not in `policy-decisions/`.
-Since 4.0.0 the Cedar model carries the optional `context.credentialType` (CC-136) as a second line of defence: the gateway takes
-the type from its own system configuration (the same one CC-159 uses) and always supplies it before the Cedar decision, and the
-server from its own configuration. The example `cedar/examples/credential-type.cedar` is fail-closed (a missing attribute also
-gives a refusal) and forbids reading a queue or ticket outside the granted scope for a service account; the server rule of CC-076
-stays and does not depend on it. The example rules recognize a user credential by an allow list (`user-oauth`, `user-secret`,
-`token-exchange`); a missing or unknown type is treated like a service account, that is a refusal outside the grant (CC-164).
+Since 4.0.0 the Cedar model carries the optional `context.credentialType` (CC-136): the gateway takes the type from its own
+configuration of the server (the same one CC-159 uses) and always supplies it before the Cedar decision, and the server from its
+own configuration. A rule that limits a `service-account`, which sees everything in its system, is written in the policy of the
+server: the example is `test-vectors/fixtures/notes/credential-type.cedar` (it forbids a folder outside the user's grant unless the
+credential is a user credential, and is fail-closed: a missing or unknown type is treated like a service account, CC-164), with
+the decision vectors `policy-decisions/srv-notes-*`. The grants come only from the scope mapping, never from the server
+configuration (CC-163). Until 6.3.2 this was a fixed rule for the service desk with its own vectors
+(`servicedesk-service-account/`); a server author now writes it in the fragment.
 
 ## Registry and definition pinning (CC-097, CC-133)
 
@@ -989,9 +932,9 @@ and needs a new classification (decision of 2026-11-03). The call approves nothi
 classification (vectors `adapter-registry/`). A difference found when reading the `tools/list` of a running server in adapter mode
 gives a pending entry with `source: adapter` (never `server`), so `approve` requires a classification, and the previous one is not
 silently applied. The hash of an adapter entry is always computed from the manifest entry, without `risk` and `action`, also when
-the entry was enriched with the registry classification (a check of the held manifests at startup). The demo and the first
-deployment of the adapter concern the five known systems (`SystemId`, `ServerId`, the Cedar schema); a foreign server on a sixth
-system needs a major change (a new system), decided by a person after the adapter work is done. The vectors in
+the entry was enriched with the registry classification (a check of the held manifests at startup). A foreign server on any
+system id is added the same way as a server built on the starter: the system in the broker (`putAdminSystem`) and the server in the
+gateway (`createServer` with `adapter: true`), without a release of the contracts (since 7.0.0). The vectors in
 `registry-approval/` cover `classification_required`, `classification_not_allowed`, lowering a classification and an
 unclassified tool. Entries of such a manifest **have no** `risk` or `action` (the adapter does not classify; vectors
 `invalid-adapter-risk-claimed`, `invalid-adapter-action-claimed`) and have empty `resourceRefs` (policies work at tool level).
@@ -1163,14 +1106,10 @@ Descriptions in `resolveCredential` (C4):
 - **Telling keys apart.** `test-` keys (the published vector keys) need only `allowTestKeys`: this is how component unit tests work
   without a stack (CC-044). `dev-` keys need dev mode, that is both consents; in vectors the field `devstackProfile` sits next to
   `allowTestKeys`.
-- **`dev-` keys.** The CC-044 rule also covers keys whose `kid` starts with `dev-`: receivers (servers, broker, gateway, bundle
-  receivers) reject them with the reason `test_key_not_allowed` outside dev mode (`allowTestKeys` alone is not enough). The dev
-  stack generates its own keys with this prefix; the list of fingerprints of published test keys is unchanged. Limitation: for
-  bundles the rule reads the key name from the receiver's configuration, which the operator sets, so a dev key configured under
-  another name is not subject to it (in dev mode that does not matter); and dev mode also enables the published test keys. Vectors
+- **`dev-` keys.** The CC-044 rule also covers keys whose `kid` starts with `dev-`: receivers (servers, broker, gateway) reject them with the reason `test_key_not_allowed` outside dev mode (`allowTestKeys` alone is not enough). The dev
+  stack generates its own keys with this prefix; the list of fingerprints of published test keys is unchanged. Dev mode also enables the published test keys. Vectors
   (unpublished keys, not on the SPKI list, so only the prefix rejects them): `jwt/dev-kid-rejected-by-default`,
-  `jwt/valid-dev-kid-in-dev-mode`, `jwt/dev-kid-rejected-without-devstack-profile`, `bundles/dev-key-id-rejected-by-default`,
-  `bundles/dev-key-rejected-without-devstack-profile`, `bundles/dev-key-accepted-in-dev-mode`.
+  `jwt/valid-dev-kid-in-dev-mode`, `jwt/dev-kid-rejected-without-devstack-profile`.
 - **The manifest marker.** The optional `environment` (`production` | `dev`; missing means `production`, and the field does not enter
   `definitionHash`). A gateway in production mode rejects a manifest with `dev` (`422 manifest_rejected`, reason
   `environment_mismatch`). The check covers `PUT`, gateway startup and dev-mode bootstrap; in production mode there is no
@@ -1210,8 +1149,8 @@ must handle that.
 
 `pl.aiwcorpo.mcp:mcp-manifest` (CC-063, only jackson-databind, an API on JSON strings): `CanonicalJson.canonicalize(json)` (RFC
 8785), `DefinitionHash.compute(definition, entry, system, credential)`, `DefinitionHash.ofManifestTool(manifest, tool)`,
-`ManifestRules.violations(manifest)` (rule codes as in the section "Manifest semantic rules"). Validation of the manifest against
-the JSON Schema is done separately, before the rules.
+`PoliciesHash.of(policiesJson)` (the `policiesHash` of a manifest, 7.0.0), `ManifestRules.violations(manifest)` (rule codes as in
+the section "Manifest semantic rules"). Validation of the manifest against the JSON Schema is done separately, before the rules.
 
 ## Client generation
 
@@ -1296,16 +1235,18 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | Directory | Count | What it checks |
 | --- | --- | --- |
 | `jwt/` | 66 | the C2 receiver: 23 valid, 43 rejections (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
-| `manifests/` | 62 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
+| `manifests/` | 93 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 128 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
-| `bundles/` | 44 | C7 bundles: signature, test key, rollback, `overrides`, `latest.json`, tar safety, the removed `vsScopes` and `virtualServer` (CC-173), validation, scope mapping |
+| `policies-hash/` | 4 | `policiesHash` of the `policies` member of a manifest (RFC 8785 + SHA-256, CC-232) |
+| `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |
 | `return-paths/` | 35 | `returnPath` of C4/C12 (CC-032); since 3.0.0 without the prefixes `/api`, `/s`, `/v`, `/.well-known`, since 5.0.0 also `/mcp` (CC-169; `/f/` is free) and without `.`/`..` segments and the semicolon, which servers read as a path parameter (CC-099) |
-| `entity-builder/` | 42 | builder input (with the scope mapping) -> Cedar entities and context |
-| `policy-decisions/` | 79 | Cedar decisions on the policies from `cedar/examples`, including the scope hierarchy and search |
-| `result-filter/` | 7 | result filtering and query limiting (CC-036) |
-| `resource-ids/` | 10 | identifier patterns per system (CC-056), including OpenSearch without a leading dot (CC-074) |
+| `entity-builder/` | 54 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
+| `policy-decisions/` | 40 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
+| `result-filter/` | 5 | result filtering and query limiting (CC-036) |
+| `resource-checks/` | 5 | every value of every `resourceRef` evaluated (CC-061) |
+| `resource-ids/` | 14 | `idPattern` and `scopePattern` of the declarations, including the former built-in systems (CC-056, CC-074) |
 | `untrusted-text/` | 8 | the shape of `UntrustedText` (CC-072) |
 | `confirmation-binding/` | 77 | first call and retry with a code: the pending call, one `DESTRUCTIVE` operation, mapping of the broker result (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | the broker Authenticator: RFC 6238, the window, one-time use of a step, the 5/15 min block, the daily limit, registration, the `otpauth` URI (CC-092, CC-126); the seed comes from RFC 6238, NOT FOR PRODUCTION |
@@ -1317,7 +1258,6 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `catalog-actions/` | 19 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request (CC-083, CC-113) |
 | `query-rendering/` | 26 | server queries from a structure: JQL and CQL with hostile values, the OpenSearch index pattern and name resolution (CC-160) |
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
-| `servicedesk-service-account/` | 6 | the service account queue evaluated on the value from the system (CC-076) |
 | `endpoint-filter/` | 119 | the `/mcp` query filter (CC-170, CC-172, CC-178, CC-184): syntax and normalization, the `/s/` route, the visible set (also a risk outside the set), `tools/call` under a filter and with tool, server and account state, session binding and the order of checks, the `400` body; Java runs `parse`, `route`, `apply`, `call`, `session` |
 | `endpoint-aggregate/` | 79 | the `/mcp` list as an intersection, order, routing by prefix, server availability and the time limit (CC-180), pages and the `tools/list` cursor (CC-181), `list_changed`, `/v/` as `404` (CC-169, CC-177) |
 | `mcp-endpoint/` | 18 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182) |
@@ -1336,20 +1276,20 @@ Formats:
   "not a sidecar", CC-226), `request` (the JSON-RPC method and `toolName`, or an HTTP request), `expected` (`valid`,
   `httpStatus`, `reason`). An implementation must agree on `valid`/`httpStatus`; `reason` names the injected defect and helps
   with diagnosis.
-- **Bundles:** `latest` (the content of `latest.json`), `bundle`/`signature` (files in `bundles/files/`), `publicKey`, `channel`
-  (`main`/`overrides`), `loadedRevision`, `expected` (`accept`, `reason`).
+- **Cedar vectors (7.0.0):** `resourceTypes` (a list of files with the declarations), `scopeMapping` (a file), `input`, `expected`;
+  decisions also `policies` (`schema`: a fragment schema file or `null`, `policies`: directories with `.cedar` files); described in
+  `cedar/entity-builder.md`, section 10.
 - **The rest:** `description`, input data and `expected`; described in `cedar/entity-builder.md` (Cedar) and in the tests
   `test/*.test.mjs`, which are also the reference verifiers.
 
-## `common.schema.json` definitions as stable API (CC-079)
+## Identifiers in `common.schema.json` (CC-079, CC-229)
 
-Servers read these definitions from the contracts jar when a tool is registered (the starter: `@ArgumentLimits(contractPattern =
-"<name>")` takes `pattern` and `maxLength`): `JiraProjectKey`, `JiraIssueKey`, `ConfluenceSpaceKey`, `ConfluencePageId`,
-`GitLabGroupPath`, `GitLabProjectPath`, `OpenSearchIndexName`, `OpenSearchIndexPrefix`, `ServiceDeskQueueId`,
-`ServiceDeskTicketId`. Renaming or removing a definition from this list is a **major** change; a change of `pattern` or
-`maxLength` follows the usual SemVer table (tightening is major, relaxing is minor). The patterns of these definitions are the same
-ones `ResourceIds` uses in `mcp-cedar-entities` (the `resource-ids/` vectors check both, CC-056, CC-074). The test
-`test/schemas.test.mjs` makes sure the list is complete against `ResourceIdPatterns`.
+`SystemId` (`^[a-z][a-z0-9]{1,30}$`), `ServerId` (`^mcp-<SystemId>$`), `QualifiedToolName` (`<system>__<tool>`) and `ResourceType`
+(`^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$`, the namespace is the Cedar namespace of the server) are patterns, not
+enumerations; the four credential types stay an enumeration because they are protocol, not a list of systems. Until 6.3.2 this
+file also held the id patterns of the five systems (`JiraProjectKey` ... `ServiceDeskTicketId`, `ResourceIdPatterns`) for the
+`@ArgumentLimits(contractPattern = ...)` of the starter; they are gone, and a server takes the pattern of an argument from its own
+`resourceTypes[].idPattern`. `test/schemas.test.mjs` checks that no enumeration in the file names a system.
 
 ## Manifest semantic rules
 
@@ -1376,18 +1316,25 @@ Beyond the JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), checked by th
 9. `credential.acceptedTypes` contains either `service-account` alone or user types alone (`user-oauth`, `user-secret`,
    `token-exchange`); mixing is the rule `credential-types-not-mixed` (CC-168), and at registration `422 manifest_rejected` with
    the reason `credential_type_mismatch`.
+10. Every declaration in `resourceTypes` is consistent (`resource-types-valid`): `parent` is declared in the same namespace and goes
+    with `parentAttribute`, which is not in `attributes` and not `scopes`; `earlyScopeCheck` needs a `scopePattern`; the
+    `classification` attribute is one of `attributes`; `idPattern` and `scopePattern` are anchored (`^...$`, no top-level
+    alternation) and compile. All types are in one namespace, equal to `policies.namespace` (`resource-types-namespace`, CC-232).
+11. `policies.files` has unique names in ascending order (`policies-files-sorted-unique`) and `policiesHash` recomputed from
+    `policies` (RFC 8785 + SHA-256, `scripts/lib/definition-hash.mjs` `policiesHash`) equals the declared one
+    (`policies-hash-matches`). The schema requires `policies` and `policiesHash` together, for every manifest that is not an
+    adapter's, and forbids them (and `resourceTypes` entries) in an adapter manifest.
 
-## Requirements for receivers and policy bundles
+## Requirements for receivers
 
-- C2 receivers and bundle receivers reject keys with the identifier `test-*` and `dev-*` by default; `test-*` is enabled by an
+- C2 receivers reject keys with the identifier `test-*` and `dev-*` by default; `test-*` is enabled by an
   explicit setting (recommended name `allowTestKeys`) in tests and dev (CC-044), `dev-*` only by dev mode: the `devstack` profile
-  and that setting together (CC-137). `mcp-policy-bundle` recognizes the published test keys also by SPKI hash, regardless of the
-  identifier in configuration; C2 receivers should do the same with the keys from `test-vectors/keys/test-gateway-jwks.json`. The
-  vectors have `allowTestKeys: true` and separate rejection cases.
-- A policy bundle does not read `vsScopes` or `virtualServer` (they are not in the schema since 5.0.0, CC-173) and supplies the scope
-  mapping in `entities/static.json` (CC-037).
-- Servers with search and list tools limit the query and filter the results (CC-036, `cedar/entity-builder.md` section 8).
-- The bundle receiver: `mcp-policy-bundle` (CC-045).
+  and that setting together (CC-137). C2 receivers recognize the published test keys also by SPKI hash
+  (`PublishedTestKeys`, `security/published-test-keys.json`), regardless of the identifier in configuration, for the keys from
+  `test-vectors/keys/test-gateway-jwks.json`. The vectors have `allowTestKeys: true` and separate rejection cases.
+- Servers with search and list tools limit the query and filter the results (CC-036, `cedar/entity-builder.md` section 11).
+- A server validates its policy fragment at build and at start, and the gateway at registration, with the same rules
+  (`PolicyFragments.validateFragment`).
 
 ## Releasing
 
@@ -1450,12 +1397,12 @@ One-time setup (a human):
 ```
 
 - `npm test`: Spectral (`.spectral.yaml`, including example validation), the `dist/` build, Node tests: schema compilation (ajv,
-  strict, 2020-12), OpenAPI examples, JWT/manifest/hash/audit/error/bundle vectors, consistency of generated files (bundled
+  strict, 2020-12), OpenAPI examples, JWT/manifest/hash/audit/error vectors, consistency of generated files (bundled
   OpenAPI, WireMock, MSW, builder vectors), MSW.
-- `./mvnw verify` (Java 25): the Cedar schema in strict mode and the example policies (cedar-java 4.10.0, the `uber` classifier
-  with a native library for macOS/Linux x86_64 and aarch64), the entity builder, decision and result filter vectors run by
-  `mcp-cedar-entities` (with entity validation against the schema and a second pass without `forbid`), the bundle vectors through
-  `mcp-policy-bundle`, and building the jars.
+- `./mvnw verify` (Java 25): the Cedar base schema in strict mode, the platform policies, the example fragments and overrides
+  (cedar-java 4.10.0, the `uber` classifier with a native library for macOS/Linux x86_64 and aarch64), the entity builder, decision
+  and result filter vectors run by `mcp-cedar-entities` (with entity validation against the composed schema and a second pass
+  without `forbid`), the validation of fragments and overrides, the manifest rules and hashes in `mcp-manifest`, and building the jars.
 
 CI: releases are built and published by GitHub Actions (`.github/workflows/release.yml`). Everyday checks run in **GitLab CI**
 (`.gitlab-ci.yml`), because the company repositories and the GitLab MCP server are on GitLab; the jobs are `node`, `java`,
@@ -1467,10 +1414,10 @@ CI: releases are built and published by GitHub Actions (`.github/workflows/relea
 | Script | What it does |
 | --- | --- |
 | `npm run generate` | `openapi/bundled/` and the mocks from the OpenAPI |
-| `npm run generate:vectors` | deterministic vectors: manifests, hashes, audit, errors, bundles |
-| `npm run generate:cedar` | builder and decision vectors (`scripts/lib/entity-builder.mjs`) |
+| `npm run generate:vectors` | deterministic vectors: manifests, hashes, audit, errors |
+| `npm run generate:cedar` | builder, decision, result filter, resource check and id vectors (`scripts/lib/entity-builder.mjs`) |
 | `scripts/generate-jwt-vectors.mjs` | JWT vectors (ES256 signatures are random: running it changes every token) |
 | `scripts/generate-test-keys.mjs` | test keys; refuses to overwrite |
 
-After changing the OpenAPI, run `npm run generate`; after changing the example policies, run `npm run generate:vectors` (the bundles
-contain policies) and `npm run generate:cedar`.
+After changing the OpenAPI, run `npm run generate`; after changing the example fragments (`cedar/examples/systems/jira`,
+`test-vectors/fixtures/notes`), run `npm run generate:vectors` (the manifests carry them) and `npm run generate:cedar`.

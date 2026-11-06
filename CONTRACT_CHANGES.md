@@ -4197,3 +4197,80 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Rekomendacja:** przyjąć.
 - **Uwaga uczciwa (6.3.1):** to osłabienie obietnicy 5 s z 6.0.0 i 6.2.0, na której mógł się opierać ws-10; opisane w CHANGELOG, nie tylko jako doprecyzowanie.
 - **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0)
+
+## CC-229 | C5/C6/C12 | Identyfikatory systemu, serwera, narzędzia i typu zasobu jako wzorce
+
+- **Źródło:** decyzja właściciela platformy z 2026-11-06 ("dynamic servers", specyfikacja `dynamic-servers-spec.md`): żadna lista systemów, serwerów i typów zasobów w komponentach.
+- **Stan:** `SystemId`, `ServerId` i `ResourceType` w `schemas/common.schema.json` były wyliczeniami pięciu systemów, `QualifiedToolName` miał ich listę we wzorcu, `ScopeResourceType` i dziesięć definicji wzorców identyfikatorów z `ResourceIdPatterns` opisywało po jednym systemie; filtr `/mcp` ograniczał `systems` do 5 wpisów (liczba dawnych systemów).
+- **Zmiana:** `SystemId` `^[a-z][a-z0-9]{1,30}$`, `ServerId` `^mcp-<SystemId>$`, `QualifiedToolName` `^<system>__<tool>`, `ResourceType` `^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$`; nowa `ResourceScopeId`; usunięte `ScopeResourceType`, definicje wzorców i `ResourceIdPatterns` (wzorce są w `resourceTypes[].idPattern` manifestu, a ich dotychczasowa treść w `cedar/examples/systems/*/resource-types.json`); cztery typy poświadczeń zostają wyliczeniem; `MAX_SYSTEMS` filtra z 5 na 20.
+- **Zgodność wstecz (SemVer):** usunięcie definicji i zaostrzenie walidacji (`ServerId` bez `mcp-` i bez wielkich liter): major.
+- **Kogo dotyka:** wszystkie składniki (generowane typy, `@ArgumentLimits(contractPattern)` startera), mock MSW (zamiast listy systemów sprawdza wzorzec `SystemId`).
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-230 | C7 | Schemat bazowy Cedar bez systemów
+
+- **Źródło:** decyzja z 2026-11-06 (patrz CC-229).
+- **Stan:** `mcp.cedarschema` zawierał przestrzenie pięciu systemów, rekordy `Scopes` i `Refs` z polami po jednym na typ i akcje `read`, `update`, `delete`, `admin` z listą typów zasobów.
+- **Zmiana:** pusta przestrzeń: `ResourceScope`, `UserGroup`, `User { username, client, mfaAge?, scopes: Set<ResourceScope> }`, `Tool { server, name, risk, requiredGroup: UserGroup }`, `RequestContext { client, mfaAge?, credentialType?, refs?: Set<ResourceScope> }`, akcja `call`. `Tool.requiredGroup` to `mcp-<system>-read`, `-write` albo `-destructive` według ryzyka (konwencja C9, jedyne miejsce wyprowadzenia nazwy grupy); `User.scopes` to wszystkie zakresy zmapowanych grup (dokładne id); `context.refs` to id argumentów typów `earlyScopeCheck`, zawsze obecne na gatewayu. Akcje serwera i typy zasobów deklaruje fragment serwera w jego przestrzeni (CC-232).
+- **Zgodność wstecz (SemVer):** zmiana schematu, po której istniejące polityki i encje nie przechodzą walidacji: major.
+- **Kogo dotyka:** gateway, starter, serwery, `mcp-policies` (przestaje być potrzebne).
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-231 | C7 | Polityki platformy i klienci AI poza Cedar
+
+- **Źródło:** decyzja z 2026-11-06.
+- **Zmiana:** `cedar/platform/call-by-group.cedar` (`platform-call-by-group`: `permit`, gdy `principal in resource.requiredGroup`) i `call-write-outside-scope.cedar` (`platform-call-write-outside-scope`: `forbid`, gdy `risk != "READ_ONLY"`, jest `context.refs` i `principal.scopes` ich nie zawiera). Gateway decyduje o `call` na `Tool` wyłącznie nimi i nadpisaniami administratora. Lista dozwolonych klientów (`azp`, domyślnie `claude-code,claude-ai`, `MCP_ALLOWED_CLIENTS`) jest sprawdzana w kodzie przed Cedar przez gateway i starter (ten ostatni z danych polityki), nie polityką.
+- **Zgodność wstecz (SemVer):** polityki przechodzą z paczki do jara kontraktów: major (część CC-230).
+- **Kogo dotyka:** gateway, starter.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-232 | C6/C7 | Fragment serwera, deklaracje typów i `policiesHash` w manifeście
+
+- **Źródło:** decyzja z 2026-11-06 (zasady 2 i 4: polityki serwera leżą przy jego kodzie, są częścią manifestu i skrótu, który porównuje gateway).
+- **Zmiana:** `resourceTypes[]`: `type`, `attributes`, `idPattern` wymagane; `parent` z `parentAttribute`, `scopePattern`, `earlyScopeCheck`, `classification {attribute, kind, required}`. Człon `policies {namespace, schema, files[{name, text}]}` i `policiesHash` (RFC 8785 + SHA-256 członu `policies`) wymagane poza manifestem adaptera; w manifeście adaptera zakazane, tak samo jak `resourceTypes`. Reguły: `resource-types-valid`, `resource-types-namespace`, `policies-files-sorted-unique`, `policies-hash-matches`. Walidacja fragmentu (`PolicyFragments.validateFragment`, starter w buildzie i przy starcie, gateway przy rejestracji): złożenie ze schematem bazowym w trybie strict; dokładnie jedna przestrzeń; `scopes: Set<ResourceScope>` na każdym typie; akcje tylko `read`, `update`, `delete`, `admin`; polityki z unikalnym `@id`, bez szablonów, bez `Action::"call"` i `Tool`, bez ostrzeżeń "impossible"; typy encji fragmentu równe zadeklarowanym. Zmiana `policiesHash` wdrożonego serwera to `pending_approval` jego narzędzi do zatwierdzenia przez administratora.
+- **Sprawdzone w teście (zlecenie):** cedar-java 4.10.0 rozwiązuje typy bazowe z pustej przestrzeni bez kwalifikacji w przestrzeni serwera i przyjmuje akcje tej przestrzeni; kwalifikacja nie jest potrzebna. Sam fragment (bez bazy) nie daje się sparsować do JSON, więc reguły czytamy ze złożenia.
+- **Odstępstwa od specyfikacji:** (1) `policiesHash` pokrywa człon `policies`, jak w specyfikacji; deklaracje `resourceTypes` (`idPattern`, `earlyScopeCheck`) nie wchodzą do żadnego skrótu, więc ich zmiana nie wstrzymuje serwera; do rozważenia przez właściciela, czy gateway ma porównywać także `resourceTypes` (rekomendacja: tak). (2) Pliki w `policies.files` muszą być uporządkowane po nazwie, żeby skrót nie zależał od budowy.
+- **Zgodność wstecz (SemVer):** wymagane nowe pola, zaostrzona walidacja: major.
+- **Kogo dotyka:** starter (generacja manifestu), gateway (rejestracja, zatwierdzenie), serwery.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-233 | C7/Java | Entity builder sterowany deklaracjami
+
+- **Źródło:** decyzja z 2026-11-06.
+- **Zmiana:** `EntityBuilder(ResourceTypes, ScopeMapping)`; `ResourceTypes`, `ResourceTypeDeclaration`, `Scopes`, `PolicyFragments`; `ScopeMapping.of`, `ofRegistered`, `fromJson`; `ResolvedResource.scopes`; zasób serwera ma `<Przestrzeń>::Action::"<action>"`, `scopes` od resolvera sprawdzone względem `scopePattern`, tylko zadeklarowane atrybuty, rodzica zadeklarowanego typu; klasyfikacja zadeklarowanego atrybutu normalizowana jak dotąd (CC-067). Wyprowadzenia specyficzne dla systemu (prefiksy ścieżek GitLaba, prefiksy po myślnikach OpenSearch, przodkowie stron Confluence, dziedziczona klasyfikacja GitLaba) przechodzą do resolvera serwera; starter daje pomocniki. Usunięte `ResourceIds`, `ResourceScopes`, `ScopeGroups`. `cedar/entity-builder.md` i wektory przepisane wokół fragmentów (Jira jako wzór z rodzicem i klasyfikacją, neutralny `Notes`).
+- **Zgodność wstecz (SemVer):** zmiana API biblioteki i oczekiwań wektorów: major.
+- **Kogo dotyka:** gateway, starter, serwery (resolvery), mcp-e2e.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-234 | C5/C7/C12 | Dane polityki, administracja serwerami, mapowaniem zakresów i nadpisaniami
+
+- **Źródło:** decyzja z 2026-11-06 (zasada 5: mapowanie i nadpisania to dane administratora serwowane serwerom po mTLS, bez podpisanych paczek).
+- **Zmiana:** C5: `GET /internal/v1/policy-data` (CN certyfikatu = `serverId` zarejestrowanego serwera, `ETag`/`If-None-Match`; `{revision, scopeMapping, allowedClients, overrides}`), `GET`/`POST /admin/v1/servers`, `GET`/`PATCH`/`DELETE /admin/v1/servers/{serverId}`, `GET`/`PUT /admin/v1/policy/scope-mapping` (cały dokument, `If-Match`), `GET /admin/v1/policy/overrides` i `GET`/`PUT`/`DELETE .../overrides/{id}` (jedna polityka `forbid`, cel `gateway`, `all-servers` albo `serverId`, walidacja względem schematu bazowego i fragmentu celu), zatwierdzenie `policiesHash` (`GET .../policies/pending`, `POST .../policies/approve`) obok zatwierdzania narzędzi. `prv` w wewnętrznym JWT to rewizja danych polityki. C12: odpowiedniki pod `/api/v1/admin/...`.
+- **Odstępstwa od specyfikacji:** dodane `GET /admin/v1/policy/overrides` (lista) i `GET .../policies/pending` (różnica do przeglądu); `PUT` nadpisania ma id w ścieżce, które staje się id polityki; ETag dokumentu mapowania jest nieprzezroczysty, a `ETag` danych polityki to cytowana rewizja.
+- **Zgodność wstecz (SemVer):** nowe operacje: minor; razem z resztą wydania: major.
+- **Kogo dotyka:** gateway, starter (pobieranie danych), portal, mcp-e2e.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-235 | C4/C12 | Administracja systemami brokera
+
+- **Źródło:** decyzja z 2026-11-06.
+- **Zmiana:** C4: `GET /v1/admin/systems`, `PUT`/`DELETE /v1/admin/systems/{system}`: `baseUrl`, `adapter` (`atlassian-dc`, `gitlab`, `opensearch`, `generic-rest`), `supportedTypes`, `defaultType`, `secretScheme`, klient OAuth (`clientSecret` tylko do zapisu, widok niesie `clientSecretSet`). Ta sama autoryzacja co C5: certyfikat BFF i token administratora. `GET /v1/systems` bez zmian. C12: `/api/v1/admin/systems`.
+- **Zgodność wstecz (SemVer):** nowe operacje: minor; razem z resztą wydania: major.
+- **Kogo dotyka:** broker, portal.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)
+
+## CC-236 | C7 | Koniec podpisanych paczek polityk
+
+- **Źródło:** decyzja z 2026-11-06 (zasada 5: bez podpisanych paczek, serwera polityk, kluczy Ed25519 polityk i ustawień `MCP_POLICY_*`).
+- **Zmiana:** usunięte moduł `mcp-policy-bundle` (odbiornik, `PolicyStore`, `PolicyLintCli`), schematy `policy-bundle-latest` i `policy-bundle-manifest`, wektory `bundles/`, `policy-store/` i `servicedesk-service-account/` (reguła kolejek konta serwisowego jest politykami serwera, wektory `policy-decisions/srv-notes-*`), klucze testowe `test-policy-bundle`, `test-policy-overrides`, `dev-policy-bundle.pub.pem`. Wykrywanie polityk "impossible" z `PolicyLint` przeszło do `PolicyFragments`. Jeśli kiedyś wróci podpisana dystrybucja polityk, wróci jako nowy CC.
+- **Zgodność wstecz (SemVer):** usunięcie artefaktu, schematów i wektorów: major.
+- **Kogo dotyka:** gateway, starter, mcp-policies.
+- **Rekomendacja:** przyjąć.
+- **Status:** accepted (decyzja: człowiek, 2026-11-06, wydanie 7.0.0)

@@ -5,6 +5,78 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
+## 7.0.0 - 2026-11-06
+
+Serwery, systemy i typy zasobów przestają być listą w kontraktach: są danymi uruchomieniowymi (rejestr gatewaya, systemy brokera,
+deklaracje w manifeście serwera). Decyzja właściciela platformy z 2026-11-06 ("dynamic servers"), CC-229 ... CC-236. Wydanie **major**
+według tabeli SemVer, bez wyjątków. Bajty `cedar/mcp.cedarschema` są nowe (SHA-256 `48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5`).
+
+**Identyfikatory (CC-229).** `SystemId` to wzorzec `^[a-z][a-z0-9]{1,30}$`, `ServerId` to `^mcp-<SystemId>$`, `QualifiedToolName` ma ten sam wzorzec
+systemu, `ResourceType` to `^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$`; wszystkie cztery były wyliczeniami pięciu systemów. Usunięte z
+`common.schema.json`: `ScopeResourceType`, `JiraProjectKey`, `JiraIssueKey`, `ConfluenceSpaceKey`, `ConfluencePageId`, `GitLabGroupPath`,
+`GitLabProjectPath`, `OpenSearchIndexName`, `OpenSearchIndexPrefix`, `ServiceDeskQueueId`, `ServiceDeskTicketId`, `ResourceIdPatterns` (wzorce to
+teraz `resourceTypes[].idPattern` i `scopePattern` w manifeście; ich dotychczasowa treść jest w `cedar/examples/systems/*/resource-types.json`).
+Nowa definicja `ResourceScopeId`. Wyliczenie czterech typów poświadczeń zostaje (to protokół, nie lista systemów). Limit wpisów `systems` w filtrze
+`/mcp` rośnie z 5 do 20 (`EndpointFilter.MAX_SYSTEMS`), bo 5 było liczbą dawnych systemów; wektory `endpoint-filter/parse-systems-at-limit` i `-over-limit`.
+
+**Schemat bazowy Cedar (CC-230).** `cedar/mcp.cedarschema` (pusta przestrzeń) zawiera tylko `ResourceScope`, `UserGroup`, `User`, `Tool`, `RequestContext`
+i akcję `call`. Znikają przestrzenie `Jira`, `Confluence`, `GitLab`, `OpenSearch`, `ServiceDesk`, rekordy `Scopes` i `Refs` oraz akcje `read`, `update`,
+`delete`, `admin` w pustej przestrzeni. `User.scopes` to jeden płaski zbiór `ResourceScope` (było: rekord z pięcioma polami), `Tool` ma `requiredGroup:
+UserGroup` (`mcp-<system>-read` dla `READ_ONLY`, `-write` dla `UPDATE`, `-destructive` dla `DESTRUCTIVE`), `context.refs` to zbiór `ResourceScope` z
+argumentów typów `earlyScopeCheck` (było: rekord pól `jiraProject`, `jiraIssue` ...).
+
+**Polityki platformy (CC-231).** Nowy katalog `cedar/platform/` (w jarze i w npm): `platform-call-by-group` i `platform-call-write-outside-scope`. Gateway
+decyduje o `call` tylko nimi i nadpisaniami administratora; `McpCedarSchema.platformPolicies()`. Dozwoleni klienci AI (`azp`) przestają być polityką Cedar:
+lista w konfiguracji gatewaya (`MCP_ALLOWED_CLIENTS`), sprawdzana w kodzie przed Cedar przez gateway i starter. `cedar/examples/` zmienione: usunięte
+`call-tool.cedar`, `read.cedar`, `update.cedar`, `forbid-restricted.cedar`, `credential-type.cedar`, `static-entities.json`; `step-up.cedar` w
+`examples/overrides/`; nowe wzory serwerów `examples/systems/{jira,confluence,gitlab,opensearch,servicedesk}/` (schemat i `resource-types.json`; Jira ma też
+polityki).
+
+**Manifest i fragment serwera (CC-232).** `system` to `SystemId`. `resourceTypes[]` wymaga `type`, `attributes`, `idPattern` i przyjmuje `parent`, `parentAttribute`
+(z `parent`), `scopePattern`, `earlyScopeCheck`, `classification {attribute, kind, required}`; atrybut rodzica nie jest już w `attributes`. Nowe człony
+`policies {namespace, schema, files[{name, text}]}` i `policiesHash` (RFC 8785 + SHA-256 członu `policies`): wymagane we wszystkich manifestach poza
+manifestem adaptera, zakazane w manifeście adaptera, który nie deklaruje też `resourceTypes`. Nowe reguły semantyczne `resource-types-valid`,
+`resource-types-namespace`, `policies-files-sorted-unique`, `policies-hash-matches`. Walidacja fragmentu (`PolicyFragments.validateFragment`): schemat bazowy i
+fragment składają się w trybie strict, jedna przestrzeń, `scopes` na każdym typie, akcje `read`/`update`/`delete`/`admin`, bez `Action::"call"` i `Tool`, bez
+polityk "impossible", deklaracje zgodne ze schematem. Rozpoznawanie nazw w cedar-java 4.10.0 sprawdzone: typy bazowe w przestrzeni serwera są bez
+kwalifikacji, akcje `<Przestrzeń>::Action::"read"` działają (test `CedarSchemaTest`). Wektory: `manifests/` (93), `policies-hash/` (4).
+
+**Entity builder (CC-233).** Dane z deklaracji, żadnych nazw typów w kodzie. Zmiany API `mcp-cedar-entities`: nowe `ResourceTypeDeclaration`, `ResourceTypes`
+(`of`, `fromJson`, `union`), `Scopes` (`id`, `pathPrefixes`, `dashPrefixes`), `PolicyFragments`; `EntityBuilder(ResourceTypes, ScopeMapping)` zamiast
+`EntityBuilder()` i `EntityBuilder(ScopeMapping)`; `EntityBuilder.resourceTypes()`; `ScopeMapping.of(types, map)`, `ofRegistered`, `fromJson` zamiast
+`fromStaticEntities`; `ResolvedResource.scopes()` i `withScopes` (nowy składnik rekordu); `ToolDescriptor.requiredGroup()`; `McpCedarSchema.platformPolicies()`.
+Usunięte: `ResourceIds`, `ResourceScopes`, `ScopeGroups`. Zmiany zachowania: akcja serwera to `<Przestrzeń typu zasobu>::Action::"<action>"`; zasób niesie
+`scopes` podane przez resolver (builder sprawdza je względem `scopePattern`), nie wylicza ich; atrybut spoza `attributes` (także `scopes` i atrybut rodzica) to
+`internal_error`; rodzic musi być typu zadeklarowanego; `inheritedClassification` GitLaba i wyprowadzenia zakresów (prefiksy ścieżek, prefiksy po myślnikach,
+przodkowie stron) liczy serwer, nie builder; `ancestorClassifications` i `ancestorIds` nie są już znaczącymi wejściami buildera. Wektory przepisane wokół
+fragmentów: `entity-builder/` (54), `policy-decisions/` (40), `result-filter/` (5), `resource-checks/` (5), `resource-ids/` (14); neutralny fixture `Notes`
+w `test-vectors/fixtures/`. `cedar/entity-builder.md` przepisany.
+
+**Dane polityki i API administratora (CC-234).** Gateway (C5): `GET /internal/v1/policy-data` (certyfikat serwera, `ETag` i `If-None-Match`), `GET`, `POST
+/admin/v1/servers`, `GET`, `PATCH`, `DELETE /admin/v1/servers/{serverId}`, `GET`, `PUT /admin/v1/policy/scope-mapping` (`ETag`, `If-Match`), `GET /admin/v1/policy/overrides`,
+`GET`, `PUT`, `DELETE /admin/v1/policy/overrides/{id}`, `GET .../registry/servers/{serverId}/policies/pending`, `POST .../policies/approve`; `RegistryServer` ma
+`policiesStatus`, `policiesHash`, `pendingPoliciesHash`; nowe powody `manifest_rejected`: `policies_invalid`, `resource_types_invalid`, `namespace_conflict`.
+Odbicia w BFF (C12): `/api/v1/admin/servers`, `/admin/policy/*`, `/admin/registry/servers/{serverId}/policies/*`, `/admin/systems`.
+
+**Systemy brokera (CC-235).** C4: `GET /v1/admin/systems`, `PUT`, `DELETE /v1/admin/systems/{system}` (baseUrl, adapter `atlassian-dc`, `gitlab`, `opensearch`,
+`generic-rest`, supportedTypes, defaultType, secretScheme, klient OAuth z sekretem tylko do zapisu). `GET /v1/systems` bez zmian.
+
+**Bez paczek polityk (CC-236).** Usunięte: moduł `mcp-policy-bundle` (artefakt `pl.aiwcorpo.mcp:mcp-policy-bundle` nie powstaje w 7.0.0), schematy `policy-bundle-latest` i
+`policy-bundle-manifest`, katalogi wektorów `bundles/`, `policy-store/` i `servicedesk-service-account/`, klucze testowe `test-policy-bundle`, `test-policy-overrides` i
+`dev-policy-bundle.pub.pem` (z listy `published-test-keys.json` i `PublishedTestKeys`), generator tar. Wektor `tool-errors/upstream-unavailable-policy-bundle` nazywa
+się `upstream-unavailable-policy-data`. Opisy `PolicyRevision` i `prv` mówią o danych polityki gatewaya.
+
+**Migracja per składnik.**
+- *gateway:* rejestr serwerów w PostgreSQL i API `/admin/v1/servers`; `ResourceTypes.union` z zarejestrowanych manifestów, `ScopeMapping.ofRegistered`; `EntityBuilder(types, mapping)`; decyzja `call` z
+  `McpCedarSchema.platformPolicies()` i nadpisań; `GET /internal/v1/policy-data` i `prv`; zatwierdzenie `policiesHash`; walidacja fragmentu przy rejestracji; `MCP_ALLOWED_CLIENTS` w kodzie.
+- *starter:* walidacja fragmentu w buildzie i przy starcie (`PolicyFragments.validateFragment`), `policies` i `policiesHash` w manifeście, `resourceTypes` z `idPattern`; `Scopes.pathPrefixes` i `Scopes.dashPrefixes` (do zawinięcia
+  w jego `Scopes`); `@ArgumentLimits` bierze wzorzec z deklaracji; dane polityki z gatewaya zamiast paczki.
+- *broker:* administracja systemami (`/v1/admin/systems`), sekret klienta w OpenBao.
+- *portal:* ekrany serwerów, mapowania, nadpisań, zatwierdzenia polityk i systemów; mock MSW nie zna listy systemów (wzorzec `SystemId`).
+- *serwery:* fragment w `src/main/resources/mcp/policies/` z jedną przestrzenią (wzór: `cedar/examples/systems/jira`), akcje `<Przestrzeń>::Action::"read"`, deklaracje typów, wyprowadzenie `scopes`
+  i klasyfikacji (w tym `inheritedClassification` GitLaba i drzewo stron Confluence) w resolverze.
+- *mcp-policies:* repozytorium przestaje być potrzebne (polityki serwerów leżą przy kodzie, polityki gatewaya to `cedar/platform`).
+
 ## 6.3.2 - 2026-11-03
 
 Poprawki po drugim przeglądzie (6.3.1 nie było wypchnięte ani wdrożone). Bajty `cedar/mcp.cedarschema` bez zmian. Zgoda człowieka na wyjątek SemVer obejmuje cały pakiet poprawek 6.3.x po przeglądzie (6.3.0, 6.3.1, 6.3.2); zaostrzenia ponad CC-226 i CC-227, wszystkie bez konsumenta, bo Basic dla `user-secret` i kanał adaptera nie działają jeszcze nigdzie: węższy wzorzec `username`, `400` przy braku `username` dla systemu `Basic`, unieważnienie zapisanych klasyfikacji zapisu adaptera, odmowa sidecara bez klasyfikacji, zmienione wejście wektora `broker-authentication-denied-replay-store-unavailable`.
