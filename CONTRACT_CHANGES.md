@@ -4325,3 +4325,10 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **C7:** rewizja danych polityki to `max(poprzednia + 1, bieżący czas w ms)`; opisano, że brak podpisanych paczek odbiera kontrolę dwóch stron, a zastępują ją świeże MFA, audyt i zatwierdzenie skrótu; zalecenie operacyjne przeglądu dwóch osób dla mapowania zakresów i zatwierdzeń.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-241 | C4/C5/C12 | Świeże MFA wymaga dowodu MFA, nie samego `auth_time`
+
+- **Źródło:** decyzja koordynatora z 2026-11-06 (poprawka CC-238 C2, CC-239, CC-240).
+- **Zmiana:** świeże MFA tokenu administratora (gateway i broker, każdy sprawdza sam) to `auth_time` nie starsze niż 300 s ORAZ dowód MFA: `acr` z konfigurowanej listy poziomów MFA albo `amr` zawierające `mfa`, `otp`, `hwk` lub `totp` (lista konfigurowana u odbiorcy); token bez żadnego z dowodów nie jest świeży (`401 step_up_required`). Opis `bffUserToken` (C4, C5) wymaga `auth_time`, `acr` i `amr` od mappera IdP. `userSecretScheme` traci wartość `Token`, której broker nie obsługuje (zostają `Bearer` i `Basic`; domyślnie `Basic`, gdy `secretScheme` to `Basic`, inaczej `Bearer`). Opis `token-exchange`: endpoint tokenu dostawcy tożsamości broker bierze z własnej konfiguracji, nigdy z API.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

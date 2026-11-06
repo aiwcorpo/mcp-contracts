@@ -1947,7 +1947,7 @@ paths:
       operationId: updateAdminServer
       summary: Change the connection settings of a server (proxy to C5; enabled false takes it out of service).
       description: |
-        Every change needs a fresh MFA (`step_up_required` otherwise) except a body that only sets `enabled: false`; the gateway checks it too.
+        Every change needs a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise) except a body that only sets `enabled: false`; the gateway checks it too.
         `tlsName` and `adapter` cannot be changed.
       security:
         - session: []
@@ -2657,7 +2657,7 @@ paths:
       operationId: deleteAdminSystem
       summary: Remove a system from the credential broker (proxy to C4), with its connections.
       description: |
-        Needs `If-Match` (the ETag of the system that was edited) and a fresh MFA (`step_up_required` otherwise); the broker checks the MFA
+        Needs `If-Match` (the ETag of the system that was edited) and a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise); the broker checks the MFA
         freshness of the token itself as well. Deleting an id that has no system is `204` and deletes no secret. Nothing is sent to
         the backend.
       security:
@@ -4493,7 +4493,6 @@ components:
       enum:
         - Bearer
         - Basic
-        - Token
     CredentialScheme:
       description: Scheme of the X-MCP-Credential header value (C3).
       type: string

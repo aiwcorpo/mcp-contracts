@@ -39,7 +39,7 @@ info:
     be reviewed by a second person. The revision of the policy data is `max(previous + 1, current epoch milliseconds)`, so a restore of
     the database never lowers it below what servers already hold.
 
-    **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds, otherwise `401 step_up_required`
+    **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds AND proof of MFA in the token: `acr` in a list of MFA levels or `amr` containing one of `mfa`, `otp`, `hwk`, `totp` (both lists are configuration of the receiver); `auth_time` alone is not enough, because a fresh password-only login passes it. A token without either proof is not fresh, and the answer is `401 step_up_required`
     (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
     change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `createServer`, `deleteServer` and
     `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check).
@@ -2364,7 +2364,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin. It carries `auth_time` (OIDC claim, seconds since the epoch of the last authentication of the user, which a step-up login renews); the gateway needs it for the freshness check of the operations that widen access (see the description of this API). The IdP mapper that issues the exchanged token must copy `auth_time`; a token without it is treated as not fresh.
+      description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin. It carries `auth_time` (OIDC claim, seconds since the epoch of the last authentication of the user, which a step-up login renews) and the proof of MFA, `acr` and/or `amr`; the gateway needs it for the freshness check of the operations that widen access (see the description of this API). The IdP mapper that issues the exchanged token must copy `auth_time`, `acr` and `amr`; a token without `auth_time`, or without an `acr` or `amr` that proves MFA, is not fresh (`401 step_up_required`).
   parameters:
     IfMatchOptional:
       name: If-Match
@@ -2432,7 +2432,7 @@ components:
         default: 50
   responses:
     StepUpOrUnauthenticated:
-      description: Missing or invalid token or client certificate, or the token has no `auth_time` within 300 seconds (`step_up_required`).
+      description: Missing or invalid token or client certificate, or the token is not fresh, see Fresh MFA (`step_up_required`).
       content:
         application/json:
           schema:
