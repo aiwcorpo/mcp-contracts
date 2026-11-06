@@ -1,0 +1,28 @@
+// Neutral fixture fragment used by the contract vectors: a notes system that no production server implements. It has a flat
+// type that can be granted and checked early (Notebook), a child with a parent (Note) and a path-shaped type whose scopes
+// are prefixes of its path (Folder).
+
+namespace Notes {
+  entity Notebook {
+    name: String,
+    labels: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+  entity Note in [Notebook] {
+    title: String,
+    pinned?: Bool,
+    notebook: Notebook,
+    scopes: Set<ResourceScope>,
+  };
+  entity Folder {
+    path: String,
+    classification?: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+
+  action "read", "update", "delete", "admin" appliesTo {
+    principal: [User],
+    resource: [Notebook, Note, Folder],
+    context: RequestContext,
+  };
+}

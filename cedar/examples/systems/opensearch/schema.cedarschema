@@ -1,0 +1,16 @@
+// Reference fragment, not a policy of the platform: the schema of an OpenSearch server in the form the platform requires.
+
+namespace OpenSearch {
+  // tags: required classification, from the index metadata or the server configuration (CC-149).
+  entity Index {
+    name: String,
+    tags: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+
+  action "read", "update", "delete", "admin" appliesTo {
+    principal: [User],
+    resource: [Index],
+    context: RequestContext,
+  };
+}

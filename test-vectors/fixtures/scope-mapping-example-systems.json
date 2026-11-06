@@ -1,0 +1,7 @@
+[
+  {"group": "mcp-confluence-space-ENG", "scopes": ["Confluence::Space/ENG"]},
+  {"group": "mcp-confluence-handbook-editors", "scopes": ["Confluence::Page/1000"]},
+  {"group": "mcp-gitlab-grp-team-a", "scopes": ["GitLab::Group/team-a"]},
+  {"group": "mcp-opensearch-idx-logs-team-a", "scopes": ["OpenSearch::Index/logs-team-a"]},
+  {"group": "mcp-servicedesk-queue-42", "scopes": ["ServiceDesk::Queue/42"]}
+]

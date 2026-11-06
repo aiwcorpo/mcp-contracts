@@ -1,0 +1,28 @@
+// Reference fragment, not a policy of the platform: the schema of a GitLab server in the form the platform requires.
+
+namespace GitLab {
+  // classification: topics of the group or project itself, normalized by the builder; optional (CC-057).
+  // inheritedClassification (CC-129): union of the normalized classification of ALL ancestor groups. Topics are not
+  // inherited in GitLab, so a restricted group protects its subtree only through this attribute. The server computes it
+  // from the ancestor groups it resolved (and normalizes it like classification: trim, ASCII lower case) and refuses a
+  // resource when the ancestor data is incomplete (fail-closed). The builder does not know it.
+  entity Group {
+    path: String,
+    classification?: Set<String>,
+    inheritedClassification: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+  entity Project in [Group] {
+    path: String,
+    group: Group,
+    classification?: Set<String>,
+    inheritedClassification: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+
+  action "read", "update", "delete", "admin" appliesTo {
+    principal: [User],
+    resource: [Group, Project],
+    context: RequestContext,
+  };
+}

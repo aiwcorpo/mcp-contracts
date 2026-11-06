@@ -1,169 +1,59 @@
-// Cedar model of the MCP platform (contract C7), mcp-contracts 5.0.0 (context.virtualServer and context.vsScopes removed, CC-173;
-// 4.0.0 added context.credentialType; 3.1.0 added inheritedClassification on GitLab::Group and GitLab::Project).
+// Cedar base schema of the MCP platform (contract C7), mcp-contracts 7.0.0, empty namespace.
 //
-// Validated in strict mode. Cedar has no null: anything that may be missing is an optional attribute
-// and policies must guard it with `has`.
+// It names no system, server or resource type. Each MCP server brings a fragment with exactly one namespace of its
+// own (its resource types and its actions); the gateway and the starter compose this file with the fragment text
+// (see cedar/entity-builder.md, section "Fragment serwera") and validate in strict mode. Cedar has no null: anything
+// that may be missing is an optional attribute and policies must guard it with `has`.
 //
-// Two evaluations use this schema (C7):
-//   gateway: principal User, Action::"call", resource Tool, context built from the tool's resourceRefs
-//   server:  principal User, Action::"read" | "update" | "delete" | "admin", resource = resolved system entity
-// How principal.scopes, context.refs and resource.scopes are derived is specified in
-// cedar/entity-builder.md. Every system resource carries `scopes`: the ResourceScope ids of itself and all
-// its containers (project of an issue, every ancestor group path, every dash prefix of an index name, space
-// and ancestor pages of a page), so `principal in resource.scopes` covers subgroups and page trees.
+// Two evaluations use the composed schema (C7):
+//   gateway: principal User, Action::"call", resource Tool, policies of cedar/platform plus emergency overrides
+//   server:  principal User, <Ns>::Action::"read" | "update" | "delete" | "admin", resource = a type of the server
+//            namespace, the server's own policies only
+// How User.scopes, Tool.requiredGroup, context.refs and the scopes of a server resource are derived is specified in
+// cedar/entity-builder.md.
 
-// A grantable resource scope (CC-037). Id "<ResourceType>/<id>", e.g. "Jira::Project/ABC",
-// "GitLab::Group/team-a", "OpenSearch::Index/logs-team-a", "Confluence::Page/1234". Which group grants which
-// scope is DATA: the main policy bundle's entities/static.json lists UserGroup entities whose parents are
-// ResourceScope entities. A group without such an entry grants nothing (fail-closed).
+// A grantable resource scope. Id "<Namespace>::<Type>/<id>", e.g. "Jira::Project/ABC". Which group grants which scope is
+// administrator data (the scope mapping served by the gateway); a group without an entry grants nothing (fail-closed).
 entity ResourceScope;
 
-// Scopes granted to the user, from the bundle's mapping (see above). Always present; empty = nothing granted.
-// Only exact ids: the gateway uses it for early checks of flat types (Jira projects, Confluence spaces,
-// service desk queues). Hierarchical checks use `principal in resource.scopes` on the server.
-type Scopes = {
-  jiraProjects: Set<ResourceScope>,
-  confluenceSpaces: Set<ResourceScope>,
-  gitlabGroups: Set<ResourceScope>,
-  opensearchIndexPrefixes: Set<ResourceScope>,
-  servicedeskQueues: Set<ResourceScope>,
-};
-
-// Identifiers taken only from tool arguments declared in resourceRefs (C6). A field is present exactly
-// when the tool declares a resourceRef of that type. Ids of grantable flat types become ResourceScope
-// entities so they compare with Scopes; the others stay plain strings.
-type Refs = {
-  jiraProject?: Set<ResourceScope>,
-  jiraIssue?: Set<String>,
-  confluenceSpace?: Set<ResourceScope>,
-  confluencePage?: Set<String>,
-  gitlabGroup?: Set<ResourceScope>,
-  gitlabProject?: Set<String>,
-  opensearchIndex?: Set<String>,
-  servicedeskQueue?: Set<ResourceScope>,
-  servicedeskTicket?: Set<String>,
-};
-
-// credentialType (CC-136): the type of the credential used for the call (user-oauth, user-secret, token-exchange or
-// service-account). The gateway takes it from its own configuration of the system and always gives it before the decision;
-// a server takes it from its configuration too. It is optional in the model so that a caller of the builder that does not
-// know it can still build a request, and policies guard it with `has`; a rule that protects something should be fail-closed
-// when it is missing (cedar/examples/credential-type.cedar).
-type RequestContext = {
-  client: String,
-  mfaAge?: Long,
-  credentialType?: String,
-  refs?: Refs,
-};
-
-// Called UserGroup, not Group: Cedar 4 rejects a top-level Group next to GitLab::Group (shadowing). See CC-001.
-// Parents (ResourceScope) come only from entities/static.json of the main bundle.
+// Called UserGroup, not Group: Cedar 4 rejects a top-level Group next to a namespaced type of the same name (CC-001).
+// Parents (ResourceScope) come from the scope mapping.
 entity UserGroup in [ResourceScope];
 
-// Entity id = `sub` from C1/C2. Parents = the user's mcp-* groups.
+// Entity id = `sub` from C1/C2. Parents = the user's mcp-* groups. `scopes` is one flat set of every ResourceScope the
+// user's groups are mapped to (exact ids, for the early check at the gateway); hierarchical checks use
+// `principal in resource.scopes` on the server.
 entity User in [UserGroup] {
   username: String,
   client: String,
   mfaAge?: Long,
-  scopes: Scopes,
+  scopes: Set<ResourceScope>,
 };
 
-// Entity id = client-visible tool name <system>__<tool> (C5).
+// Entity id = client-visible tool name <system>__<tool> (C5). requiredGroup is mcp-<system>-read for READ_ONLY,
+// mcp-<system>-write for UPDATE and mcp-<system>-destructive for DESTRUCTIVE (C9): the only place where a group name is
+// derived.
 entity Tool {
   server: String,
   name: String,
   risk: String,
+  requiredGroup: UserGroup,
 };
 
-namespace Jira {
-  entity Project {
-    key: String,
-    // Classification (CC-062, CC-067): required; "" when the project has no category. The builder normalizes it
-    // (trim, ASCII lower case); the canonical value for restricted data is "restricted".
-    category: String,
-    scopes: Set<ResourceScope>,
-  };
-  // `project` duplicates the parent edge because Cedar cannot read attributes of an ancestor through `in`.
-  entity Issue in [Project] {
-    key: String,
-    project: Project,
-    scopes: Set<ResourceScope>,
-  };
-}
-
-namespace Confluence {
-  entity Space {
-    key: String,
-    labels: Set<String>,
-    scopes: Set<ResourceScope>,
-  };
-  // ancestorIds: ids of the ancestor pages as reported by Confluence (page tree scopes, CC-037).
-  entity Page in [Space] {
-    id: String,
-    space: Space,
-    ancestorIds?: Set<String>,
-    scopes: Set<ResourceScope>,
-  };
-}
-
-namespace GitLab {
-  // classification: topics of the group or project itself in GitLab, normalized; optional (CC-057).
-  // inheritedClassification (CC-129): union of the normalized classification of ALL ancestor groups (for a group: the
-  // groups above it; for a project: every group on its path, including the parent). Topics are not inherited in GitLab, so
-  // a restricted group protects its whole subtree only through this attribute. Required: the builder derives it from the
-  // ancestor data that the server passes and refuses a resource without it (fail-closed).
-  entity Group {
-    path: String,
-    classification?: Set<String>,
-    inheritedClassification: Set<String>,
-    scopes: Set<ResourceScope>,
-  };
-  entity Project in [Group] {
-    path: String,
-    group: Group,
-    classification?: Set<String>,
-    inheritedClassification: Set<String>,
-    scopes: Set<ResourceScope>,
-  };
-}
-
-namespace OpenSearch {
-  entity Index {
-    name: String,
-    tags: Set<String>,
-    scopes: Set<ResourceScope>,
-  };
-}
-
-namespace ServiceDesk {
-  // classification: category of the queue as reported by the service desk adapter, normalized; optional (CC-057).
-  // A ticket is classified through its queue.
-  entity Queue {
-    id: String,
-    classification?: Set<String>,
-    scopes: Set<ResourceScope>,
-  };
-  entity Ticket in [Queue] {
-    id: String,
-    queue: Queue,
-    scopes: Set<ResourceScope>,
-  };
-}
+// credentialType: the type of the credential used for the call (user-oauth, user-secret, token-exchange or
+// service-account), from the configuration of the system. Optional in the model so that a caller of the builder that does
+// not know it can still build a request; policies guard it with `has`.
+// refs: ResourceScope ids "<Type>/<id>" built from the tool arguments whose resourceRef type is declared
+// earlyScopeCheck. Always present at the gateway (may be empty).
+type RequestContext = {
+  client: String,
+  mfaAge?: Long,
+  credentialType?: String,
+  refs?: Set<ResourceScope>,
+};
 
 action "call" appliesTo {
   principal: [User],
   resource: [Tool],
-  context: RequestContext,
-};
-
-action "read", "update", "delete", "admin" appliesTo {
-  principal: [User],
-  resource: [
-    Jira::Project, Jira::Issue,
-    Confluence::Space, Confluence::Page,
-    GitLab::Group, GitLab::Project,
-    OpenSearch::Index,
-    ServiceDesk::Queue, ServiceDesk::Ticket
-  ],
   context: RequestContext,
 };

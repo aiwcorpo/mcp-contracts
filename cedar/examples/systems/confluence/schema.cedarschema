@@ -1,0 +1,26 @@
+// Reference fragment, not a policy of the platform: the schema of a Confluence Data Center server written in the form the
+// platform requires (one namespace, scopes on every type, base types unqualified). Policies are the server's own and live in
+// its repository; cedar/examples/systems/jira has a complete set.
+
+namespace Confluence {
+  // labels: required classification, taken from the system (a partial list is refused by the server, CC-149).
+  entity Space {
+    key: String,
+    labels: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+  // ancestorIds: ids of the ancestor pages as reported by Confluence; the server turns them into the page tree scopes
+  // Confluence::Page/<id> of the page.
+  entity Page in [Space] {
+    id: String,
+    space: Space,
+    ancestorIds?: Set<String>,
+    scopes: Set<ResourceScope>,
+  };
+
+  action "read", "update", "delete", "admin" appliesTo {
+    principal: [User],
+    resource: [Space, Page],
+    context: RequestContext,
+  };
+}

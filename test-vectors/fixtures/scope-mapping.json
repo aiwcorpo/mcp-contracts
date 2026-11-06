@@ -1,0 +1,9 @@
+[
+  {"group": "mcp-jira-proj-ABC", "scopes": ["Jira::Project/ABC"]},
+  {"group": "mcp-jira-proj-DEF", "scopes": ["Jira::Project/DEF"]},
+  {"group": "mcp-notes-nb-alpha", "scopes": ["Notes::Notebook/alpha"]},
+  {"group": "mcp-notes-nb-beta", "scopes": ["Notes::Notebook/beta"]},
+  {"group": "mcp-notes-folder-team", "scopes": ["Notes::Folder/team"]},
+  {"group": "mcp-notes-folder-team-sub", "scopes": ["Notes::Folder/team/sub"]},
+  {"group": "mcp-team-platform", "scopes": ["Jira::Project/PLAT", "Notes::Notebook/platform", "Notes::Folder/platform"]}
+]
