@@ -1,0 +1,199 @@
+{
+  "mappings": [
+    {
+      "name": "putAdminSystem without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 200 notes",
+      "priority": 5,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "system": "notes",
+          "baseUrl": "https://notes.internal/api",
+          "adapter": "generic-rest",
+          "supportedTypes": [
+            "user-oauth"
+          ],
+          "defaultType": "user-oauth",
+          "secretScheme": "Bearer",
+          "oauth": {
+            "clientId": "mcp-broker-notes",
+            "authorizeUrl": "https://notes.internal/oauth/authorize",
+            "tokenUrl": "https://notes.internal/oauth/token",
+            "scopes": [
+              "notes.read",
+              "notes.write"
+            ],
+            "clientSecretSet": true
+          }
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 403 forbidden",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=forbidden($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "forbidden"
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 422 default_type",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=default_type($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "system_rejected",
+          "reason": "default_type_not_supported",
+          "message": "defaultType must be one of supportedTypes"
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 503 upstream_unavailable",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=upstream_unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

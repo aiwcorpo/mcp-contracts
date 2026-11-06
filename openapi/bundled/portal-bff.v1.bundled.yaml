@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 6.3.2
+  version: 7.0.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -1773,6 +1773,790 @@ paths:
                     message: update_issue comes from an adapter and needs risk and action
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers:
+    get:
+      tags:
+        - admin
+      operationId: listAdminServers
+      summary: Servers in the registry of the gateway (proxy to C5, group mcp-platform-admin).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Every server.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServerConfig"
+              examples:
+                one_server:
+                  value:
+                    - serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      tlsName: mcp-notes.internal
+                      credential:
+                        required: true
+                        acceptedTypes:
+                          - user-oauth
+                        type: user-oauth
+                      enabled: true
+                      adapter: false
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    post:
+      tags:
+        - admin
+      operationId: createAdminServer
+      summary: "Add a server to the registry (proxy to C5): no restart, no tools until its manifest is approved."
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerConfigCreate"
+            examples:
+              notes:
+                value:
+                  serverId: mcp-notes
+                  system: notes
+                  internalUrl: https://mcp-notes.internal:8443/mcp
+                  credential:
+                    required: true
+                    acceptedTypes:
+                      - user-oauth
+                    type: user-oauth
+      responses:
+        "201":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                notes:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    tlsName: mcp-notes.internal
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: A server with this serverId exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                exists:
+                  value:
+                    error: server_exists
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerRejected"
+              examples:
+                server_id_mismatch:
+                  value:
+                    error: server_rejected
+                    reason: server_id_mismatch
+                    message: serverId must be mcp-<system>
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers/{serverId}:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    get:
+      tags:
+        - admin
+      operationId: getAdminServer
+      summary: One server of the registry (proxy to C5).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                notes:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    tlsName: mcp-notes.internal
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    patch:
+      tags:
+        - admin
+      operationId: updateAdminServer
+      summary: Change the connection settings of a server (proxy to C5; enabled false takes it out of service).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerConfigPatch"
+            examples:
+              disable:
+                value:
+                  enabled: false
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The server after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                disabled:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    tlsName: mcp-notes.internal
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: false
+                    adapter: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerRejected"
+              examples:
+                server_id_mismatch:
+                  value:
+                    error: server_rejected
+                    reason: credential_type_not_accepted
+                    message: type must be one of acceptedTypes
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags:
+        - admin
+      operationId: deleteAdminServer
+      summary: Remove a server from the registry (proxy to C5); its tools disappear and its calls are refused.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        "204":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Removed.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/policy/scope-mapping:
+    get:
+      tags:
+        - admin
+      operationId: getAdminScopeMapping
+      summary: Which group grants which resource scopes (proxy to C5).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          description: The document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeMappingDocument"
+              examples:
+                two_groups:
+                  value:
+                    scopeMapping:
+                      - group: mcp-jira-proj-ABC
+                        scopes:
+                          - Jira::Project/ABC
+                      - group: mcp-team-platform
+                        scopes:
+                          - Jira::Project/PLAT
+                          - Notes::Folder/platform
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    put:
+      tags:
+        - admin
+      operationId: putAdminScopeMapping
+      summary: Replace the scope mapping (proxy to C5; If-Match is the ETag of the document that was edited).
+      security:
+        - session: []
+          csrf: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScopeMappingDocument"
+            examples:
+              one_group:
+                value:
+                  scopeMapping:
+                    - group: mcp-jira-proj-ABC
+                      scopes:
+                        - Jira::Project/ABC
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          description: Stored; the body is the new document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeMappingDocument"
+              examples:
+                one_group:
+                  value:
+                    scopeMapping:
+                      - group: mcp-jira-proj-ABC
+                        scopes:
+                          - Jira::Project/ABC
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: If-Match is not the ETag of the stored document; read it again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                stale:
+                  value:
+                    error: precondition_failed
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeMappingRejected"
+              examples:
+                unknown_type:
+                  value:
+                    error: scope_mapping_rejected
+                    reason: unknown_resource_type
+                    message: Mystery::Place/x names a type that no registered server declares
+        "428":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: If-Match is missing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                required:
+                  value:
+                    error: precondition_required
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/policy/overrides:
+    get:
+      tags:
+        - admin
+      operationId: listAdminOverrides
+      summary: Emergency overrides (proxy to C5).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Every override.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Override"
+              examples:
+                one:
+                  value:
+                    - id: block-drop-table
+                      target: all-servers
+                      text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                      setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      setAt: 2026-11-06T09:30:00Z
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/policy/overrides/{id}:
+    parameters:
+      - $ref: "#/components/parameters/OverrideId"
+    get:
+      tags:
+        - admin
+      operationId: getAdminOverride
+      summary: One emergency override (proxy to C5).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The override.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Override"
+              examples:
+                block_drop_table:
+                  value:
+                    id: block-drop-table
+                    target: all-servers
+                    text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    setAt: 2026-11-06T09:30:00Z
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    put:
+      tags:
+        - admin
+      operationId: putAdminOverride
+      summary: Create or replace a forbid-only emergency override (proxy to C5).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OverrideRequest"
+            examples:
+              block_drop_table:
+                value:
+                  target: all-servers
+                  text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Override"
+              examples:
+                block_drop_table:
+                  value:
+                    id: block-drop-table
+                    target: all-servers
+                    text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    setAt: 2026-11-06T09:30:00Z
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverrideRejected"
+              examples:
+                permit:
+                  value:
+                    error: override_rejected
+                    reason: not_forbid
+                    message: an override is forbid only
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags:
+        - admin
+      operationId: deleteAdminOverride
+      summary: Remove an emergency override (proxy to C5).
+      security:
+        - session: []
+          csrf: []
+      responses:
+        "204":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Removed.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/policies/pending:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    get:
+      tags:
+        - admin
+      operationId: getAdminPendingServerPolicies
+      summary: Policies of a server waiting for approval, next to the approved ones (proxy to C5).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Approved versus pending policies.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingPolicies"
+              examples:
+                first_registration:
+                  value:
+                    approvedHash: null
+                    approvedPolicies: null
+                    pendingHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+                    pendingVersion: 1.4.0
+                    source: ci
+                    pendingPolicies:
+                      namespace: Jira
+                      schema: |
+                        namespace Jira {
+                          entity Project { key: String, category: String, scopes: Set<ResourceScope> };
+                          entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };
+                          action "read", "update" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };
+                        }
+                      files:
+                        - name: read.cedar
+                          text: |
+                            @id("jira-read")
+                            permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/policies/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    post:
+      tags:
+        - admin
+      operationId: approveAdminServerPolicies
+      summary: Approve the pending policies of a server (proxy to C5).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovePoliciesRequest"
+            examples:
+              approve:
+                value:
+                  policiesHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+      responses:
+        "204":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Approved.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The policies changed again; reload the diff.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/systems:
+    get:
+      tags:
+        - admin
+      operationId: listAdminSystems
+      summary: Systems of the credential broker with their configuration, without secrets (proxy to C4).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Every system.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SystemAdminView"
+              examples:
+                one:
+                  value:
+                    - system: notes
+                      baseUrl: https://notes.internal/api
+                      adapter: generic-rest
+                      supportedTypes:
+                        - user-oauth
+                      defaultType: user-oauth
+                      secretScheme: Bearer
+                      oauth:
+                        clientId: mcp-broker-notes
+                        authorizeUrl: https://notes.internal/oauth/authorize
+                        tokenUrl: https://notes.internal/oauth/token
+                        scopes:
+                          - notes.read
+                          - notes.write
+                        clientSecretSet: true
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/systems/{system}:
+    parameters:
+      - $ref: "#/components/parameters/System"
+    put:
+      tags:
+        - admin
+      operationId: putAdminSystem
+      summary: Create or replace a system in the credential broker (proxy to C4); the client secret is write-only.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SystemAdminRequest"
+            examples:
+              notes:
+                value:
+                  baseUrl: https://notes.internal/api
+                  adapter: generic-rest
+                  supportedTypes:
+                    - user-oauth
+                  defaultType: user-oauth
+                  secretScheme: Bearer
+                  oauth:
+                    clientId: mcp-broker-notes
+                    clientSecret: test-only-client-secret-0000000000
+                    authorizeUrl: https://notes.internal/oauth/authorize
+                    tokenUrl: https://notes.internal/oauth/token
+                    scopes:
+                      - notes.read
+                      - notes.write
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Stored; the body is the configuration without secrets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemAdminView"
+              examples:
+                notes:
+                  value:
+                    system: notes
+                    baseUrl: https://notes.internal/api
+                    adapter: generic-rest
+                    supportedTypes:
+                      - user-oauth
+                    defaultType: user-oauth
+                    secretScheme: Bearer
+                    oauth:
+                      clientId: mcp-broker-notes
+                      authorizeUrl: https://notes.internal/oauth/authorize
+                      tokenUrl: https://notes.internal/oauth/token
+                      scopes:
+                        - notes.read
+                        - notes.write
+                      clientSecretSet: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemRejected"
+              examples:
+                default_type:
+                  value:
+                    error: system_rejected
+                    reason: default_type_not_supported
+                    message: defaultType must be one of supportedTypes
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags:
+        - admin
+      operationId: deleteAdminSystem
+      summary: Remove a system from the credential broker (proxy to C4), with its connections.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        "204":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Removed.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/kill-switches:
     get:
       tags:
@@ -1936,6 +2720,13 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
 components:
   headers:
+    DocumentETag:
+      description: Version of the document (quoted opaque token); the next write sends it in If-Match.
+      required: true
+      schema:
+        type: string
+        pattern: ^"[A-Za-z0-9_-]{8,128}"$
+      example: '"Zx8Tq2LmWk93vNpA"'
     RequestId:
       description: requestId (UUIDv7) of this request, the same value as in the audit events of the BFF, broker and gateway (CC-047, CC-087). Not a secret; the UI shows its first 8 characters next to an error.
       required: true
@@ -1968,6 +2759,22 @@ components:
       name: X-XSRF-TOKEN
       description: Value of the __Host-XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain) set by the BFF (CC-055). Required for POST, PUT and DELETE.
   parameters:
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The ETag of the document the change is based on.
+      schema:
+        type: string
+        pattern: ^"[A-Za-z0-9_-]{8,128}"$
+      example: '"Zx8Tq2LmWk93vNpA"'
+    OverrideId:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/OverrideId"
+      example: block-drop-table
     System:
       name: system
       in: path
@@ -2433,14 +3240,9 @@ components:
         - token-exchange
         - service-account
     SystemId:
-      description: Target system identifier, lower case (01-contracts conventions).
+      description: "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts)."
       type: string
-      enum:
-        - jira
-        - confluence
-        - gitlab
-        - servicedesk
-        - opensearch
+      pattern: ^[a-z][a-z0-9]{1,30}$
     ConnectionStatus:
       type: string
       description: expiring = expires in less than 7 days; only for `user-secret` with a declared `expiresAt` (CC-103). A `user-oauth` connection has expiresAt null (the token is refreshed by the broker) and never becomes expiring. error also means that the secret of the connection is gone from the secret store (audit reason secret_missing, CC-205) or that a rotated refresh token could not be stored (refresh_token_lost, CC-196). The user then connects the system again, and connecting writes a new secret and sets connected. revoked only follows invalid_grant of the provider or a removal by the user.
@@ -2484,20 +3286,15 @@ components:
     ServerId:
       description: MCP server id; always mcp-<system>, one server per system (C5).
       type: string
-      enum:
-        - mcp-jira
-        - mcp-confluence
-        - mcp-gitlab
-        - mcp-servicedesk
-        - mcp-opensearch
+      pattern: ^mcp-[a-z][a-z0-9]{1,30}$
     SemVer:
       type: string
       pattern: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$
     QualifiedToolName:
-      description: "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>."
+      description: "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>, with the system pattern of SystemId."
       type: string
-      pattern: ^(jira|confluence|gitlab|servicedesk|opensearch)__[a-z][a-z0-9]*(_[a-z0-9]+)*$
-      maxLength: 80
+      pattern: ^[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 100
     Risk:
       type: string
       enum:
@@ -2618,18 +3415,9 @@ components:
       type: string
       pattern: ^[A-Za-z0-9_-]{16,128}$
     ResourceType:
-      description: Cedar entity type of a system resource (C7).
+      description: "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in."
       type: string
-      enum:
-        - Jira::Project
-        - Jira::Issue
-        - Confluence::Space
-        - Confluence::Page
-        - GitLab::Group
-        - GitLab::Project
-        - OpenSearch::Index
-        - ServiceDesk::Queue
-        - ServiceDesk::Ticket
+      pattern: ^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$
     resource:
       type: object
       required:
@@ -2807,7 +3595,7 @@ components:
       pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
       maxLength: 64
     PolicyRevision:
-      description: Policy bundle revision YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without a loaded bundle' (M1 only, CC-068); it is not the revision of any bundle and a receiver must not infer anything about policy from it.
+      description: Revision of the policy data of the gateway (scope mapping, allowed clients, overrides; GET /internal/v1/policy-data), YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.
       type: string
       pattern: ^[0-9]{14}-[0-9a-f]{7}$
     ErrorCode:
@@ -3007,6 +3795,18 @@ components:
           type: boolean
           default: true
           description: False when the server is disabled in gateway configuration or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only here; the emergency switch of a server is a separate resource (CC-194).
+        policiesStatus:
+          description: approved when the policies of the manifest are the approved ones; pending_approval when they changed or were never approved, and the tools of the server are blocked (7.0.0). Absent for an adapter, which has no policies.
+          type: string
+          enum:
+            - approved
+            - pending_approval
+        policiesHash:
+          description: policiesHash of the approved policies; absent until the first approval.
+          $ref: "#/components/schemas/DefinitionHash"
+        pendingPoliciesHash:
+          description: policiesHash waiting for approval; present exactly with policiesStatus pending_approval.
+          $ref: "#/components/schemas/DefinitionHash"
         tools:
           type: array
           items:
@@ -3108,7 +3908,456 @@ components:
         reason:
           type: string
           pattern: ^[a-z][a-z0-9_]*$
-          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
+          description: Known values are policies_invalid, resource_types_invalid and namespace_conflict (7.0.0, see registerServer), risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    ServerCredentialConfig:
+      type: object
+      description: How the gateway gets the credential for the server (C3). `type` is the default type of the system that goes into `context.credentialType` (CC-136) and must be one of `acceptedTypes`; `acceptedTypes` never mixes service-account with user types (CC-168).
+      required:
+        - required
+        - acceptedTypes
+        - type
+      properties:
+        required:
+          type: boolean
+        acceptedTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/CredentialType"
+        type:
+          $ref: "#/components/schemas/CredentialType"
+      additionalProperties: false
+    ServerConfig:
+      type: object
+      description: A server in the registry of the gateway (7.0.0).
+      required:
+        - serverId
+        - system
+        - internalUrl
+        - tlsName
+        - credential
+        - enabled
+        - adapter
+      properties:
+        serverId:
+          $ref: "#/components/schemas/ServerId"
+        system:
+          $ref: "#/components/schemas/SystemId"
+        internalUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        tlsName:
+          description: Name the gateway expects in the certificate of the server.
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
+        credential:
+          $ref: "#/components/schemas/ServerCredentialConfig"
+        enabled:
+          type: boolean
+        adapter:
+          description: True when the server is served through an adapter (CC-206) and takes its manifest on the adapter channel.
+          type: boolean
+      additionalProperties: false
+    ServerConfigCreate:
+      type: object
+      required:
+        - serverId
+        - system
+        - internalUrl
+        - credential
+      properties:
+        serverId:
+          $ref: "#/components/schemas/ServerId"
+        system:
+          $ref: "#/components/schemas/SystemId"
+        internalUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        tlsName:
+          description: Default `<serverId>.internal`.
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
+        credential:
+          $ref: "#/components/schemas/ServerCredentialConfig"
+        enabled:
+          type: boolean
+          default: true
+        adapter:
+          type: boolean
+          default: false
+      additionalProperties: false
+    ServerRejected:
+      type: object
+      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
+      required:
+        - error
+      properties:
+        error:
+          const: server_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    ServerConfigPatch:
+      type: object
+      minProperties: 1
+      properties:
+        internalUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        tlsName:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
+        credential:
+          $ref: "#/components/schemas/ServerCredentialConfig"
+        enabled:
+          type: boolean
+        adapter:
+          type: boolean
+      additionalProperties: false
+    ResourceScopeId:
+      description: "Id of a ResourceScope (C7): <Type>/<local part>, where the type is declared by a registered server and the local part matches its scopePattern (checked by the gateway against the registry, not by this pattern). ASCII only."
+      type: string
+      pattern: ^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}/[!-~]{1,1024}$
+      maxLength: 1100
+    ScopeMappingEntry:
+      type: object
+      required:
+        - group
+        - scopes
+      properties:
+        group:
+          $ref: "#/components/schemas/GroupName"
+        scopes:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ResourceScopeId"
+      additionalProperties: false
+    ScopeMappingDocument:
+      type: object
+      description: The whole mapping from groups to resource scopes. A group is listed once; a group without an entry grants nothing.
+      required:
+        - scopeMapping
+      properties:
+        scopeMapping:
+          type: array
+          maxItems: 5000
+          items:
+            $ref: "#/components/schemas/ScopeMappingEntry"
+      additionalProperties: false
+    ScopeMappingRejected:
+      type: object
+      description: 422 of a write of the scope mapping. Known reasons are unknown_resource_type (no registered server declares the type), scope_not_grantable (the type has no scopePattern), scope_invalid (the local part does not match the scopePattern) and group_duplicate.
+      required:
+        - error
+      properties:
+        error:
+          const: scope_mapping_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    OverrideId:
+      type: string
+      pattern: ^[a-z][a-z0-9-]{0,62}$
+    OverrideTarget:
+      description: gateway (the decision on call), all-servers (every server evaluates it) or the serverId of one server.
+      type: string
+      pattern: ^(gateway|all-servers|mcp-[a-z][a-z0-9]{1,30})$
+    Override:
+      type: object
+      required:
+        - id
+        - target
+        - text
+        - setBy
+        - setAt
+      properties:
+        id:
+          $ref: "#/components/schemas/OverrideId"
+        target:
+          $ref: "#/components/schemas/OverrideTarget"
+        text:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        setBy:
+          description: sub of the administrator who wrote it.
+          type: string
+          minLength: 1
+          maxLength: 255
+        setAt:
+          $ref: "#/components/schemas/Timestamp"
+      additionalProperties: false
+    OverrideRequest:
+      type: object
+      required:
+        - target
+        - text
+      properties:
+        target:
+          $ref: "#/components/schemas/OverrideTarget"
+        text:
+          description: Cedar text of exactly one forbid policy.
+          type: string
+          minLength: 1
+          maxLength: 8000
+      additionalProperties: false
+    OverrideRejected:
+      type: object
+      description: 422 of a write of an override. Known reasons are not_forbid, not_one_policy, invalid_policy (does not parse or does not validate against the schema of its target), id_mismatch (the @id of the text is not the id of the override) and target_unknown (a serverId that is not in the registry).
+      required:
+        - error
+      properties:
+        error:
+          const: override_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    policies:
+      description: "The policy fragment of the server (C7), from src/main/resources/mcp/policies/ of its repository: the Cedar schema of its one namespace and its resource policies. Present for a server built on the starter, absent for an adapter. It is validated at registration (base schema plus fragment compose and validate in strict mode, see cedar/entity-builder.md) and is part of what an administrator approves (policiesHash)."
+      type: object
+      required:
+        - namespace
+        - schema
+        - files
+      properties:
+        namespace:
+          description: The Cedar namespace of the server; every resourceTypes[].type starts with it.
+          type: string
+          pattern: ^[A-Z][A-Za-z0-9]{0,30}$
+        schema:
+          description: "Text of schema.cedarschema: exactly one namespace, the server's own."
+          type: string
+          minLength: 1
+          maxLength: 200000
+        files:
+          description: The *.cedar files of the server, in file name order.
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            required:
+              - name
+              - text
+            properties:
+              name:
+                type: string
+                pattern: ^[a-z0-9][a-z0-9._-]{0,63}\.cedar$
+              text:
+                type: string
+                maxLength: 200000
+            additionalProperties: false
+      additionalProperties: false
+    PendingPolicies:
+      type: object
+      required:
+        - approvedHash
+        - approvedPolicies
+        - pendingHash
+        - pendingPolicies
+        - pendingVersion
+        - source
+      properties:
+        approvedHash:
+          oneOf:
+            - $ref: "#/components/schemas/DefinitionHash"
+            - type: "null"
+        approvedPolicies:
+          description: The approved policies; null for the first registration.
+          oneOf:
+            - $ref: "#/components/schemas/policies"
+            - type: "null"
+        pendingHash:
+          $ref: "#/components/schemas/DefinitionHash"
+        pendingPolicies:
+          $ref: "#/components/schemas/policies"
+        pendingVersion:
+          description: Version of the manifest in which the pending policies appeared.
+          $ref: "#/components/schemas/SemVer"
+        source:
+          description: Where the pending policies come from, as for a pending tool (ci or server).
+          type: string
+          enum:
+            - ci
+            - server
+      additionalProperties: false
+    ApprovePoliciesRequest:
+      type: object
+      required:
+        - policiesHash
+      properties:
+        policiesHash:
+          $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    SystemAdapter:
+      description: How the broker talks to the backend of a system.
+      type: string
+      enum:
+        - atlassian-dc
+        - gitlab
+        - opensearch
+        - generic-rest
+    CredentialScheme:
+      description: Scheme of the X-MCP-Credential header value (C3).
+      type: string
+      enum:
+        - Bearer
+        - Basic
+        - Token
+        - ApiKey
+    SystemOauthClientView:
+      type: object
+      required:
+        - clientId
+        - authorizeUrl
+        - tokenUrl
+        - clientSecretSet
+      properties:
+        clientId:
+          type: string
+        authorizeUrl:
+          type: string
+          format: uri
+        tokenUrl:
+          type: string
+          format: uri
+        scopes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        clientSecretSet:
+          type: boolean
+      additionalProperties: false
+    SystemAdminView:
+      type: object
+      required:
+        - system
+        - baseUrl
+        - adapter
+        - supportedTypes
+        - defaultType
+        - secretScheme
+      properties:
+        system:
+          $ref: "#/components/schemas/SystemId"
+        baseUrl:
+          type: string
+          format: uri
+        adapter:
+          $ref: "#/components/schemas/SystemAdapter"
+        supportedTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/CredentialType"
+        defaultType:
+          $ref: "#/components/schemas/CredentialType"
+        secretScheme:
+          $ref: "#/components/schemas/CredentialScheme"
+        oauth:
+          $ref: "#/components/schemas/SystemOauthClientView"
+      additionalProperties: false
+    SystemOauthClient:
+      type: object
+      description: The OAuth client the broker uses for `user-oauth` connections to a system.
+      required:
+        - clientId
+        - authorizeUrl
+        - tokenUrl
+      properties:
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 255
+        clientSecret:
+          description: Written to the secret store and never returned.
+          type: string
+          minLength: 1
+          maxLength: 1024
+          writeOnly: true
+        authorizeUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+        tokenUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+        scopes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[!#-\[\]-~]{1,128}$
+      additionalProperties: false
+    SystemAdminRequest:
+      type: object
+      description: Configuration of a system. `oauth` is required when `supportedTypes` has `user-oauth`.
+      required:
+        - baseUrl
+        - adapter
+        - supportedTypes
+        - defaultType
+        - secretScheme
+      properties:
+        baseUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        adapter:
+          $ref: "#/components/schemas/SystemAdapter"
+        supportedTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/CredentialType"
+        defaultType:
+          $ref: "#/components/schemas/CredentialType"
+        secretScheme:
+          description: Scheme in which the broker hands the stored secret to the gateway (C3).
+          $ref: "#/components/schemas/CredentialScheme"
+        oauth:
+          $ref: "#/components/schemas/SystemOauthClient"
+      additionalProperties: false
+    SystemRejected:
+      type: object
+      description: 422 of a write of a system. Known reasons are default_type_not_supported (defaultType is not in supportedTypes), credential_types_mixed (service-account next to a user type, CC-168) and oauth_required (user-oauth without an oauth client).
+      required:
+        - error
+      properties:
+        error:
+          const: system_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
         message:
           type: string
           maxLength: 500

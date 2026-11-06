@@ -110,7 +110,7 @@ export async function generateMswExamples() {
     + 'import type { OperationExamples } from \'./types.js\';\n\n'
     + `export const RETURN_PATH_PATTERN = ${JSON.stringify(broker.components.schemas.ReturnPath.pattern)};\n\n`
     + `export const LOGIN_ERROR_CODES = ${JSON.stringify(spec.components.schemas.LoginErrorCode.enum)} as const;\n\n`
-    + `export const SYSTEMS: readonly string[] = ${JSON.stringify(spec.components.parameters.System.schema.enum)};\n\n`
+    + `export const SYSTEM_ID_PATTERN = ${JSON.stringify(spec.components.parameters.System.schema.pattern)};\n\n`
     + `export const portalBffExamples: OperationExamples[] = ${JSON.stringify(table, null, 2)};\n`;
 }
 

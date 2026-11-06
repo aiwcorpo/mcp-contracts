@@ -1,0 +1,78 @@
+{
+  "mappings": [
+    {
+      "name": "getPolicyData 200 for_a_server",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/internal/v1/policy-data"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "ETag": "\"20261106093000-a1b2c3d\"",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "revision": "20261106093000-a1b2c3d",
+          "scopeMapping": [
+            {
+              "group": "mcp-jira-proj-ABC",
+              "scopes": [
+                "Jira::Project/ABC"
+              ]
+            }
+          ],
+          "allowedClients": [
+            "claude-code",
+            "claude-ai"
+          ],
+          "overrides": [
+            {
+              "id": "block-drop-table",
+              "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "getPolicyData 304 status-304",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/internal/v1/policy-data",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=status-304($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 304
+      }
+    },
+    {
+      "name": "getPolicyData 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/internal/v1/policy-data",
+        "headers": {
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    }
+  ]
+}

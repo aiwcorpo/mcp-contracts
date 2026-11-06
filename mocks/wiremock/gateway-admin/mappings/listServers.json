@@ -1,0 +1,128 @@
+{
+  "mappings": [
+    {
+      "name": "listServers without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listServers 200 two_servers",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "serverId": "mcp-jira",
+            "system": "jira",
+            "internalUrl": "https://mcp-jira.internal:8443/mcp/jira",
+            "tlsName": "mcp-jira.internal",
+            "credential": {
+              "required": true,
+              "acceptedTypes": [
+                "user-oauth",
+                "user-secret"
+              ],
+              "type": "user-secret"
+            },
+            "enabled": true,
+            "adapter": false
+          },
+          {
+            "serverId": "mcp-notes",
+            "system": "notes",
+            "internalUrl": "https://mcp-notes.internal:8443/mcp",
+            "tlsName": "mcp-notes.internal",
+            "credential": {
+              "required": true,
+              "acceptedTypes": [
+                "user-oauth"
+              ],
+              "type": "user-oauth"
+            },
+            "enabled": true,
+            "adapter": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "listServers 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listServers 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ export const RETURN_PATH_PATTERN = "^(?![^?]*/\\.\\.?(?:[/?]|$))(?!/(?:api|mcp|s
 
 export const LOGIN_ERROR_CODES = ["cancelled","idp_error","session_expired","step_up_failed"] as const;
 
-export const SYSTEMS: readonly string[] = ["jira","confluence","gitlab","servicedesk","opensearch"];
+export const SYSTEM_ID_PATTERN = "^[a-z][a-z0-9]{1,30}$";
 
 export const portalBffExamples: OperationExamples[] = [
   {
@@ -2061,6 +2061,1129 @@ export const portalBffExamples: OperationExamples[] = [
           "error": "manifest_rejected",
           "reason": "classification_required",
           "message": "update_issue comes from an adapter and needs risk and action"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "listAdminServers",
+    "method": "GET",
+    "route": "/api/v1/admin/servers",
+    "defaultExample": "one_server",
+    "responses": [
+      {
+        "status": 200,
+        "name": "one_server",
+        "body": [
+          {
+            "serverId": "mcp-notes",
+            "system": "notes",
+            "internalUrl": "https://mcp-notes.internal:8443/mcp",
+            "tlsName": "mcp-notes.internal",
+            "credential": {
+              "required": true,
+              "acceptedTypes": [
+                "user-oauth"
+              ],
+              "type": "user-oauth"
+            },
+            "enabled": true,
+            "adapter": false
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "createAdminServer",
+    "method": "POST",
+    "route": "/api/v1/admin/servers",
+    "defaultExample": "notes",
+    "responses": [
+      {
+        "status": 201,
+        "name": "notes",
+        "body": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "tlsName": "mcp-notes.internal",
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": true,
+          "adapter": false
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 409,
+        "name": "exists",
+        "body": {
+          "error": "server_exists"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "server_id_mismatch",
+        "body": {
+          "error": "server_rejected",
+          "reason": "server_id_mismatch",
+          "message": "serverId must be mcp-<system>"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "getAdminServer",
+    "method": "GET",
+    "route": "/api/v1/admin/servers/{serverId}",
+    "defaultExample": "notes",
+    "responses": [
+      {
+        "status": 200,
+        "name": "notes",
+        "body": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "tlsName": "mcp-notes.internal",
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": true,
+          "adapter": false
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteAdminServer",
+    "method": "DELETE",
+    "route": "/api/v1/admin/servers/{serverId}",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "updateAdminServer",
+    "method": "PATCH",
+    "route": "/api/v1/admin/servers/{serverId}",
+    "defaultExample": "disabled",
+    "responses": [
+      {
+        "status": 200,
+        "name": "disabled",
+        "body": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "tlsName": "mcp-notes.internal",
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": false,
+          "adapter": false
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "server_id_mismatch",
+        "body": {
+          "error": "server_rejected",
+          "reason": "credential_type_not_accepted",
+          "message": "type must be one of acceptedTypes"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "getAdminScopeMapping",
+    "method": "GET",
+    "route": "/api/v1/admin/policy/scope-mapping",
+    "defaultExample": "two_groups",
+    "responses": [
+      {
+        "status": 200,
+        "name": "two_groups",
+        "body": {
+          "scopeMapping": [
+            {
+              "group": "mcp-jira-proj-ABC",
+              "scopes": [
+                "Jira::Project/ABC"
+              ]
+            },
+            {
+              "group": "mcp-team-platform",
+              "scopes": [
+                "Jira::Project/PLAT",
+                "Notes::Folder/platform"
+              ]
+            }
+          ]
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "putAdminScopeMapping",
+    "method": "PUT",
+    "route": "/api/v1/admin/policy/scope-mapping",
+    "defaultExample": "one_group",
+    "responses": [
+      {
+        "status": 200,
+        "name": "one_group",
+        "body": {
+          "scopeMapping": [
+            {
+              "group": "mcp-jira-proj-ABC",
+              "scopes": [
+                "Jira::Project/ABC"
+              ]
+            }
+          ]
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 412,
+        "name": "stale",
+        "body": {
+          "error": "precondition_failed"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "unknown_type",
+        "body": {
+          "error": "scope_mapping_rejected",
+          "reason": "unknown_resource_type",
+          "message": "Mystery::Place/x names a type that no registered server declares"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 428,
+        "name": "required",
+        "body": {
+          "error": "precondition_required"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "listAdminOverrides",
+    "method": "GET",
+    "route": "/api/v1/admin/policy/overrides",
+    "defaultExample": "one",
+    "responses": [
+      {
+        "status": 200,
+        "name": "one",
+        "body": [
+          {
+            "id": "block-drop-table",
+            "target": "all-servers",
+            "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+            "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "setAt": "2026-11-06T09:30:00Z"
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "getAdminOverride",
+    "method": "GET",
+    "route": "/api/v1/admin/policy/overrides/{id}",
+    "defaultExample": "block_drop_table",
+    "responses": [
+      {
+        "status": 200,
+        "name": "block_drop_table",
+        "body": {
+          "id": "block-drop-table",
+          "target": "all-servers",
+          "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+          "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+          "setAt": "2026-11-06T09:30:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "putAdminOverride",
+    "method": "PUT",
+    "route": "/api/v1/admin/policy/overrides/{id}",
+    "defaultExample": "block_drop_table",
+    "responses": [
+      {
+        "status": 200,
+        "name": "block_drop_table",
+        "body": {
+          "id": "block-drop-table",
+          "target": "all-servers",
+          "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+          "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+          "setAt": "2026-11-06T09:30:00Z"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "permit",
+        "body": {
+          "error": "override_rejected",
+          "reason": "not_forbid",
+          "message": "an override is forbid only"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteAdminOverride",
+    "method": "DELETE",
+    "route": "/api/v1/admin/policy/overrides/{id}",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "getAdminPendingServerPolicies",
+    "method": "GET",
+    "route": "/api/v1/admin/registry/servers/{serverId}/policies/pending",
+    "defaultExample": "first_registration",
+    "responses": [
+      {
+        "status": 200,
+        "name": "first_registration",
+        "body": {
+          "approvedHash": null,
+          "approvedPolicies": null,
+          "pendingHash": "sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93",
+          "pendingVersion": "1.4.0",
+          "source": "ci",
+          "pendingPolicies": {
+            "namespace": "Jira",
+            "schema": "namespace Jira {\n  entity Project { key: String, category: String, scopes: Set<ResourceScope> };\n  entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };\n  action \"read\", \"update\" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };\n}\n",
+            "files": [
+              {
+                "name": "read.cedar",
+                "text": "@id(\"jira-read\")\npermit (principal in UserGroup::\"mcp-jira-read\", action == Jira::Action::\"read\", resource);\n"
+              }
+            ]
+          }
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "approveAdminServerPolicies",
+    "method": "POST",
+    "route": "/api/v1/admin/registry/servers/{serverId}/policies/approve",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 409,
+        "name": "hash_mismatch",
+        "body": {
+          "error": "hash_mismatch"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "listAdminSystems",
+    "method": "GET",
+    "route": "/api/v1/admin/systems",
+    "defaultExample": "one",
+    "responses": [
+      {
+        "status": 200,
+        "name": "one",
+        "body": [
+          {
+            "system": "notes",
+            "baseUrl": "https://notes.internal/api",
+            "adapter": "generic-rest",
+            "supportedTypes": [
+              "user-oauth"
+            ],
+            "defaultType": "user-oauth",
+            "secretScheme": "Bearer",
+            "oauth": {
+              "clientId": "mcp-broker-notes",
+              "authorizeUrl": "https://notes.internal/oauth/authorize",
+              "tokenUrl": "https://notes.internal/oauth/token",
+              "scopes": [
+                "notes.read",
+                "notes.write"
+              ],
+              "clientSecretSet": true
+            }
+          }
+        ],
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "putAdminSystem",
+    "method": "PUT",
+    "route": "/api/v1/admin/systems/{system}",
+    "defaultExample": "notes",
+    "responses": [
+      {
+        "status": 200,
+        "name": "notes",
+        "body": {
+          "system": "notes",
+          "baseUrl": "https://notes.internal/api",
+          "adapter": "generic-rest",
+          "supportedTypes": [
+            "user-oauth"
+          ],
+          "defaultType": "user-oauth",
+          "secretScheme": "Bearer",
+          "oauth": {
+            "clientId": "mcp-broker-notes",
+            "authorizeUrl": "https://notes.internal/oauth/authorize",
+            "tokenUrl": "https://notes.internal/oauth/token",
+            "scopes": [
+              "notes.read",
+              "notes.write"
+            ],
+            "clientSecretSet": true
+          }
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "default_type",
+        "body": {
+          "error": "system_rejected",
+          "reason": "default_type_not_supported",
+          "message": "defaultType must be one of supportedTypes"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteAdminSystem",
+    "method": "DELETE",
+    "route": "/api/v1/admin/systems/{system}",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

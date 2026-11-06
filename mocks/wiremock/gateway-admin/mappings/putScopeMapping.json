@@ -1,0 +1,208 @@
+{
+  "mappings": [
+    {
+      "name": "putScopeMapping without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 200 one_group",
+      "priority": 5,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "scopeMapping": [
+            {
+              "group": "mcp-jira-proj-ABC",
+              "scopes": [
+                "Jira::Project/ABC"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 412 stale",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=stale($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_failed"
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 422 unknown_type",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unknown_type($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "scope_mapping_rejected",
+          "reason": "unknown_resource_type",
+          "message": "Mystery::Place/x names a type that no registered server declares"
+        }
+      }
+    },
+    {
+      "name": "putScopeMapping 428 required",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/scope-mapping",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 428,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_required"
+        }
+      }
+    }
+  ]
+}

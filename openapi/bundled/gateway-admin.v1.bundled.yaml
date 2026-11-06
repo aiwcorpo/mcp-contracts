@@ -2,8 +2,8 @@
 openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
-  version: 6.3.2
-  summary: Contract C5 of the MCP platform (catalog, registry, activity, read-only confirmation preview).
+  version: 7.0.0
+  summary: Contract C5 of the MCP platform (catalog, registry, servers, policy data, activity, read-only confirmation preview).
   description: |
     Callers and their authentication:
 
@@ -26,6 +26,13 @@ info:
     not forward the `Cookie` header; the proxy adds `X-Content-Type-Options: nosniff` and `Content-Security-Policy:
     default-src 'none'; sandbox` to every response of these routes (README, "Jedna domena").
 
+    **Servers and policy are runtime data (7.0.0).** The only list of servers is the registry of the gateway in its database,
+    changed with `/admin/v1/servers`; no component has a built-in list of systems, servers or resource types. The policies of a
+    server are its own (its manifest carries them, `policiesHash` is approved by an administrator like a tool definition);
+    the gateway decides `call` with the platform policies of the contracts (`cedar/platform`) and the overrides of
+    `/admin/v1/policy/overrides`; the mapping of groups to resource scopes is `/admin/v1/policy/scope-mapping`. Servers read
+    all of it from `GET /internal/v1/policy-data`.
+
     A resource the caller may not see is reported as 404, the same as a missing one (security invariant 8).
     Error bodies for statuses whose body C5 does not define use the generic `Error` shape (CC-012).
   license:
@@ -37,6 +44,7 @@ servers:
 tags:
   - name: catalog
   - name: registry
+  - name: servers
   - name: activity
   - name: confirmations
   - name: policy
@@ -296,6 +304,16 @@ paths:
         that passes is registered. The binding serverId -> system/internalUrl comes only from gateway configuration; a
         manifest that disagrees is rejected with 422 and nothing is stored.
 
+        **Policies (7.0.0).** The manifest carries the policy fragment of the server (`policies`, `policiesHash`) and the
+        declarations of its resource types (`resourceTypes`: id and scope patterns, parent, classification). The gateway
+        validates them (the base schema `cedar/mcp.cedarschema` and the fragment compose and validate in strict mode, the
+        fragment declares nothing outside its one namespace, every entity type has `scopes`, no policy mentions `Action::"call"`
+        or `Tool`, the declarations match the schema) and rejects the manifest with 422 and reason `policies_invalid` or
+        `resource_types_invalid`; a namespace that another registered server already uses is `namespace_conflict`. A server
+        whose `policiesHash` differs from the approved one is `pending_approval` for its policies: its tools are blocked until
+        an administrator approves them with `approveServerPolicies`; the first registration of a server needs the same
+        approval. Policies are never taken from a server that is not in the registry.
+
         **Adapter mode (CC-206).** For a `serverId` that gateway configuration serves through an adapter this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`. The certificate is checked before the mode, so this `422` is seen only by the holder of the CN of that `serverId`.
       security:
         - mtls: []
@@ -322,11 +340,33 @@ paths:
                       attributes:
                         - key
                         - category
+                      idPattern: ^[A-Z][A-Z0-9_]{1,9}$
+                      scopePattern: ^[A-Z][A-Z0-9_]{1,9}$
+                      earlyScopeCheck: true
+                      classification:
+                        attribute: category
+                        kind: string
+                        required: true
                     - type: Jira::Issue
                       attributes:
                         - key
-                        - project
                       parent: Jira::Project
+                      parentAttribute: project
+                      idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
+                  policies:
+                    namespace: Jira
+                    schema: |
+                      namespace Jira {
+                        entity Project { key: String, category: String, scopes: Set<ResourceScope> };
+                        entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };
+                        action "read", "update" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };
+                      }
+                    files:
+                      - name: read.cedar
+                        text: |
+                          @id("jira-read")
+                          permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+                  policiesHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
                   tools:
                     - name: get_issue
                       risk: READ_ONLY
@@ -1481,6 +1521,685 @@ paths:
           $ref: "#/components/responses/NotFound"
         "503":
           $ref: "#/components/responses/KillSwitchStoreUnavailable"
+  /admin/v1/servers:
+    get:
+      tags:
+        - servers
+      operationId: listServers
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Servers in the registry with their connection settings (admin).
+      description: |
+        The registry of servers is the only list of servers (7.0.0). It is a table of the gateway, visible to every instance
+        within seconds. `GET /admin/v1/registry/servers` shows the same servers with their manifests and tools.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: Every server, in serverId order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServerConfig"
+              examples:
+                two_servers:
+                  value:
+                    - serverId: mcp-jira
+                      system: jira
+                      internalUrl: https://mcp-jira.internal:8443/mcp/jira
+                      tlsName: mcp-jira.internal
+                      credential:
+                        required: true
+                        acceptedTypes:
+                          - user-oauth
+                          - user-secret
+                        type: user-secret
+                      enabled: true
+                      adapter: false
+                    - serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      tlsName: mcp-notes.internal
+                      credential:
+                        required: true
+                        acceptedTypes:
+                          - user-oauth
+                        type: user-oauth
+                      enabled: true
+                      adapter: false
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - servers
+      operationId: createServer
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Add a server to the registry (group mcp-platform-admin).
+      description: |
+        Adds a server without restarting any component. The server has no tools until it registers its manifest
+        (`registerServer`, or the manifest the gateway fetches at start) and an administrator approves them. `tlsName` is
+        the name the gateway expects in the certificate of the server (default `<serverId>.internal`); the certificate comes
+        from the internal CA and its CN is the `serverId`.
+        The audit event is `admin_change`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerConfigCreate"
+            examples:
+              notes:
+                value:
+                  serverId: mcp-notes
+                  system: notes
+                  internalUrl: https://mcp-notes.internal:8443/mcp
+                  credential:
+                    required: true
+                    acceptedTypes:
+                      - user-oauth
+                    type: user-oauth
+      responses:
+        "201":
+          description: Added.
+          headers:
+            Location:
+              description: Address of the new server.
+              schema:
+                type: string
+              example: /admin/v1/servers/mcp-notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                notes:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    tlsName: mcp-notes.internal
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: A server with this serverId exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                exists:
+                  value:
+                    error: server_exists
+        "422":
+          $ref: "#/components/responses/ServerRejected"
+  /admin/v1/servers/{serverId}:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    get:
+      tags:
+        - servers
+      operationId: getServer
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: One server of the registry (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: The server.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                notes:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    tlsName: mcp-notes.internal
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - servers
+      operationId: updateServer
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Change the connection settings of a server (group mcp-platform-admin).
+      description: |
+        Only the fields in the body change. `serverId` and `system` never change (remove the server and add it again). Switching
+        `enabled` to false hides all tools of the server and refuses its calls as `tool_disabled`, which is the way to take
+        a server out of service without losing its approvals. A change of `credential` applies to the next call, and the
+        manifest of the server must accept the new types (otherwise its tools are refused until it registers a matching
+        manifest).
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerConfigPatch"
+            examples:
+              disable:
+                value:
+                  enabled: false
+      responses:
+        "200":
+          description: The server after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                disabled:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    tlsName: mcp-notes.internal
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: false
+                    adapter: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ServerRejected"
+    delete:
+      tags:
+        - servers
+      operationId: deleteServer
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Remove a server from the registry (group mcp-platform-admin).
+      description: |
+        Removes the server and what the gateway holds about it: its manifests, approvals, emergency switches and its
+        policy fragment. Its tools disappear from `tools/list` and a call is refused as for an unknown tool; its certificate
+        no longer gets policy data. The scope mapping keeps the scopes of its resource types in the stored document, and
+        they stop applying because no registered server declares those types. The system in the credential broker is
+        removed separately (`deleteAdminSystem`). The audit event is `admin_change`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: Removed.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/policy/scope-mapping:
+    get:
+      tags:
+        - policy
+      operationId: getScopeMapping
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Which group grants which resource scopes (admin).
+      description: |
+        Administrator data stored by the gateway (7.0.0): the mapping from groups (C9) to ResourceScope ids
+        (`<Type>/<local part>`). A group without an entry grants nothing. The whole document is read and written at once;
+        `ETag` identifies the version of the document and `PUT` needs it in `If-Match`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: The document (empty until an administrator writes one).
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeMappingDocument"
+              examples:
+                two_groups:
+                  value:
+                    scopeMapping:
+                      - group: mcp-jira-proj-ABC
+                        scopes:
+                          - Jira::Project/ABC
+                      - group: mcp-team-platform
+                        scopes:
+                          - Jira::Project/PLAT
+                          - Notes::Folder/platform
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags:
+        - policy
+      operationId: putScopeMapping
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Replace the scope mapping (group mcp-platform-admin).
+      description: |
+        Replaces the whole document. The gateway checks every scope id against the resource types of the registered servers:
+        the type must be declared, must have a `scopePattern` and the local part must match it (422 `scope_mapping_rejected`).
+        `If-Match` must carry the `ETag` of the document the administrator edited (`412` otherwise, `428` without the header),
+        so that two administrators do not overwrite each other. A successful write raises the revision of the policy data;
+        servers that see the new `prv` in a token refresh at once. The audit event is `admin_change`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScopeMappingDocument"
+            examples:
+              one_group:
+                value:
+                  scopeMapping:
+                    - group: mcp-jira-proj-ABC
+                      scopes:
+                        - Jira::Project/ABC
+      responses:
+        "200":
+          description: Stored; the body is the new document.
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeMappingDocument"
+              examples:
+                one_group:
+                  value:
+                    scopeMapping:
+                      - group: mcp-jira-proj-ABC
+                        scopes:
+                          - Jira::Project/ABC
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "412":
+          description: "`If-Match` is not the ETag of the stored document; read it again."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                stale:
+                  value:
+                    error: precondition_failed
+        "422":
+          description: A scope does not fit the declared resource types, or a group is listed twice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScopeMappingRejected"
+              examples:
+                unknown_type:
+                  value:
+                    error: scope_mapping_rejected
+                    reason: unknown_resource_type
+                    message: Mystery::Place/x names a type that no registered server declares
+        "428":
+          description: "`If-Match` is missing."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                required:
+                  value:
+                    error: precondition_required
+  /admin/v1/policy/overrides:
+    get:
+      tags:
+        - policy
+      operationId: listOverrides
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Emergency overrides (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: Every override, in id order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Override"
+              examples:
+                one:
+                  value:
+                    - id: block-drop-table
+                      target: all-servers
+                      text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                      setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      setAt: 2026-11-06T09:30:00Z
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/v1/policy/overrides/{id}:
+    parameters:
+      - $ref: "#/components/parameters/OverrideId"
+    get:
+      tags:
+        - policy
+      operationId: getOverride
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: One emergency override (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: The override.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Override"
+              examples:
+                block_drop_table:
+                  value:
+                    id: block-drop-table
+                    target: all-servers
+                    text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    setAt: 2026-11-06T09:30:00Z
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - policy
+      operationId: putOverride
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Create or replace an emergency override (group mcp-platform-admin).
+      description: |
+        An override is one `forbid` policy that an administrator adds without a deployment. It cannot grant anything: a
+        `permit`, a template or more than one policy is `422 override_rejected`. `target` says where it applies: `gateway`
+        (the decision on `call`), `all-servers` (every server evaluates it with its own policies) or a `serverId`. The text is
+        validated against the base schema `cedar/mcp.cedarschema` and, for a `serverId`, against the registered fragment
+        of that server. The override id becomes the policy id; an `@id` in the text must be the same. The write raises the
+        revision of the policy data. The audit event is `admin_change`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OverrideRequest"
+            examples:
+              block_drop_table:
+                value:
+                  target: all-servers
+                  text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+      responses:
+        "200":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Override"
+              examples:
+                block_drop_table:
+                  value:
+                    id: block-drop-table
+                    target: all-servers
+                    text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    setAt: 2026-11-06T09:30:00Z
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: The text is not a valid forbid-only override for its target.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverrideRejected"
+              examples:
+                permit:
+                  value:
+                    error: override_rejected
+                    reason: not_forbid
+                    message: an override is forbid only
+    delete:
+      tags:
+        - policy
+      operationId: deleteOverride
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Remove an emergency override (group mcp-platform-admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: Removed.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/registry/servers/{serverId}/policies/pending:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    get:
+      tags:
+        - registry
+      operationId: getPendingServerPolicies
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Policies of a server waiting for approval, next to the approved ones (admin).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: Approved versus pending policies, for the diff the administrator reviews.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingPolicies"
+              examples:
+                first_registration:
+                  value:
+                    approvedHash: null
+                    approvedPolicies: null
+                    pendingHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+                    pendingVersion: 1.4.0
+                    source: ci
+                    pendingPolicies:
+                      namespace: Jira
+                      schema: |
+                        namespace Jira {
+                          entity Project { key: String, category: String, scopes: Set<ResourceScope> };
+                          entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };
+                          action "read", "update" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };
+                        }
+                      files:
+                        - name: read.cedar
+                          text: |
+                            @id("jira-read")
+                            permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/registry/servers/{serverId}/policies/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    post:
+      tags:
+        - registry
+      operationId: approveServerPolicies
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approve the pending policies of a server (group mcp-platform-admin).
+      description: |
+        `policiesHash` must equal the current pending hash, otherwise 409 and nothing changes. After the approval the
+        policies are the ones served to the server in the policy data and the tools of the server follow their own approvals
+        again. The audit event is `admin_change` with reason `policies_approved`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovePoliciesRequest"
+            examples:
+              approve:
+                value:
+                  policiesHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+      responses:
+        "204":
+          description: Approved.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: policiesHash differs from the pending hash (the policies changed again, or nothing is pending).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+  /internal/v1/policy-data:
+    get:
+      tags:
+        - policy
+      operationId: getPolicyData
+      x-allowed-client-cn:
+        - "{registeredServerId}"
+      summary: Policy data for a server (internal TLS port).
+      description: |
+        For servers, not for people. The certificate must come from the internal CA and its CN must be the `serverId` of a
+        server in the registry; any other CN is `403`. The answer is the administrator data a server needs to evaluate its
+        own policies: the scope mapping, the allowed AI clients (`azp`, from the configuration of the gateway) and the
+        overrides that target this server or all servers (overrides for the gateway are not sent). The data is served with
+        an `ETag` (the revision, quoted); a client repeats the call with `If-None-Match` and gets `304` while nothing changed.
+        The internal JWT carries the revision as `prv`: a server that sees a newer one than it holds refreshes at once and
+        keeps polling at an interval it configures. A server that has no data it can use refuses its calls as
+        `upstream_unavailable` (C10).
+      security:
+        - mtls: []
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          description: The ETag of the data the server holds.
+          schema:
+            type: string
+            maxLength: 64
+          example: '"20261106093000-a1b2c3d"'
+      responses:
+        "200":
+          description: The policy data.
+          headers:
+            ETag:
+              description: The revision of the data, quoted.
+              required: true
+              schema:
+                type: string
+                pattern: ^"[0-9]{14}-[0-9a-f]{7}"$
+              example: '"20261106093000-a1b2c3d"'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyData"
+              examples:
+                for_a_server:
+                  value:
+                    revision: 20261106093000-a1b2c3d
+                    scopeMapping:
+                      - group: mcp-jira-proj-ABC
+                        scopes:
+                          - Jira::Project/ABC
+                    allowedClients:
+                      - claude-code
+                      - claude-ai
+                    overrides:
+                      - id: block-drop-table
+                        text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+        "304":
+          description: The server already holds this revision.
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /admin/v1/policy/status:
     get:
       tags:
@@ -1488,7 +2207,7 @@ paths:
       operationId: getPolicyStatus
       x-allowed-client-cn:
         - mcp-portal-bff
-      summary: Policy bundle revision loaded by each gateway instance (admin).
+      summary: Revision of the policy data that each gateway instance serves (admin).
       security:
         - mtls: []
           bffUserToken: []
@@ -1527,6 +2246,13 @@ components:
         type: string
         const: no-cache
       example: no-cache
+    DocumentETag:
+      description: Version of the document (quoted opaque token); the next write sends it in If-Match.
+      required: true
+      schema:
+        type: string
+        pattern: ^"[A-Za-z0-9_-]{8,128}"$
+      example: '"Zx8Tq2LmWk93vNpA"'
   securitySchemes:
     mtls:
       type: mutualTLS
@@ -1537,6 +2263,22 @@ components:
       bearerFormat: JWT
       description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin.
   parameters:
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The ETag of the document the change is based on.
+      schema:
+        type: string
+        pattern: ^"[A-Za-z0-9_-]{8,128}"$
+      example: '"Zx8Tq2LmWk93vNpA"'
+    OverrideId:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/OverrideId"
+      example: block-drop-table
     ServerId:
       name: serverId
       in: path
@@ -1569,6 +2311,18 @@ components:
         maximum: 200
         default: 50
   responses:
+    ServerRejected:
+      description: The settings are inconsistent (7.0.0).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ServerRejected"
+          examples:
+            server_id_mismatch:
+              value:
+                error: server_rejected
+                reason: server_id_mismatch
+                message: serverId must be mcp-<system>
     KillSwitchStoreUnavailable:
       description: The gateway cannot read or store the emergency switches (fail-closed). A switch is never reported as on when it could not be stored; a call that needs the state of the switches is refused as upstream_unavailable.
       headers:
@@ -1710,7 +2464,7 @@ components:
         reason:
           type: string
           pattern: ^[a-z][a-z0-9_]*$
-          description: Known values are risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
+          description: Known values are policies_invalid, resource_types_invalid and namespace_conflict (7.0.0, see registerServer), risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500
@@ -1854,6 +2608,18 @@ components:
           type: boolean
           default: true
           description: False when the server is disabled in gateway configuration or by an overrides policy, or when its held manifest fails the checks at start (CC-159). All tools of a disabled server report disabled=true in the catalog (CC-081, CC-088). Read only here; the emergency switch of a server is a separate resource (CC-194).
+        policiesStatus:
+          description: approved when the policies of the manifest are the approved ones; pending_approval when they changed or were never approved, and the tools of the server are blocked (7.0.0). Absent for an adapter, which has no policies.
+          type: string
+          enum:
+            - approved
+            - pending_approval
+        policiesHash:
+          description: policiesHash of the approved policies; absent until the first approval.
+          $ref: "#/components/schemas/DefinitionHash"
+        pendingPoliciesHash:
+          description: policiesHash waiting for approval; present exactly with policiesStatus pending_approval.
+          $ref: "#/components/schemas/DefinitionHash"
         tools:
           type: array
           items:
@@ -2070,32 +2836,322 @@ components:
                 $ref: "#/components/schemas/PolicyRevision"
             additionalProperties: false
       additionalProperties: false
+    ServerCredentialConfig:
+      type: object
+      description: How the gateway gets the credential for the server (C3). `type` is the default type of the system that goes into `context.credentialType` (CC-136) and must be one of `acceptedTypes`; `acceptedTypes` never mixes service-account with user types (CC-168).
+      required:
+        - required
+        - acceptedTypes
+        - type
+      properties:
+        required:
+          type: boolean
+        acceptedTypes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/CredentialType"
+        type:
+          $ref: "#/components/schemas/CredentialType"
+      additionalProperties: false
+    ServerConfig:
+      type: object
+      description: A server in the registry of the gateway (7.0.0).
+      required:
+        - serverId
+        - system
+        - internalUrl
+        - tlsName
+        - credential
+        - enabled
+        - adapter
+      properties:
+        serverId:
+          $ref: "#/components/schemas/ServerId"
+        system:
+          $ref: "#/components/schemas/SystemId"
+        internalUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        tlsName:
+          description: Name the gateway expects in the certificate of the server.
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
+        credential:
+          $ref: "#/components/schemas/ServerCredentialConfig"
+        enabled:
+          type: boolean
+        adapter:
+          description: True when the server is served through an adapter (CC-206) and takes its manifest on the adapter channel.
+          type: boolean
+      additionalProperties: false
+    ServerConfigCreate:
+      type: object
+      required:
+        - serverId
+        - system
+        - internalUrl
+        - credential
+      properties:
+        serverId:
+          $ref: "#/components/schemas/ServerId"
+        system:
+          $ref: "#/components/schemas/SystemId"
+        internalUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        tlsName:
+          description: Default `<serverId>.internal`.
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
+        credential:
+          $ref: "#/components/schemas/ServerCredentialConfig"
+        enabled:
+          type: boolean
+          default: true
+        adapter:
+          type: boolean
+          default: false
+      additionalProperties: false
+    ServerConfigPatch:
+      type: object
+      minProperties: 1
+      properties:
+        internalUrl:
+          type: string
+          format: uri
+          pattern: ^https://
+          maxLength: 255
+        tlsName:
+          type: string
+          pattern: ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$
+        credential:
+          $ref: "#/components/schemas/ServerCredentialConfig"
+        enabled:
+          type: boolean
+        adapter:
+          type: boolean
+      additionalProperties: false
+    ServerRejected:
+      type: object
+      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
+      required:
+        - error
+      properties:
+        error:
+          const: server_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    ScopeMappingEntry:
+      type: object
+      required:
+        - group
+        - scopes
+      properties:
+        group:
+          $ref: "#/components/schemas/GroupName"
+        scopes:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ResourceScopeId"
+      additionalProperties: false
+    ScopeMappingDocument:
+      type: object
+      description: The whole mapping from groups to resource scopes. A group is listed once; a group without an entry grants nothing.
+      required:
+        - scopeMapping
+      properties:
+        scopeMapping:
+          type: array
+          maxItems: 5000
+          items:
+            $ref: "#/components/schemas/ScopeMappingEntry"
+      additionalProperties: false
+    ScopeMappingRejected:
+      type: object
+      description: 422 of a write of the scope mapping. Known reasons are unknown_resource_type (no registered server declares the type), scope_not_grantable (the type has no scopePattern), scope_invalid (the local part does not match the scopePattern) and group_duplicate.
+      required:
+        - error
+      properties:
+        error:
+          const: scope_mapping_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    OverrideId:
+      type: string
+      pattern: ^[a-z][a-z0-9-]{0,62}$
+    OverrideTarget:
+      description: gateway (the decision on call), all-servers (every server evaluates it) or the serverId of one server.
+      type: string
+      pattern: ^(gateway|all-servers|mcp-[a-z][a-z0-9]{1,30})$
+    OverrideRequest:
+      type: object
+      required:
+        - target
+        - text
+      properties:
+        target:
+          $ref: "#/components/schemas/OverrideTarget"
+        text:
+          description: Cedar text of exactly one forbid policy.
+          type: string
+          minLength: 1
+          maxLength: 8000
+      additionalProperties: false
+    Override:
+      type: object
+      required:
+        - id
+        - target
+        - text
+        - setBy
+        - setAt
+      properties:
+        id:
+          $ref: "#/components/schemas/OverrideId"
+        target:
+          $ref: "#/components/schemas/OverrideTarget"
+        text:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        setBy:
+          description: sub of the administrator who wrote it.
+          type: string
+          minLength: 1
+          maxLength: 255
+        setAt:
+          $ref: "#/components/schemas/Timestamp"
+      additionalProperties: false
+    OverrideRejected:
+      type: object
+      description: 422 of a write of an override. Known reasons are not_forbid, not_one_policy, invalid_policy (does not parse or does not validate against the schema of its target), id_mismatch (the @id of the text is not the id of the override) and target_unknown (a serverId that is not in the registry).
+      required:
+        - error
+      properties:
+        error:
+          const: override_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    PendingPolicies:
+      type: object
+      required:
+        - approvedHash
+        - approvedPolicies
+        - pendingHash
+        - pendingPolicies
+        - pendingVersion
+        - source
+      properties:
+        approvedHash:
+          oneOf:
+            - $ref: "#/components/schemas/DefinitionHash"
+            - type: "null"
+        approvedPolicies:
+          description: The approved policies; null for the first registration.
+          oneOf:
+            - $ref: "#/components/schemas/policies"
+            - type: "null"
+        pendingHash:
+          $ref: "#/components/schemas/DefinitionHash"
+        pendingPolicies:
+          $ref: "#/components/schemas/policies"
+        pendingVersion:
+          description: Version of the manifest in which the pending policies appeared.
+          $ref: "#/components/schemas/SemVer"
+        source:
+          description: Where the pending policies come from, as for a pending tool (ci or server).
+          type: string
+          enum:
+            - ci
+            - server
+      additionalProperties: false
+    ApprovePoliciesRequest:
+      type: object
+      required:
+        - policiesHash
+      properties:
+        policiesHash:
+          $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    PolicyData:
+      type: object
+      description: The administrator data a server needs to evaluate its own policies (7.0.0).
+      required:
+        - revision
+        - scopeMapping
+        - allowedClients
+        - overrides
+      properties:
+        revision:
+          $ref: "#/components/schemas/PolicyRevision"
+        scopeMapping:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScopeMappingEntry"
+        allowedClients:
+          description: Values of `azp` that may call (MCP_ALLOWED_CLIENTS of the gateway); checked in code before Cedar.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9._-]{1,128}$
+        overrides:
+          description: Overrides that target this server or all servers.
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - text
+            properties:
+              id:
+                $ref: "#/components/schemas/OverrideId"
+              text:
+                type: string
+                minLength: 1
+                maxLength: 8000
+            additionalProperties: false
+      additionalProperties: false
     ServerId:
       description: MCP server id; always mcp-<system>, one server per system (C5).
       type: string
-      enum:
-        - mcp-jira
-        - mcp-confluence
-        - mcp-gitlab
-        - mcp-servicedesk
-        - mcp-opensearch
+      pattern: ^mcp-[a-z][a-z0-9]{1,30}$
     SystemId:
-      description: Target system identifier, lower case (01-contracts conventions).
+      description: "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts)."
       type: string
-      enum:
-        - jira
-        - confluence
-        - gitlab
-        - servicedesk
-        - opensearch
+      pattern: ^[a-z][a-z0-9]{1,30}$
     SemVer:
       type: string
       pattern: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$
     QualifiedToolName:
-      description: "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>."
+      description: "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>, with the system pattern of SystemId."
       type: string
-      pattern: ^(jira|confluence|gitlab|servicedesk|opensearch)__[a-z][a-z0-9]*(_[a-z0-9]+)*$
-      maxLength: 80
+      pattern: ^[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 100
     Risk:
       type: string
       enum:
@@ -2115,24 +3171,19 @@ components:
       type: string
       pattern: ^mcp-[A-Za-z0-9][A-Za-z0-9._-]*$
       maxLength: 255
+    DefinitionHash:
+      description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
     ToolName:
       description: Server-side tool name (without the gateway prefix). Snake case; a double underscore is forbidden because the gateway uses it as the <system>__<tool> separator (C5).
       type: string
       pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
       maxLength: 64
     ResourceType:
-      description: Cedar entity type of a system resource (C7).
+      description: "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in."
       type: string
-      enum:
-        - Jira::Project
-        - Jira::Issue
-        - Confluence::Space
-        - Confluence::Page
-        - GitLab::Group
-        - GitLab::Project
-        - OpenSearch::Index
-        - ServiceDesk::Queue
-        - ServiceDesk::Ticket
+      pattern: ^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$
     ResourceRef:
       type: object
       required:
@@ -2173,10 +3224,6 @@ components:
         annotations:
           type: object
       additionalProperties: false
-    DefinitionHash:
-      description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
-      type: string
-      pattern: ^sha256:[0-9a-f]{64}$
     ToolEntryFields:
       description: Fields of a manifest tool entry, open for composition (used by the gateway registry API). risk and action are required by ToolEntry and forbidden by AdapterToolEntry.
       type: object
@@ -2225,6 +3272,68 @@ components:
               items:
                 $ref: "#/components/schemas/ResourceRef"
       unevaluatedProperties: false
+    ResourceTypeDeclaration:
+      description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
+      type: object
+      required:
+        - type
+        - attributes
+        - idPattern
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        attributes:
+          description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
+          type: array
+          items:
+            type: string
+            pattern: ^[a-z][A-Za-z0-9]*$
+          uniqueItems: true
+        parent:
+          description: Type of the containing resource, declared in this manifest, same namespace.
+          $ref: "#/components/schemas/ResourceType"
+        parentAttribute:
+          description: Cedar attribute that holds the parent entity; required with parent and only then.
+          type: string
+          pattern: ^[a-z][A-Za-z0-9]*$
+        idPattern:
+          description: "Anchored regular expression (^...$, no top-level alternation) of the ids of this type: tool arguments, resolved resources. Written in the subset that Java and ECMAScript share; matched against the whole id."
+          type: string
+          pattern: ^\^.+\$$
+          maxLength: 2048
+        scopePattern:
+          description: "Anchored regular expression of the local part of a grantable scope id (<Type>/<local part>). Absent: the type cannot be granted in the scope mapping."
+          type: string
+          pattern: ^\^.+\$$
+          maxLength: 2048
+        earlyScopeCheck:
+          description: Whether the gateway checks tool arguments of this type against the scopes of the user before the call (context.refs). Only for types whose scope is the exact id; requires scopePattern.
+          type: boolean
+          default: false
+        classification:
+          description: The attribute the builder normalizes (trim, ASCII lower case, sets without duplicates); a resource missing a required one is refused (internal_error).
+          type: object
+          required:
+            - attribute
+            - kind
+            - required
+          properties:
+            attribute:
+              type: string
+              pattern: ^[a-z][A-Za-z0-9]*$
+            kind:
+              enum:
+                - string
+                - set
+            required:
+              type: boolean
+          additionalProperties: false
+      dependentRequired:
+        parent:
+          - parentAttribute
+        parentAttribute:
+          - parent
+      additionalProperties: false
     ToolEntry:
       description: Manifest entry of one tool. Every tool that accepts a resource identifier MUST declare resourceRefs (C6).
       type: object
@@ -2241,23 +3350,6 @@ components:
         - user-secret
         - token-exchange
         - service-account
-    ResourceTypeDeclaration:
-      type: object
-      required:
-        - type
-      properties:
-        type:
-          $ref: "#/components/schemas/ResourceType"
-        attributes:
-          description: Attributes the server's resolver fills from the system (Cedar entity attributes).
-          type: array
-          items:
-            type: string
-            pattern: ^[a-z][A-Za-z0-9]*$
-          uniqueItems: true
-        parent:
-          $ref: "#/components/schemas/ResourceType"
-      additionalProperties: false
     RequestId:
       description: UUIDv7 request id (C2 rid, X-Request-Id).
       type: string
@@ -2274,7 +3366,7 @@ components:
       minLength: 1
       maxLength: 512
     PolicyRevision:
-      description: Policy bundle revision YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without a loaded bundle' (M1 only, CC-068); it is not the revision of any bundle and a receiver must not infer anything about policy from it.
+      description: Revision of the policy data of the gateway (scope mapping, allowed clients, overrides; GET /internal/v1/policy-data), YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.
       type: string
       pattern: ^[0-9]{14}-[0-9a-f]{7}$
     ErrorCode:
@@ -2318,9 +3410,49 @@ components:
       description: Opaque, unguessable id of a pending confirmation (C11); used in URL paths and as the key of the portal preview.
       type: string
       pattern: ^[A-Za-z0-9_-]{16,128}$
+    ResourceScopeId:
+      description: "Id of a ResourceScope (C7): <Type>/<local part>, where the type is declared by a registered server and the local part matches its scopePattern (checked by the gateway against the registry, not by this pattern). ASCII only."
+      type: string
+      pattern: ^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}/[!-~]{1,1024}$
+      maxLength: 1100
+    policies:
+      description: "The policy fragment of the server (C7), from src/main/resources/mcp/policies/ of its repository: the Cedar schema of its one namespace and its resource policies. Present for a server built on the starter, absent for an adapter. It is validated at registration (base schema plus fragment compose and validate in strict mode, see cedar/entity-builder.md) and is part of what an administrator approves (policiesHash)."
+      type: object
+      required:
+        - namespace
+        - schema
+        - files
+      properties:
+        namespace:
+          description: The Cedar namespace of the server; every resourceTypes[].type starts with it.
+          type: string
+          pattern: ^[A-Z][A-Za-z0-9]{0,30}$
+        schema:
+          description: "Text of schema.cedarschema: exactly one namespace, the server's own."
+          type: string
+          minLength: 1
+          maxLength: 200000
+        files:
+          description: The *.cedar files of the server, in file name order.
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            required:
+              - name
+              - text
+            properties:
+              name:
+                type: string
+                pattern: ^[a-z0-9][a-z0-9._-]{0,63}\.cedar$
+              text:
+                type: string
+                maxLength: 200000
+            additionalProperties: false
+      additionalProperties: false
     ServerManifest:
       title: MCP server manifest (C6)
-      description: "Generated by the starter at build time (target/mcp-manifest.json, the artifact of the reviewed commit) or built at startup from the server's tools/list (CC-140), served at GET /mcp-manifest (requires C2) and registered with PUT /admin/v1/registry/servers/{serverId} (C5). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique; definition.name == name; definition.inputSchema has no confirmation_code and is closed and bounded (CC-078, CC-123: type object and additionalProperties false at every object level, no open maps, every string with maxLength unless an enum or const, every array with maxItems and items, every number with minimum and maximum, patterns anchored with ^ and $, every node typed, no allOf/anyOf/oneOf/not/if/then/else); definitionHash recomputed from definition and the entry equals the declared one (CC-005)."
+      description: "Generated by the starter at build time (target/mcp-manifest.json, the artifact of the reviewed commit) or built at startup from the server's tools/list (CC-140), served at GET /mcp-manifest (requires C2) and registered with PUT /admin/v1/registry/servers/{serverId} (C5). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique, all in one Cedar namespace that equals policies.namespace; each declaration consistent (parent and parentAttribute together, parent in the same namespace, earlyScopeCheck only with a scopePattern, the classification attribute among attributes, idPattern and scopePattern anchored with ^ and $ without a top-level alternation); policies.files names unique; policiesHash recomputed from policies equals the declared one; definition.name == name; definition.inputSchema has no confirmation_code and is closed and bounded (CC-078, CC-123: type object and additionalProperties false at every object level, no open maps, every string with maxLength unless an enum or const, every array with maxItems and items, every number with minimum and maximum, patterns anchored with ^ and $, every node typed, no allOf/anyOf/oneOf/not/if/then/else); definitionHash recomputed from definition and the entry equals the declared one (CC-005)."
       type: object
       required:
         - serverId
@@ -2386,26 +3518,109 @@ components:
               - $ref: "#/components/schemas/AdapterToolEntry"
           description: "Which of the two entry forms applies depends on source: AdapterToolEntry when source is adapter, ToolEntry otherwise (CC-193)."
         source:
-          description: "Absent for a server built on the starter. adapter marks the manifest of an adapter, the sidecar of a foreign MCP server (CC-193): its tool entries carry no risk and no action (an administrator classifies them at approval, outside definitionHash) and no resourceRefs."
+          description: "Absent for a server built on the starter. adapter marks the manifest of an adapter, the sidecar of a foreign MCP server (CC-193): its tool entries carry no risk and no action (an administrator classifies them at approval, outside definitionHash) and no resourceRefs, no resourceTypes and no policies (its policies are its own, outside the platform)."
           const: adapter
+        policies:
+          description: "The policy fragment of the server (C7), from src/main/resources/mcp/policies/ of its repository: the Cedar schema of its one namespace and its resource policies. Present for a server built on the starter, absent for an adapter. It is validated at registration (base schema plus fragment compose and validate in strict mode, see cedar/entity-builder.md) and is part of what an administrator approves (policiesHash)."
+          type: object
+          required:
+            - namespace
+            - schema
+            - files
+          properties:
+            namespace:
+              description: The Cedar namespace of the server; every resourceTypes[].type starts with it.
+              type: string
+              pattern: ^[A-Z][A-Za-z0-9]{0,30}$
+            schema:
+              description: "Text of schema.cedarschema: exactly one namespace, the server's own."
+              type: string
+              minLength: 1
+              maxLength: 200000
+            files:
+              description: The *.cedar files of the server, in file name order.
+              type: array
+              maxItems: 100
+              items:
+                type: object
+                required:
+                  - name
+                  - text
+                properties:
+                  name:
+                    type: string
+                    pattern: ^[a-z0-9][a-z0-9._-]{0,63}\.cedar$
+                  text:
+                    type: string
+                    maxLength: 200000
+                additionalProperties: false
+          additionalProperties: false
+        policiesHash:
+          description: sha256 over the RFC 8785 canonical JSON of the policies member (see test-vectors/policies-hash). The gateway recomputes it; a changed hash of a deployed server puts the server in pending_approval until an administrator approves it. Present exactly when policies is.
+          $ref: "#/components/schemas/DefinitionHash"
       additionalProperties: false
       $defs:
         ResourceTypeDeclaration:
+          description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
           type: object
           required:
             - type
+            - attributes
+            - idPattern
           properties:
             type:
               $ref: "#/components/schemas/ResourceType"
             attributes:
-              description: Attributes the server's resolver fills from the system (Cedar entity attributes).
+              description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
               type: array
               items:
                 type: string
                 pattern: ^[a-z][A-Za-z0-9]*$
               uniqueItems: true
             parent:
+              description: Type of the containing resource, declared in this manifest, same namespace.
               $ref: "#/components/schemas/ResourceType"
+            parentAttribute:
+              description: Cedar attribute that holds the parent entity; required with parent and only then.
+              type: string
+              pattern: ^[a-z][A-Za-z0-9]*$
+            idPattern:
+              description: "Anchored regular expression (^...$, no top-level alternation) of the ids of this type: tool arguments, resolved resources. Written in the subset that Java and ECMAScript share; matched against the whole id."
+              type: string
+              pattern: ^\^.+\$$
+              maxLength: 2048
+            scopePattern:
+              description: "Anchored regular expression of the local part of a grantable scope id (<Type>/<local part>). Absent: the type cannot be granted in the scope mapping."
+              type: string
+              pattern: ^\^.+\$$
+              maxLength: 2048
+            earlyScopeCheck:
+              description: Whether the gateway checks tool arguments of this type against the scopes of the user before the call (context.refs). Only for types whose scope is the exact id; requires scopePattern.
+              type: boolean
+              default: false
+            classification:
+              description: The attribute the builder normalizes (trim, ASCII lower case, sets without duplicates); a resource missing a required one is refused (internal_error).
+              type: object
+              required:
+                - attribute
+                - kind
+                - required
+              properties:
+                attribute:
+                  type: string
+                  pattern: ^[a-z][A-Za-z0-9]*$
+                kind:
+                  enum:
+                    - string
+                    - set
+                required:
+                  type: boolean
+              additionalProperties: false
+          dependentRequired:
+            parent:
+              - parentAttribute
+            parentAttribute:
+              - parent
           additionalProperties: false
         ResourceRef:
           type: object
@@ -2509,12 +3724,31 @@ components:
                 items:
                   $ref: "#/components/schemas/AdapterToolEntry"
                 type: array
+              resourceTypes:
+                type: array
+                maxItems: 0
+                items:
+                  $ref: "#/components/schemas/ResourceTypeDeclaration"
+            not:
+              anyOf:
+                - required:
+                    - policies
+                - required:
+                    - policiesHash
           else:
             properties:
               tools:
                 items:
                   $ref: "#/components/schemas/ToolEntry"
                 type: array
+            required:
+              - policies
+              - policiesHash
+      dependentRequired:
+        policies:
+          - policiesHash
+        policiesHash:
+          - policies
     AuditEvent:
       title: Audit event (C8)
       description: One JSON object per line on a dedicated logger/appender shipped to the SIEM. Never contains argument values, tool results, secrets, confirmation codes, TOTP codes, authenticator seeds or otpauth URIs; additionalProperties is false so such fields cannot be added by accident. Target system of broker events is carried in 'server' (mcp-<system>). The serializer must escape control characters, U+2028 and U+2029 in every string value.

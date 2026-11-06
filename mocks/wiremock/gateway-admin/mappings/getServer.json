@@ -1,0 +1,135 @@
+{
+  "mappings": [
+    {
+      "name": "getServer without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getServer 200 notes",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "tlsName": "mcp-notes.internal",
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": true,
+          "adapter": false
+        }
+      }
+    },
+    {
+      "name": "getServer 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getServer 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "getServer 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    }
+  ]
+}

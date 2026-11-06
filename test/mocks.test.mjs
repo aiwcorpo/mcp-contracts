@@ -178,9 +178,10 @@ test('MSW: malformed JSON body gives 400, not 500 (review 1.2.0 L7)', async () =
   assert.equal(res.status, 400);
 });
 
-test('MSW: unknown system gives 400 (CC-054)', async () => {
+// The mock cannot know which systems a broker has (they are runtime data since 7.0.0), so it refuses what is no system id at all.
+test('MSW: a path segment that is not a system id gives 400 (CC-054)', async () => {
   const headers = { 'X-XSRF-TOKEN': MOCK_XSRF_TOKEN, Cookie: `__Host-XSRF-TOKEN=${MOCK_XSRF_TOKEN}` };
-  const res = await fetch(`${BASE}/api/v1/connections/sharepoint`, { method: 'DELETE', headers });
+  const res = await fetch(`${BASE}/api/v1/connections/Share-Point`, { method: 'DELETE', headers });
   assert.equal(res.status, 400);
   assert.deepEqual(await res.json(), { error: 'invalid_request' });
 });

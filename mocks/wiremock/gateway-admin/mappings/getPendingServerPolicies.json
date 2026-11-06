@@ -1,0 +1,137 @@
+{
+  "mappings": [
+    {
+      "name": "getPendingServerPolicies without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies/pending",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getPendingServerPolicies 200 first_registration",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "approvedHash": null,
+          "approvedPolicies": null,
+          "pendingHash": "sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93",
+          "pendingVersion": "1.4.0",
+          "source": "ci",
+          "pendingPolicies": {
+            "namespace": "Jira",
+            "schema": "namespace Jira {\n  entity Project { key: String, category: String, scopes: Set<ResourceScope> };\n  entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };\n  action \"read\", \"update\" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };\n}\n",
+            "files": [
+              {
+                "name": "read.cedar",
+                "text": "@id(\"jira-read\")\npermit (principal in UserGroup::\"mcp-jira-read\", action == Jira::Action::\"read\", resource);\n"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "getPendingServerPolicies 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getPendingServerPolicies 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "getPendingServerPolicies 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/policies/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    }
+  ]
+}

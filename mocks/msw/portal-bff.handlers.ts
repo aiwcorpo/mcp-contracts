@@ -1,5 +1,5 @@
 import { http, HttpResponse, type HttpHandler } from 'msw';
-import { portalBffExamples, RETURN_PATH_PATTERN, SYSTEMS } from './portal-bff.examples.js';
+import { portalBffExamples, RETURN_PATH_PATTERN, SYSTEM_ID_PATTERN } from './portal-bff.examples.js';
 import type { ExampleResponse, OperationExamples } from './types.js';
 
 export interface PortalBffHandlerOptions {
@@ -94,7 +94,7 @@ export function createPortalBffHandlers(options: PortalBffHandlerOptions = {}): 
           return errorResponse('csrf_invalid', 403);
         }
       }
-      if (operation.route.includes('{system}') && !SYSTEMS.includes(String(params.system))) {
+      if (operation.route.includes('{system}') && !new RegExp(SYSTEM_ID_PATTERN).test(String(params.system))) {
         return errorResponse('invalid_request', 400);
       }
       if (await invalidReturnPath(operation.operationId, request)) {

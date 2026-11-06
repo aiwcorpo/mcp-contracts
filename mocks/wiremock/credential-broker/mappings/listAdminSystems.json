@@ -1,0 +1,158 @@
+{
+  "mappings": [
+    {
+      "name": "listAdminSystems without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/admin/systems",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listAdminSystems 200 two_systems",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/admin/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": [
+          {
+            "system": "jira",
+            "baseUrl": "https://jira.internal",
+            "adapter": "atlassian-dc",
+            "supportedTypes": [
+              "user-oauth",
+              "user-secret"
+            ],
+            "defaultType": "user-secret",
+            "secretScheme": "Bearer"
+          },
+          {
+            "system": "notes",
+            "baseUrl": "https://notes.internal/api",
+            "adapter": "generic-rest",
+            "supportedTypes": [
+              "user-oauth"
+            ],
+            "defaultType": "user-oauth",
+            "secretScheme": "Bearer",
+            "oauth": {
+              "clientId": "mcp-broker-notes",
+              "authorizeUrl": "https://notes.internal/oauth/authorize",
+              "tokenUrl": "https://notes.internal/oauth/token",
+              "scopes": [
+                "notes.read",
+                "notes.write"
+              ],
+              "clientSecretSet": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "listAdminSystems 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/admin/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "listAdminSystems 403 forbidden",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/admin/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=forbidden($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "forbidden"
+        }
+      }
+    },
+    {
+      "name": "listAdminSystems 503 upstream_unavailable",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/v1/admin/systems",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=upstream_unavailable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "upstream_unavailable"
+        }
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 6.3.2
+  version: 7.0.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -1694,6 +1694,755 @@ paths:
                     message: update_issue comes from an adapter and needs risk and action
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers:
+    get:
+      tags: [admin]
+      operationId: listAdminServers
+      summary: "Servers in the registry of the gateway (proxy to C5, group mcp-platform-admin)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Every server.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfig'
+              examples:
+                one_server:
+                  value:
+                      - serverId: mcp-notes
+                        system: notes
+                        internalUrl: https://mcp-notes.internal:8443/mcp
+                        tlsName: mcp-notes.internal
+                        credential:
+                          required: true
+                          acceptedTypes: [user-oauth]
+                          type: user-oauth
+                        enabled: true
+                        adapter: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    post:
+      tags: [admin]
+      operationId: createAdminServer
+      summary: "Add a server to the registry (proxy to C5): no restart, no tools until its manifest is approved."
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfigCreate'
+            examples:
+                notes:
+                  value:
+                      serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      credential:
+                        required: true
+                        acceptedTypes: [user-oauth]
+                        type: user-oauth
+      responses:
+        '201':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfig'
+              examples:
+                notes:
+                  value:
+                      serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      tlsName: mcp-notes.internal
+                      credential:
+                        required: true
+                        acceptedTypes: [user-oauth]
+                        type: user-oauth
+                      enabled: true
+                      adapter: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: A server with this serverId exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                exists:
+                  value:
+                      error: server_exists
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerRejected'
+              examples:
+                server_id_mismatch:
+                  value:
+                      error: server_rejected
+                      reason: server_id_mismatch
+                      message: serverId must be mcp-<system>
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers/{serverId}:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    get:
+      tags: [admin]
+      operationId: getAdminServer
+      summary: "One server of the registry (proxy to C5)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The server.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfig'
+              examples:
+                notes:
+                  value:
+                      serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      tlsName: mcp-notes.internal
+                      credential:
+                        required: true
+                        acceptedTypes: [user-oauth]
+                        type: user-oauth
+                      enabled: true
+                      adapter: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    patch:
+      tags: [admin]
+      operationId: updateAdminServer
+      summary: "Change the connection settings of a server (proxy to C5; enabled false takes it out of service)."
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfigPatch'
+            examples:
+                disable:
+                  value:
+                      enabled: false
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The server after the change.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfig'
+              examples:
+                disabled:
+                  value:
+                      serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      tlsName: mcp-notes.internal
+                      credential:
+                        required: true
+                        acceptedTypes: [user-oauth]
+                        type: user-oauth
+                      enabled: false
+                      adapter: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerRejected'
+              examples:
+                server_id_mismatch:
+                  value:
+                      error: server_rejected
+                      reason: credential_type_not_accepted
+                      message: type must be one of acceptedTypes
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminServer
+      summary: "Remove a server from the registry (proxy to C5); its tools disappear and its calls are refused."
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Removed.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/policy/scope-mapping:
+    get:
+      tags: [admin]
+      operationId: getAdminScopeMapping
+      summary: "Which group grants which resource scopes (proxy to C5)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: The document.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ScopeMappingDocument'
+              examples:
+                two_groups:
+                  value:
+                      scopeMapping:
+                        - group: mcp-jira-proj-ABC
+                          scopes: [Jira::Project/ABC]
+                        - group: mcp-team-platform
+                          scopes: [Jira::Project/PLAT, Notes::Folder/platform]
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    put:
+      tags: [admin]
+      operationId: putAdminScopeMapping
+      summary: "Replace the scope mapping (proxy to C5; If-Match is the ETag of the document that was edited)."
+      security:
+        - session: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ScopeMappingDocument'
+            examples:
+                one_group:
+                  value:
+                      scopeMapping:
+                        - group: mcp-jira-proj-ABC
+                          scopes: [Jira::Project/ABC]
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: Stored; the body is the new document.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ScopeMappingDocument'
+              examples:
+                one_group:
+                  value:
+                      scopeMapping:
+                        - group: mcp-jira-proj-ABC
+                          scopes: [Jira::Project/ABC]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '412':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: If-Match is not the ETag of the stored document; read it again.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                stale:
+                  value:
+                      error: precondition_failed
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ScopeMappingRejected'
+              examples:
+                unknown_type:
+                  value:
+                      error: scope_mapping_rejected
+                      reason: unknown_resource_type
+                      message: Mystery::Place/x names a type that no registered server declares
+        '428':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: If-Match is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                required:
+                  value:
+                      error: precondition_required
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/policy/overrides:
+    get:
+      tags: [admin]
+      operationId: listAdminOverrides
+      summary: "Emergency overrides (proxy to C5)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Every override.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: 'gateway-admin.v1.yaml#/components/schemas/Override'
+              examples:
+                one:
+                  value:
+                      - id: block-drop-table
+                        target: all-servers
+                        text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                        setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        setAt: '2026-11-06T09:30:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/policy/overrides/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OverrideId'
+    get:
+      tags: [admin]
+      operationId: getAdminOverride
+      summary: "One emergency override (proxy to C5)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The override.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/Override'
+              examples:
+                block_drop_table:
+                  value:
+                      id: block-drop-table
+                      target: all-servers
+                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      setAt: '2026-11-06T09:30:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    put:
+      tags: [admin]
+      operationId: putAdminOverride
+      summary: "Create or replace a forbid-only emergency override (proxy to C5)."
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/OverrideRequest'
+            examples:
+                block_drop_table:
+                  value:
+                      target: all-servers
+                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/Override'
+              examples:
+                block_drop_table:
+                  value:
+                      id: block-drop-table
+                      target: all-servers
+                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      setAt: '2026-11-06T09:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/OverrideRejected'
+              examples:
+                permit:
+                  value:
+                      error: override_rejected
+                      reason: not_forbid
+                      message: an override is forbid only
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminOverride
+      summary: "Remove an emergency override (proxy to C5)."
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Removed.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/policies/pending:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    get:
+      tags: [admin]
+      operationId: getAdminPendingServerPolicies
+      summary: "Policies of a server waiting for approval, next to the approved ones (proxy to C5)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved versus pending policies.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/PendingPolicies'
+              examples:
+                first_registration:
+                  value:
+                      approvedHash: null
+                      approvedPolicies: null
+                      pendingHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+                      pendingVersion: 1.4.0
+                      source: ci
+                      pendingPolicies:
+                        namespace: Jira
+                        schema: |
+                          namespace Jira {
+                            entity Project { key: String, category: String, scopes: Set<ResourceScope> };
+                            entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };
+                            action "read", "update" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };
+                          }
+                        files:
+                          - name: read.cedar
+                            text: |
+                              @id("jira-read")
+                              permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/policies/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    post:
+      tags: [admin]
+      operationId: approveAdminServerPolicies
+      summary: "Approve the pending policies of a server (proxy to C5)."
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ApprovePoliciesRequest'
+            examples:
+                approve:
+                  value:
+                      policiesHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The policies changed again; reload the diff.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                hash_mismatch:
+                  value:
+                      error: hash_mismatch
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/systems:
+    get:
+      tags: [admin]
+      operationId: listAdminSystems
+      summary: "Systems of the credential broker with their configuration, without secrets (proxy to C4)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Every system.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: 'credential-broker.v1.yaml#/components/schemas/SystemAdminView'
+              examples:
+                one:
+                  value:
+                      - system: notes
+                        baseUrl: https://notes.internal/api
+                        adapter: generic-rest
+                        supportedTypes: [user-oauth]
+                        defaultType: user-oauth
+                        secretScheme: Bearer
+                        oauth:
+                          clientId: mcp-broker-notes
+                          authorizeUrl: https://notes.internal/oauth/authorize
+                          tokenUrl: https://notes.internal/oauth/token
+                          scopes: [notes.read, notes.write]
+                          clientSecretSet: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/systems/{system}:
+    parameters:
+      - $ref: '#/components/parameters/System'
+    put:
+      tags: [admin]
+      operationId: putAdminSystem
+      summary: "Create or replace a system in the credential broker (proxy to C4); the client secret is write-only."
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'credential-broker.v1.yaml#/components/schemas/SystemAdminRequest'
+            examples:
+                notes:
+                  value:
+                      baseUrl: https://notes.internal/api
+                      adapter: generic-rest
+                      supportedTypes: [user-oauth]
+                      defaultType: user-oauth
+                      secretScheme: Bearer
+                      oauth:
+                        clientId: mcp-broker-notes
+                        clientSecret: test-only-client-secret-0000000000
+                        authorizeUrl: https://notes.internal/oauth/authorize
+                        tokenUrl: https://notes.internal/oauth/token
+                        scopes: [notes.read, notes.write]
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Stored; the body is the configuration without secrets.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/SystemAdminView'
+              examples:
+                notes:
+                  value:
+                      system: notes
+                      baseUrl: https://notes.internal/api
+                      adapter: generic-rest
+                      supportedTypes: [user-oauth]
+                      defaultType: user-oauth
+                      secretScheme: Bearer
+                      oauth:
+                        clientId: mcp-broker-notes
+                        authorizeUrl: https://notes.internal/oauth/authorize
+                        tokenUrl: https://notes.internal/oauth/token
+                        scopes: [notes.read, notes.write]
+                        clientSecretSet: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Rejected; the body says why.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/SystemRejected'
+              examples:
+                default_type:
+                  value:
+                      error: system_rejected
+                      reason: default_type_not_supported
+                      message: defaultType must be one of supportedTypes
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminSystem
+      summary: "Remove a system from the credential broker (proxy to C4), with its connections."
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Removed.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/kill-switches:
     get:
       tags: [admin]
@@ -1852,6 +2601,13 @@ paths:
           $ref: "#/components/responses/UpstreamUnavailable"
 components:
   headers:
+    DocumentETag:
+      description: Version of the document (quoted opaque token); the next write sends it in If-Match.
+      required: true
+      schema:
+        type: string
+        pattern: '^"[A-Za-z0-9_-]{8,128}"$'
+      example: '"Zx8Tq2LmWk93vNpA"'
     RequestId:
       description: requestId (UUIDv7) of this request, the same value as in the audit events of the BFF, broker and gateway (CC-047, CC-087). Not a secret; the UI shows its first 8 characters next to an error.
       required: true
@@ -1884,6 +2640,22 @@ components:
       name: X-XSRF-TOKEN
       description: Value of the __Host-XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain) set by the BFF (CC-055). Required for POST, PUT and DELETE.
   parameters:
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The ETag of the document the change is based on.
+      schema:
+        type: string
+        pattern: '^"[A-Za-z0-9_-]{8,128}"$'
+      example: '"Zx8Tq2LmWk93vNpA"'
+    OverrideId:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: 'gateway-admin.v1.yaml#/components/schemas/OverrideId'
+      example: block-drop-table
     System:
       name: system
       in: path
