@@ -1,5 +1,5 @@
 // Rules of C5/C6 that JSON Schema cannot express (README: "Manifest semantic rules", CC-005, CC-018).
-import { manifestEntryHash } from './definition-hash.mjs';
+import { manifestEntryHash, policiesHash } from './definition-hash.mjs';
 
 export function manifestRuleViolations(manifest) {
   const violations = [];
@@ -18,6 +18,8 @@ export function manifestRuleViolations(manifest) {
   if (declared.size !== manifest.resourceTypes.length || referenced.some((type) => !declared.has(type))) {
     violations.push('resource-types-declared');
   }
+  violations.push(...resourceTypeViolations(manifest));
+  violations.push(...policiesViolations(manifest));
   for (const tool of manifest.tools) {
     for (const { argument } of tool.resourceRefs) {
       if (!idArgument(tool.definition.inputSchema?.properties?.[argument])) violations.push('resource-ref-argument-declared');
@@ -28,6 +30,53 @@ export function manifestRuleViolations(manifest) {
     if (manifestEntryHash(manifest, tool) !== tool.definitionHash) violations.push('definition-hash-matches');
   }
   return [...new Set(violations)];
+}
+
+const ATTRIBUTE = /^[a-z][A-Za-z0-9]*$/;
+const namespaceOf = (type) => type.slice(0, type.indexOf('::'));
+
+// 7.0.0: the declarations are the only source of what the entity builder knows, so an inconsistent one is refused at
+// registration. Patterns must compile in the subset Java and ECMAScript share.
+function resourceTypeViolations(manifest) {
+  const found = new Set();
+  const declared = new Map(manifest.resourceTypes.map((r) => [r.type, r]));
+  const compiles = (pattern) => {
+    try {
+      new RegExp(pattern, 'u');
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  for (const d of manifest.resourceTypes) {
+    const attributes = d.attributes ?? [];
+    if (attributes.includes('scopes')) found.add('resource-types-valid');
+    if (d.parent !== undefined) {
+      const parent = declared.get(d.parent);
+      if (parent && namespaceOf(parent.type) !== namespaceOf(d.type)) found.add('resource-types-valid');
+      if (attributes.includes(d.parentAttribute) || d.parentAttribute === 'scopes' || !ATTRIBUTE.test(d.parentAttribute ?? '')) found.add('resource-types-valid');
+    }
+    if (d.earlyScopeCheck && d.scopePattern === undefined) found.add('resource-types-valid');
+    if (d.classification && !attributes.includes(d.classification.attribute)) found.add('resource-types-valid');
+    for (const pattern of [d.idPattern, d.scopePattern]) {
+      if (pattern !== undefined && (!anchoredPattern(pattern) || !compiles(pattern))) found.add('resource-types-valid');
+    }
+  }
+  const namespaces = new Set(manifest.resourceTypes.map((r) => namespaceOf(r.type)));
+  if (namespaces.size > 1 || (manifest.policies && namespaces.size === 1 && !namespaces.has(manifest.policies.namespace))) {
+    found.add('resource-types-namespace');
+  }
+  return [...found];
+}
+
+function policiesViolations(manifest) {
+  const found = new Set();
+  const { policies } = manifest;
+  if (!policies) return [];
+  const names = policies.files.map((f) => f.name);
+  if (names.some((name, i) => i > 0 && !(names[i - 1] < name))) found.add('policies-files-sorted-unique');
+  if (policiesHash(policies).hash !== manifest.policiesHash) found.add('policies-hash-matches');
+  return [...found];
 }
 
 // CC-043: a resourceRef must name a declared top-level argument whose values can be ids; a typo would leave

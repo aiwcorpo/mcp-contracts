@@ -42,3 +42,12 @@ export function manifestEntryHash(manifest, entry) {
     server: { system: manifest.system, credential: manifest.credential },
   }).hash;
 }
+
+/**
+ * policiesHash of C6 (7.0.0): RFC 8785 canonical JSON of the policies member of the manifest ({namespace, schema, files}),
+ * SHA-256. The files are listed in file name order (a manifest rule), so the hash does not depend on how a build lists a directory.
+ */
+export function policiesHash(policies) {
+  const canonical = canonicalize(policies);
+  return { canonical, hash: 'sha256:' + createHash('sha256').update(canonical, 'utf8').digest('hex') };
+}

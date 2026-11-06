@@ -1,0 +1,10 @@
+{
+  "description": "A fragment with a schema and no policy file.",
+  "policies": {
+    "namespace": "Notes",
+    "schema": "namespace Notes {}\n",
+    "files": []
+  },
+  "canonical": "{\"files\":[],\"namespace\":\"Notes\",\"schema\":\"namespace Notes {}\\n\"}",
+  "expected": "sha256:daded6e4e6773a85aa3cf20ae32df1d719438f7d82123b0faa16b20fa639ae80"
+}

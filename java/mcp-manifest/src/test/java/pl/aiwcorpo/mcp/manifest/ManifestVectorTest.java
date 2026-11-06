@@ -20,6 +20,19 @@ class ManifestVectorTest {
         return ContractFiles.list("test-vectors/definition-hash", ".json").stream();
     }
 
+    static Stream<Path> policiesHashVectors() {
+        return ContractFiles.list("test-vectors/policies-hash", ".json").stream();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("policiesHashVectors")
+    void policiesHashMatchesJavaScript(Path file) throws Exception {
+        JsonNode v = JSON.readTree(file.toFile());
+        String policies = JSON.writeValueAsString(v.get("policies"));
+        assertEquals(v.get("canonical").asText(), PoliciesHash.canonical(policies), file::toString);
+        assertEquals(v.get("expected").asText(), PoliciesHash.of(policies), file::toString);
+    }
+
     static Stream<Path> manifestVectors() {
         return ContractFiles.list("test-vectors/manifests", ".json").stream();
     }

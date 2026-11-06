@@ -1,11 +1,10 @@
 // Generates the deterministic vectors: definition-hash, manifests, audit-events, tool-errors, bundles.
 // JWT vectors have their own generator (randomized signatures). Tests verify the committed files.
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
-import { definitionHash, manifestEntryHash } from './lib/definition-hash.mjs';
+import { definitionHash, manifestEntryHash, policiesHash } from './lib/definition-hash.mjs';
 import { path } from './lib/contracts.mjs';
-import { tarGz } from './lib/tar.mjs';
 import { credentialTypeCheck } from './lib/credential-type-check.mjs';
 import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } from './lib/query-rendering.mjs';
 
@@ -158,6 +157,27 @@ hashVector('canonicalization-unicode-and-numbers',
     server: JIRA_SERVER,
   });
 
+// ---------- policiesHash (C6, 7.0.0) ----------
+{
+  const hashCase = (name, description, policies) => {
+    const { canonical, hash } = policiesHash(policies);
+    // The file stays ASCII: non-ASCII characters are written as \\uXXXX escapes, which parse to the same strings.
+    const ascii = JSON.stringify({ description, policies, canonical, expected: hash }, null, 2).replace(/[^\x00-\x7f]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+    mkdirSync(path('test-vectors', 'policies-hash'), { recursive: true });
+    writeFileSync(path('test-vectors', 'policies-hash', `${name}.json`), ascii + '\n');
+  };
+  const fragmentOf = (dir, namespace) => ({
+    namespace,
+    schema: readFileSync(path(dir, 'schema.cedarschema'), 'utf8'),
+    files: readdirSync(path(dir)).filter((n) => n.endsWith('.cedar')).sort().map((name) => ({ name, text: readFileSync(path(dir, name), 'utf8') })),
+  });
+  hashCase('jira-fragment', 'The fragment of cedar/examples/systems/jira: namespace, schema text and the policy files in file name order.', fragmentOf('cedar/examples/systems/jira', 'Jira'));
+  hashCase('notes-fragment', 'The fragment of test-vectors/fixtures/notes.', fragmentOf('test-vectors/fixtures/notes', 'Notes'));
+  hashCase('no-policy-files', 'A fragment with a schema and no policy file.', { namespace: 'Notes', schema: 'namespace Notes {}\n', files: [] });
+  hashCase('escaping-and-unicode', 'Text with quotes, a backslash, a tab, a control character and non-ASCII letters is escaped like RFC 8785 says.',
+    { namespace: 'Notes', schema: '// za\u017c\u00f3\u0142\u0107 "g\u0119\u015bl\u0105" \\ ja\u017a\u0144\t\u0007\n', files: [{ name: 'a.cedar', text: '// \u00e9\n' }] });
+}
+
 // ---------- manifests (C6) ----------
 
 const withHash = (manifest) => {
@@ -170,29 +190,40 @@ const manifestTool = (name) => ({
   definition: structuredClone(jiraTools[name].tool),
   definitionHash: hashes[name],
 });
-const jiraManifest = () => ({
+// The resource types and the policies of a manifest are the example fragments of the repository: cedar/examples/systems/jira
+// (a parent and a classification) and test-vectors/fixtures/notes (a system nobody builds in).
+const fragment = (dir) => ({
+  resourceTypes: JSON.parse(readFileSync(path(dir, 'resource-types.json'), 'utf8')),
+  policies: {
+    namespace: dir.endsWith('jira') ? 'Jira' : dir.endsWith('notes') ? 'Notes' : 'ServiceDesk',
+    schema: readFileSync(path(dir, 'schema.cedarschema'), 'utf8'),
+    files: readdirSync(path(dir)).filter((n) => n.endsWith('.cedar')).sort()
+      .map((name) => ({ name, text: readFileSync(path(dir, name), 'utf8') })),
+  },
+});
+const withPolicies = (manifest, policies) => ({ ...manifest, policies, policiesHash: policiesHash(policies).hash });
+const jiraFragment = fragment('cedar/examples/systems/jira');
+const jiraManifest = () => withPolicies({
   serverId: 'mcp-jira',
   version: '1.4.0',
   system: 'jira',
   internalUrl: 'https://mcp-jira.internal:8443/mcp/jira',
   credential: structuredClone(JIRA_SERVER.credential),
-  resourceTypes: [
-    { type: 'Jira::Project', attributes: ['key', 'category'] },
-    { type: 'Jira::Issue', attributes: ['key', 'project'], parent: 'Jira::Project' },
-  ],
+  resourceTypes: structuredClone(jiraFragment.resourceTypes),
   tools: Object.keys(jiraTools).map(manifestTool),
-});
+}, structuredClone(jiraFragment.policies));
 const manifest = (name, description, data, valid, rule) =>
   write('manifests', `${name}.json`, { description, expected: valid ? { valid: true } : { valid: false, rule }, manifest: data });
 
 manifest('valid-jira', 'Complete Jira manifest; each definitionHash equals the one in test-vectors/definition-hash.', jiraManifest(), true);
-manifest('valid-servicedesk-service-account', 'Service desk with a service account.', withHash({
+const servicedeskFragment = fragment('cedar/examples/systems/servicedesk');
+manifest('valid-servicedesk-service-account', 'Service desk with a service account; the policies member has a schema and no policy file (everything stays denied until the server adds one).', withHash(withPolicies({
   serverId: 'mcp-servicedesk',
   version: '1.0.0',
   system: 'servicedesk',
   internalUrl: 'https://mcp-servicedesk.internal:8443/mcp',
   credential: { required: true, acceptedTypes: ['service-account'] },
-  resourceTypes: [{ type: 'ServiceDesk::Queue', attributes: ['id'] }, { type: 'ServiceDesk::Ticket', parent: 'ServiceDesk::Queue' }],
+  resourceTypes: structuredClone(servicedeskFragment.resourceTypes),
   tools: [{
     name: 'get_ticket', risk: 'READ_ONLY', action: 'read', resourceRefs: [{ argument: 'ticketId', type: 'ServiceDesk::Ticket' }],
     definition: {
@@ -203,7 +234,7 @@ manifest('valid-servicedesk-service-account', 'Service desk with a service accou
       annotations: { readOnlyHint: true },
     },
   }],
-}), true);
+}, { ...servicedeskFragment.policies, files: [] })), true);
 manifest('valid-no-credential', 'Server whose tools need no backend credential; the credential object is part of the hash.', withHash({
   ...jiraManifest(),
   credential: { required: false, acceptedTypes: [] },
@@ -345,6 +376,66 @@ manifest('invalid-credential-types-mixed', 'acceptedTypes mixes service-account 
 {
   const m = jiraManifest(); m.resourceTypes[1].parent = 'GitLab::Group';
   manifest('invalid-undeclared-parent', 'resourceTypes parent not declared in resourceTypes.', m, false, 'resource-types-declared');
+}
+
+
+// 7.0.0: system and server ids are runtime data; the declarations and the policies travel in the manifest.
+{
+  const notesFragment = fragment('test-vectors/fixtures/notes');
+  const notesManifest = withHash(withPolicies({
+    serverId: 'mcp-notes',
+    version: '0.1.0',
+    system: 'notes',
+    internalUrl: 'https://mcp-notes.internal:8443/mcp',
+    credential: { required: true, acceptedTypes: ['user-oauth'] },
+    resourceTypes: structuredClone(notesFragment.resourceTypes),
+    tools: [{
+      name: 'get_folder', risk: 'READ_ONLY', action: 'read', resourceRefs: [{ argument: 'folderPath', type: 'Notes::Folder' }],
+      definition: {
+        name: 'get_folder',
+        title: 'Get folder',
+        description: 'Returns one folder of the notes system.',
+        inputSchema: { type: 'object', properties: { folderPath: { type: 'string', pattern: '^[a-z0-9]+(?:/[a-z0-9]+){0,4}$', maxLength: 128 } }, required: ['folderPath'], additionalProperties: false },
+        annotations: { readOnlyHint: true },
+      },
+    }],
+  }, structuredClone(notesFragment.policies)));
+  manifest('valid-notes-system', 'A server of a system that no component knows in advance: its declarations and policies are the manifest.', notesManifest, true);
+  const mutated = (mutate, rehash = true) => {
+    const m = structuredClone(notesManifest);
+    mutate(m);
+    if (rehash && m.policies) m.policiesHash = policiesHash(m.policies).hash;
+    return withHash(m);
+  };
+  manifest('invalid-system-upper-case', 'A system id is lower case: Notes is refused.', mutated((m) => { m.system = 'Notes'; m.serverId = 'mcp-Notes'; }), false, 'schema');
+  manifest('invalid-system-too-short', 'A system id has at least two characters.', mutated((m) => { m.system = 'n'; m.serverId = 'mcp-n'; }), false, 'schema');
+  manifest('invalid-system-with-hyphen', 'A system id is letters and digits; the hyphen is the separator of server and group names.', mutated((m) => { m.system = 'my-notes'; m.serverId = 'mcp-my-notes'; }), false, 'schema');
+  manifest('invalid-starter-manifest-without-policies', 'A server built on the starter carries its policies (C6); only an adapter has none.', mutated((m) => { delete m.policies; delete m.policiesHash; }), false, 'schema');
+  manifest('invalid-policies-hash-missing', 'policies without policiesHash.', mutated((m) => { delete m.policiesHash; }, false), false, 'schema');
+  manifest('invalid-policies-hash-without-policies', 'policiesHash without policies.', mutated((m) => { delete m.policies; }), false, 'schema');
+  manifest('invalid-policies-hash-mismatch', 'A policy text changed without recomputing policiesHash: the gateway would not see the change.', mutated((m) => { m.policies.files[0].text += '\n'; }, false), false, 'policies-hash-matches');
+  manifest('invalid-policies-schema-changed-stale-hash', 'The fragment schema is part of the hash.', mutated((m) => { m.policies.schema += '\n'; }, false), false, 'policies-hash-matches');
+  manifest('invalid-policies-files-unsorted', 'The files are listed in file name order, so that the hash does not depend on the build.', mutated((m) => { m.policies.files.reverse(); }), false, 'policies-files-sorted-unique');
+  manifest('invalid-policies-files-duplicate-name', 'A file name appears twice.', mutated((m) => { m.policies.files.push(structuredClone(m.policies.files[m.policies.files.length - 1])); }), false, 'policies-files-sorted-unique');
+  manifest('invalid-policies-file-name', 'A policy file name is a plain *.cedar name.', mutated((m) => { m.policies.files[0].name = '../read.cedar'; }), false, 'schema');
+  manifest('invalid-policies-namespace-differs-from-types', 'policies.namespace is not the namespace of the declared types.', mutated((m) => { m.policies.namespace = 'Other'; }), false, 'resource-types-namespace');
+  manifest('invalid-resource-types-two-namespaces', 'A server has one namespace: its types do not mix two.', mutated((m) => { m.resourceTypes.push({ type: 'Other::Thing', attributes: [], idPattern: '^[a-z]+$' }); }), false, 'resource-types-namespace');
+  manifest('invalid-resource-type-without-id-pattern', 'idPattern is required.', mutated((m) => { delete m.resourceTypes[0].idPattern; }), false, 'schema');
+  manifest('invalid-resource-type-id-pattern-not-anchored', 'An unanchored idPattern would accept an id that merely contains a valid one.', mutated((m) => { m.resourceTypes[0].idPattern = '[a-z][a-z0-9-]{0,31}'; }), false, 'schema');
+  manifest('invalid-resource-type-id-pattern-alternation', 'A top-level alternation leaves one branch unanchored: ^a|b$ matches xb.', mutated((m) => { m.resourceTypes[0].idPattern = '^alpha|beta$'; }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-id-pattern-escaped-dollar', 'An escaped dollar is not an anchor.', mutated((m) => { m.resourceTypes[0].idPattern = '^[a-z]+\\$'; }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-id-pattern-does-not-compile', 'A pattern that does not compile.', mutated((m) => { m.resourceTypes[0].idPattern = '^([a-z]+$'; }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-scope-pattern-not-anchored', 'The scopePattern follows the same rule.', mutated((m) => { m.resourceTypes[0].scopePattern = '^[a-z]+|x$'; }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-parent-without-attribute', 'parent needs parentAttribute.', mutated((m) => { delete m.resourceTypes[1].parentAttribute; }), false, 'schema');
+  manifest('invalid-resource-type-parent-attribute-without-parent', 'parentAttribute needs parent.', mutated((m) => { m.resourceTypes[0].parentAttribute = 'box'; }), false, 'schema');
+  manifest('invalid-resource-type-parent-attribute-in-attributes', 'The builder adds the parent attribute; the resolver does not list it.', mutated((m) => { m.resourceTypes[1].attributes.push('notebook'); }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-attribute-scopes', 'scopes is added by the builder.', mutated((m) => { m.resourceTypes[0].attributes.push('scopes'); }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-early-without-scope-pattern', 'earlyScopeCheck compares the exact id with the scopes of the user, so the type has to be grantable.', mutated((m) => { delete m.resourceTypes[0].scopePattern; }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-classification-not-in-attributes', 'The classification attribute is one of the attributes the resolver fills.', mutated((m) => { m.resourceTypes[0].classification.attribute = 'colour'; }), false, 'resource-types-valid');
+  manifest('invalid-resource-type-classification-kind', 'kind is string or set.', mutated((m) => { m.resourceTypes[0].classification.kind = 'list'; }), false, 'schema');
+  manifest('invalid-resource-type-name-lower-case-namespace', 'A resource type is <Namespace>::<Name>, both starting with a capital.', mutated((m) => { m.resourceTypes[0].type = 'notes::Notebook'; }), false, 'schema');
+  manifest('invalid-adapter-with-policies', 'An adapter has no policies member: its policies are its own.', (() => { const m = adapterManifest(); m.policies = { namespace: 'Jira', schema: 'namespace Jira {}', files: [] }; m.policiesHash = policiesHash(m.policies).hash; return m; })(), false, 'schema');
+  manifest('invalid-adapter-with-resource-types', 'An adapter has no resourceRefs, so it declares no resource type.', (() => { const m = adapterManifest(); m.resourceTypes = [{ type: 'Jira::Issue', attributes: [], idPattern: '^[A-Z]+$' }]; return m; })(), false, 'schema');
 }
 
 // CC-115: title is required. CC-078, CC-123: inputSchema is closed and bounded.
@@ -930,24 +1021,6 @@ loginRedirect('invalid-unknown-code', 'Code outside the closed list.', '/?loginE
 loginRedirect('invalid-idp-details', 'IdP error details must never reach the URL.', '/?loginError=idp_error&error_description=invalid_client_secret', false);
 loginRedirect('invalid-other-path', 'Failures always land on /.', '/catalog?loginError=cancelled', false);
 
-// ---------- resource id patterns (CC-056) ----------
-
-const ids = (name, type, kind, valid, invalid) => write('resource-ids', `${name}.json`, { type, kind, valid, invalid });
-ids('jira-project', 'Jira::Project', 'resource', ['ABC', 'HR', 'PLAT_2', 'A1'], ['abc', 'A', 'ABCDEFGHIJK', '1AB', 'AB-C', 'ABC) OR project in (HR', 'AB C', '"ABC"']);
-ids('jira-issue', 'Jira::Issue', 'resource', ['ABC-1', 'PLAT_2-4711'], ['ABC-0', 'abc-1', 'ABC-1 OR 1=1', 'ABC', 'ABC-01']);
-ids('confluence-space', 'Confluence::Space', 'resource', ['ENG', 'eng2', 'HB'], ['~jkowalski', 'ENG DOCS', 'ENG-1', 'ENG"', '']);
-ids('confluence-page', 'Confluence::Page', 'resource', ['1', '1000', '9223372036854775807'], ['0', '01', '12a', '-5', '1 OR 1=1']);
-ids('gitlab-group', 'GitLab::Group', 'resource', ['team-a', 'team-a/sub', 'Team_A.v2', 'a'],
-  ['team-a/', '/team-a', 'team-a//sub', 'team-a/../team-b', '-team', 'team-', 'team--a', 'team.git', 'team a', '.hidden']);
-ids('gitlab-project', 'GitLab::Project', 'resource', ['team-a/app', 'team-a/sub/svc'], ['app', 'team-a/app.atom', 'team-a/app/', 'team-a/../x']);
-ids('opensearch-index', 'OpenSearch::Index', 'resource', ['logs-team-a-2026.10', 'logs', 'kibana_1', '0logs'],
-  ['logs-team-a-x,secret-y', 'logs-team-a-*,*', 'logs-*', '_all', '-logs', 'Logs', 'remote:logs', '<logs-{now/d}>', 'logs team', '.', '..',
-    '.security', '.kibana_1', '.opendistro_security', '.ds-logs-000001']);
-ids('opensearch-prefix', 'OpenSearch::Index', 'scope', ['logs-team-a', 'logs', 'a', '0'],
-  ['logs-', 'logs.', 'logs-*', 'logs,x', '_x', '.ds-logs', '.security', '.']);
-ids('servicedesk-queue', 'ServiceDesk::Queue', 'resource', ['42', 'IT_support', 'q-1'], ['', '-1', 'q 1', 'q/1', '42;DROP']);
-ids('servicedesk-ticket', 'ServiceDesk::Ticket', 'resource', ['501', 'INC-1'], ['INC 1', 'INC/1', '']);
-
 // ---------- untrusted text (C10/C6, CC-072) ----------
 
 const untrusted = (name, description, value, valid) => write('untrusted-text', `${name}.json`, { description, value, expected: { valid } });
@@ -963,36 +1036,6 @@ untrusted('invalid-format-html', 'format is a closed list; HTML is converted by 
 untrusted('invalid-missing-truncated', 'truncated is required so that clients know whether text is complete.', { kind: 'untrusted-data', format: 'text/plain', text: 'x' }, false);
 untrusted('invalid-missing-kind', 'Without kind the text is not marked.', { format: 'text/plain', text: 'x', truncated: false }, false);
 untrusted('invalid-text-not-string', 'text is a string.', { kind: 'untrusted-data', format: 'text/plain', text: ['x'], truncated: false }, false);
-
-// ---------- service desk with a service account (CC-076) ----------
-
-const sdAccount = (name, description, input, expected) =>
-  write('servicedesk-service-account', `${name}.json`, { description, input, expected });
-const denied = { decision: 'deny', errorCode: 'not_found_or_denied' };
-sdAccount('srv-servicedesk-service-account-no-queue-grant',
-  'No queue grant in the bundle: deny, the system is not asked for the ticket (invariant 6).',
-  { credentialType: 'service-account', bundleQueueGrants: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
-  denied);
-sdAccount('srv-servicedesk-ticket-moved-out-of-granted-queue',
-  'Queue 42 is granted, but the system now returns queue 7 for the ticket: the queue returned by the system decides, not the one the ticket had earlier.',
-  { credentialType: 'service-account', bundleQueueGrants: ['42'], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '7' } },
-  denied);
-sdAccount('srv-servicedesk-service-account-granted-in-bundle',
-  'Queue returned by the system is granted in the bundle: the decision goes on to Cedar.',
-  { credentialType: 'service-account', bundleQueueGrants: ['42'], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
-  { decision: 'continue' });
-sdAccount('srv-servicedesk-service-account-server-config-is-not-a-grant',
-  'A queue named only in the server configuration is not a grant: the only source of grants is the policy bundle (CC-163). The field serverConfiguredQueues exists only here, to show that it is ignored.',
-  { credentialType: 'service-account', bundleQueueGrants: [], serverConfiguredQueues: ['42'], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
-  denied);
-sdAccount('srv-servicedesk-queue-resource-not-granted',
-  'A queue resource is evaluated by its own id.',
-  { credentialType: 'service-account', bundleQueueGrants: ['42'], resource: { type: 'ServiceDesk::Queue', id: '7', queueReturnedBySystem: '7' } },
-  denied);
-sdAccount('srv-servicedesk-user-secret-not-restricted-by-grants',
-  'The rule is for service-account only; with a user secret the system applies the user\'s own rights.',
-  { credentialType: 'user-secret', bundleQueueGrants: [], resource: { type: 'ServiceDesk::Ticket', id: '501', queueReturnedBySystem: '42' } },
-  { decision: 'continue' });
 
 // ---------- pending confirmations and the TOTP code (C11, CC-091) ----------
 
@@ -1634,7 +1677,7 @@ toolError('credential-required', 'No connected account.', {
 }, true);
 toolError('not-found-or-denied', 'Missing or not visible resource.', { error: 'not_found_or_denied', ...safe('The resource does not exist or you do not have access to it.') }, true);
 toolError('invalid-not-found-or-denied-other-text', 'Every cause uses one fixed text; another text would tell the causes apart (CC-146).', { error: 'not_found_or_denied', ...safe('Not found.') }, false);
-toolError('upstream-unavailable-policy-bundle', 'A server without a loaded policy bundle answers upstream_unavailable (CC-141).', { error: 'upstream_unavailable', ...safe('Policies are not available. Try again later.') }, true);
+toolError('upstream-unavailable-policy-data', 'A server without policy data answers upstream_unavailable (CC-141).', { error: 'upstream_unavailable', ...safe('Policies are not available. Try again later.') }, true);
 toolError('invalid-argument', 'Caller error.', { error: 'invalid_argument', ...safe('issueKey must look like ABC-123.') }, true);
 toolError('rate-limited', 'Rate limit.', { error: 'rate_limited', ...safe('Too many calls.'), retryAfterSeconds: 30 }, true);
 toolError('step-up-required', 'MFA too old for a destructive action.', {
@@ -1653,314 +1696,3 @@ toolError('invalid-field-of-other-code', 'connectUrl belongs to credential_requi
 }, false);
 toolError('invalid-unknown-code', 'Code outside C10.', { error: 'forbidden', ...safe('Forbidden.') }, false);
 toolError('invalid-missing-message', 'message is required.', { error: 'not_found_or_denied' }, false);
-
-// ---------- policy bundles (C7) ----------
-
-const bundleKey = (name) => createPrivateKey(readFileSync(path('test-vectors', 'keys', `${name}.NOT-FOR-PRODUCTION.private.pem`)));
-const files = (dir) => readdirSync(path(...dir)).filter((n) => n.endsWith('.cedar')).sort();
-const examplePolicies = files(['cedar', 'examples']).map((n) => [`policies/${n}`, readFileSync(path('cedar', 'examples', n), 'utf8')]);
-const schemaText = readFileSync(path('cedar', 'mcp.cedarschema'), 'utf8');
-
-// The Cedar schema is frozen for the whole 2.x line (CC-059), so bundle vectors name the schema version 2.0.0.
-const CONTRACTS_VERSION = '2.0.0';
-const manifestJson = (revision, gitSha) =>
-  JSON.stringify({ revision, gitSha, createdAt: revisionTime(revision), schemaVersion: CONTRACTS_VERSION }, null, 2) + '\n';
-
-// Main bundles carry the example scope mapping (CC-037) as their static entities.
-const staticEntitiesText = readFileSync(path('cedar', 'examples', 'static-entities.json'), 'utf8');
-function buildBundle(revision, gitSha, policies, { staticEntities = staticEntitiesText, extra = [] } = {}) {
-  return tarGz([
-    ['manifest.json', manifestJson(revision, gitSha)],
-    ['schema.cedarschema', schemaText],
-    ...policies,
-    ['entities/static.json', staticEntities],
-    ...extra,
-  ]);
-}
-
-// Overrides carry only manifest.json and policies; schema and static entities come from the main bundle (CC-028).
-function buildOverrides(revision, gitSha, policies, extra = []) {
-  return tarGz([['manifest.json', manifestJson(revision, gitSha)], ...policies, ...extra]);
-}
-function revisionTime(revision) {
-  const t = revision.slice(0, 14);
-  return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}T${t.slice(8, 10)}:${t.slice(10, 12)}:${t.slice(12, 14)}Z`;
-}
-const sha = (seven) => seven + createHash('sha1').update(seven).digest('hex').slice(0, 33);
-
-const R1 = '20261026120000-a1b2c3d';
-const R2 = '20261026130000-b2c3d4e';
-const R1_SAME_SECOND = '20261026120000-0f1e2d3';
-const R3 = '20261026140000-c3d4e5f';
-const O1 = '20261026121500-d4e5f60';
-const O2 = '20261026121600-e5f6071';
-const O3 = '20261026121700-f607182';
-const O4 = '20261026121800-0718293';
-const O5 = '20261026121900-1829304';
-const O6 = '20261026110000-2930415';
-
-const overridesForbid = [['policies/overrides/kill-switch.cedar',
-  '// Emergency stop for one tool.\n@id("override-disable-jira-delete")\nforbid (principal, action == Action::"call", resource == Tool::"jira__delete_issue");\n']];
-const overridesPermit = [['policies/overrides/bad.cedar',
-  '@id("override-disable-jira-delete")\nforbid (principal, action == Action::"call", resource == Tool::"jira__delete_issue");\n'
-  + '@id("override-sneaky-permit")\npermit (principal, action == Action::"call", resource);\n']];
-// A regex that strips // comments also strips them inside string literals and misses the permit (review #3).
-const overridesPermitAfterSlashes = [['policies/overrides/tricky.cedar',
-  '@id("override-client-block")\nforbid (principal, action, resource) when { context.client == "a//b" }; permit (principal, action, resource);\n']];
-
-const bundleDir = ['test-vectors', 'bundles', 'files'];
-mkdirSync(path(...bundleDir), { recursive: true });
-const archives = {};
-function store(fileRevision, archive, signer) {
-  const name = `policies-${fileRevision}.tar.gz`;
-  writeFileSync(path(...bundleDir, name), archive);
-  const signature = sign(null, archive, bundleKey(signer));
-  writeFileSync(path(...bundleDir, `${name}.sig`), signature);
-  archives[fileRevision] = archive;
-  return name;
-}
-store(R1, buildBundle(R1, sha('a1b2c3d'), examplePolicies), 'test-policy-bundle');
-store(R2, buildBundle(R2, sha('b2c3d4e'), examplePolicies), 'test-policy-bundle');
-store(R1_SAME_SECOND, buildBundle(R1_SAME_SECOND, sha('0f1e2d3'), examplePolicies), 'test-policy-bundle');
-// Old R1 content re-published under a newer name: valid signature, but manifest says R1.
-writeFileSync(path(...bundleDir, `policies-${R3}.tar.gz`), archives[R1]);
-writeFileSync(path(...bundleDir, `policies-${R3}.tar.gz.sig`), sign(null, archives[R1], bundleKey('test-policy-bundle')));
-store(O1, buildOverrides(O1, sha('d4e5f60'), overridesForbid), 'test-policy-overrides');
-store(O2, buildOverrides(O2, sha('e5f6071'), overridesPermit), 'test-policy-overrides');
-store(O3, buildOverrides(O3, sha('f607182'), overridesForbid, [['entities/static.json', '[{"uid":{"type":"UserGroup","id":"mcp-jira-destructive"},"attrs":{},"parents":[]}]\n']]), 'test-policy-overrides');
-store(O4, buildOverrides(O4, sha('0718293'), overridesForbid, [['schema.cedarschema', schemaText]]), 'test-policy-overrides');
-store(O5, buildOverrides(O5, sha('1829304'), overridesPermitAfterSlashes), 'test-policy-overrides');
-store(O6, buildOverrides(O6, sha('2930415'), overridesForbid), 'test-policy-overrides');
-{
-  const tampered = Buffer.from(archives[R2]);
-  tampered[tampered.length - 20] ^= 0x01;
-  writeFileSync(path(...bundleDir, `policies-${R2}.tampered.tar.gz`), tampered);
-}
-writeFileSync(path(...bundleDir, `policies-${R2}.tar.gz.sig-by-overrides-key`), sign(null, archives[R2], bundleKey('test-policy-overrides')));
-writeFileSync(path(...bundleDir, `policies-${O1}.tar.gz.sig-by-main-key`), sign(null, archives[O1], bundleKey('test-policy-bundle')));
-
-// Earlier generator runs may have left files for revisions that no longer exist.
-const latest = (revision) => ({ revision, url: `policies-${revision}.tar.gz`, sigUrl: `policies-${revision}.tar.gz.sig` });
-const MAIN_KEY = 'keys/test-policy-bundle.public.pem';
-const OVERRIDES_KEY = 'keys/test-policy-overrides.public.pem';
-const MAIN_BUNDLE = `files/policies-${R2}.tar.gz`;
-// Every case names the key id (CC-044: test- keys need allowTestKeys) and, for overrides, the loaded main bundle
-// whose schema validates the overrides (CC-040).
-const bundleCase = (name, description, c) => write('bundles', `${name}.json`, {
-  description,
-  ...c,
-  publicKeyId: c.publicKeyId ?? (c.publicKey === MAIN_KEY ? 'test-policy-bundle' : 'test-policy-overrides'),
-  allowTestKeys: c.allowTestKeys ?? true,
-  ...(c.channel === 'overrides' && { mainBundle: MAIN_BUNDLE }),
-});
-
-bundleCase('initial-load', 'First bundle on a receiver that has none loaded.', {
-  channel: 'main', latest: latest(R1), bundle: `files/policies-${R1}.tar.gz`, signature: `files/policies-${R1}.tar.gz.sig`,
-  publicKey: MAIN_KEY, loadedRevision: null, expected: { accept: true } });
-bundleCase('newer-revision', 'Newer revision replaces the loaded one.', {
-  channel: 'main', latest: latest(R2), bundle: `files/policies-${R2}.tar.gz`, signature: `files/policies-${R2}.tar.gz.sig`,
-  publicKey: MAIN_KEY, loadedRevision: R1, expected: { accept: true } });
-bundleCase('rollback', 'Older, correctly signed bundle offered after a newer one (C7: reject).', {
-  channel: 'main', latest: latest(R1), bundle: `files/policies-${R1}.tar.gz`, signature: `files/policies-${R1}.tar.gz.sig`,
-  publicKey: MAIN_KEY, loadedRevision: R2, expected: { accept: false, reason: 'not_newer' } });
-bundleCase('equal-revision', 'Same revision as loaded; nothing to do, not a swap.', {
-  channel: 'main', latest: latest(R1), bundle: `files/policies-${R1}.tar.gz`, signature: `files/policies-${R1}.tar.gz.sig`,
-  publicKey: MAIN_KEY, loadedRevision: R1, expected: { accept: false, reason: 'not_newer' } });
-bundleCase('same-second-revision', 'Same timestamp part, different sha: not higher (CC-008).', {
-  channel: 'main', latest: latest(R1_SAME_SECOND), bundle: `files/policies-${R1_SAME_SECOND}.tar.gz`,
-  signature: `files/policies-${R1_SAME_SECOND}.tar.gz.sig`, publicKey: MAIN_KEY, loadedRevision: R1,
-  expected: { accept: false, reason: 'not_newer' } });
-bundleCase('bad-signature-wrong-key', 'Main bundle signed with the overrides key.', {
-  channel: 'main', latest: latest(R2), bundle: `files/policies-${R2}.tar.gz`, signature: `files/policies-${R2}.tar.gz.sig-by-overrides-key`,
-  publicKey: MAIN_KEY, loadedRevision: R1, expected: { accept: false, reason: 'bad_signature' } });
-bundleCase('tampered-archive', 'One byte of the archive changed after signing.', {
-  channel: 'main', latest: latest(R2), bundle: `files/policies-${R2}.tampered.tar.gz`, signature: `files/policies-${R2}.tar.gz.sig`,
-  publicKey: MAIN_KEY, loadedRevision: R1, expected: { accept: false, reason: 'bad_signature' } });
-bundleCase('renamed-old-bundle', 'Old R1 archive published as a newer revision; signature valid, manifest revision differs (CC-026).', {
-  channel: 'main', latest: latest(R3), bundle: `files/policies-${R3}.tar.gz`, signature: `files/policies-${R3}.tar.gz.sig`,
-  publicKey: MAIN_KEY, loadedRevision: R2, expected: { accept: false, reason: 'manifest_mismatch' } });
-bundleCase('overrides-forbid-only', 'Overrides bundle with only forbid rules, signed with the overrides key.', {
-  channel: 'overrides', latest: latest(O1), bundle: `files/policies-${O1}.tar.gz`, signature: `files/policies-${O1}.tar.gz.sig`,
-  publicKey: OVERRIDES_KEY, loadedRevision: null, expected: { accept: true } });
-bundleCase('overrides-with-permit', 'Overrides bundle containing a permit rule (C7: reject).', {
-  channel: 'overrides', latest: latest(O2), bundle: `files/policies-${O2}.tar.gz`, signature: `files/policies-${O2}.tar.gz.sig`,
-  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'permit_in_overrides' } });
-bundleCase('overrides-with-static-entities', 'Overrides bundle that also ships entities/static.json (CC-028: reject).', {
-  channel: 'overrides', latest: latest(O3), bundle: `files/policies-${O3}.tar.gz`, signature: `files/policies-${O3}.tar.gz.sig`,
-  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'overrides_content_not_allowed' } });
-bundleCase('overrides-with-schema', 'Overrides bundle that also ships schema.cedarschema (CC-028: reject).', {
-  channel: 'overrides', latest: latest(O4), bundle: `files/policies-${O4}.tar.gz`, signature: `files/policies-${O4}.tar.gz.sig`,
-  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'overrides_content_not_allowed' } });
-bundleCase('overrides-permit-after-string-with-slashes', 'permit hidden after a string literal containing //; only a Cedar parser finds it.', {
-  channel: 'overrides', latest: latest(O5), bundle: `files/policies-${O5}.tar.gz`, signature: `files/policies-${O5}.tar.gz.sig`,
-  publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: { accept: false, reason: 'permit_in_overrides' } });
-bundleCase('overrides-revision-independent-of-main', 'Overrides revision older than the loaded main bundle but newer than the loaded overrides: accepted, revisions are per channel (CC-028).', {
-  channel: 'overrides', latest: latest(O6), bundle: `files/policies-${O6}.tar.gz`, signature: `files/policies-${O6}.tar.gz.sig`,
-  publicKey: OVERRIDES_KEY, loadedRevision: '20261026100000-0000000', loadedMainRevision: R2, expected: { accept: true } });
-bundleCase('overrides-signed-with-main-key', 'Overrides bundle signed with the main bundle key (separate keys, C7).', {
-  channel: 'overrides', latest: latest(O1), bundle: `files/policies-${O1}.tar.gz`, signature: `files/policies-${O1}.tar.gz.sig-by-main-key`,
-  publicKey: OVERRIDES_KEY, loadedRevision: null, expected: { accept: false, reason: 'bad_signature' } });
-
-// ---------- archive safety and content rules (CC-040, CC-041, CC-045) ----------
-const R = (n) => `2026102615${String(n).padStart(2, '0')}00-${createHash('sha1').update(String(n)).digest('hex').slice(0, 7)}`;
-const mainCase = (n, name, description, archive, reason) => {
-  const revision = R(n);
-  store(revision, archive(revision), 'test-policy-bundle');
-  bundleCase(name, description, {
-    channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
-    publicKey: MAIN_KEY, loadedRevision: R2, expected: reason ? { accept: false, reason } : { accept: true } });
-};
-const shaOf = (revision) => sha(revision.slice(15));
-mainCase(1, 'tar-duplicate-entry', 'Two entries with the same name; a lax reader would let the second one win.',
-  (r) => buildBundle(r, shaOf(r), examplePolicies, { extra: [['policies/call-tool.cedar', 'permit (principal, action, resource);\n']] }), 'archive_invalid');
-mainCase(2, 'tar-path-traversal', 'Entry name with .. segments.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/../../etc/evil.cedar', 'forbid (principal, action, resource);\n']]), 'archive_invalid');
-mainCase(3, 'tar-absolute-path', 'Absolute entry name.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['/policies/abs.cedar', 'forbid (principal, action, resource);\n']]), 'archive_invalid');
-mainCase(4, 'tar-symlink', 'Symbolic link entry.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/link.cedar', '', { type: '2', linkname: '/etc/passwd' }]]), 'archive_invalid');
-mainCase(5, 'tar-too-many-entries', 'More than 1000 entries.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ...Array.from({ length: 1000 }, (_, i) => [`policies/many/p${i}.cedar`, '// empty\n'])]), 'archive_invalid');
-mainCase(6, 'tar-oversized-entry', 'One entry larger than 4 MiB after decompression (compresses to a few KiB).',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/huge.cedar', ' '.repeat(5 * 1024 * 1024)]]), 'archive_invalid');
-mainCase(7, 'tar-ustar-prefix', 'Long entry name split into the ustar prefix and name fields; the reader joins them.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies.slice(1),
-    [`${'very-long-file-name-'.repeat(4)}call-tool.cedar`, examplePolicies[0][1], { prefix: 'policies/split' }]]), null);
-mainCase(14, 'main-policy-reads-removed-virtual-server', 'A permit rule reads context.virtualServer, which the schema no longer has (CC-173): the policy does not validate.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/bad-slug.cedar',
-    '@id("slug-grants")\npermit (principal, action == Action::"call", resource is Tool)\nwhen { context.virtualServer == "magic" };\n']]),
-  'policy_invalid');
-mainCase(15, 'main-static-entities-other-type', 'static.json contains a User entity; only UserGroup entities are allowed (CC-059).',
-  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: staticEntitiesText.trimEnd().replace(/\]$/,
-    ',\n  {"uid": {"type": "User", "id": "b1a7c0de-0000-4000-8000-000000000005"}, "attrs": {"username": "x", "client": "claude-code", "scopes": {"jiraProjects": [], "confluenceSpaces": [], "gitlabGroups": [], "opensearchIndexPrefixes": [], "servicedeskQueues": []}}, "parents": []}\n]\n') }),
-  'static_entities_invalid');
-mainCase(16, 'main-static-entities-group-with-attrs', 'A UserGroup with attributes; mapping entries carry nothing but parents (CC-059).',
-  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{"note":"x"},"parents":[]}]\n' }),
-  'static_entities_invalid');
-mainCase(17, 'main-schema-mismatch', 'schema.cedarschema differs from the schema of this contracts version (ResourceScope may nest); rejected (CC-059).',
-  (r) => tarGz([
-    ['manifest.json', manifestJson(r, shaOf(r))],
-    ['schema.cedarschema', schemaText.replace('entity ResourceScope;', 'entity ResourceScope in [ResourceScope];')],
-    ...examplePolicies,
-    ['entities/static.json', staticEntitiesText],
-  ]), 'schema_mismatch');
-mainCase(8, 'main-forbid-reads-removed-vsscopes', 'A forbid rule reads context.vsScopes without a guard, and the schema no longer has it (CC-173): even a forbid does not validate.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/vs-narrow.cedar',
-    '@id("vs-narrow-jira-issue")\nforbid (principal, action, resource is Jira::Issue)\nwhen { !context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
-  'policy_invalid');
-mainCase(18, 'main-forbid-guarded-by-has-removed-vsscopes-accepted', 'The forbid of the removed virtual-server.cedar guards the read with has: it validates against the new schema and can never match, so it narrows nothing (CC-173). ws-09 deletes such rules.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/vs-narrow.cedar',
-    '@id("vs-narrow-jira-issue")\nforbid (principal, action, resource is Jira::Issue)\nwhen { context has vsScopes && context.vsScopes has jiraProjects && !context.vsScopes.jiraProjects.containsAny(resource.scopes) };\n']]),
-  null);
-mainCase(9, 'main-static-entities-invalid-mapping', 'static.json maps a group to a parent that is not a ResourceScope (CC-037).',
-  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{},"parents":[{"type":"UserGroup","id":"mcp-y"}]}]\n' }),
-  'static_entities_invalid');
-mainCase(10, 'main-policy-invalid-for-schema', 'Main bundle policy that does not validate against the bundle schema in strict mode.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ['policies/typo.cedar',
-    '@id("typo")\nforbid (principal, action == Action::"call", resource is Tool) when { resource.riks == "DESTRUCTIVE" };\n']]), 'policy_invalid');
-mainCase(11, 'test-key-rejected-by-default', 'Valid bundle signed with the published test key; a receiver without allowTestKeys rejects it (CC-044).',
-  (r) => buildBundle(r, shaOf(r), examplePolicies), null);
-mainCase(12, 'main-static-entities-scope-id-invalid', 'static.json passes the Cedar schema but grants ResourceScope "GitLab::Group/team-a/" (no valid GitLab path); only the scope mapping rules catch it (review 1.2.0 L6).',
-  (r) => buildBundle(r, shaOf(r), examplePolicies, { staticEntities: '[{"uid":{"type":"UserGroup","id":"mcp-x"},"attrs":{},"parents":[{"type":"ResourceScope","id":"GitLab::Group/team-a/"}]}]\n' }),
-  'static_entities_invalid');
-mainCase(13, 'tar-total-size-limit', 'Five entries of 3.5 MiB each: every entry is under 4 MiB, the archive is above 16 MiB after decompression.',
-  (r) => buildBundle(r, shaOf(r), [...examplePolicies, ...Array.from({ length: 5 }, (_, i) => [`policies/big/p${i}.cedar`, ' '.repeat(3.5 * 1024 * 1024)])]),
-  'archive_invalid');
-{
-  // Same archive as case 11, but the receiver does not allow test keys.
-  const revision = R(11);
-  bundleCase('test-key-rejected-by-default', 'Valid bundle signed with the published test key; a receiver without allowTestKeys rejects it (CC-044).', {
-    channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
-    publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
-}
-{
-  const revision = R(11);
-  bundleCase('test-key-under-production-id', 'Published test key configured under a production-looking id: refused by its SPKI, not only by its label (review 1.2.0 M4).', {
-    publicKeyId: 'prod-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
-    publicKey: MAIN_KEY, loadedRevision: R2, allowTestKeys: false, expected: { accept: false, reason: 'test_key_not_allowed' } });
-}
-{
-  // A key of a dev stack: not one of the published test keys (its SPKI is not in security/published-test-keys.json), so only the dev- rule can
-  // refuse it (CC-137). It comes from a fixed seed so that the vectors are stable; no other file of the repository uses it.
-  const devKey = createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), createHash('sha256').update('mcp-contracts dev bundle key').digest()]), format: 'der', type: 'pkcs8' });
-  writeFileSync(path('test-vectors', 'keys', 'dev-policy-bundle.pub.pem'), createPublicKey(devKey).export({ type: 'spki', format: 'pem' }));
-  const revision = R(11);
-  writeFileSync(path(...bundleDir, `policies-${revision}.tar.gz.sig-by-dev-key`), sign(null, archives[revision], devKey));
-  const devCase = (name, description, allowTestKeys, devstackProfile, expected) => bundleCase(name, description, {
-    publicKeyId: 'dev-policy-main', channel: 'main', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`,
-    signature: `files/policies-${revision}.tar.gz.sig-by-dev-key`, publicKey: 'keys/dev-policy-bundle.pub.pem', loadedRevision: R2, allowTestKeys, devstackProfile, expected });
-  devCase('dev-key-id-rejected-by-default', 'Valid bundle signed with a dev-stack key that is not a published test key and configured under the id dev-policy-main: refused outside dev mode by the dev- prefix alone (CC-137).', false, false, { accept: false, reason: 'test_key_not_allowed' });
-  devCase('dev-key-rejected-without-devstack-profile', 'allowTestKeys alone does not make a dev- key acceptable: dev mode needs the devstack profile too (CC-137).', true, false, { accept: false, reason: 'test_key_not_allowed' });
-  devCase('dev-key-accepted-in-dev-mode', 'The same bundle and key in dev mode, the devstack profile and allowTestKeys together: accepted (CC-137).', true, true, { accept: true });
-}
-const overridesCase = (n, name, description, policies, reason) => {
-  const revision = `2026102616${String(n).padStart(2, '0')}00-${createHash('sha1').update('o' + n).digest('hex').slice(0, 7)}`;
-  store(revision, buildOverrides(revision, sha(revision.slice(15)), policies), 'test-policy-overrides');
-  bundleCase(name, description, {
-    channel: 'overrides', latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig`,
-    publicKey: OVERRIDES_KEY, loadedRevision: O1, expected: reason ? { accept: false, reason } : { accept: true } });
-};
-overridesCase(1, 'overrides-invalid-for-main-schema', 'Overrides forbid with an attribute typo: it would never match at runtime, so the bundle is rejected and the previous overrides stay (CC-040).',
-  [['policies/overrides/typo.cedar', '@id("override-typo")\nforbid (principal, action == Action::"call", resource is Tool) when { resource.nmae == "delete_issue" };\n']], 'policy_invalid');
-overridesCase(2, 'overrides-permit-template', 'A permit template in overrides is rejected like a static permit.',
-  [['policies/overrides/template.cedar', '@id("override-template")\npermit (principal == ?principal, action, resource);\n']], 'permit_in_overrides');
-
-const latestCase = (name, description, value, accept, reason) =>
-  write('bundles', `${name}.json`, { description, latest: value, expected: accept ? { accept: true } : { accept: false, reason } });
-latestCase('latest-valid', 'Pointer with file names relative to latest.json.', latest(R2), true);
-latestCase('latest-absolute-foreign-host', 'Absolute URL to another host (CC-026).',
-  { revision: R2, url: `https://bundles.attacker.test/policies-${R2}.tar.gz`, sigUrl: `https://bundles.attacker.test/policies-${R2}.tar.gz.sig` }, false, 'invalid_latest');
-latestCase('latest-path-traversal', 'Relative path leaving the bundle directory.',
-  { revision: R2, url: `../old/policies-${R2}.tar.gz`, sigUrl: `../old/policies-${R2}.tar.gz.sig` }, false, 'invalid_latest');
-latestCase('latest-revision-mismatch', 'url names an older revision than revision.',
-  { revision: R2, url: `policies-${R1}.tar.gz`, sigUrl: `policies-${R1}.tar.gz.sig` }, false, 'invalid_latest');
-latestCase('latest-sig-revision-mismatch', 'sigUrl names a different revision than url.',
-  { revision: R2, url: `policies-${R2}.tar.gz`, sigUrl: `policies-${R1}.tar.gz.sig` }, false, 'invalid_latest');
-
-console.log('vectors written');
-
-// ---------- policy store sequences (CC-060) ----------
-mkdirSync(path('test-vectors', 'policy-store'), { recursive: true });
-const OC = '20261026171000-3a4b5c6';
-store(OC, buildOverrides(OC, sha('3a4b5c6'), [['policies/overrides/clash.cedar',
-  '@id("jira-call-read")\nforbid (principal, action == Action::"call", resource == Tool::"jira__get_issue");\n']]), 'test-policy-overrides');
-const MC = '20261026172000-4b5c6d7';
-store(MC, buildBundle(MC, sha('4b5c6d7'), [...examplePolicies, ['policies/clash.cedar',
-  '@id("override-disable-jira-delete")\nforbid (principal, action == Action::"call", resource == Tool::"jira__delete_issue");\n']]), 'test-policy-bundle');
-const step = (channel, revision) => ({ channel, latest: latest(revision), bundle: `files/policies-${revision}.tar.gz`, signature: `files/policies-${revision}.tar.gz.sig` });
-const storeCase = (name, description, steps, expected, final, persistence) =>
-  write('policy-store', `${name}.json`, { description, mainKey: MAIN_KEY, overridesKey: OVERRIDES_KEY, allowTestKeys: true,
-    ...(persistence && { persistence }), steps, expected, final });
-const archiveSha = (revision) => 'sha256:' + createHash('sha256').update(archives[revision] ?? readFileSync(path(...bundleDir, `policies-${revision}.tar.gz`))).digest('hex');
-const state = (revision) => ({ revision, archiveSha256: archiveSha(revision) });
-storeCase('normal-sequence', 'Main, overrides, newer main: every step accepted, overrides stay active across the main update.',
-  [step('main', R1), step('overrides', O1), step('main', R2)], [{ accept: true }, { accept: true }, { accept: true }], { main: R2, overrides: O1 });
-storeCase('overrides-before-main', 'Overrides cannot load before a main bundle (no schema to validate them against).',
-  [step('overrides', O1)], [{ accept: false, reason: 'main_not_loaded' }], { main: null, overrides: null });
-storeCase('overrides-id-conflict', 'Overrides policy reuses an @id of the main bundle; rejected, the store keeps no overrides.',
-  [step('main', R1), step('overrides', OC)], [{ accept: true }, { accept: false, reason: 'id_conflict' }], { main: R1, overrides: null });
-storeCase('main-conflicts-with-loaded-overrides', 'A new main bundle reuses the @id of the loaded overrides; fail-closed: the new main is rejected and main R1 with overrides O1 stay.',
-  [step('main', R1), step('overrides', O1), step('main', MC)], [{ accept: true }, { accept: true }, { accept: false, reason: 'id_conflict' }], { main: R1, overrides: O1 });
-storeCase('rollback-in-store', 'The store tracks the loaded revision itself; an older main after a newer one is rejected.',
-  [step('main', R2), step('main', R1)], [{ accept: true }, { accept: false, reason: 'not_newer' }], { main: R2, overrides: null });
-
-// ---------- rollback protection across restarts (CC-066) ----------
-storeCase('restart-reload-same-bundle', 'After a restart the persisted main R2 may be loaded again (same revision, same archive).',
-  [step('main', R2)], [{ accept: true }], { main: R2, overrides: null },
-  { stateBefore: { main: state(R2), overrides: null }, minimumRevision: {}, expectedWarnings: 1, stateAfter: { main: state(R2) } });
-storeCase('restart-rollback', 'After a restart an older main bundle than the persisted one is rejected.',
-  [step('main', R1)], [{ accept: false, reason: 'not_newer' }], { main: null, overrides: null },
-  { stateBefore: { main: state(R2), overrides: null }, minimumRevision: {}, expectedWarnings: 1, stateAfter: { main: state(R2) } });
-storeCase('restart-same-revision-other-archive', 'Persisted revision with another archive hash: the same revision with different content is rejected.',
-  [step('main', R2)], [{ accept: false, reason: 'not_newer' }], { main: null, overrides: null },
-  { stateBefore: { main: { revision: R2, archiveSha256: 'sha256:' + '0'.repeat(64) }, overrides: null }, minimumRevision: {}, expectedWarnings: 1,
-    stateAfter: { main: { revision: R2, archiveSha256: 'sha256:' + '0'.repeat(64) } } });
-storeCase('corrupt-state-uses-minimum', 'Unreadable state file: the configured minimum R2 applies, R1 is rejected and a warning is reported.',
-  [step('main', R1), step('main', R2)], [{ accept: false, reason: 'below_minimum' }, { accept: true }], { main: R2, overrides: null },
-  { stateBefore: { main: 'corrupt', overrides: null }, minimumRevision: { main: R2 }, expectedWarnings: 2, stateAfter: { main: state(R2) } });
-storeCase('state-written-per-channel', 'A normal sequence writes the state of both channels.',
-  [step('main', R1), step('overrides', O1)], [{ accept: true }, { accept: true }], { main: R1, overrides: O1 },
-  { stateBefore: { main: null, overrides: null }, minimumRevision: {}, expectedWarnings: 2, stateAfter: { main: state(R1), overrides: state(O1) } });
-storeCase('overrides-below-minimum', 'Minimum revision of the overrides channel after an incident.',
-  [step('main', R1), step('overrides', O1)], [{ accept: true }, { accept: false, reason: 'below_minimum' }], { main: R1, overrides: null },
-  { stateBefore: { main: null, overrides: null }, minimumRevision: { overrides: OC }, expectedWarnings: 2, stateAfter: { main: state(R1) } });

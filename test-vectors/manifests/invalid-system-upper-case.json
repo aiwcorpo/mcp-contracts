@@ -1,0 +1,119 @@
+{
+  "description": "A system id is lower case: Notes is refused.",
+  "expected": {
+    "valid": false,
+    "rule": "schema"
+  },
+  "manifest": {
+    "serverId": "mcp-Notes",
+    "version": "0.1.0",
+    "system": "Notes",
+    "internalUrl": "https://mcp-notes.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth"
+      ]
+    },
+    "resourceTypes": [
+      {
+        "type": "Notes::Notebook",
+        "attributes": [
+          "name",
+          "labels"
+        ],
+        "idPattern": "^[a-z][a-z0-9-]{0,31}$",
+        "scopePattern": "^[a-z][a-z0-9-]{0,31}$",
+        "earlyScopeCheck": true,
+        "classification": {
+          "attribute": "labels",
+          "kind": "set",
+          "required": true
+        }
+      },
+      {
+        "type": "Notes::Note",
+        "attributes": [
+          "title",
+          "pinned"
+        ],
+        "parent": "Notes::Notebook",
+        "parentAttribute": "notebook",
+        "idPattern": "^[1-9][0-9]{0,11}$"
+      },
+      {
+        "type": "Notes::Folder",
+        "attributes": [
+          "path",
+          "classification"
+        ],
+        "idPattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
+        "scopePattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
+        "classification": {
+          "attribute": "classification",
+          "kind": "set",
+          "required": false
+        }
+      }
+    ],
+    "tools": [
+      {
+        "name": "get_folder",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "folderPath",
+            "type": "Notes::Folder"
+          }
+        ],
+        "definition": {
+          "name": "get_folder",
+          "title": "Get folder",
+          "description": "Returns one folder of the notes system.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "folderPath": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
+                "maxLength": 128
+              }
+            },
+            "required": [
+              "folderPath"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true
+          }
+        },
+        "definitionHash": "sha256:4e615be39f9da8e88394dcc1d05b0981f3f21d1aa4a5304649aeac65a95121e4"
+      }
+    ],
+    "policies": {
+      "namespace": "Notes",
+      "schema": "// Neutral fixture fragment used by the contract vectors: a notes system that no production server implements. It has a flat\n// type that can be granted and checked early (Notebook), a child with a parent (Note) and a path-shaped type whose scopes\n// are prefixes of its path (Folder).\n\nnamespace Notes {\n  entity Notebook {\n    name: String,\n    labels: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n  entity Note in [Notebook] {\n    title: String,\n    pinned?: Bool,\n    notebook: Notebook,\n    scopes: Set<ResourceScope>,\n  };\n  entity Folder {\n    path: String,\n    classification?: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n\n  action \"read\", \"update\", \"delete\", \"admin\" appliesTo {\n    principal: [User],\n    resource: [Notebook, Note, Folder],\n    context: RequestContext,\n  };\n}\n",
+      "files": [
+        {
+          "name": "credential-type.cedar",
+          "text": "// A service account sees everything in its system, so the rights of the user are the only limit left. A folder outside the\n// user's grant is forbidden unless the credential is a user credential, which the system itself limits. Fail-closed: a\n// missing or unknown credential type is treated like the service account (CC-136, CC-164).\n\n@id(\"notes-service-account-folder-outside-scope\")\nforbid (principal, action, resource is Notes::Folder)\nwhen {\n  !(principal in resource.scopes) &&\n  !(context has credentialType && [\"user-oauth\", \"user-secret\", \"token-exchange\"].contains(context.credentialType))\n};\n"
+        },
+        {
+          "name": "forbid-restricted.cedar",
+          "text": "@id(\"notes-forbid-restricted-notebook\")\nforbid (principal, action, resource is Notes::Notebook)\nwhen { resource.labels.contains(\"restricted\") };\n\n@id(\"notes-forbid-restricted-note\")\nforbid (principal, action, resource is Notes::Note)\nwhen { resource.notebook.labels.contains(\"restricted\") };\n\n@id(\"notes-forbid-restricted-folder\")\nforbid (principal, action, resource is Notes::Folder)\nwhen { resource has classification && resource.classification.contains(\"restricted\") };\n"
+        },
+        {
+          "name": "read.cedar",
+          "text": "@id(\"notes-read\")\npermit (\n  principal in UserGroup::\"mcp-notes-read\",\n  action == Notes::Action::\"read\",\n  resource\n)\nwhen { resource is Notes::Notebook || resource is Notes::Note || resource is Notes::Folder };\n"
+        },
+        {
+          "name": "update.cedar",
+          "text": "// Changes only inside granted scopes; a note carries the scope of its notebook, a folder the scope of every prefix of its path.\n\n@id(\"notes-update-in-scope\")\npermit (\n  principal in UserGroup::\"mcp-notes-write\",\n  action == Notes::Action::\"update\",\n  resource\n)\nwhen { principal in resource.scopes };\n\n@id(\"notes-delete-in-scope\")\npermit (\n  principal in UserGroup::\"mcp-notes-destructive\",\n  action == Notes::Action::\"delete\",\n  resource is Notes::Note\n)\nwhen { principal in resource.scopes };\n"
+        }
+      ]
+    },
+    "policiesHash": "sha256:a628a40b7154c4cd6e496bc7b04b2254698f07623c321cac03279935986d334e"
+  }
+}

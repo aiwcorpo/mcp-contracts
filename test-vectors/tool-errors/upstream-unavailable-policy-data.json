@@ -1,5 +1,5 @@
 {
-  "description": "A server without a loaded policy bundle answers upstream_unavailable (CC-141).",
+  "description": "A server without policy data answers upstream_unavailable (CC-141).",
   "expected": {
     "valid": true
   },

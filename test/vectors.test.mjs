@@ -4,9 +4,8 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
-import { manifestEntryHash } from '../scripts/lib/definition-hash.mjs';
+import { manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
-import { untarGz } from '../scripts/lib/tar.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
@@ -77,17 +76,34 @@ test('ReturnPath vectors (CC-032)', async () => {
   for (const { name, data } of vectors) assert.equal(validate(data.value), data.expected.valid, name);
 });
 
-test('resource id vectors match the per-system patterns (CC-056)', () => {
-  const defs = readJson('schemas', 'common.schema.json').$defs;
+test('resource id vectors match the declarations of the example systems (CC-056)', () => {
   const vectors = listJson('test-vectors', 'resource-ids');
   assert.ok(vectors.length >= 10);
   for (const { name, data } of vectors) {
-    const def = defs.ResourceIdPatterns.const[data.type][data.kind];
-    const pattern = new RegExp(defs[def].pattern, 'u');
-    const max = defs[def].maxLength ?? Infinity;
-    const ok = (id) => pattern.test(id) && id.length <= max;
-    for (const id of data.valid) assert.ok(ok(id), `${name}: ${id} should be valid`);
-    for (const id of data.invalid) assert.ok(!ok(id), `${name}: ${id} should be invalid`);
+    const pattern = data.kind === 'resource' ? 'idPattern' : 'scopePattern';
+    const declaration = readJson(data.resourceTypes).find((d) => d.type === data.type);
+    const regex = declaration[pattern] === undefined ? undefined : new RegExp(declaration[pattern], 'u');
+    const ok = (id) => regex !== undefined && regex.test(id);
+    for (const id of data.valid) assert.ok(ok(id), `${name}: ${JSON.stringify(id)} should be valid`);
+    for (const id of data.invalid) assert.ok(!ok(id), `${name}: ${JSON.stringify(id)} should be invalid`);
+  }
+});
+
+test('policiesHash vectors: canonical form and sha256 of the policies member (C6, 7.0.0)', () => {
+  const vectors = listJson('test-vectors', 'policies-hash');
+  assert.ok(vectors.length >= 3);
+  for (const { name, data } of vectors) {
+    assert.equal(canonicalize(data.policies), data.canonical, name);
+    assert.deepEqual(policiesHash(data.policies), { canonical: data.canonical, hash: data.expected }, name);
+  }
+});
+
+test('the jira and notes fragments in the manifest vectors are the files of the repository', () => {
+  for (const [vector, dir] of [['valid-jira', 'cedar/examples/systems/jira'], ['valid-notes-system', 'test-vectors/fixtures/notes']]) {
+    const { manifest } = readJson('test-vectors', 'manifests', `${vector}.json`);
+    assert.equal(manifest.policies.schema, readFileSync(path(dir, 'schema.cedarschema'), 'utf8'), vector);
+    assert.deepEqual(manifest.resourceTypes, readJson(dir, 'resource-types.json'), vector);
+    for (const file of manifest.policies.files) assert.equal(file.text, readFileSync(path(dir, file.name), 'utf8'), `${vector}: ${file.name}`);
   }
 });
 
@@ -105,24 +121,6 @@ test('UntrustedText vectors (CC-072)', () => {
   const vectors = listJson('test-vectors', 'untrusted-text');
   assert.ok(vectors.some((v) => v.data.expected.valid) && vectors.some((v) => !v.data.expected.valid));
   for (const { name, data } of vectors) assert.equal(validate(data.value), data.expected.valid, `${name}: ${formatErrors(validate.errors)}`);
-});
-
-// Reference rule of CC-076, executed by the server before Cedar: with a service account the queue returned by
-// the system for the resource must be granted in the policy bundle (CC-163: the server configuration is not a source of grants).
-function serviceDeskServiceAccountDecision({ credentialType, bundleQueueGrants, resource }) {
-  if (credentialType !== 'service-account') return { decision: 'continue' };
-  const queue = resource.type === 'ServiceDesk::Queue' ? resource.id : resource.queueReturnedBySystem;
-  return bundleQueueGrants.includes(queue)
-    ? { decision: 'continue' } : { decision: 'deny', errorCode: 'not_found_or_denied' };
-}
-
-test('service desk service account vectors (CC-076)', () => {
-  const vectors = listJson('test-vectors', 'servicedesk-service-account');
-  assert.ok(vectors.some((v) => v.data.expected.decision === 'deny') && vectors.some((v) => v.data.expected.decision === 'continue'));
-  for (const { name, data } of vectors) assert.deepEqual(serviceDeskServiceAccountDecision(data.input), data.expected, name);
-  for (const required of ['srv-servicedesk-service-account-no-queue-grant', 'srv-servicedesk-ticket-moved-out-of-granted-queue']) {
-    assert.equal(vectors.find((v) => v.name === `${required}.json`)?.data.expected.decision, 'deny', required);
-  }
 });
 
 const toSeconds = (iso) => (iso === undefined ? undefined : Date.parse(iso) / 1000);
@@ -205,34 +203,6 @@ test('every C10 code has a valid tool-error vector', () => {
   const codes = readJson('schemas', 'common.schema.json').$defs.ErrorCode.enum;
   const covered = new Set(listJson('test-vectors', 'tool-errors').filter((v) => v.data.expected.valid).map((v) => v.data.error.error));
   for (const code of codes) assert.ok(covered.has(code), code);
-});
-
-// Not the reference receiver: signature, revision order and the overrides rules (permit detection needs the
-// Cedar parser) are executed by PolicyBundleVectorTest in java/mcp-cedar-entities. Here only the JSON documents
-// are checked against their schemas.
-const revisionOf = (file, suffix) => file.match(new RegExp(`^policies-([0-9]{14}-[0-9a-f]{7})${suffix}$`))?.[1];
-const validateLatest = schemaValidator(ajv, 'policy-bundle-latest.schema.json');
-const validateBundleManifest = schemaValidator(ajv, 'policy-bundle-manifest.schema.json');
-
-function latestOk(latest) {
-  return validateLatest(latest)
-    && revisionOf(latest.url, '\\.tar\\.gz') === latest.revision
-    && revisionOf(latest.sigUrl, '\\.tar\\.gz\\.sig') === latest.revision;
-}
-
-test('policy bundle vectors: latest.json and manifest.json documents', () => {
-  const vectors = listJson('test-vectors', 'bundles');
-  assert.ok(vectors.length >= 10);
-  for (const { name, data } of vectors) {
-    const expectInvalidLatest = data.expected.reason === 'invalid_latest';
-    assert.equal(latestOk(data.latest), !expectInvalidLatest, name);
-    if (data.bundle && data.expected.accept) {
-      const files = untarGz(readFileSync(path('test-vectors', 'bundles', data.bundle)));
-      const manifest = JSON.parse(files.get('manifest.json'));
-      assert.ok(validateBundleManifest(manifest), `${name}: ${formatErrors(validateBundleManifest.errors)}`);
-      assert.equal(manifest.revision, data.latest.revision, name);
-    }
-  }
 });
 
 test('connectError redirect vectors (CC-086)', async () => {

@@ -24,6 +24,14 @@ public final class ManifestRules {
     public static final String UNIQUE_TOOL_NAMES = "unique-tool-names";
     /** resourceRefs[].type and resourceTypes[].parent are declared in resourceTypes, which has no duplicates. */
     public static final String RESOURCE_TYPES_DECLARED = "resource-types-declared";
+    /** Each resourceTypes declaration is consistent: parent in the same namespace with its attribute, anchored patterns that compile, earlyScopeCheck with a scopePattern, the classification attribute among attributes. */
+    public static final String RESOURCE_TYPES_VALID = "resource-types-valid";
+    /** All resource types are in one namespace, and it is policies.namespace when policies is present. */
+    public static final String RESOURCE_TYPES_NAMESPACE = "resource-types-namespace";
+    /** policies.files has unique names in ascending order. */
+    public static final String POLICIES_FILES_SORTED_UNIQUE = "policies-files-sorted-unique";
+    /** Recomputed policiesHash equals the declared one. */
+    public static final String POLICIES_HASH_MATCHES = "policies-hash-matches";
     /** resourceRefs[].argument is a declared argument of type string, integer or array of those (CC-043). */
     public static final String RESOURCE_REF_ARGUMENT_DECLARED = "resource-ref-argument-declared";
     /** definition.name == name. */
@@ -96,6 +104,8 @@ public final class ManifestRules {
         if (declared.size() != declarations || !declared.containsAll(referenced)) {
             violations.add(RESOURCE_TYPES_DECLARED);
         }
+        violations.addAll(resourceTypeViolations(manifest));
+        violations.addAll(policiesViolations(manifest));
         for (JsonNode tool : manifest.path("tools")) {
             JsonNode definition = tool.path("definition");
             JsonNode properties = definition.path("inputSchema").path("properties");
@@ -116,6 +126,83 @@ public final class ManifestRules {
             }
         }
         return List.copyOf(violations);
+    }
+
+    private static final java.util.regex.Pattern ATTRIBUTE = java.util.regex.Pattern.compile("^[a-z][A-Za-z0-9]*$");
+
+    private static String namespaceOf(String type) {
+        return type.substring(0, Math.max(type.indexOf("::"), 0));
+    }
+
+    private static boolean compiles(String pattern) {
+        try {
+            java.util.regex.Pattern.compile(pattern);
+            return true;
+        } catch (java.util.regex.PatternSyntaxException e) {
+            return false;
+        }
+    }
+
+    private static Set<String> resourceTypeViolations(JsonNode manifest) {
+        Set<String> found = new LinkedHashSet<>();
+        java.util.Map<String, JsonNode> declared = new java.util.HashMap<>();
+        manifest.path("resourceTypes").forEach(d -> declared.put(d.path("type").asText(), d));
+        Set<String> namespaces = new HashSet<>();
+        for (JsonNode d : manifest.path("resourceTypes")) {
+            String type = d.path("type").asText();
+            namespaces.add(namespaceOf(type));
+            Set<String> attributes = new HashSet<>();
+            d.path("attributes").forEach(a -> attributes.add(a.asText()));
+            if (attributes.contains("scopes")) {
+                found.add(RESOURCE_TYPES_VALID);
+            }
+            if (d.has("parent")) {
+                JsonNode parent = declared.get(d.get("parent").asText());
+                String parentAttribute = d.path("parentAttribute").asText();
+                if (parent != null && !namespaceOf(parent.path("type").asText()).equals(namespaceOf(type))) {
+                    found.add(RESOURCE_TYPES_VALID);
+                }
+                if (attributes.contains(parentAttribute) || "scopes".equals(parentAttribute) || !ATTRIBUTE.matcher(parentAttribute).matches()) {
+                    found.add(RESOURCE_TYPES_VALID);
+                }
+            }
+            if (d.path("earlyScopeCheck").asBoolean(false) && !d.has("scopePattern")) {
+                found.add(RESOURCE_TYPES_VALID);
+            }
+            if (d.has("classification") && !attributes.contains(d.get("classification").path("attribute").asText())) {
+                found.add(RESOURCE_TYPES_VALID);
+            }
+            for (String field : List.of("idPattern", "scopePattern")) {
+                if (d.has(field) && (!anchoredPattern(d.get(field).asText()) || !compiles(d.get(field).asText()))) {
+                    found.add(RESOURCE_TYPES_VALID);
+                }
+            }
+        }
+        if (namespaces.size() > 1 || (manifest.has("policies") && namespaces.size() == 1
+                && !namespaces.contains(manifest.get("policies").path("namespace").asText()))) {
+            found.add(RESOURCE_TYPES_NAMESPACE);
+        }
+        return found;
+    }
+
+    private static Set<String> policiesViolations(JsonNode manifest) {
+        Set<String> found = new LinkedHashSet<>();
+        if (!manifest.has("policies")) {
+            return found;
+        }
+        JsonNode policies = manifest.get("policies");
+        String previous = null;
+        for (JsonNode file : policies.path("files")) {
+            String name = file.path("name").asText();
+            if (previous != null && previous.compareTo(name) >= 0) {
+                found.add(POLICIES_FILES_SORTED_UNIQUE);
+            }
+            previous = name;
+        }
+        if (!PoliciesHash.of(policies).equals(manifest.path("policiesHash").asText())) {
+            found.add(POLICIES_HASH_MATCHES);
+        }
+        return found;
     }
 
     private static boolean isIdArgument(JsonNode property) {

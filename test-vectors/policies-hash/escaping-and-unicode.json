@@ -1,0 +1,15 @@
+{
+  "description": "Text with quotes, a backslash, a tab, a control character and non-ASCII letters is escaped like RFC 8785 says.",
+  "policies": {
+    "namespace": "Notes",
+    "schema": "// za\u017c\u00f3\u0142\u0107 \"g\u0119\u015bl\u0105\" \\ ja\u017a\u0144\t\u0007\n",
+    "files": [
+      {
+        "name": "a.cedar",
+        "text": "// \u00e9\n"
+      }
+    ]
+  },
+  "canonical": "{\"files\":[{\"name\":\"a.cedar\",\"text\":\"// \u00e9\\n\"}],\"namespace\":\"Notes\",\"schema\":\"// za\u017c\u00f3\u0142\u0107 \\\"g\u0119\u015bl\u0105\\\" \\\\ ja\u017a\u0144\\t\\u0007\\n\"}",
+  "expected": "sha256:4598ad9623256e38fab5591c5b45670b864144a99f317c6ce72b3c2ac549b7da"
+}
