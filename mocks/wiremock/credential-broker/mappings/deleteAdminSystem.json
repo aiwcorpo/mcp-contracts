@@ -43,7 +43,7 @@
       }
     },
     {
-      "name": "deleteAdminSystem 401 unauthenticated",
+      "name": "deleteAdminSystem 401 step_up_required",
       "priority": 2,
       "request": {
         "method": "DELETE",
@@ -53,7 +53,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
           }
         }
       },
@@ -64,7 +64,7 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "unauthenticated"
+          "error": "step_up_required"
         }
       }
     },
@@ -91,6 +91,58 @@
         },
         "jsonBody": {
           "error": "forbidden"
+        }
+      }
+    },
+    {
+      "name": "deleteAdminSystem 412 stale",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=stale($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_failed"
+        }
+      }
+    },
+    {
+      "name": "deleteAdminSystem 428 required",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 428,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_required"
         }
       }
     },

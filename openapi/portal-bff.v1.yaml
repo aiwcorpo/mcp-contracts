@@ -175,7 +175,7 @@ paths:
         1. no tool of the server is granted and a request for one of its requiredEntitlements is pending: `request_pending`
         2. no tool of the server is granted: `no_access`
         3. the system's default credential type is `service-account` or `token-exchange` (nothing to connect): `connected`
-        4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error` -> `reconnect_required`
+        4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error`/`needs_reconnect` -> `reconnect_required`
         5. no connection: `not_connected`
 
         Actions per status (the BFF returns exactly these, CC-083). "Type" below is the type of the existing connection (`connection.type`) for `expiring` and `reconnect_required`, and `credential.supportedTypes` for `not_connected`:
@@ -2447,6 +2447,11 @@ paths:
       tags: [admin]
       operationId: putAdminSystem
       summary: "Create or replace a system in the credential broker (proxy to C4); the client secret is write-only."
+      description: |
+        Same rules as C4 `putAdminSystem`: every URL is https; `atlassian-dc` needs `product`; `token-exchange` needs `exchangeAudience` and takes no
+        `oauth.tokenUrl`; the client secret must be given again when `baseUrl`, `authorizeUrl`, `tokenUrl`, `clientId` or `revokeUrl` changes. A change of
+        any of those five invalidates every user connection of the system without sending anything to any endpoint (status `needs_reconnect`,
+        shown as `reconnect_required` in the catalog). A create sends `If-None-Match: *`, a replace `If-Match`. A fresh MFA is required.
       security:
         - session: []
           csrf: []
@@ -2531,9 +2536,15 @@ paths:
       tags: [admin]
       operationId: deleteAdminSystem
       summary: "Remove a system from the credential broker (proxy to C4), with its connections."
+      description: |
+        Needs `If-Match` (the ETag of the system that was edited) and a fresh MFA (`step_up_required` otherwise); the broker checks the MFA
+        freshness of the token itself as well. Deleting an id that has no system is `204` and deletes no secret. Nothing is sent to
+        the backend.
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         '204':
           headers:
@@ -2541,9 +2552,13 @@ paths:
               $ref: '#/components/headers/RequestId'
           description: Removed.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/kill-switches:

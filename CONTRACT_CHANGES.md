@@ -4292,3 +4292,15 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **A12 (niskie):** dane polityki z mapowaniem zawężonym do przestrzeni serwera (`ScopeMapping.forNamespace`); `PolicyRevision` jest licznikiem całkowitym, który tylko rośnie (0 = brak danych), zamiast napisu; poprawiony nieaktualny tekst o wiązaniu `serverId` z konfiguracją gatewaya.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-238 | C4/C12 | Poprawki administracji systemami brokera po przeglądzie bezpieczeństwa
+
+- **Źródło:** implementacja brokera i jego przegląd bezpieczeństwa, decyzje koordynatora z 2026-11-06. Wydanie 7.0.0 nie było opublikowane.
+- **C1:** zmiana `baseUrl`, `oauth.authorizeUrl`, `oauth.tokenUrl`, `oauth.clientId` albo `revokeUrl` unieważnia wszystkie połączenia systemu: grants, sekrety i trwające przepływy OAuth są usuwane bez wysyłania do jakiegokolwiek endpointu, połączenia dostają nowy status `ConnectionStatus` `needs_reconnect` (w katalogu portalu `reconnect_required`), `credential.invalidated` idzie per połączenie, audyt `system_updated` i `connections_invalidated`. Inne zmiany połączeń nie ruszają. Dla `token-exchange` `tokenUrl` nie jest ustawialny (broker używa endpointu swojego dostawcy tożsamości; wartość to `422 token_url_not_settable`).
+- **C2:** `deleteAdminSystem` wymaga `If-Match` i świeżego MFA (lista kroków w BFF); broker sam sprawdza świeżość MFA tokenu administratora (`auth_time` do 300 s, inaczej `401 step_up_required`) przy każdym zapisie administratora.
+- **C3:** `SystemAdminRequest` i widok mają `revokeUrl` (https, objęty regułą C1), `timeout` (ISO 8601, do 10 minut), `exchangeAudience` (tylko `token-exchange`, tam wymagane), `userSecretScheme` (`Bearer`, `Basic`, `Token`, domyślnie z `secretScheme`). `deployment` w `SystemInfo` zostaje i jest opisane jako informacja czytana przez portal, nie ustawienie administratora.
+- **C4:** `atlassian-dc` wymaga `product` (`jira` albo `confluence`), brak wykrywania; dla innych adapterów `product` jest zabronione.
+- **C5:** każdy adres od administratora to `^https://`; http istnieje tylko w profilu dev brokera, produkcyjny broker go nie przyjmie. `authorizeUrl` wymagany tylko dla `user-oauth`.
+- **Dodatkowo:** utworzenie systemu, którego id ma pozostałe połączenia albo przepływy po wcześniejszym usunięciu, czyści je najpierw bez wysyłania czegokolwiek (z audytem); DELETE id bez systemu to `204` i nie usuwa żadnego sekretu; powody audytu `system_created`, `system_updated`, `system_deleted`, `system_imported`, `connections_invalidated`, `not_admin` dopisane do listy.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

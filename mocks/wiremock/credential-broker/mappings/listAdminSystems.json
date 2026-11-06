@@ -46,6 +46,7 @@
             "system": "jira",
             "baseUrl": "https://jira.internal",
             "adapter": "atlassian-dc",
+            "product": "jira",
             "supportedTypes": [
               "user-oauth",
               "user-secret"
