@@ -29,8 +29,9 @@ class ManifestVectorTest {
     void policiesHashMatchesJavaScript(Path file) throws Exception {
         JsonNode v = JSON.readTree(file.toFile());
         String policies = JSON.writeValueAsString(v.get("policies"));
-        assertEquals(v.get("canonical").asText(), PoliciesHash.canonical(policies), file::toString);
-        assertEquals(v.get("expected").asText(), PoliciesHash.of(policies), file::toString);
+        String types = JSON.writeValueAsString(v.get("resourceTypes"));
+        assertEquals(v.get("canonical").asText(), PoliciesHash.canonical(policies, types), file::toString);
+        assertEquals(v.get("expected").asText(), PoliciesHash.of(policies, types), file::toString);
     }
 
     static Stream<Path> manifestVectors() {

@@ -5,6 +5,7 @@
     "schema": "namespace Notes {}\n",
     "files": []
   },
-  "canonical": "{\"files\":[],\"namespace\":\"Notes\",\"schema\":\"namespace Notes {}\\n\"}",
-  "expected": "sha256:daded6e4e6773a85aa3cf20ae32df1d719438f7d82123b0faa16b20fa639ae80"
+  "resourceTypes": [],
+  "canonical": "{\"policies\":{\"files\":[],\"namespace\":\"Notes\",\"schema\":\"namespace Notes {}\\n\"},\"resourceTypes\":[]}",
+  "expected": "sha256:f2d134b39b2c9380ebdb76754ad7dbab632b8ea242b923a4ccc58ad4d911bac8"
 }

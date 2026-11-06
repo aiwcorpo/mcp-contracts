@@ -34,7 +34,7 @@ polityki).
 
 **Manifest i fragment serwera (CC-232).** `system` to `SystemId`. `resourceTypes[]` wymaga `type`, `attributes`, `idPattern` i przyjmuje `parent`, `parentAttribute`
 (z `parent`), `scopePattern`, `earlyScopeCheck`, `classification {attribute, kind, required}`; atrybut rodzica nie jest już w `attributes`. Nowe człony
-`policies {namespace, schema, files[{name, text}]}` i `policiesHash` (RFC 8785 + SHA-256 członu `policies`): wymagane we wszystkich manifestach poza
+`policies {namespace, schema, files[{name, text}]}` i `policiesHash` (RFC 8785 + SHA-256 obiektu `{"policies", "resourceTypes"}`, więc zmiana deklaracji też wymaga zatwierdzenia): wymagane we wszystkich manifestach poza
 manifestem adaptera, zakazane w manifeście adaptera, który nie deklaruje też `resourceTypes`. Nowe reguły semantyczne `resource-types-valid`,
 `resource-types-namespace`, `policies-files-sorted-unique`, `policies-hash-matches`. Walidacja fragmentu (`PolicyFragments.validateFragment`): schemat bazowy i
 fragment składają się w trybie strict, jedna przestrzeń, `scopes` na każdym typie, akcje `read`/`update`/`delete`/`admin`, bez `Action::"call"` i `Tool`, bez

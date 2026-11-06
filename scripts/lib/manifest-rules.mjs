@@ -75,7 +75,7 @@ function policiesViolations(manifest) {
   if (!policies) return [];
   const names = policies.files.map((f) => f.name);
   if (names.some((name, i) => i > 0 && !(names[i - 1] < name))) found.add('policies-files-sorted-unique');
-  if (policiesHash(policies).hash !== manifest.policiesHash) found.add('policies-hash-matches');
+  if (policiesHash(policies, manifest.resourceTypes).hash !== manifest.policiesHash) found.add('policies-hash-matches');
   return [...found];
 }
 

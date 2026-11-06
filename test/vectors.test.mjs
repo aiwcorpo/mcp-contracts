@@ -89,12 +89,12 @@ test('resource id vectors match the declarations of the example systems (CC-056)
   }
 });
 
-test('policiesHash vectors: canonical form and sha256 of the policies member (C6, 7.0.0)', () => {
+test('policiesHash vectors: canonical form and sha256 of policies and resourceTypes (C6, 7.0.0)', () => {
   const vectors = listJson('test-vectors', 'policies-hash');
   assert.ok(vectors.length >= 3);
   for (const { name, data } of vectors) {
-    assert.equal(canonicalize(data.policies), data.canonical, name);
-    assert.deepEqual(policiesHash(data.policies), { canonical: data.canonical, hash: data.expected }, name);
+    assert.equal(canonicalize({ policies: data.policies, resourceTypes: data.resourceTypes }), data.canonical, name);
+    assert.deepEqual(policiesHash(data.policies, data.resourceTypes), { canonical: data.canonical, hash: data.expected }, name);
   }
 });
 

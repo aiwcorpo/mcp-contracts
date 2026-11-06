@@ -355,7 +355,7 @@ paths:
                         text: |
                           @id("jira-read")
                           permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
-                  policiesHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+                  policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                   tools:
                     - name: get_issue
                       risk: READ_ONLY
@@ -1992,7 +1992,7 @@ paths:
                   value:
                     approvedHash: null
                     approvedPolicies: null
-                    pendingHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+                    pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                     pendingVersion: 1.4.0
                     source: ci
                     pendingPolicies:
@@ -2038,7 +2038,7 @@ paths:
             examples:
               approve:
                 value:
-                  policiesHash: sha256:aa511ceca27fa0b37ac45a2c1ce5a8f4576af75b7ca4d5ebc79131d787833b93
+                  policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
       responses:
         '204':
           description: Approved.

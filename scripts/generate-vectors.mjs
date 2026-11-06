@@ -159,23 +159,29 @@ hashVector('canonicalization-unicode-and-numbers',
 
 // ---------- policiesHash (C6, 7.0.0) ----------
 {
-  const hashCase = (name, description, policies) => {
-    const { canonical, hash } = policiesHash(policies);
+  const hashCase = (name, description, policies, resourceTypes) => {
+    const { canonical, hash } = policiesHash(policies, resourceTypes);
     // The file stays ASCII: non-ASCII characters are written as \\uXXXX escapes, which parse to the same strings.
-    const ascii = JSON.stringify({ description, policies, canonical, expected: hash }, null, 2).replace(/[^\x00-\x7f]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+    const ascii = JSON.stringify({ description, policies, resourceTypes, canonical, expected: hash }, null, 2).replace(/[^\x00-\x7f]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
     mkdirSync(path('test-vectors', 'policies-hash'), { recursive: true });
     writeFileSync(path('test-vectors', 'policies-hash', `${name}.json`), ascii + '\n');
   };
+  const typesOf = (dir) => JSON.parse(readFileSync(path(dir, 'resource-types.json'), 'utf8'));
   const fragmentOf = (dir, namespace) => ({
     namespace,
     schema: readFileSync(path(dir, 'schema.cedarschema'), 'utf8'),
     files: readdirSync(path(dir)).filter((n) => n.endsWith('.cedar')).sort().map((name) => ({ name, text: readFileSync(path(dir, name), 'utf8') })),
   });
-  hashCase('jira-fragment', 'The fragment of cedar/examples/systems/jira: namespace, schema text and the policy files in file name order.', fragmentOf('cedar/examples/systems/jira', 'Jira'));
-  hashCase('notes-fragment', 'The fragment of test-vectors/fixtures/notes.', fragmentOf('test-vectors/fixtures/notes', 'Notes'));
-  hashCase('no-policy-files', 'A fragment with a schema and no policy file.', { namespace: 'Notes', schema: 'namespace Notes {}\n', files: [] });
+  hashCase('jira-fragment', 'The fragment of cedar/examples/systems/jira: namespace, schema text and the policy files in file name order.', fragmentOf('cedar/examples/systems/jira', 'Jira'), typesOf('cedar/examples/systems/jira'));
+  hashCase('notes-fragment', 'The fragment of test-vectors/fixtures/notes.', fragmentOf('test-vectors/fixtures/notes', 'Notes'), typesOf('test-vectors/fixtures/notes'));
+  {
+    const flipped = typesOf('test-vectors/fixtures/notes');
+    flipped[0].earlyScopeCheck = false;
+    hashCase('notes-early-scope-check-flipped', 'Same policies as notes-fragment, earlyScopeCheck of Notes::Notebook switched off: the hash differs, so the change needs approval.', fragmentOf('test-vectors/fixtures/notes', 'Notes'), flipped);
+  }
+  hashCase('no-policy-files', 'A fragment with a schema and no policy file.', { namespace: 'Notes', schema: 'namespace Notes {}\n', files: [] }, []);
   hashCase('escaping-and-unicode', 'Text with quotes, a backslash, a tab, a control character and non-ASCII letters is escaped like RFC 8785 says.',
-    { namespace: 'Notes', schema: '// za\u017c\u00f3\u0142\u0107 "g\u0119\u015bl\u0105" \\ ja\u017a\u0144\t\u0007\n', files: [{ name: 'a.cedar', text: '// \u00e9\n' }] });
+    { namespace: 'Notes', schema: '// za\u017c\u00f3\u0142\u0107 "g\u0119\u015bl\u0105" \\ ja\u017a\u0144\t\u0007\n', files: [{ name: 'a.cedar', text: '// \u00e9\n' }] }, [{ type: 'Notes::Caf\u00e9', attributes: [], idPattern: '^[a-z]+$' }]);
 }
 
 // ---------- manifests (C6) ----------
@@ -201,7 +207,7 @@ const fragment = (dir) => ({
       .map((name) => ({ name, text: readFileSync(path(dir, name), 'utf8') })),
   },
 });
-const withPolicies = (manifest, policies) => ({ ...manifest, policies, policiesHash: policiesHash(policies).hash });
+const withPolicies = (manifest, policies) => ({ ...manifest, policies, policiesHash: policiesHash(policies, manifest.resourceTypes).hash });
 const jiraFragment = fragment('cedar/examples/systems/jira');
 const jiraManifest = () => withPolicies({
   serverId: 'mcp-jira',
@@ -404,7 +410,7 @@ manifest('invalid-credential-types-mixed', 'acceptedTypes mixes service-account 
   const mutated = (mutate, rehash = true) => {
     const m = structuredClone(notesManifest);
     mutate(m);
-    if (rehash && m.policies) m.policiesHash = policiesHash(m.policies).hash;
+    if (rehash && m.policies) m.policiesHash = policiesHash(m.policies, m.resourceTypes).hash;
     return withHash(m);
   };
   manifest('invalid-system-upper-case', 'A system id is lower case: Notes is refused.', mutated((m) => { m.system = 'Notes'; m.serverId = 'mcp-Notes'; }), false, 'schema');
@@ -434,7 +440,7 @@ manifest('invalid-credential-types-mixed', 'acceptedTypes mixes service-account 
   manifest('invalid-resource-type-classification-not-in-attributes', 'The classification attribute is one of the attributes the resolver fills.', mutated((m) => { m.resourceTypes[0].classification.attribute = 'colour'; }), false, 'resource-types-valid');
   manifest('invalid-resource-type-classification-kind', 'kind is string or set.', mutated((m) => { m.resourceTypes[0].classification.kind = 'list'; }), false, 'schema');
   manifest('invalid-resource-type-name-lower-case-namespace', 'A resource type is <Namespace>::<Name>, both starting with a capital.', mutated((m) => { m.resourceTypes[0].type = 'notes::Notebook'; }), false, 'schema');
-  manifest('invalid-adapter-with-policies', 'An adapter has no policies member: its policies are its own.', (() => { const m = adapterManifest(); m.policies = { namespace: 'Jira', schema: 'namespace Jira {}', files: [] }; m.policiesHash = policiesHash(m.policies).hash; return m; })(), false, 'schema');
+  manifest('invalid-adapter-with-policies', 'An adapter has no policies member: its policies are its own.', (() => { const m = adapterManifest(); m.policies = { namespace: 'Jira', schema: 'namespace Jira {}', files: [] }; m.policiesHash = policiesHash(m.policies, m.resourceTypes).hash; return m; })(), false, 'schema');
   manifest('invalid-adapter-with-resource-types', 'An adapter has no resourceRefs, so it declares no resource type.', (() => { const m = adapterManifest(); m.resourceTypes = [{ type: 'Jira::Issue', attributes: [], idPattern: '^[A-Z]+$' }]; return m; })(), false, 'schema');
 }
 

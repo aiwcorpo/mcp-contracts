@@ -1239,7 +1239,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 128 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
-| `policies-hash/` | 4 | `policiesHash` of the `policies` member of a manifest (RFC 8785 + SHA-256, CC-232) |
+| `policies-hash/` | 5 | `policiesHash` of the `policies` member of a manifest (RFC 8785 + SHA-256 of policies and resourceTypes, CC-232) |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |
 | `return-paths/` | 35 | `returnPath` of C4/C12 (CC-032); since 3.0.0 without the prefixes `/api`, `/s`, `/v`, `/.well-known`, since 5.0.0 also `/mcp` (CC-169; `/f/` is free) and without `.`/`..` segments and the semicolon, which servers read as a path parameter (CC-099) |
 | `entity-builder/` | 54 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
@@ -1321,7 +1321,7 @@ Beyond the JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), checked by th
     `classification` attribute is one of `attributes`; `idPattern` and `scopePattern` are anchored (`^...$`, no top-level
     alternation) and compile. All types are in one namespace, equal to `policies.namespace` (`resource-types-namespace`, CC-232).
 11. `policies.files` has unique names in ascending order (`policies-files-sorted-unique`) and `policiesHash` recomputed from
-    `policies` (RFC 8785 + SHA-256, `scripts/lib/definition-hash.mjs` `policiesHash`) equals the declared one
+    `policies` and `resourceTypes` (RFC 8785 + SHA-256, `scripts/lib/definition-hash.mjs` `policiesHash`) equals the declared one
     (`policies-hash-matches`). The schema requires `policies` and `policiesHash` together, for every manifest that is not an
     adapter's, and forbids them (and `resourceTypes` entries) in an adapter manifest.
 

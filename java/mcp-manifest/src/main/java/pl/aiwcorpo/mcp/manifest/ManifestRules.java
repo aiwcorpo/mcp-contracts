@@ -199,7 +199,7 @@ public final class ManifestRules {
             }
             previous = name;
         }
-        if (!PoliciesHash.of(policies).equals(manifest.path("policiesHash").asText())) {
+        if (!PoliciesHash.of(policies, manifest.path("resourceTypes")).equals(manifest.path("policiesHash").asText())) {
             found.add(POLICIES_HASH_MATCHES);
         }
         return found;
