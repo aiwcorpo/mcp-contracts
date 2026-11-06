@@ -69,6 +69,34 @@ class ResourceTypesTest {
     }
 
     @Test
+    void patternsOutsideTheGrammarAreRefused() {
+        for (String pattern : List.of("^(.*a){12}$", "^(a+)+$", "^(a|aa)+$", "^(a|a?)+$", "^([a-z]+)*[0-9]$", "^(a)\\1$", "^(?=a)a$", "^(?!a)b$",
+                "^" + "a".repeat(520) + "$")) {
+            assertThrows(IllegalArgumentException.class, () -> ResourceTypes.of(List.of(
+                    declaration("Acme::Box", null, null, pattern, null, false, null))), pattern);
+        }
+        ResourceTypes.of(List.of(declaration("Acme::Box", null, null, "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$", null, false, null)));
+    }
+
+    @Test
+    void hostileIdIsRejectedFastAndLongIdsBeforeMatching() {
+        ResourceTypes types = ResourceTypes.of(List.of(declaration("Acme::Box", null, null, "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$", "^[a-z]+$", false, null)));
+        long start = System.nanoTime();
+        assertFalse(types.isValidId("Acme::Box", "a".repeat(1000) + "!"));
+        assertTrue((System.nanoTime() - start) / 1_000_000 < 500);
+        assertFalse(types.isValidId("Acme::Box", "a".repeat(1025)));
+        assertFalse(types.isValidScopeLocalId("Acme::Box", "a".repeat(1025)));
+    }
+
+    @Test
+    void unionRefusesTwoServersInOneNamespace() {
+        ResourceTypes a = ResourceTypes.of(List.of(flat()));
+        ResourceTypes b = ResourceTypes.of(List.of(declaration("Acme::Crate", null, null, "^a$", null, false, null)));
+        var e = assertThrows(IllegalArgumentException.class, () -> ResourceTypes.union(List.of(a, b)));
+        assertTrue(e.getMessage().startsWith("namespace_conflict"));
+    }
+
+    @Test
     void unionRefusesATypeDeclaredByTwoServers() {
         ResourceTypes a = ResourceTypes.of(List.of(flat()));
         ResourceTypes b = ResourceTypes.of(List.of(flat()));

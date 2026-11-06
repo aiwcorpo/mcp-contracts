@@ -290,15 +290,18 @@ paths:
         for the other rejections listed here and for a hash that does not match. At
         start the gateway makes the same checks for the manifests it holds; a held manifest that fails them is not
         replaced: the server is reported with enabled false and its tools are refused as tool_disabled until a manifest
-        that passes is registered. The binding serverId -> system/internalUrl comes only from gateway configuration; a
-        manifest that disagrees is rejected with 422 and nothing is stored.
+        that passes is registered. The binding serverId -> system/internalUrl comes only from the registry of servers (`/admin/v1/servers`), never from
+        the manifest; a manifest that disagrees is rejected with 422 and nothing is stored.
 
         **Policies (7.0.0).** The manifest carries the policy fragment of the server (`policies`, `policiesHash`) and the
         declarations of its resource types (`resourceTypes`: id and scope patterns, parent, classification). The gateway
         validates them (the base schema `cedar/mcp.cedarschema` and the fragment compose and validate in strict mode, the
         fragment declares nothing outside its one namespace, every entity type has `scopes`, no policy mentions `Action::"call"`
         or `Tool`, the declarations match the schema) and rejects the manifest with 422 and reason `policies_invalid` or
-        `resource_types_invalid`; a namespace that another registered server already uses is `namespace_conflict`. A server
+        `resource_types_invalid`; a namespace that another registered `serverId` already uses is `namespace_conflict` (a namespace belongs to the first server that
+        declared it, and only to its serverId, until that server is deleted). The gateway builds the union of resource types only from
+        approved declarations; an exception while building the union or the scope mapping is a deny with an audit event, never a
+        partial result. A server
         whose `policiesHash` differs from the approved one is `pending_approval` for its policies: its tools are blocked until
         an administrator approves them with `approveServerPolicies`; the first registration of a server needs the same
         approval. Policies are never taken from a server that is not in the registry.
@@ -957,7 +960,7 @@ paths:
                       tool: get_issue
                       risk: READ_ONLY
                       decision: allow
-                      policyRevision: 20261026120000-a1b2c3d
+                      policyRevision: 41
                       credentialType: user-secret
                       outcome: ok
                       errorCode: null
@@ -1536,7 +1539,10 @@ paths:
         (`registerServer`, or the manifest the gateway fetches at start) and an administrator approves them. `tlsName` is
         the name the gateway expects in the certificate of the server (default `<serverId>.internal`); the certificate comes
         from the internal CA and its CN is the `serverId`.
-        The audit event is `admin_change`.
+        The `system` must not be a reserved id (`gateway`, `offboarding`, `portal`, `broker`, `prometheus`, `platform`, `admin`,
+        `registry`, `adapter`, `internal`, `ci`): `mcp-<system>` is a certificate CN, and a server named like a component would inherit the
+        authorization of that component (`422 server_rejected`, reason `system_reserved`). A namespace that another `serverId` holds cannot
+        be declared by this one (`namespace_conflict` at registration). The audit event is `admin_change`.
       security:
         - mtls: []
           bffUserToken: []
@@ -1560,6 +1566,8 @@ paths:
         '201':
           description: Added.
           headers:
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
             Location:
               description: Address of the new server.
               schema:
@@ -1614,6 +1622,9 @@ paths:
       responses:
         '200':
           description: The server.
+          headers:
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           content:
             application/json:
               schema:
@@ -1646,11 +1657,13 @@ paths:
         Only the fields in the body change. `serverId` and `system` never change (remove the server and add it again). Switching
         `enabled` to false hides all tools of the server and refuses its calls as `tool_disabled`, which is the way to take
         a server out of service without losing its approvals. A change of `credential` applies to the next call, and the
-        manifest of the server must accept the new types (otherwise its tools are refused until it registers a matching
+        manifest of the server must accept the new types; `If-Match` is the `ETag` of the server that was edited (otherwise its tools are refused until it registers a matching
         manifest).
       security:
         - mtls: []
           bffUserToken: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         required: true
         content:
@@ -1664,6 +1677,9 @@ paths:
       responses:
         '200':
           description: The server after the change.
+          headers:
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           content:
             application/json:
               schema:
@@ -1689,8 +1705,12 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
         '422':
           $ref: '#/components/responses/ServerRejected'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
     delete:
       tags: [servers]
       operationId: deleteServer
@@ -1699,8 +1719,8 @@ paths:
       description: |
         Removes the server and what the gateway holds about it: its manifests, approvals, emergency switches and its
         policy fragment. Its tools disappear from `tools/list` and a call is refused as for an unknown tool; its certificate
-        no longer gets policy data. The scope mapping keeps the scopes of its resource types in the stored document, and
-        they stop applying because no registered server declares those types. The system in the credential broker is
+        no longer gets policy data. The entries of the scope mapping for the types of its namespace are removed with it, so that a server added later under the
+        same namespace does not inherit grants given to the old one; the audit event lists the removed entries. The system in the credential broker is
         removed separately (`deleteAdminSystem`). The audit event is `admin_change`.
       security:
         - mtls: []
@@ -1852,9 +1872,9 @@ paths:
               examples:
                 one:
                   value:
-                    - id: block-drop-table
-                      target: all-servers
-                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                    - id: override-block-drop-table
+                      target: gateway
+                      text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                       setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                       setAt: '2026-11-06T09:30:00Z'
         '401':
@@ -1875,6 +1895,9 @@ paths:
       responses:
         '200':
           description: The override.
+          headers:
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           content:
             application/json:
               schema:
@@ -1882,9 +1905,9 @@ paths:
               examples:
                 block_drop_table:
                   value:
-                    id: block-drop-table
-                    target: all-servers
-                    text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                    id: override-block-drop-table
+                    target: gateway
+                    text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                     setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                     setAt: '2026-11-06T09:30:00Z'
         '401':
@@ -1900,14 +1923,22 @@ paths:
       summary: Create or replace an emergency override (group mcp-platform-admin).
       description: |
         An override is one `forbid` policy that an administrator adds without a deployment. It cannot grant anything: a
-        `permit`, a template or more than one policy is `422 override_rejected`. `target` says where it applies: `gateway`
-        (the decision on `call`), `all-servers` (every server evaluates it with its own policies) or a `serverId`. The text is
-        validated against the base schema `cedar/mcp.cedarschema` and, for a `serverId`, against the registered fragment
-        of that server. The override id becomes the policy id; an `@id` in the text must be the same. The write raises the
-        revision of the policy data. The audit event is `admin_change`.
+        `permit`, a template or more than one policy is `422 override_rejected`. The id is `override-<name>`; a policy of a
+        server or of the platform may not use the prefixes `override-` and `platform-`, and two policies with the same id
+        anywhere in the evaluated set are an error, never a merge. `target` says where it applies. `gateway`: the text must be
+        `action == Action::"call"` on `resource is Tool`, so it cannot be a policy that blocks nothing. `serverId`: validated
+        against the base schema composed with the registered fragment of that server, and it may not mention `Tool` or `call`.
+        `all-servers`: validated against the fragment of every registered server (so it can use only what every server has, for
+        example `context.client`), and it may not mention `Tool` or `call` either. The override id becomes the policy id; an
+        `@id` in the text must be the same. A create sends `If-None-Match: *`, a replace sends `If-Match` with the `ETag` of the
+        override that was edited (`412` when it changed, `428` without either). The write raises the revision of the policy
+        data. The audit event is `admin_change`.
       security:
         - mtls: []
           bffUserToken: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatchOptional'
+        - $ref: '#/components/parameters/IfNoneMatchStar'
       requestBody:
         required: true
         content:
@@ -1917,11 +1948,14 @@ paths:
             examples:
               block_drop_table:
                 value:
-                  target: all-servers
-                  text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                  target: gateway
+                  text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
       responses:
         '200':
           description: Stored.
+          headers:
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           content:
             application/json:
               schema:
@@ -1929,9 +1963,9 @@ paths:
               examples:
                 block_drop_table:
                   value:
-                    id: block-drop-table
-                    target: all-servers
-                    text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                    id: override-block-drop-table
+                    target: gateway
+                    text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                     setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                     setAt: '2026-11-06T09:30:00Z'
         '400':
@@ -1952,14 +1986,21 @@ paths:
                     error: override_rejected
                     reason: not_forbid
                     message: an override is forbid only
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
     delete:
       tags: [policy]
       operationId: deleteOverride
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Remove an emergency override (group mcp-platform-admin).
+      description: '`If-Match` is the `ETag` of the override that was edited; removing a forbid widens access, so the BFF asks for a fresh MFA.'
       security:
         - mtls: []
           bffUserToken: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         '204':
           description: Removed.
@@ -1969,6 +2010,10 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
   /admin/v1/registry/servers/{serverId}/policies/pending:
     parameters:
       - $ref: '#/components/parameters/ServerId'
@@ -1976,7 +2021,7 @@ paths:
       tags: [registry]
       operationId: getPendingServerPolicies
       x-allowed-client-cn: [mcp-portal-bff]
-      summary: Policies of a server waiting for approval, next to the approved ones (admin).
+      summary: Policies and resource type declarations of a server waiting for approval, next to the approved ones (admin).
       security:
         - mtls: []
           bffUserToken: []
@@ -1992,6 +2037,22 @@ paths:
                   value:
                     approvedHash: null
                     approvedPolicies: null
+                    approvedResourceTypes: null
+                    pendingResourceTypes:
+                      - type: Jira::Project
+                        attributes: [key, category]
+                        idPattern: ^[A-Z][A-Z0-9_]{1,9}$
+                        scopePattern: ^[A-Z][A-Z0-9_]{1,9}$
+                        earlyScopeCheck: true
+                        classification:
+                          attribute: category
+                          kind: string
+                          required: true
+                      - type: Jira::Issue
+                        attributes: [key]
+                        parent: Jira::Project
+                        parentAttribute: project
+                        idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
                     pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                     pendingVersion: 1.4.0
                     source: ci
@@ -2023,9 +2084,14 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Approve the pending policies of a server (group mcp-platform-admin).
       description: |
-        `policiesHash` must equal the current pending hash, otherwise 409 and nothing changes. After the approval the
-        policies are the ones served to the server in the policy data and the tools of the server follow their own approvals
-        again. The audit event is `admin_change` with reason `policies_approved`.
+        `policiesHash` must equal the current pending hash, otherwise 409 and nothing changes; it covers the policies and the
+        resource type declarations together. The approval sets `approvedPoliciesHash` of that server in the policy data, which is
+        the only thing that lets the server evaluate: the starter computes the hash of its own policies and resourceTypes and
+        refuses every call (`upstream_unavailable`) when it differs from the approved one or when nothing is approved. Approval
+        is allowed even when it makes existing scope mapping entries invalid (a narrower `scopePattern`, a removed type); the
+        answer lists the entries that will be ignored, so the administrator sees the effect, and every one is audited when the
+        gateway evaluates. The tools of the server follow their own approvals again. The BFF asks for a fresh MFA. The audit
+        event is `admin_change` with reason `policies_approved`.
       security:
         - mtls: []
           bffUserToken: []
@@ -2040,8 +2106,22 @@ paths:
                 value:
                   policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
       responses:
-        '204':
-          description: Approved.
+        '200':
+          description: Approved; the mapping entries that the approval makes invalid and that evaluation will therefore ignore.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovePoliciesResult'
+              examples:
+                nothing_ignored:
+                  value:
+                    ignoredMappingEntries: []
+                narrower_pattern:
+                  value:
+                    ignoredMappingEntries:
+                      - group: mcp-jira-proj-ABC
+                        scope: Jira::Project/ABCDEFGHIJ
+                        reason: invalid_scope
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -2067,12 +2147,18 @@ paths:
       description: |
         For servers, not for people. The certificate must come from the internal CA and its CN must be the `serverId` of a
         server in the registry; any other CN is `403`. The answer is the administrator data a server needs to evaluate its
-        own policies: the scope mapping, the allowed AI clients (`azp`, from the configuration of the gateway) and the
+        own policies: the scope mapping reduced to the scopes of the namespace of this server (it never learns the grants of
+        another system), `approvedPoliciesHash` (the hash the administrator approved for this server; absent while nothing is
+        approved), the allowed AI clients (`azp`, from the configuration of the gateway) and the
         overrides that target this server or all servers (overrides for the gateway are not sent). The data is served with
         an `ETag` (the revision, quoted); a client repeats the call with `If-None-Match` and gets `304` while nothing changed.
         The internal JWT carries the revision as `prv`: a server that sees a newer one than it holds refreshes at once and
-        keeps polling at an interval it configures. A server that has no data it can use refuses its calls as
-        `upstream_unavailable` (C10).
+        keeps polling at an interval it configures. **Rules that bind the server.** It computes the hash of its own policies and
+        resourceTypes and refuses every call (`upstream_unavailable`) when it differs from `approvedPoliciesHash` or when that is
+        absent. It never accepts a revision lower than or equal to the one it holds as new data. When `prv` of a token is newer
+        than its data it refreshes before evaluating, or refuses. When an override does not validate against its composed
+        schema it refuses every call. The reference rule and vectors: `scripts/lib/policy-data-gate.mjs`,
+        `test-vectors/policy-data-gate`. The revision is a counter that only rises.
       security:
         - mtls: []
       parameters:
@@ -2083,7 +2169,7 @@ paths:
           schema:
             type: string
             maxLength: 64
-          example: '"20261106093000-a1b2c3d"'
+          example: '"42"'
       responses:
         '200':
           description: The policy data.
@@ -2093,8 +2179,8 @@ paths:
               required: true
               schema:
                 type: string
-                pattern: '^"[0-9]{14}-[0-9a-f]{7}"$'
-              example: '"20261106093000-a1b2c3d"'
+                pattern: '^"[0-9]{1,16}"$'
+              example: '"42"'
           content:
             application/json:
               schema:
@@ -2102,14 +2188,15 @@ paths:
               examples:
                 for_a_server:
                   value:
-                    revision: 20261106093000-a1b2c3d
+                    revision: 42
+                    approvedPoliciesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                     scopeMapping:
                       - group: mcp-jira-proj-ABC
                         scopes: [Jira::Project/ABC]
                     allowedClients: [claude-code, claude-ai]
                     overrides:
-                      - id: block-drop-table
-                        text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      - id: override-no-claude-ai
+                        text: 'forbid (principal, action, resource) when { context.client == "claude-ai" };'
         '304':
           description: The server already holds this revision.
         '403':
@@ -2135,9 +2222,9 @@ paths:
                   value:
                     instances:
                       - instanceId: mcp-gateway-0
-                        revision: 20261026120000-a1b2c3d
+                        revision: 41
                       - instanceId: mcp-gateway-1
-                        revision: 20261026120000-a1b2c3d
+                        revision: 41
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -2175,6 +2262,23 @@ components:
       bearerFormat: JWT
       description: User token exchanged in the IdP (RFC 8693) for aud=mcp-gateway-admin.
   parameters:
+    IfMatchOptional:
+      name: If-Match
+      in: header
+      required: false
+      description: The ETag of the resource the change is based on; needed to replace, not to create.
+      schema:
+        type: string
+        pattern: '^"[A-Za-z0-9_-]{8,128}"$'
+      example: '"Zx8Tq2LmWk93vNpA"'
+    IfNoneMatchStar:
+      name: If-None-Match
+      in: header
+      required: false
+      description: '`*` to create; the call fails when the resource exists.'
+      schema:
+        type: string
+        const: '*'
     IfMatch:
       name: If-Match
       in: header
@@ -2190,7 +2294,7 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/OverrideId'
-      example: block-drop-table
+      example: override-block-drop-table
     ServerId:
       name: serverId
       in: path
@@ -2223,6 +2327,26 @@ components:
         maximum: 200
         default: 50
   responses:
+    PreconditionFailed:
+      description: The resource changed since the ETag; read it again.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            stale:
+              value:
+                error: precondition_failed
+    PreconditionRequired:
+      description: '`If-Match` (or `If-None-Match: *` to create) is missing.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            required:
+              value:
+                error: precondition_required
     ServerRejected:
       description: The settings are inconsistent (7.0.0).
       content:
@@ -2764,7 +2888,7 @@ components:
       additionalProperties: false
     ServerRejected:
       type: object
-      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
+      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), system_reserved (the system id is one of the reserved ids), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
       required: [error]
       properties:
         error:
@@ -2815,8 +2939,9 @@ components:
           maxLength: 500
       additionalProperties: false
     OverrideId:
+      description: override-<name>; the prefixes override- and platform- are reserved, so an override cannot replace a platform policy by id.
       type: string
-      pattern: '^[a-z][a-z0-9-]{0,62}$'
+      pattern: '^override-[a-z0-9][a-z0-9-]{0,54}$'
     OverrideTarget:
       description: gateway (the decision on call), all-servers (every server evaluates it) or the serverId of one server.
       type: string
@@ -2855,7 +2980,7 @@ components:
       additionalProperties: false
     OverrideRejected:
       type: object
-      description: 422 of a write of an override. Known reasons are not_forbid, not_one_policy, invalid_policy (does not parse or does not validate against the schema of its target), id_mismatch (the @id of the text is not the id of the override) and target_unknown (a serverId that is not in the registry).
+      description: 422 of a write of an override. Known reasons are not_forbid, not_one_policy, id_invalid (not override-<name>), target_mismatch (a gateway override that is not call on Tool, or a server override that mentions them), invalid_policy (does not parse or does not validate against the schema of its target), id_mismatch (the @id of the text is not the id of the override) and target_unknown (a serverId that is not in the registry).
       required: [error]
       properties:
         error:
@@ -2869,7 +2994,8 @@ components:
       additionalProperties: false
     PendingPolicies:
       type: object
-      required: [approvedHash, approvedPolicies, pendingHash, pendingPolicies, pendingVersion, source]
+      description: What an administrator approves is the policies and the declarations of the resource types together (policiesHash covers both), so both sides are shown.
+      required: [approvedHash, approvedPolicies, approvedResourceTypes, pendingHash, pendingPolicies, pendingResourceTypes, pendingVersion, source]
       properties:
         approvedHash:
           oneOf:
@@ -2880,10 +3006,21 @@ components:
           oneOf:
             - $ref: '../schemas/server-manifest.schema.json#/properties/policies'
             - type: 'null'
+        approvedResourceTypes:
+          description: The approved declarations; null for the first registration.
+          oneOf:
+            - type: array
+              items:
+                $ref: '../schemas/server-manifest.schema.json#/$defs/ResourceTypeDeclaration'
+            - type: 'null'
         pendingHash:
           $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
         pendingPolicies:
           $ref: '../schemas/server-manifest.schema.json#/properties/policies'
+        pendingResourceTypes:
+          type: array
+          items:
+            $ref: '../schemas/server-manifest.schema.json#/$defs/ResourceTypeDeclaration'
         pendingVersion:
           description: Version of the manifest in which the pending policies appeared.
           $ref: '../schemas/common.schema.json#/$defs/SemVer'
@@ -2891,6 +3028,26 @@ components:
           description: Where the pending policies come from, as for a pending tool (ci or server).
           type: string
           enum: [ci, server]
+      additionalProperties: false
+    ApprovePoliciesResult:
+      type: object
+      required: [ignoredMappingEntries]
+      properties:
+        ignoredMappingEntries:
+          type: array
+          items:
+            type: object
+            required: [group, scope, reason]
+            properties:
+              group:
+                type: string
+              scope:
+                type: string
+              reason:
+                description: undeclared_type, invalid_scope, group_missing or group_duplicate.
+                type: string
+                pattern: '^[a-z][a-z0-9_]*$'
+            additionalProperties: false
       additionalProperties: false
     ApprovePoliciesRequest:
       type: object
@@ -2906,7 +3063,11 @@ components:
       properties:
         revision:
           $ref: '../schemas/common.schema.json#/$defs/PolicyRevision'
+        approvedPoliciesHash:
+          description: policiesHash (policies and resourceTypes) that the administrator approved for the requesting server; absent while nothing is approved. The server evaluates only when its own hash equals it.
+          $ref: '../schemas/common.schema.json#/$defs/DefinitionHash'
         scopeMapping:
+          description: Only the scopes of types in the namespace of the requesting server; groups without one are left out.
           type: array
           items:
             $ref: '#/components/schemas/ScopeMappingEntry'

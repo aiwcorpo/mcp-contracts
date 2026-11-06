@@ -37,6 +37,7 @@
       "response": {
         "status": 200,
         "headers": {
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
@@ -157,6 +158,31 @@
       }
     },
     {
+      "name": "updateServer 412 stale",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=stale($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_failed"
+        }
+      }
+    },
+    {
       "name": "updateServer 422 server_id_mismatch",
       "priority": 2,
       "request": {
@@ -180,6 +206,31 @@
           "error": "server_rejected",
           "reason": "server_id_mismatch",
           "message": "serverId must be mcp-<system>"
+        }
+      }
+    },
+    {
+      "name": "updateServer 428 required",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 428,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_required"
         }
       }
     }

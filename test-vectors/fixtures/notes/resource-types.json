@@ -1,24 +1,41 @@
 [
   {
     "type": "Notes::Notebook",
-    "attributes": ["name", "labels"],
+    "attributes": [
+      "name",
+      "labels"
+    ],
     "idPattern": "^[a-z][a-z0-9-]{0,31}$",
     "scopePattern": "^[a-z][a-z0-9-]{0,31}$",
     "earlyScopeCheck": true,
-    "classification": {"attribute": "labels", "kind": "set", "required": true}
+    "classification": {
+      "attribute": "labels",
+      "kind": "set",
+      "required": true
+    }
   },
   {
     "type": "Notes::Note",
-    "attributes": ["title", "pinned"],
+    "attributes": [
+      "title",
+      "pinned"
+    ],
     "parent": "Notes::Notebook",
     "parentAttribute": "notebook",
     "idPattern": "^[1-9][0-9]{0,11}$"
   },
   {
     "type": "Notes::Folder",
-    "attributes": ["path", "classification"],
-    "idPattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
-    "scopePattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
-    "classification": {"attribute": "classification", "kind": "set", "required": false}
+    "attributes": [
+      "path",
+      "classification"
+    ],
+    "idPattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
+    "scopePattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
+    "classification": {
+      "attribute": "classification",
+      "kind": "set",
+      "required": false
+    }
   }
 ]

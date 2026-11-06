@@ -12,7 +12,6 @@
     "/team",
     "team//sub",
     "team/../x",
-    "Team",
-    "a/b/c/d/e/f"
+    "Team"
   ]
 }

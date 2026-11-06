@@ -1,6 +1,6 @@
 {
   "description": "allowTestKeys alone (a unit test setting) does not make a dev- key acceptable: dev mode needs the devstack profile too (CC-137).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTMifQ.xKTD7nU2fJUbiC6b4jaKsCw4Xv0vHVuCusHeCF3EjcXLqz1uct5jQxog4xP7i7e0CCR9nn57M1aGXPEbTHkz0w",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA5MyJ9.xSi1O16IrUiGgisgWi0V3N0Q0x7sWiuYat8PATr3AbirvhnmSNpIZ2FTwSfrr-0ACuo8xEZtXOc-K6gpbfPbxg",
   "header": {
     "alg": "ES256",
     "kid": "dev-gw-2026-10-a",
@@ -19,7 +19,7 @@
     "azp": "claude-code",
     "tool": "get_issue",
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
-    "prv": "20261026120000-a1b2c3d",
+    "prv": 41,
     "iat": 1793016000,
     "exp": 1793016060,
     "jti": "0192d1b2-7c3a-7f00-9a11-000000000093"

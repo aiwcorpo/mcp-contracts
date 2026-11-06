@@ -6,6 +6,7 @@ import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
 import { manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
+import { acceptRevision, policyDataGate } from '../scripts/lib/policy-data-gate.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
@@ -83,10 +84,20 @@ test('resource id vectors match the declarations of the example systems (CC-056)
     const pattern = data.kind === 'resource' ? 'idPattern' : 'scopePattern';
     const declaration = readJson(data.resourceTypes).find((d) => d.type === data.type);
     const regex = declaration[pattern] === undefined ? undefined : new RegExp(declaration[pattern], 'u');
-    const ok = (id) => regex !== undefined && regex.test(id);
+    const ok = (id) => regex !== undefined && id.length <= 1024 && regex.test(id);
     for (const id of data.valid) assert.ok(ok(id), `${name}: ${JSON.stringify(id)} should be valid`);
     for (const id of data.invalid) assert.ok(!ok(id), `${name}: ${JSON.stringify(id)} should be invalid`);
   }
+});
+
+test('policy data gate vectors: a server evaluates only approved policies with data as new as the token (7.0.0)', () => {
+  const vectors = listJson('test-vectors', 'policy-data-gate');
+  assert.ok(vectors.some((v) => v.data.expected.decision === 'continue') && vectors.some((v) => v.data.expected.decision === 'deny'));
+  for (const { name, data } of vectors) {
+    assert.deepEqual(policyDataGate(data.input), data.expected, name);
+    if (data.expected.decision === 'deny') assert.equal(data.expected.errorCode, 'upstream_unavailable', name);
+  }
+  assert.ok(acceptRevision(null, 1) && acceptRevision(5, 6) && !acceptRevision(5, 5) && !acceptRevision(5, 4));
 });
 
 test('policiesHash vectors: canonical form and sha256 of policies and resourceTypes (C6, 7.0.0)', () => {

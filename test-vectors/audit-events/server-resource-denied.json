@@ -22,7 +22,7 @@
     },
     "decision": "deny",
     "reason": "policy_forbid",
-    "policyRevision": "20261026120000-a1b2c3d",
+    "policyRevision": 41,
     "outcome": "denied",
     "errorCode": "not_found_or_denied"
   }

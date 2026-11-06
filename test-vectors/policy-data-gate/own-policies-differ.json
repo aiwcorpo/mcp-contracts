@@ -1,0 +1,18 @@
+{
+  "description": "The server was deployed with other policies than the approved ones: every call is refused until an administrator approves them.",
+  "input": {
+    "ownHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "held": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "refreshed": null
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "policies_differ"
+  }
+}

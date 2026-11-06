@@ -259,8 +259,9 @@ builderVector('mapping-example-systems', 'The scope mapping of the former built-
 // Gateway decisions use the platform policies (cedar/platform) and the example overrides; server decisions use the policies
 // of the fragment of the server, composed with the base schema.
 outDir('policy-decisions');
-const JIRA_FRAGMENT = { schema: 'cedar/examples/systems/jira/schema.cedarschema', policies: ['cedar/examples/systems/jira'] };
-const NOTES_FRAGMENT = { schema: 'test-vectors/fixtures/notes/schema.cedarschema', policies: ['test-vectors/fixtures/notes'] };
+// platformServer: the policies that PlatformServerPolicies generates from the declarations of the namespace run next to the fragment.
+const JIRA_FRAGMENT = { namespace: 'Jira', schema: 'cedar/examples/systems/jira/schema.cedarschema', policies: ['cedar/examples/systems/jira'], platformServer: true };
+const NOTES_FRAGMENT = { namespace: 'Notes', schema: 'test-vectors/fixtures/notes/schema.cedarschema', policies: ['test-vectors/fixtures/notes'], platformServer: true };
 const GATEWAY_POLICIES = { schema: null, policies: ['cedar/platform', 'cedar/examples/overrides'] };
 let decisionCount = 0;
 const decision = (name, description, level, rawInput, expected, { covers = [], adjustment, policies } = {}) => {
@@ -274,7 +275,7 @@ const decision = (name, description, level, rawInput, expected, { covers = [], a
     policies: policies ?? (level === 'gateway' ? GATEWAY_POLICIES : (input.resource.type.startsWith('Notes::') ? NOTES_FRAGMENT : JIRA_FRAGMENT)),
     // How request and entities were produced; implementations can rebuild them from this input.
     builder: { level, resourceTypes: [JIRA, NOTES], scopeMapping: MAPPING, input, ...(adjustment && { adjustment }) },
-    request: { principal: built.principal, action: built.action, resource: built.resource, context: built.context },
+    request: { principal: built.principal, action: built.action, resource: built.resource, context: adjustment === 'remove-refs' ? Object.fromEntries(Object.entries(built.context).filter(([k]) => k !== 'refs')) : built.context },
     entities: built.entities.filter((e) => adjustment !== 'remove-tool-entity' || e.uid.type !== 'Tool'),
     expected,
   });
@@ -305,6 +306,11 @@ decision('gw-move-both-granted', 'Both projects granted.', 'gateway',
   { covers: ['every_resource_ref'] });
 decision('gw-read-outside-scope-allowed', 'Reading is not limited by scope at the gateway; the server decides.', 'gateway',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['DEF'] } }, allow('platform-call-by-group'), { covers: ['search_results'] });
+decision('gw-write-without-refs-denied', 'A write whose context has no refs is refused (fail closed), not treated as having nothing to check.', 'gateway',
+  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC' } }, deny('platform-call-write-without-refs'),
+  { covers: ['forbid_overrides_permit'], adjustment: 'remove-refs' });
+decision('gw-read-without-refs-allowed', 'A read does not need refs.', 'gateway',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'), { adjustment: 'remove-refs' });
 decision('gw-unknown-tool-denied', 'A tool that is not in the registry has no Tool entity: deny, also for a user in every group.', 'gateway',
   { caller: users.writer(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['unknown_tool'], adjustment: 'remove-tool-entity' });
 decision('gw-destructive-allowed-with-fresh-mfa', 'DESTRUCTIVE tool with the destructive group and an MFA 60 seconds old.', 'gateway',
@@ -329,13 +335,13 @@ decision('srv-jira-read-allowed', 'Server: reader reads an issue of an ordinary 
 decision('srv-jira-read-nobody-denied', 'Server: no group, no permit.', 'server',
   { caller: users.nobody(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, deny(), { covers: ['no_group'] });
 decision('srv-jira-read-restricted-project', 'Restricted project is never available, even to a reader.', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: project('HR', 'Restricted') }, deny('jira-forbid-restricted-project'),
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: project('HR', 'Restricted') }, deny('platform-jira-restricted-project'),
   { covers: ['restricted', 'forbid_overrides_permit'] });
 decision('srv-jira-read-restricted-issue', 'Issue of a restricted project: forbid through the parent attribute.', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: issue('HR-1', 'HR', 'Restricted') }, deny('jira-forbid-restricted-issue'),
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: issue('HR-1', 'HR', 'Restricted') }, deny('platform-jira-restricted-issue-by-project'),
   { covers: ['restricted', 'forbid_overrides_permit'] });
 decision('srv-moved-issue-restricted', 'ABC-1 was moved into a restricted project: the project comes from the system, not from the key (cedar/entity-builder.md section 4).', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'HR', 'Restricted') }, deny('jira-forbid-restricted-issue'),
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'HR', 'Restricted') }, deny('platform-jira-restricted-issue-by-project'),
   { covers: ['restricted', 'forbid_overrides_permit'] });
 decision('srv-jira-update-issue-in-scope', 'Update an issue of a granted project.', 'server',
   { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, allow('jira-update-issue-in-scope'));
@@ -358,10 +364,10 @@ decision('srv-notes-folder-sibling-outside-scope', 'A grant on team does not cov
 decision('srv-notes-note-in-scope', 'A note carries the scope of its notebook.', 'server',
   { caller: users.notesWriter(), tool: tools.updateNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', []) }, allow('notes-update-in-scope'));
 decision('srv-notes-note-in-restricted-notebook', 'A note of a notebook labelled restricted (the builder normalizes the label).', 'server',
-  { caller: users.notesWriter(), tool: tools.updateNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [' Restricted']) }, deny('notes-forbid-restricted-note'),
+  { caller: users.notesWriter(), tool: tools.updateNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [' Restricted']) }, deny('platform-notes-restricted-note-by-notebook'),
   { covers: ['restricted', 'forbid_overrides_permit'] });
 decision('srv-notes-folder-restricted', 'A folder classified restricted.', 'server',
-  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team' }, resource: folder('team', ['RESTRICTED']) }, deny('notes-forbid-restricted-folder'),
+  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team' }, resource: folder('team', ['RESTRICTED']) }, deny('platform-notes-restricted-folder'),
   { covers: ['restricted', 'forbid_overrides_permit'] });
 decision('srv-notes-delete-note', 'Delete needs the destructive group; the note is in the granted notebook.', 'server',
   { caller: users.notesDestroyer(), tool: tools.deleteNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', []) }, allow('notes-delete-in-scope'));
@@ -369,9 +375,9 @@ decision('srv-notes-delete-note', 'Delete needs the destructive group; the note 
   const folderRead = (name, description, credentialType, expected, input = {}) => decision(name, description, 'server', {
     caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'platform' }, credentialType, resource: folder('platform'), ...input,
   }, expected);
-  folderRead('srv-notes-service-account-outside-grant', 'A service account reads a folder outside the grants of the user: forbidden (CC-136).', 'service-account', deny('notes-service-account-folder-outside-scope'));
+  folderRead('srv-notes-service-account-outside-grant', 'A service account reads a folder outside the grants of the user: forbidden (CC-136).', 'service-account', deny('platform-notes-folder-service-account-outside-scope'));
   folderRead('srv-notes-user-oauth-outside-grant', 'A user credential is limited by the system itself, so the rule does not touch it.', 'user-oauth', allow('notes-read'));
-  folderRead('srv-notes-credential-type-missing', 'Without a credentialType the rule fails closed, like a service account (CC-164).', undefined, deny('notes-service-account-folder-outside-scope'));
+  folderRead('srv-notes-credential-type-missing', 'Without a credentialType the rule fails closed, like a service account (CC-164).', undefined, deny('platform-notes-folder-service-account-outside-scope'));
   folderRead('srv-notes-service-account-inside-grant', 'A service account inside the grants of the user: allowed.', 'service-account', allow('notes-read'),
     { caller: caller('notesReader', ['mcp-notes-read', 'mcp-team-platform']) });
 }
@@ -458,8 +464,8 @@ ids('jira-issue', JIRA, 'Jira::Issue', 'resource', ['ABC-1', 'PLAT_2-4711'], ['A
 ids('confluence-space', CONFLUENCE, 'Confluence::Space', 'resource', ['ENG', 'eng2', 'HB'], ['~jkowalski', 'ENG DOCS', 'ENG-1', 'ENG"', '']);
 ids('confluence-page', CONFLUENCE, 'Confluence::Page', 'resource', ['1', '1000', '9223372036854775807'], ['0', '01', '12a', '-5', '1 OR 1=1']);
 ids('gitlab-group', GITLAB, 'GitLab::Group', 'resource', ['team-a', 'team-a/sub', 'Team_A.v2', 'a'],
-  ['team-a/', '/team-a', 'team-a//sub', 'team-a/../team-b', '-team', 'team-', 'team--a', 'team.git', 'team a', '.hidden']);
-ids('gitlab-project', GITLAB, 'GitLab::Project', 'resource', ['team-a/app', 'team-a/sub/svc'], ['app', 'team-a/app.atom', 'team-a/app/', 'team-a/../x']);
+  ['team-a/', '/team-a', 'team-a//sub', 'team-a/../team-b', '-team', 'team-', 'team--a', 'team a', '.hidden', 'a'.repeat(1025)]);
+ids('gitlab-project', GITLAB, 'GitLab::Project', 'resource', ['team-a/app', 'team-a/sub/svc'], ['app', 'team-a/app/', 'team-a/../x', '/app']);
 ids('opensearch-index', OPENSEARCH, 'OpenSearch::Index', 'resource', ['logs-team-a-2026.10', 'logs', 'kibana_1', '0logs'],
   ['logs-team-a-x,secret-y', 'logs-team-a-*,*', 'logs-*', '_all', '-logs', 'Logs', 'remote:logs', '<logs-{now/d}>', 'logs team', '.', '..',
     '.security', '.kibana_1', '.opendistro_security', '.ds-logs-000001']);
@@ -468,6 +474,6 @@ ids('opensearch-prefix', OPENSEARCH, 'OpenSearch::Index', 'scope', ['logs-team-a
 ids('servicedesk-queue', SERVICEDESK, 'ServiceDesk::Queue', 'resource', ['42', 'IT_support', 'q-1'], ['', '-1', 'q 1', 'q/1', '42;DROP']);
 ids('servicedesk-ticket', SERVICEDESK, 'ServiceDesk::Ticket', 'resource', ['501', 'INC-1'], ['INC 1', 'INC/1', '']);
 ids('notes-notebook', NOTES, 'Notes::Notebook', 'resource', ['alpha', 'team-1'], ['Alpha', '1alpha', 'alpha_1', 'alpha team', '', 'a'.repeat(33)]);
-ids('notes-folder', NOTES, 'Notes::Folder', 'resource', ['team', 'team/sub', 'a/b/c/d/e'], ['team/', '/team', 'team//sub', 'team/../x', 'Team', 'a/b/c/d/e/f']);
+ids('notes-folder', NOTES, 'Notes::Folder', 'resource', ['team', 'team/sub', 'a/b/c/d/e'], ['team/', '/team', 'team//sub', 'team/../x', 'Team']);
 ids('notes-folder-scope', NOTES, 'Notes::Folder', 'scope', ['team', 'team/sub'], ['team/', 'team/..', '']);
 ids('notes-note-has-no-scope', NOTES, 'Notes::Note', 'scope', [], ['17', '1']);

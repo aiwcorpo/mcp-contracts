@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 import { path as contractPath } from './contracts.mjs';
-import { anchoredPattern } from './manifest-rules.mjs';
+import { anchoredPattern, grammarViolation, MAX_ID_LENGTH } from './manifest-rules.mjs';
 
 const TYPE = /^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$/;
 const ATTRIBUTE = /^[a-z][A-Za-z0-9]*$/;
@@ -38,8 +38,8 @@ export function resourceTypes(declarations) {
         throw new Error(`${d.type}: parentAttribute not allowed`);
       }
     }
-    if (!anchoredPattern(d.idPattern)) throw new Error(`${d.type}: idPattern must be anchored`);
-    if (d.scopePattern !== undefined && !anchoredPattern(d.scopePattern)) throw new Error(`${d.type}: scopePattern must be anchored`);
+    if (!anchoredPattern(d.idPattern) || grammarViolation(d.idPattern) !== null) throw new Error(`${d.type}: idPattern must be anchored`);
+    if (d.scopePattern !== undefined && (!anchoredPattern(d.scopePattern) || grammarViolation(d.scopePattern) !== null)) throw new Error(`${d.type}: scopePattern must be anchored`);
     if (d.earlyScopeCheck && d.scopePattern === undefined) throw new Error(`${d.type}: earlyScopeCheck needs a scopePattern`);
     if (d.classification && !attributes.includes(d.classification.attribute)) throw new Error(`${d.type}: classification attribute not in attributes`);
     registry.set(d.type, {
@@ -56,8 +56,8 @@ export function loadResourceTypes(paths) {
   return resourceTypes(paths.flatMap((p) => JSON.parse(readFileSync(contractPath(p), 'utf8'))));
 }
 
-export const validId = (types, type, id) => typeof id === 'string' && (types.get(type)?.id.test(id) ?? false);
-export const validScopeLocalId = (types, type, id) => typeof id === 'string' && (types.get(type)?.scope?.test(id) ?? false);
+export const validId = (types, type, id) => typeof id === 'string' && id.length <= MAX_ID_LENGTH && (types.get(type)?.id.test(id) ?? false);
+export const validScopeLocalId = (types, type, id) => typeof id === 'string' && id.length <= MAX_ID_LENGTH && (types.get(type)?.scope?.test(id) ?? false);
 
 // Scope id <Type>/<local>; the type is everything before the first slash.
 function scopeType(types, scopeId) {

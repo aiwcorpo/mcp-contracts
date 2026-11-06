@@ -52,8 +52,16 @@ Każdy typ zasobu serwera ma wpis w `resourceTypes` manifestu (`schemas/server-m
 
 Wzorce piszemy we wspólnym podzbiorze wyrażeń regularnych Javy i ECMAScript (wektory generuje implementacja
 JavaScript, a wykonuje Java); dopasowanie dotyczy całego identyfikatora. Wartość z `\n` na końcu (`"ABC\n"`) nie
-pasuje, bo dopasowanie jest do całości. Wzorzec, który nie jest zakotwiczony albo się nie kompiluje, odrzuca rejestracja
-manifestu (`resource_types_invalid`). Długość ograniczamy we wzorcu (`(?=.{1,1024}$)`), nie osobnym polem.
+pasuje, bo dopasowanie jest do całości. Wzorzec, który nie jest zakotwiczony, nie kompiluje się albo wykracza poza gramatykę
+poniżej, odrzuca rejestracja manifestu (`resource_types_invalid`).
+
+**Gramatyka wzorców (ochrona przed ReDoS).** Wzorzec stosuje się do identyfikatorów wybieranych przez klienta, więc dopasowanie musi
+być liniowe. Wzorzec ma najwyżej 512 znaków, nie ma odwołań wstecznych (`\1`, `\k`), nie ma lookaround (`(?=`, `(?!`, `(?<=`, `(?<!`),
+nie stosuje kwantyfikatora do grupy, która sama zawiera kwantyfikator (`^(.*a){12}$`, `^(a+)+$`), a grupa z kwantyfikatorem i
+alternatywami ma alternatywy zaczynające się od rozłącznych znaków (`(a|aa)+` odpada, `(?:[._-][a-z]|[a-z])*` jest dobre).
+Identyfikator albo lokalna część zakresu dłuższa niż 1024 znaki jest nieważna jeszcze przed dopasowaniem (`ResourceTypes.MAX_ID_LENGTH`),
+więc długości nie trzeba wpisywać we wzorzec. Implementacje: `PatternGrammar` (mcp-manifest) i `grammarViolation` w
+`scripts/lib/manifest-rules.mjs`; reguła `resource-types-valid`.
 
 Reguły spójności sprawdza rejestracja (`ManifestRules`, reguły `resource-types-declared`, `resource-types-valid`,
 `resource-types-namespace`): typ zadeklarowany raz; `parent` zadeklarowany; `attributes` bez `scopes` i bez atrybutu rodzica;
@@ -90,9 +98,10 @@ Reguły:
 - Zakres musi mieć postać `<zadeklarowany typ z scopePattern>/<część lokalna zgodna ze scopePattern>`; inaczej zapis mapowania to
   `422 scope_mapping_rejected` (`ScopeMapping.of`). Przykład: prefiks indeksu nie może kończyć się na `-` ani `.`
   (wzorzec `scopePattern` takiego typu to wyklucza), więc `logs-` nie jest poprawnym zakresem (objąłby `logs--x`).
-- Do oceny gateway używa `ScopeMapping.ofRegistered`: zakres typu, którego żaden zarejestrowany serwer nie deklaruje
-  (serwer usunięto, a zapisany dokument jeszcze go nazywa), jest pomijany, nie błędem. Zakres zadeklarowanego typu z
-  niepasującą częścią lokalną jest zawsze błędem.
+- Do oceny gateway używa `ScopeMapping.ofRegistered`: nieważny zakres (typ, którego żaden zarejestrowany serwer nie deklaruje, bo
+  serwer usunięto; część lokalna niepasująca do węższego `scopePattern`) jest pomijany osobno i zgłaszany przez `ignored()`, więc
+  jeden zły wpis nie odbiera grantów pozostałym. Usunięcie serwera usuwa z mapowania wpisy typów jego przestrzeni, żeby serwer
+  dodany później pod tą samą przestrzenią nie odziedziczył grantów.
 - `ScopeMapping.fromJson(types, json, skipUndeclared)` czyta kształt z danych polityki.
 
 ## 4. Principal
@@ -212,26 +221,58 @@ zadeklarować akcji `call`: Cedar zgłasza wtedy cień `Action::"call"`.
 
 **Walidacja** (starter w buildzie i przy starcie, gateway przy rejestracji; `PolicyFragments.validateFragment`): schemat bazowy i
 fragment składają się i walidują w trybie strict; fragment nie deklaruje niczego poza swoją przestrzenią (także w pustej);
-każdy typ encji ma `scopes: Set<ResourceScope>`; akcje tylko `read`, `update`, `delete`, `admin`; polityki parsują się,
-mają `@id`, walidują się względem złożonego schematu (także bez ostrzeżeń "policy is impossible": `forbid`, który nigdy nie
+każdy typ encji ma `scopes: Set<ResourceScope>`; akcje tylko `read`, `update`, `delete`, `admin`, każda z `principal: [User]` i
+`context: RequestContext` (obcy typ podmiotu albo kontekstu dawałby dostęp do atrybutów, których platforma nie daje); polityki
+parsują się, mają `@id` (niezaczynające się od `platform-` ani `override-`), walidują się względem złożonego schematu (także bez ostrzeżeń "policy is impossible": `forbid`, który nigdy nie
 pasuje, to ciche otwarcie); żadna polityka nie wspomina `Action::"call"` ani `Tool`; typy encji fragmentu to dokładnie typy
 zadeklarowane w `resourceTypes` tej przestrzeni, z zadeklarowanymi atrybutami i rodzicami (wymagany atrybut spoza deklaracji
 to błąd, bo builder go nie zbuduje). Odrzucenie przy rejestracji to `422 manifest_rejected` z `policies_invalid` albo
 `resource_types_invalid`.
 
-## 7. Polityki platformy i nadpisania awaryjne
+## 7. Polityki platformy, polityki serwerowe platformy i nadpisania awaryjne
 
 Gateway decyduje o `call` na `Tool` wyłącznie politykami z `cedar/platform/*.cedar` (w jarze kontraktów; ładuje je gateway
 i starter, `McpCedarSchema.platformPolicies()`) i nadpisaniami administratora:
 
 - `platform-call-by-group`: `permit`, gdy `principal in resource.requiredGroup`;
-- `platform-call-write-outside-scope`: `forbid`, gdy `risk != "READ_ONLY"` i zbiór `context.refs` nie mieści się w `principal.scopes`.
+- `platform-call-write-outside-scope`: `forbid`, gdy `risk != "READ_ONLY"` i zbiór `context.refs` nie mieści się w `principal.scopes`;
+- `platform-call-write-without-refs`: `forbid` zapisu, gdy kontekst nie ma `refs` (gateway zawsze je daje; brak to odmowa, nie "nic do sprawdzenia").
 
-Nadpisanie awaryjne to jedna polityka `forbid` zapisana przez administratora (`PUT /admin/v1/policy/overrides/{id}`), z celem
-`gateway`, `all-servers` albo `serverId`; walidowana względem schematu bazowego (a dla serwera także jego fragmentu):
-`PolicyFragments.validateOverride`. Przykład: `cedar/examples/overrides/step-up.cedar` (zniszczenie wymaga świeżego MFA).
-Polityki serwera nigdy nie biorą udziału w decyzji gatewaya; nadpisania z celem `all-servers` albo `serverId` serwer
-dostaje w danych polityki i ocenia razem z własnymi.
+**Polityki serwerowe platformy (`PlatformServerPolicies.generate`/`texts`/`policySet`).** Starter zawsze ładuje obok fragmentu polityki
+wygenerowane z deklaracji, z identyfikatorami `platform-...`, więc fragment nie może ich pominąć ani osłabić: (1) dla każdego typu z
+`classification`: `forbid` na wszystkie akcje, gdy wartość to `"restricted"` (napis równy, zbiór zawiera), a dla typu podrzędnego także
+wtedy, gdy przodek osiągany łańcuchem `parentAttribute` deklaruje klasyfikację i ją niesie
+(`platform-<przestrzeń>-restricted-<typ>[-by-<przodek>]`); (2) dla każdego typu: `forbid`, gdy `context.credentialType` nie jest
+poświadczeniem użytkownika (`user-oauth`, `user-secret`, `token-exchange`; brak i nieznany typ liczą się jak konto serwisowe, CC-164) i
+nie zachodzi `principal in resource.scopes`
+(`platform-<przestrzeń>-<typ>-service-account-outside-scope`). Oba rodzaje to tylko `forbid`. Fragment Jiry i fixture Notes nie mają już
+własnych reguł `restricted` ani reguły konta serwisowego.
+
+**Nadpisanie awaryjne** to jedna polityka `forbid` zapisana przez administratora (`PUT /admin/v1/policy/overrides/{id}`), z id
+`override-<nazwa>` i celem `gateway`, `all-servers` albo `serverId`
+(`PolicyFragments.validateOverride(id, text, OverrideTarget, fragmentSchemas)`): cel `gateway` musi być `action == Action::"call"` na
+`resource is Tool` (inaczej nie blokuje niczego); cel `serverId` waliduje się względem schematu bazowego ze fragmentem tego serwera, a
+`all-servers` względem fragmentu każdego zarejestrowanego serwera; oba nie mogą wspominać `Tool` ani `call`. Przykład:
+`cedar/examples/overrides/step-up.cedar` (zniszczenie wymaga świeżego MFA). Polityki serwera nigdy nie biorą udziału w decyzji
+gatewaya; nadpisania z celem `all-servers` albo `serverId` serwer dostaje w danych polityki i ocenia razem z własnymi.
+
+**Identyfikatory polityk.** Polityki platformy mają `platform-`, nadpisania `override-`; polityka serwera nie może użyć żadnego z tych
+prefiksów. Zbiór oceniany składa `PolicyFragments.merge(...)`: dwie polityki o tym samym id to błąd (odmowa), nigdy scalenie po id, bo
+nadpisanie o id polityki platformy zastąpiłoby ją.
+
+## 7a. Reguły, które wiążą implementacje
+
+- **Gateway:** składa sumę deklaracji (`ResourceTypes.union`) tylko z zatwierdzonych deklaracji; `union` odrzuca dwa rejestry z jedną
+  przestrzenią (`namespace_conflict`), a przestrzeń należy do pierwszego `serverId`, który ją zadeklarował, do czasu usunięcia go.
+  Wyjątek przy budowie sumy albo mapowania to odmowa z zapisem w audycie, nigdy wynik częściowy. Oceniając, czyta mapowanie
+  `ScopeMapping.ofRegistered`: nieważny zakres jest pomijany osobno i zgłaszany (`ignored()`), pozostałe granty zostają; ścisłe `of`
+  służy walidacji zapisu administratora. Dane polityki dla serwera zawężone do jego przestrzeni (`forNamespace`), z
+  `approvedPoliciesHash`.
+- **Starter (serwer):** oblicza `policiesHash` własnych polityk i `resourceTypes` i odmawia każdego wywołania
+  (`upstream_unavailable`), gdy różni się od `approvedPoliciesHash` albo tego brak; nigdy nie przyjmuje rewizji niższej ani równej
+  trzymanej jako nowych danych; gdy `prv` w tokenie jest nowsze niż dane, odświeża przed oceną albo odmawia; nadpisanie, które nie
+  waliduje się względem złożonego schematu, oznacza odmowę wszystkich wywołań. Wzorzec i wektory: `scripts/lib/policy-data-gate.mjs`,
+  `PolicyDataGate` (mcp-manifest), `test-vectors/policy-data-gate/`. Rewizja danych jest licznikiem, który tylko rośnie.
 
 ## 8. Format wyjścia i kolejność
 
@@ -326,8 +367,8 @@ zapisu). Wzorce dawnych systemów wbudowanych, jako dane przykładowe (źródło
 | `Jira::Issue` | `^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$` | klucz projektu + `-` + numer zgłoszenia |
 | `Confluence::Space` | `^[A-Za-z0-9]{1,255}$` | Confluence DC "Space keys": tylko znaki alfanumeryczne, do 255; przestrzenie osobiste (`~user`) wyłączone |
 | `Confluence::Page` | `^[1-9][0-9]{0,18}$` | id treści Confluence (liczba 64-bitowa) |
-| `GitLab::Group` | segmenty `[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*` rozdzielone `/`, 1..20, bez końcówki `.git`/`.atom`, maks. 1024 | GitLab "Reserved project and group names" i "Subgroups": do 20 poziomów |
-| `GitLab::Project` | jak grupa, 2..21 segmentów | ścieżka grupy + ścieżka projektu |
+| `GitLab::Group` | `^[A-Za-z0-9](?:[._/-][A-Za-z0-9]\|[A-Za-z0-9])*$` (segmenty ze znaków alfanumerycznych i pojedynczych `.`, `_`, `-`, rozdzielone `/`), maks. 1024 znaki | GitLab "Reserved project and group names" i "Subgroups". Od 7.0.0 wzorzec nie wyraża limitu 20 poziomów ani zakazu końcówki `.git`/`.atom` (lookaround jest poza gramatyką): sprawdza je serwer GitLab |
+| `GitLab::Project` | jak grupa, z co najmniej jednym `/` | ścieżka grupy + ścieżka projektu |
 | `OpenSearch::Index` | `^[a-z0-9][a-z0-9._-]{0,254}$` | OpenSearch "Create index"; dodatkowo tylko ASCII, maks. 255 i początek litera lub cyfra, więc indeksy ukryte i systemowe (`.security`, `.kibana`, `.ds-*`) są poza wzorcem (CC-074); konkretna nazwa: bez aliasów-wzorców, wildcardów, list, date math |
 | `OpenSearch::Index` (zakres) | jak wyżej, bez końcowego `-` i `.` | prefiks nazwy |
 | `ServiceDesk::Queue`, `ServiceDesk::Ticket` | `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` | adapter generyczny: alfabet zachowawczy |

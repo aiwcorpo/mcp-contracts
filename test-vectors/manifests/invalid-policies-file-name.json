@@ -47,8 +47,8 @@
           "path",
           "classification"
         ],
-        "idPattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
-        "scopePattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
+        "idPattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
+        "scopePattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
         "classification": {
           "attribute": "classification",
           "kind": "set",
@@ -98,14 +98,6 @@
       "files": [
         {
           "name": "../read.cedar",
-          "text": "// A service account sees everything in its system, so the rights of the user are the only limit left. A folder outside the\n// user's grant is forbidden unless the credential is a user credential, which the system itself limits. Fail-closed: a\n// missing or unknown credential type is treated like the service account (CC-136, CC-164).\n\n@id(\"notes-service-account-folder-outside-scope\")\nforbid (principal, action, resource is Notes::Folder)\nwhen {\n  !(principal in resource.scopes) &&\n  !(context has credentialType && [\"user-oauth\", \"user-secret\", \"token-exchange\"].contains(context.credentialType))\n};\n"
-        },
-        {
-          "name": "forbid-restricted.cedar",
-          "text": "@id(\"notes-forbid-restricted-notebook\")\nforbid (principal, action, resource is Notes::Notebook)\nwhen { resource.labels.contains(\"restricted\") };\n\n@id(\"notes-forbid-restricted-note\")\nforbid (principal, action, resource is Notes::Note)\nwhen { resource.notebook.labels.contains(\"restricted\") };\n\n@id(\"notes-forbid-restricted-folder\")\nforbid (principal, action, resource is Notes::Folder)\nwhen { resource has classification && resource.classification.contains(\"restricted\") };\n"
-        },
-        {
-          "name": "read.cedar",
           "text": "@id(\"notes-read\")\npermit (\n  principal in UserGroup::\"mcp-notes-read\",\n  action == Notes::Action::\"read\",\n  resource\n)\nwhen { resource is Notes::Notebook || resource is Notes::Note || resource is Notes::Folder };\n"
         },
         {
@@ -114,6 +106,6 @@
         }
       ]
     },
-    "policiesHash": "sha256:90e7c83dbd916393ee7a29ea7868dfe584317ceb187fb5f6487fe55433b19752"
+    "policiesHash": "sha256:75bd0663ed62dcdf2a425e3000ade0d1542e49c29ce08146e64f2eb80f5b192d"
   }
 }

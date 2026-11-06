@@ -1,6 +1,6 @@
 {
   "description": "The same token at a native server: only the sidecar of an adapter accepts mcp_risk and mcp_action, any other receiver rejects them as invalid_claims (CC-226).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2IjoiMjAyNjEwMjYxMjAwMDAtYTFiMmMzZCIsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTciLCJtY3BfcmlzayI6IlJFQURfT05MWSIsIm1jcF9hY3Rpb24iOiJyZWFkIn0.wpq8wXe6-zvNX-hcHYlPM39mN2NkiEZUvGPffeK3zpZbOI6K1DtEliGQ5fcaB3eNmO5dOumCeU_7VKslbdyaQg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA5NyIsIm1jcF9yaXNrIjoiUkVBRF9PTkxZIiwibWNwX2FjdGlvbiI6InJlYWQifQ.nPKdWPNMUr3tnnm_2WPHP3K4HoX1m2Mga6-ZURU7y-qdJwoHBgTXaJbQ9ADrYXUri4BrFLTXZEoOymucJ-ZXlw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -19,7 +19,7 @@
     "azp": "claude-code",
     "tool": "get_issue",
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
-    "prv": "20261026120000-a1b2c3d",
+    "prv": 41,
     "iat": 1793016000,
     "exp": 1793016060,
     "jti": "0192d1b2-7c3a-7f00-9a11-000000000097",

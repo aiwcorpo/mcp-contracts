@@ -6,10 +6,12 @@
   ],
   "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "policies": {
+    "namespace": "Notes",
     "schema": "test-vectors/fixtures/notes/schema.cedarschema",
     "policies": [
       "test-vectors/fixtures/notes"
-    ]
+    ],
+    "platformServer": true
   },
   "input": {
     "credentialType": "user-oauth",

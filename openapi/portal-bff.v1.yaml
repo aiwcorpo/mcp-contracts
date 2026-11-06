@@ -1760,6 +1760,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           description: Added.
           content:
             application/json:
@@ -1781,7 +1783,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
@@ -1828,6 +1830,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           description: The server.
           content:
             application/json:
@@ -1861,6 +1865,8 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         required: true
         content:
@@ -1876,6 +1882,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           description: The server after the change.
           content:
             application/json:
@@ -1897,7 +1905,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1917,6 +1925,10 @@ paths:
                       error: server_rejected
                       reason: credential_type_not_accepted
                       message: type must be one of acceptedTypes
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -2015,7 +2027,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '412':
@@ -2083,9 +2095,9 @@ paths:
               examples:
                 one:
                   value:
-                      - id: block-drop-table
-                        target: all-servers
-                        text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      - id: override-block-drop-table
+                        target: gateway
+                        text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                         setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                         setAt: '2026-11-06T09:30:00Z'
         '401':
@@ -2108,6 +2120,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           description: The override.
           content:
             application/json:
@@ -2116,9 +2130,9 @@ paths:
               examples:
                 block_drop_table:
                   value:
-                      id: block-drop-table
-                      target: all-servers
-                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      id: override-block-drop-table
+                      target: gateway
+                      text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                       setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                       setAt: '2026-11-06T09:30:00Z'
         '401':
@@ -2136,6 +2150,9 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatchOptional'
+        - $ref: '#/components/parameters/IfNoneMatchStar'
       requestBody:
         required: true
         content:
@@ -2145,13 +2162,15 @@ paths:
             examples:
                 block_drop_table:
                   value:
-                      target: all-servers
-                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      target: gateway
+                      text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
       responses:
         '200':
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           description: Stored.
           content:
             application/json:
@@ -2160,9 +2179,9 @@ paths:
               examples:
                 block_drop_table:
                   value:
-                      id: block-drop-table
-                      target: all-servers
-                      text: 'forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };'
+                      id: override-block-drop-table
+                      target: gateway
+                      text: 'forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };'
                       setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                       setAt: '2026-11-06T09:30:00Z'
         '400':
@@ -2186,6 +2205,10 @@ paths:
                       error: override_rejected
                       reason: not_forbid
                       message: an override is forbid only
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -2195,6 +2218,8 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
       responses:
         '204':
           headers:
@@ -2202,11 +2227,15 @@ paths:
               $ref: '#/components/headers/RequestId'
           description: Removed.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry/servers/{serverId}/policies/pending:
@@ -2233,6 +2262,22 @@ paths:
                   value:
                       approvedHash: null
                       approvedPolicies: null
+                      approvedResourceTypes: null
+                      pendingResourceTypes:
+                        - type: Jira::Project
+                          attributes: [key, category]
+                          idPattern: ^[A-Z][A-Z0-9_]{1,9}$
+                          scopePattern: ^[A-Z][A-Z0-9_]{1,9}$
+                          earlyScopeCheck: true
+                          classification:
+                            attribute: category
+                            kind: string
+                            required: true
+                        - type: Jira::Issue
+                          attributes: [key]
+                          parent: Jira::Project
+                          parentAttribute: project
+                          idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
                       pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                       pendingVersion: 1.4.0
                       source: ci
@@ -2278,15 +2323,23 @@ paths:
                   value:
                       policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
       responses:
-        '204':
+        '200':
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Approved.
+          description: Approved; the mapping entries that the approval makes invalid and that evaluation will ignore.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ApprovePoliciesResult'
+              examples:
+                nothing_ignored:
+                  value:
+                    ignoredMappingEntries: []
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2349,6 +2402,47 @@ paths:
   /api/v1/admin/systems/{system}:
     parameters:
       - $ref: '#/components/parameters/System'
+    get:
+      tags: [admin]
+      operationId: getAdminSystem
+      summary: "One system of the credential broker with its ETag, without secrets (proxy to C4)."
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: The system.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/SystemAdminView'
+              examples:
+                notes:
+                  value:
+                    system: notes
+                    baseUrl: https://notes.internal/api
+                    adapter: generic-rest
+                    supportedTypes: [user-oauth]
+                    defaultType: user-oauth
+                    secretScheme: Bearer
+                    oauth:
+                      clientId: mcp-broker-notes
+                      authorizeUrl: https://notes.internal/oauth/authorize
+                      tokenUrl: https://notes.internal/oauth/token
+                      scopes: [notes.read, notes.write]
+                      clientSecretSet: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
     put:
       tags: [admin]
       operationId: putAdminSystem
@@ -2356,6 +2450,9 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatchOptional'
+        - $ref: '#/components/parameters/IfNoneMatchStar'
       requestBody:
         required: true
         content:
@@ -2381,6 +2478,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
           description: Stored; the body is the configuration without secrets.
           content:
             application/json:
@@ -2404,7 +2503,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '422':
@@ -2422,6 +2521,10 @@ paths:
                       error: system_rejected
                       reason: default_type_not_supported
                       message: defaultType must be one of supportedTypes
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -2640,6 +2743,23 @@ components:
       name: X-XSRF-TOKEN
       description: Value of the __Host-XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain) set by the BFF (CC-055). Required for POST, PUT and DELETE.
   parameters:
+    IfMatchOptional:
+      name: If-Match
+      in: header
+      required: false
+      description: The ETag of the resource the change is based on; needed to replace, not to create.
+      schema:
+        type: string
+        pattern: '^"[A-Za-z0-9_-]{8,128}"$'
+      example: '"Zx8Tq2LmWk93vNpA"'
+    IfNoneMatchStar:
+      name: If-None-Match
+      in: header
+      required: false
+      description: '`*` to create; the call fails when the resource exists.'
+      schema:
+        type: string
+        const: '*'
     IfMatch:
       name: If-Match
       in: header
@@ -2655,7 +2775,7 @@ components:
       required: true
       schema:
         $ref: 'gateway-admin.v1.yaml#/components/schemas/OverrideId'
-      example: block-drop-table
+      example: override-block-drop-table
     System:
       name: system
       in: path
@@ -2678,6 +2798,32 @@ components:
         $ref: '../schemas/common.schema.json#/$defs/ToolName'
       example: update_issue
   responses:
+    PreconditionFailed:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+      description: The resource changed since the ETag; read it again.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            stale:
+              value:
+                error: precondition_failed
+    PreconditionRequired:
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+      description: '`If-Match` (or `If-None-Match: *` to create) is missing.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            required:
+              value:
+                error: precondition_required
     BadRequest:
       headers:
         X-Request-Id:

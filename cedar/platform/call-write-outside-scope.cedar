@@ -10,3 +10,9 @@ when {
   context has refs &&
   !principal.scopes.containsAll(context.refs)
 };
+
+// The gateway always gives refs. A write whose context has none is refused (fail closed) instead of being treated as having
+// nothing to check; Cedar does not accept `!(context has refs) || ...` in one policy, so this is a policy of its own.
+@id("platform-call-write-without-refs")
+forbid (principal, action == Action::"call", resource is Tool)
+when { resource.risk != "READ_ONLY" && !(context has refs) };

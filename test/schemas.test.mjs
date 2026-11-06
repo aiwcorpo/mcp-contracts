@@ -30,6 +30,18 @@ test('common.schema.json names no system, server or resource type', () => {
   assert.deepEqual(named, []);
 });
 
+test('the reserved system ids are in the patterns and equal to the manifest rule list', async () => {
+  const { RESERVED_SYSTEM_IDS } = await import('../scripts/lib/manifest-rules.mjs');
+  const ajv = createAjv();
+  const system = ajv.compile({ $ref: 'common.schema.json#/$defs/SystemId' });
+  const server = ajv.compile({ $ref: 'common.schema.json#/$defs/ServerId' });
+  const tool = ajv.compile({ $ref: 'common.schema.json#/$defs/QualifiedToolName' });
+  for (const id of RESERVED_SYSTEM_IDS) {
+    assert.ok(!system(id) && !server(`mcp-${id}`) && !tool(`${id}__get_x`), id);
+    assert.ok(system(`${id}x`) && server(`mcp-${id}x`) && tool(`${id}x__get_x`), `${id}x`);
+  }
+});
+
 test('system, server and tool name patterns of the identifiers (7.0.0)', () => {
   const ajv = createAjv();
   const check = (def) => ajv.compile({ $ref: `common.schema.json#/$defs/${def}` });

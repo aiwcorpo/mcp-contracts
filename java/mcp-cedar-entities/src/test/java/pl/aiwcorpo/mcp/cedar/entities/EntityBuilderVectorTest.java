@@ -82,7 +82,26 @@ class EntityBuilderVectorTest {
         ScopeMapping mapping = ScopeMapping.ofRegistered(types,
                 Map.of("mcp-x", List.of("Jira::Project/ABC", "Removed::Thing/foo")));
         assertEquals(List.of("Jira::Project/ABC"), List.copyOf(mapping.scopesOf("mcp-x")));
-        assertThrows(EntityBuilderException.class, () -> ScopeMapping.ofRegistered(types, Map.of("mcp-x", List.of("Jira::Project/abc"))));
+        ScopeMapping lenient = ScopeMapping.ofRegistered(types,
+                Map.of("mcp-x", List.of("Jira::Project/abc", "Jira::Project/DEF", "Removed::Thing/foo"), "mcp-y", List.of("Jira::Project/GHI")));
+        assertEquals(List.of("Jira::Project/DEF"), List.copyOf(lenient.scopesOf("mcp-x")), "one bad scope does not drop the others");
+        assertEquals(List.of("Jira::Project/GHI"), List.copyOf(lenient.scopesOf("mcp-y")));
+        assertEquals(List.of("invalid_scope", "undeclared_type"), lenient.ignored().stream().map(ScopeMapping.Ignored::reason).sorted().toList());
+        ScopeMapping fromJson = ScopeMapping.fromJson(types,
+                "[{\"group\":\"a\",\"scopes\":[\"Jira::Project/AB\",\"Jira::Project/x\"]},{\"group\":\"a\",\"scopes\":[]},{\"scopes\":[]}]", true);
+        assertEquals(List.of("Jira::Project/AB"), List.copyOf(fromJson.scopesOf("a")));
+        assertEquals(3, fromJson.ignored().size());
+    }
+
+    @Test
+    void mappingForANamespaceKeepsOnlyItsScopes() {
+        ResourceTypes types = ResourceTypes.of(java.util.stream.Stream.of("cedar/examples/systems/jira", "test-vectors/fixtures/notes")
+                .flatMap(d -> ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve(d + "/resource-types.json"))).declarations().stream()).toList());
+        ScopeMapping all = ScopeMapping.of(types, Map.of("g1", List.of("Jira::Project/ABC", "Notes::Folder/team"), "g2", List.of("Jira::Project/DEF")));
+        ScopeMapping notes = all.forNamespace("Notes");
+        assertEquals(List.of("Notes::Folder/team"), List.copyOf(notes.scopesOf("g1")));
+        assertTrue(notes.scopesOf("g2").isEmpty());
+        assertEquals(List.of("g1"), List.copyOf(notes.asMap().keySet()));
     }
 
     @Test

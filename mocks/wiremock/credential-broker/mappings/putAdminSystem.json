@@ -39,6 +39,7 @@
         "status": 200,
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
@@ -142,6 +143,32 @@
       }
     },
     {
+      "name": "putAdminSystem 412 stale",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=stale($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_failed"
+        }
+      }
+    },
+    {
       "name": "putAdminSystem 422 default_type",
       "priority": 2,
       "request": {
@@ -166,6 +193,32 @@
           "error": "system_rejected",
           "reason": "default_type_not_supported",
           "message": "defaultType must be one of supportedTypes"
+        }
+      }
+    },
+    {
+      "name": "putAdminSystem 428 required",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/v1/admin/systems/{system}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 428,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_required"
         }
       }
     },

@@ -112,6 +112,56 @@
           "error": "not_found_or_denied"
         }
       }
+    },
+    {
+      "name": "deleteOverride 412 stale",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/policy/overrides/{id}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=stale($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_failed"
+        }
+      }
+    },
+    {
+      "name": "deleteOverride 428 required",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/policy/overrides/{id}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 428,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_required"
+        }
+      }
     }
   ]
 }

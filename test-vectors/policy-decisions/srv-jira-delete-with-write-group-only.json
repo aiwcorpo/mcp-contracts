@@ -2,10 +2,12 @@
   "description": "The write group does not delete.",
   "covers": [],
   "policies": {
+    "namespace": "Jira",
     "schema": "cedar/examples/systems/jira/schema.cedarschema",
     "policies": [
       "cedar/examples/systems/jira"
-    ]
+    ],
+    "platformServer": true
   },
   "builder": {
     "level": "server",

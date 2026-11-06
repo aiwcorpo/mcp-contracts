@@ -1,0 +1,18 @@
+{
+  "description": "The token carries a newer revision and the refresh failed: refuse, do not evaluate with the older data.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 40,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "refreshed": null
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "policy_data_unavailable"
+  }
+}

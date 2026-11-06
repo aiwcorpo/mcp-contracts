@@ -14,7 +14,7 @@
     "client": "claude-code",
     "decision": "deny",
     "reason": "invalid_filter",
-    "policyRevision": "20261026120000-a1b2c3d",
+    "policyRevision": 41,
     "outcome": "error"
   }
 }

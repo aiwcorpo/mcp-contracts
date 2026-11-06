@@ -5,7 +5,7 @@ export const RETURN_PATH_PATTERN = "^(?![^?]*/\\.\\.?(?:[/?]|$))(?!/(?:api|mcp|s
 
 export const LOGIN_ERROR_CODES = ["cancelled","idp_error","session_expired","step_up_failed"] as const;
 
-export const SYSTEM_ID_PATTERN = "^[a-z][a-z0-9]{1,30}$";
+export const SYSTEM_ID_PATTERN = "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)$)[a-z][a-z0-9]{1,30}$";
 
 export const portalBffExamples: OperationExamples[] = [
   {
@@ -2165,7 +2165,8 @@ export const portalBffExamples: OperationExamples[] = [
           "adapter": false
         },
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
         }
       },
       {
@@ -2180,9 +2181,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2257,7 +2259,8 @@ export const portalBffExamples: OperationExamples[] = [
           "adapter": false
         },
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
         }
       },
       {
@@ -2382,7 +2385,8 @@ export const portalBffExamples: OperationExamples[] = [
           "adapter": false
         },
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
         }
       },
       {
@@ -2397,9 +2401,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2426,12 +2431,32 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 412,
+        "name": "stale",
+        "body": {
+          "error": "precondition_failed"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 422,
         "name": "server_id_mismatch",
         "body": {
           "error": "server_rejected",
           "reason": "credential_type_not_accepted",
           "message": "type must be one of acceptedTypes"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 428,
+        "name": "required",
+        "body": {
+          "error": "precondition_required"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2548,9 +2573,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2621,9 +2647,9 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "one",
         "body": [
           {
-            "id": "block-drop-table",
-            "target": "all-servers",
-            "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+            "id": "override-block-drop-table",
+            "target": "gateway",
+            "text": "forbid (principal, action == Action::\"call\", resource is Tool) when { resource.name == \"drop_table\" };",
             "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
             "setAt": "2026-11-06T09:30:00Z"
           }
@@ -2674,14 +2700,15 @@ export const portalBffExamples: OperationExamples[] = [
         "status": 200,
         "name": "block_drop_table",
         "body": {
-          "id": "block-drop-table",
-          "target": "all-servers",
-          "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+          "id": "override-block-drop-table",
+          "target": "gateway",
+          "text": "forbid (principal, action == Action::\"call\", resource is Tool) when { resource.name == \"drop_table\" };",
           "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
           "setAt": "2026-11-06T09:30:00Z"
         },
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
         }
       },
       {
@@ -2736,14 +2763,15 @@ export const portalBffExamples: OperationExamples[] = [
         "status": 200,
         "name": "block_drop_table",
         "body": {
-          "id": "block-drop-table",
-          "target": "all-servers",
-          "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+          "id": "override-block-drop-table",
+          "target": "gateway",
+          "text": "forbid (principal, action == Action::\"call\", resource is Tool) when { resource.name == \"drop_table\" };",
           "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
           "setAt": "2026-11-06T09:30:00Z"
         },
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
         }
       },
       {
@@ -2777,12 +2805,32 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 412,
+        "name": "stale",
+        "body": {
+          "error": "precondition_failed"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 422,
         "name": "permit",
         "body": {
           "error": "override_rejected",
           "reason": "not_forbid",
           "message": "an override is forbid only"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 428,
+        "name": "required",
+        "body": {
+          "error": "precondition_required"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2815,9 +2863,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2838,6 +2887,26 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "not_found_or_denied",
         "body": {
           "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 412,
+        "name": "stale",
+        "body": {
+          "error": "precondition_failed"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 428,
+        "name": "required",
+        "body": {
+          "error": "precondition_required"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2867,6 +2936,33 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "approvedHash": null,
           "approvedPolicies": null,
+          "approvedResourceTypes": null,
+          "pendingResourceTypes": [
+            {
+              "type": "Jira::Project",
+              "attributes": [
+                "key",
+                "category"
+              ],
+              "idPattern": "^[A-Z][A-Z0-9_]{1,9}$",
+              "scopePattern": "^[A-Z][A-Z0-9_]{1,9}$",
+              "earlyScopeCheck": true,
+              "classification": {
+                "attribute": "category",
+                "kind": "string",
+                "required": true
+              }
+            },
+            {
+              "type": "Jira::Issue",
+              "attributes": [
+                "key"
+              ],
+              "parent": "Jira::Project",
+              "parentAttribute": "project",
+              "idPattern": "^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$"
+            }
+          ],
           "pendingHash": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
           "pendingVersion": "1.4.0",
           "source": "ci",
@@ -2931,11 +3027,14 @@ export const portalBffExamples: OperationExamples[] = [
     "operationId": "approveAdminServerPolicies",
     "method": "POST",
     "route": "/api/v1/admin/registry/servers/{serverId}/policies/approve",
-    "defaultExample": "status-204",
+    "defaultExample": "nothing_ignored",
     "responses": [
       {
-        "status": 204,
-        "name": "status-204",
+        "status": 200,
+        "name": "nothing_ignored",
+        "body": {
+          "ignoredMappingEntries": []
+        },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
         }
@@ -2952,9 +3051,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -3070,6 +3170,82 @@ export const portalBffExamples: OperationExamples[] = [
     ]
   },
   {
+    "operationId": "getAdminSystem",
+    "method": "GET",
+    "route": "/api/v1/admin/systems/{system}",
+    "defaultExample": "notes",
+    "responses": [
+      {
+        "status": 200,
+        "name": "notes",
+        "body": {
+          "system": "notes",
+          "baseUrl": "https://notes.internal/api",
+          "adapter": "generic-rest",
+          "supportedTypes": [
+            "user-oauth"
+          ],
+          "defaultType": "user-oauth",
+          "secretScheme": "Bearer",
+          "oauth": {
+            "clientId": "mcp-broker-notes",
+            "authorizeUrl": "https://notes.internal/oauth/authorize",
+            "tokenUrl": "https://notes.internal/oauth/token",
+            "scopes": [
+              "notes.read",
+              "notes.write"
+            ],
+            "clientSecretSet": true
+          }
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
     "operationId": "putAdminSystem",
     "method": "PUT",
     "route": "/api/v1/admin/systems/{system}",
@@ -3099,7 +3275,8 @@ export const portalBffExamples: OperationExamples[] = [
           }
         },
         "headers": {
-          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
         }
       },
       {
@@ -3114,9 +3291,10 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 401,
-        "name": "unauthenticated",
+        "name": "step_up_required",
         "body": {
-          "error": "unauthenticated"
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -3133,12 +3311,32 @@ export const portalBffExamples: OperationExamples[] = [
         }
       },
       {
+        "status": 412,
+        "name": "stale",
+        "body": {
+          "error": "precondition_failed"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
         "status": 422,
         "name": "default_type",
         "body": {
           "error": "system_rejected",
           "reason": "default_type_not_supported",
           "message": "defaultType must be one of supportedTypes"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 428,
+        "name": "required",
+        "body": {
+          "error": "precondition_required"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"

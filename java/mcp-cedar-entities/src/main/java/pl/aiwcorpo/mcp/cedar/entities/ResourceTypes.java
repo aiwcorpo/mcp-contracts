@@ -66,12 +66,34 @@ public final class ResourceTypes {
         return new ResourceTypes(Collections.unmodifiableMap(compiled));
     }
 
-    /** Registry of several servers; a type declared by two of them is an error (a namespace belongs to one server). */
+    /**
+     * Registry of several servers. A namespace belongs to one server: two registries that declare types of the same
+     * namespace are an error (the gateway answers {@code namespace_conflict}), also when the types differ, because a
+     * second server could otherwise add types to the namespace of the first and be granted scopes meant for it.
+     *
+     * @throws IllegalArgumentException when a namespace appears in two registries; the caller must treat it as a deny
+     */
     public static ResourceTypes union(Collection<ResourceTypes> registries) {
         List<ResourceTypeDeclaration> all = new ArrayList<>();
-        registries.forEach(r -> all.addAll(r.declarations()));
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (ResourceTypes registry : registries) {
+            java.util.Set<String> own = new java.util.TreeSet<>();
+            registry.declarations().forEach(d -> own.add(d.namespace()));
+            for (String namespace : own) {
+                if (!seen.add(namespace)) {
+                    throw new IllegalArgumentException("namespace_conflict: " + namespace + " is declared by two servers");
+                }
+            }
+            all.addAll(registry.declarations());
+        }
         return of(all);
     }
+
+    /** Ids and local scope parts longer than this are invalid before any pattern is applied. */
+    public static final int MAX_ID_LENGTH = pl.aiwcorpo.mcp.manifest.PatternGrammar.MAX_ID_LENGTH;
+
+    /** Longest {@code idPattern} or {@code scopePattern}. */
+    public static final int MAX_PATTERN_LENGTH = pl.aiwcorpo.mcp.manifest.PatternGrammar.MAX_PATTERN_LENGTH;
 
     /**
      * Reads the {@code resourceTypes} array of a manifest, e.g.
@@ -156,6 +178,10 @@ public final class ResourceTypes {
     }
 
     private static Pattern anchored(String type, String field, String regex) {
+        String violation = pl.aiwcorpo.mcp.manifest.PatternGrammar.violation(regex);
+        if (violation != null) {
+            throw new IllegalArgumentException(type + ": " + field + " is outside the allowed grammar: " + violation);
+        }
         if (!isAnchored(regex)) {
             throw new IllegalArgumentException(type + ": " + field + " must be anchored with ^ and $");
         }
@@ -221,13 +247,14 @@ public final class ResourceTypes {
     /** @return true when the type is declared and {@code id} matches its {@code idPattern} as a whole; false otherwise */
     public boolean isValidId(String type, String id) {
         Compiled compiled = byType.get(type);
-        return compiled != null && id != null && compiled.id().matcher(id).matches();
+        return compiled != null && id != null && id.length() <= MAX_ID_LENGTH && compiled.id().matcher(id).matches();
     }
 
     /** @return true when the type is declared, can be granted, and {@code localId} matches its {@code scopePattern} */
     public boolean isValidScopeLocalId(String type, String localId) {
         Compiled compiled = byType.get(type);
-        return compiled != null && compiled.scope() != null && localId != null && compiled.scope().matcher(localId).matches();
+        return compiled != null && compiled.scope() != null && localId != null && localId.length() <= MAX_ID_LENGTH
+                && compiled.scope().matcher(localId).matches();
     }
 
     /** @return whether the type can be granted in the scope mapping */

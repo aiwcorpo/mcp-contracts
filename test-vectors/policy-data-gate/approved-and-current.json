@@ -1,0 +1,16 @@
+{
+  "description": "The hash of the server own policies and resource types is the approved one and the data is as new as the token: the call is evaluated.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "refreshed": null
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "After the refresh the policies are no longer approved: refuse.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 40,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "refreshed": {
+      "revision": 41,
+      "overridesValid": true
+    }
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "policies_not_approved"
+  }
+}

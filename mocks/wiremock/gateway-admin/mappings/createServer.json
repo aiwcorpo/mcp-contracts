@@ -37,6 +37,7 @@
       "response": {
         "status": 201,
         "headers": {
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
           "Location": "/admin/v1/servers/mcp-notes",
           "Content-Type": "application/json; charset=utf-8"
         },

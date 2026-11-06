@@ -16,6 +16,8 @@ import java.util.Set;
  */
 public final class ManifestRules {
 
+    /** The system id is not one of {@link ReservedSystemIds}. */
+    public static final String SYSTEM_NOT_RESERVED = "system-not-reserved";
     /** serverId == "mcp-" + system. */
     public static final String SERVER_ID_MATCHES_SYSTEM = "serverId-matches-system";
     /** Tool names are unique. */
@@ -67,6 +69,9 @@ public final class ManifestRules {
             throw new IllegalArgumentException("manifest is not JSON", e);
         }
         Set<String> violations = new LinkedHashSet<>();
+        if (ReservedSystemIds.isReserved(manifest.path("system").asText())) {
+            violations.add(SYSTEM_NOT_RESERVED);
+        }
         if (!manifest.path("serverId").asText().equals("mcp-" + manifest.path("system").asText())) {
             violations.add(SERVER_ID_MATCHES_SYSTEM);
         }
@@ -173,7 +178,8 @@ public final class ManifestRules {
                 found.add(RESOURCE_TYPES_VALID);
             }
             for (String field : List.of("idPattern", "scopePattern")) {
-                if (d.has(field) && (!anchoredPattern(d.get(field).asText()) || !compiles(d.get(field).asText()))) {
+                if (d.has(field) && (!anchoredPattern(d.get(field).asText()) || PatternGrammar.violation(d.get(field).asText()) != null
+                        || !compiles(d.get(field).asText()))) {
                     found.add(RESOURCE_TYPES_VALID);
                 }
             }

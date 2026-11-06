@@ -1843,6 +1843,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
           description: Added.
           content:
             application/json:
@@ -1865,7 +1867,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "409":
@@ -1913,6 +1915,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
           description: The server.
           content:
             application/json:
@@ -1948,6 +1952,8 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
         content:
@@ -1963,6 +1969,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
           description: The server after the change.
           content:
             application/json:
@@ -1985,11 +1993,13 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
         "422":
           headers:
             X-Request-Id:
@@ -2005,6 +2015,8 @@ paths:
                     error: server_rejected
                     reason: credential_type_not_accepted
                     message: type must be one of acceptedTypes
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -2111,7 +2123,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "412":
@@ -2180,9 +2192,9 @@ paths:
               examples:
                 one:
                   value:
-                    - id: block-drop-table
-                      target: all-servers
-                      text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    - id: override-block-drop-table
+                      target: gateway
+                      text: forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };
                       setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                       setAt: 2026-11-06T09:30:00Z
         "401":
@@ -2206,6 +2218,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
           description: The override.
           content:
             application/json:
@@ -2214,9 +2228,9 @@ paths:
               examples:
                 block_drop_table:
                   value:
-                    id: block-drop-table
-                    target: all-servers
-                    text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    id: override-block-drop-table
+                    target: gateway
+                    text: forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };
                     setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                     setAt: 2026-11-06T09:30:00Z
         "401":
@@ -2235,6 +2249,9 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatchOptional"
+        - $ref: "#/components/parameters/IfNoneMatchStar"
       requestBody:
         required: true
         content:
@@ -2244,13 +2261,15 @@ paths:
             examples:
               block_drop_table:
                 value:
-                  target: all-servers
-                  text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                  target: gateway
+                  text: forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };
       responses:
         "200":
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
           description: Stored.
           content:
             application/json:
@@ -2259,9 +2278,9 @@ paths:
               examples:
                 block_drop_table:
                   value:
-                    id: block-drop-table
-                    target: all-servers
-                    text: forbid (principal, action, resource is Tool) when { resource.name == "drop_table" };
+                    id: override-block-drop-table
+                    target: gateway
+                    text: forbid (principal, action == Action::"call", resource is Tool) when { resource.name == "drop_table" };
                     setBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
                     setAt: 2026-11-06T09:30:00Z
         "400":
@@ -2270,6 +2289,8 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
         "422":
           headers:
             X-Request-Id:
@@ -2285,6 +2306,8 @@ paths:
                     error: override_rejected
                     reason: not_forbid
                     message: an override is forbid only
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -2295,6 +2318,8 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
       responses:
         "204":
           headers:
@@ -2302,11 +2327,15 @@ paths:
               $ref: "#/components/headers/RequestId"
           description: Removed.
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/registry/servers/{serverId}/policies/pending:
@@ -2334,6 +2363,25 @@ paths:
                   value:
                     approvedHash: null
                     approvedPolicies: null
+                    approvedResourceTypes: null
+                    pendingResourceTypes:
+                      - type: Jira::Project
+                        attributes:
+                          - key
+                          - category
+                        idPattern: ^[A-Z][A-Z0-9_]{1,9}$
+                        scopePattern: ^[A-Z][A-Z0-9_]{1,9}$
+                        earlyScopeCheck: true
+                        classification:
+                          attribute: category
+                          kind: string
+                          required: true
+                      - type: Jira::Issue
+                        attributes:
+                          - key
+                        parent: Jira::Project
+                        parentAttribute: project
+                        idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
                     pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                     pendingVersion: 1.4.0
                     source: ci
@@ -2380,15 +2428,23 @@ paths:
                 value:
                   policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
       responses:
-        "204":
+        "200":
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
-          description: Approved.
+          description: Approved; the mapping entries that the approval makes invalid and that evaluation will ignore.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovePoliciesResult"
+              examples:
+                nothing_ignored:
+                  value:
+                    ignoredMappingEntries: []
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2455,6 +2511,51 @@ paths:
   /api/v1/admin/systems/{system}:
     parameters:
       - $ref: "#/components/parameters/System"
+    get:
+      tags:
+        - admin
+      operationId: getAdminSystem
+      summary: One system of the credential broker with its ETag, without secrets (proxy to C4).
+      security:
+        - session: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          description: The system.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemAdminView"
+              examples:
+                notes:
+                  value:
+                    system: notes
+                    baseUrl: https://notes.internal/api
+                    adapter: generic-rest
+                    supportedTypes:
+                      - user-oauth
+                    defaultType: user-oauth
+                    secretScheme: Bearer
+                    oauth:
+                      clientId: mcp-broker-notes
+                      authorizeUrl: https://notes.internal/oauth/authorize
+                      tokenUrl: https://notes.internal/oauth/token
+                      scopes:
+                        - notes.read
+                        - notes.write
+                      clientSecretSet: true
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
     put:
       tags:
         - admin
@@ -2463,6 +2564,9 @@ paths:
       security:
         - session: []
           csrf: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatchOptional"
+        - $ref: "#/components/parameters/IfNoneMatchStar"
       requestBody:
         required: true
         content:
@@ -2491,6 +2595,8 @@ paths:
           headers:
             X-Request-Id:
               $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
           description: Stored; the body is the configuration without secrets.
           content:
             application/json:
@@ -2517,9 +2623,11 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          $ref: "#/components/responses/Unauthenticated"
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
         "422":
           headers:
             X-Request-Id:
@@ -2535,6 +2643,8 @@ paths:
                     error: system_rejected
                     reason: default_type_not_supported
                     message: defaultType must be one of supportedTypes
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -2759,6 +2869,23 @@ components:
       name: X-XSRF-TOKEN
       description: Value of the __Host-XSRF-TOKEN cookie (not HttpOnly, Secure, SameSite=Strict, Path=/, no Domain) set by the BFF (CC-055). Required for POST, PUT and DELETE.
   parameters:
+    IfMatchOptional:
+      name: If-Match
+      in: header
+      required: false
+      description: The ETag of the resource the change is based on; needed to replace, not to create.
+      schema:
+        type: string
+        pattern: ^"[A-Za-z0-9_-]{8,128}"$
+      example: '"Zx8Tq2LmWk93vNpA"'
+    IfNoneMatchStar:
+      name: If-None-Match
+      in: header
+      required: false
+      description: "`*` to create; the call fails when the resource exists."
+      schema:
+        type: string
+        const: "*"
     IfMatch:
       name: If-Match
       in: header
@@ -2774,7 +2901,7 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/OverrideId"
-      example: block-drop-table
+      example: override-block-drop-table
     System:
       name: system
       in: path
@@ -2797,6 +2924,32 @@ components:
         $ref: "#/components/schemas/ToolName"
       example: update_issue
   responses:
+    PreconditionFailed:
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      description: The resource changed since the ETag; read it again.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            stale:
+              value:
+                error: precondition_failed
+    PreconditionRequired:
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/RequestId"
+      description: "`If-Match` (or `If-None-Match: *` to create) is missing."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            required:
+              value:
+                error: precondition_required
     BadRequest:
       headers:
         X-Request-Id:
@@ -3240,9 +3393,9 @@ components:
         - token-exchange
         - service-account
     SystemId:
-      description: "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts)."
+      description: "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts). The ids gateway, offboarding, portal, broker, prometheus, platform, admin, registry, adapter, internal and ci are reserved: mcp-<system> is also the CN of a server certificate, and mcp-gateway, mcp-offboarding and the like are the CNs of platform components."
       type: string
-      pattern: ^[a-z][a-z0-9]{1,30}$
+      pattern: ^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)$)[a-z][a-z0-9]{1,30}$
     ConnectionStatus:
       type: string
       description: expiring = expires in less than 7 days; only for `user-secret` with a declared `expiresAt` (CC-103). A `user-oauth` connection has expiresAt null (the token is refreshed by the broker) and never becomes expiring. error also means that the secret of the connection is gone from the secret store (audit reason secret_missing, CC-205) or that a rotated refresh token could not be stored (refresh_token_lost, CC-196). The user then connects the system again, and connecting writes a new secret and sets connected. revoked only follows invalid_grant of the provider or a removal by the user.
@@ -3286,14 +3439,14 @@ components:
     ServerId:
       description: MCP server id; always mcp-<system>, one server per system (C5).
       type: string
-      pattern: ^mcp-[a-z][a-z0-9]{1,30}$
+      pattern: ^mcp-(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)$)[a-z][a-z0-9]{1,30}$
     SemVer:
       type: string
       pattern: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$
     QualifiedToolName:
       description: "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>, with the system pattern of SystemId."
       type: string
-      pattern: ^[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      pattern: ^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$
       maxLength: 100
     Risk:
       type: string
@@ -3595,9 +3748,10 @@ components:
       pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
       maxLength: 64
     PolicyRevision:
-      description: Revision of the policy data of the gateway (scope mapping, allowed clients, overrides; GET /internal/v1/policy-data), YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.
-      type: string
-      pattern: ^[0-9]{14}-[0-9a-f]{7}$
+      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7). A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
     ErrorCode:
       description: Client-visible error codes (C10).
       type: string
@@ -3997,7 +4151,7 @@ components:
       additionalProperties: false
     ServerRejected:
       type: object
-      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
+      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), system_reserved (the system id is one of the reserved ids), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
       required:
         - error
       properties:
@@ -4077,8 +4231,9 @@ components:
           maxLength: 500
       additionalProperties: false
     OverrideId:
+      description: override-<name>; the prefixes override- and platform- are reserved, so an override cannot replace a platform policy by id.
       type: string
-      pattern: ^[a-z][a-z0-9-]{0,62}$
+      pattern: ^override-[a-z0-9][a-z0-9-]{0,54}$
     OverrideTarget:
       description: gateway (the decision on call), all-servers (every server evaluates it) or the serverId of one server.
       type: string
@@ -4124,7 +4279,7 @@ components:
       additionalProperties: false
     OverrideRejected:
       type: object
-      description: 422 of a write of an override. Known reasons are not_forbid, not_one_policy, invalid_policy (does not parse or does not validate against the schema of its target), id_mismatch (the @id of the text is not the id of the override) and target_unknown (a serverId that is not in the registry).
+      description: 422 of a write of an override. Known reasons are not_forbid, not_one_policy, id_invalid (not override-<name>), target_mismatch (a gateway override that is not call on Tool, or a server override that mentions them), invalid_policy (does not parse or does not validate against the schema of its target), id_mismatch (the @id of the text is not the id of the override) and target_unknown (a serverId that is not in the registry).
       required:
         - error
       properties:
@@ -4172,13 +4327,78 @@ components:
                 maxLength: 200000
             additionalProperties: false
       additionalProperties: false
+    ResourceTypeDeclaration:
+      description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
+      type: object
+      required:
+        - type
+        - attributes
+        - idPattern
+      properties:
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        attributes:
+          description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
+          type: array
+          items:
+            type: string
+            pattern: ^[a-z][A-Za-z0-9]*$
+          uniqueItems: true
+        parent:
+          description: Type of the containing resource, declared in this manifest, same namespace.
+          $ref: "#/components/schemas/ResourceType"
+        parentAttribute:
+          description: Cedar attribute that holds the parent entity; required with parent and only then.
+          type: string
+          pattern: ^[a-z][A-Za-z0-9]*$
+        idPattern:
+          description: "Anchored regular expression (^...$, no top-level alternation) of the ids of this type: tool arguments, resolved resources. Written in the subset that Java and ECMAScript share; matched against the whole id."
+          type: string
+          pattern: ^\^.+\$$
+          maxLength: 2048
+        scopePattern:
+          description: "Anchored regular expression of the local part of a grantable scope id (<Type>/<local part>). Absent: the type cannot be granted in the scope mapping."
+          type: string
+          pattern: ^\^.+\$$
+          maxLength: 2048
+        earlyScopeCheck:
+          description: Whether the gateway checks tool arguments of this type against the scopes of the user before the call (context.refs). Only for types whose scope is the exact id; requires scopePattern.
+          type: boolean
+          default: false
+        classification:
+          description: The attribute the builder normalizes (trim, ASCII lower case, sets without duplicates); a resource missing a required one is refused (internal_error).
+          type: object
+          required:
+            - attribute
+            - kind
+            - required
+          properties:
+            attribute:
+              type: string
+              pattern: ^[a-z][A-Za-z0-9]*$
+            kind:
+              enum:
+                - string
+                - set
+            required:
+              type: boolean
+          additionalProperties: false
+      dependentRequired:
+        parent:
+          - parentAttribute
+        parentAttribute:
+          - parent
+      additionalProperties: false
     PendingPolicies:
       type: object
+      description: What an administrator approves is the policies and the declarations of the resource types together (policiesHash covers both), so both sides are shown.
       required:
         - approvedHash
         - approvedPolicies
+        - approvedResourceTypes
         - pendingHash
         - pendingPolicies
+        - pendingResourceTypes
         - pendingVersion
         - source
       properties:
@@ -4191,10 +4411,21 @@ components:
           oneOf:
             - $ref: "#/components/schemas/policies"
             - type: "null"
+        approvedResourceTypes:
+          description: The approved declarations; null for the first registration.
+          oneOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/ResourceTypeDeclaration"
+            - type: "null"
         pendingHash:
           $ref: "#/components/schemas/DefinitionHash"
         pendingPolicies:
           $ref: "#/components/schemas/policies"
+        pendingResourceTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceTypeDeclaration"
         pendingVersion:
           description: Version of the manifest in which the pending policies appeared.
           $ref: "#/components/schemas/SemVer"
@@ -4212,6 +4443,30 @@ components:
       properties:
         policiesHash:
           $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    ApprovePoliciesResult:
+      type: object
+      required:
+        - ignoredMappingEntries
+      properties:
+        ignoredMappingEntries:
+          type: array
+          items:
+            type: object
+            required:
+              - group
+              - scope
+              - reason
+            properties:
+              group:
+                type: string
+              scope:
+                type: string
+              reason:
+                description: undeclared_type, invalid_scope, group_missing or group_duplicate.
+                type: string
+                pattern: ^[a-z][a-z0-9_]*$
+            additionalProperties: false
       additionalProperties: false
     SystemAdapter:
       description: How the broker talks to the backend of a system.
@@ -4349,7 +4604,7 @@ components:
       additionalProperties: false
     SystemRejected:
       type: object
-      description: 422 of a write of a system. Known reasons are default_type_not_supported (defaultType is not in supportedTypes), credential_types_mixed (service-account next to a user type, CC-168) and oauth_required (user-oauth without an oauth client).
+      description: 422 of a write of a system. Known reasons are client_secret_required (baseUrl, authorizeUrl, tokenUrl or clientId changed without a new clientSecret), system_reserved (the system id is reserved, see SystemId), default_type_not_supported (defaultType is not in supportedTypes), credential_types_mixed (service-account next to a user type, CC-168) and oauth_required (user-oauth without an oauth client).
       required:
         - error
       properties:

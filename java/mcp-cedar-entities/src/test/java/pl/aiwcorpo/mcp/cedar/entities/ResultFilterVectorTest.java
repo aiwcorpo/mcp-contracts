@@ -28,7 +28,7 @@ class ResultFilterVectorTest {
         JsonNode vector = JSON.readTree(file.toFile());
         EntityBuilder builder = VectorInputs.builder(vector, vector.get("input"));
         BasicAuthorizationEngine engine = new BasicAuthorizationEngine();
-        var policies = CedarFixtures.policies(vector.get("policies"));
+        var policies = CedarFixtures.policies(vector.get("policies"), VectorInputs.resourceTypes(vector));
         var schema = CedarFixtures.schema(vector.get("policies"));
         ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(engine, policies, schema));
         JsonNode input = vector.get("input");

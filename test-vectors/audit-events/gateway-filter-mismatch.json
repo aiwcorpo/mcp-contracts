@@ -15,7 +15,7 @@
     "filter": "systems=gitlab",
     "decision": "deny",
     "reason": "filter_mismatch",
-    "policyRevision": "20261026120000-a1b2c3d",
+    "policyRevision": 41,
     "outcome": "denied"
   }
 }

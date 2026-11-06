@@ -18,7 +18,7 @@
     "risk": "DESTRUCTIVE",
     "decision": "deny",
     "reason": "filter_scope",
-    "policyRevision": "20261026120000-a1b2c3d",
+    "policyRevision": 41,
     "outcome": "denied",
     "errorCode": "not_found_or_denied",
     "argsLength": 12

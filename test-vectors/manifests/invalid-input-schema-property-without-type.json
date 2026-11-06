@@ -261,10 +261,6 @@
       "schema": "// Fragment of a Jira MCP server: one namespace, the server's own. Base types (User, ResourceScope, RequestContext) are\n// referenced unqualified from the empty namespace of cedar/mcp.cedarschema. Every entity type has `scopes`.\n\nnamespace Jira {\n  entity Project {\n    key: String,\n    // Classification: required, \"\" when the project has no category. The entity builder normalizes it (trim, ASCII lower\n    // case); the canonical value for restricted data is \"restricted\".\n    category: String,\n    scopes: Set<ResourceScope>,\n  };\n  // `project` duplicates the parent edge because Cedar cannot read attributes of an ancestor through `in`.\n  entity Issue in [Project] {\n    key: String,\n    project: Project,\n    scopes: Set<ResourceScope>,\n  };\n\n  action \"read\", \"update\", \"delete\", \"admin\" appliesTo {\n    principal: [User],\n    resource: [Project, Issue],\n    context: RequestContext,\n  };\n}\n",
       "files": [
         {
-          "name": "forbid-restricted.cedar",
-          "text": "// Data classified as restricted is never available to AI agents, whatever the user may do in Jira. forbid overrides every\n// permit, so no group or scope can open it.\n\n@id(\"jira-forbid-restricted-project\")\nforbid (principal, action, resource is Jira::Project)\nwhen { resource.category == \"restricted\" };\n\n@id(\"jira-forbid-restricted-issue\")\nforbid (principal, action, resource is Jira::Issue)\nwhen { resource.project.category == \"restricted\" };\n"
-        },
-        {
           "name": "read.cedar",
           "text": "// Reading follows the user's own rights in Jira; the server adds the group check and the classification rule.\n\n@id(\"jira-read\")\npermit (\n  principal in UserGroup::\"mcp-jira-read\",\n  action == Jira::Action::\"read\",\n  resource\n)\nwhen { resource is Jira::Project || resource is Jira::Issue };\n"
         },
@@ -274,6 +270,6 @@
         }
       ]
     },
-    "policiesHash": "sha256:70ae8bc7b2621ab9aafdacaf6950af07599a96ecb738caa42b1e666c5cfd7833"
+    "policiesHash": "sha256:7d53d26505ab36c3ef6e8e9bd2cd591d0fd4e731345b047bc44c8a5e51d3191d"
   }
 }

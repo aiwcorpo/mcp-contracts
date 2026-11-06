@@ -10,11 +10,12 @@
       "response": {
         "status": 200,
         "headers": {
-          "ETag": "\"20261106093000-a1b2c3d\"",
+          "ETag": "\"42\"",
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "revision": "20261106093000-a1b2c3d",
+          "revision": 42,
+          "approvedPoliciesHash": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
           "scopeMapping": [
             {
               "group": "mcp-jira-proj-ABC",
@@ -29,8 +30,8 @@
           ],
           "overrides": [
             {
-              "id": "block-drop-table",
-              "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };"
+              "id": "override-no-claude-ai",
+              "text": "forbid (principal, action, resource) when { context.client == \"claude-ai\" };"
             }
           ]
         }

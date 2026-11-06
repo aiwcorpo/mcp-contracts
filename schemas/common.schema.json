@@ -4,14 +4,14 @@
   "description": "Shared value types referenced by the other contract schemas (mcp-contracts 1.0.0).",
   "$defs": {
     "SystemId": {
-      "description": "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts).",
+      "description": "Target system identifier, lower case: the id of a system that the credential broker and the gateway registry know at runtime (a row, not a list in the contracts). The ids gateway, offboarding, portal, broker, prometheus, platform, admin, registry, adapter, internal and ci are reserved: mcp-<system> is also the CN of a server certificate, and mcp-gateway, mcp-offboarding and the like are the CNs of platform components.",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9]{1,30}$"
+      "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)$)[a-z][a-z0-9]{1,30}$"
     },
     "ServerId": {
       "description": "MCP server id; always mcp-<system>, one server per system (C5).",
       "type": "string",
-      "pattern": "^mcp-[a-z][a-z0-9]{1,30}$"
+      "pattern": "^mcp-(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)$)[a-z][a-z0-9]{1,30}$"
     },
     "ComponentId": {
       "description": "Identifier of a platform component, e.g. mcp-gateway, mcp-credential-broker, mcp-jira.",
@@ -28,7 +28,7 @@
     "QualifiedToolName": {
       "description": "Tool name as seen by MCP clients, in C5 and C12: <system>__<tool>, with the system pattern of SystemId.",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
       "maxLength": 100
     },
     "EndpointFilterQuery": {
@@ -159,9 +159,10 @@
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "PolicyRevision": {
-      "description": "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides; GET /internal/v1/policy-data), YYYYMMDDHHMMSS-<sha7> (C7). Ordered by the timestamp part. The value 00000000000000-0000000 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.",
-      "type": "string",
-      "pattern": "^[0-9]{14}-[0-9a-f]{7}$"
+      "description": "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7). A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
     },
     "Timestamp": {
       "description": "ISO 8601 date-time in UTC (suffix Z).",

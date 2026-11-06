@@ -239,9 +239,9 @@ API) and `mcp-contracts`. No Spring. Input records are immutable; `CedarRequest`
 keeps mutable (do not modify them). `EntityBuilder` holds the declared resource types and the scope mapping and is thread-safe;
 when a server is added or removed, a manifest changes or the administrator writes a new mapping, a new builder is created.
 
-**No type is built in.** `ResourceTypes` holds the `resourceTypes` declarations of the registered manifests
+**No type is built in.** `ResourceTypes.union` refuses two registries in one namespace; patterns follow a linear-time grammar (no nested quantifiers, lookaround or back references, at most 512 characters; ids over 1024 characters are invalid before matching). `PlatformServerPolicies` generates the `platform-*` policies that every server loads next to its fragment (restricted data, service account outside scope). `ResourceTypes` holds the `resourceTypes` declarations of the registered manifests
 (`ResourceTypes.fromJson`, `ResourceTypes.union` for the gateway), `ScopeMapping` the administrator's group -> scope mapping
-(`ScopeMapping.of` to validate a document, `ScopeMapping.ofRegistered` to evaluate, `ScopeMapping.fromJson` for the `scopeMapping`
+(`ScopeMapping.of` to validate a document, `ScopeMapping.ofRegistered` to evaluate (skips an invalid scope on its own and reports it in `ignored()`), `ScopeMapping.fromJson` for the `scopeMapping`
 of the policy data). `Scopes.pathPrefixes` and `Scopes.dashPrefixes` are helpers for the server that derives `scopes` of a resource.
 
 **API compatibility (CC-039):** the public records (`Caller`, `ToolDescriptor`, `ResourceRef`, `ResolvedResource`,
@@ -1235,15 +1235,16 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | Directory | Count | What it checks |
 | --- | --- | --- |
 | `jwt/` | 66 | the C2 receiver: 23 valid, 43 rejections (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
-| `manifests/` | 93 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
+| `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 128 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
-| `policies-hash/` | 5 | `policiesHash` of the `policies` member of a manifest (RFC 8785 + SHA-256 of policies and resourceTypes, CC-232) |
+| `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
+| `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data (CC-237) |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |
 | `return-paths/` | 35 | `returnPath` of C4/C12 (CC-032); since 3.0.0 without the prefixes `/api`, `/s`, `/v`, `/.well-known`, since 5.0.0 also `/mcp` (CC-169; `/f/` is free) and without `.`/`..` segments and the semicolon, which servers read as a path parameter (CC-099) |
 | `entity-builder/` | 54 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
-| `policy-decisions/` | 40 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
+| `policy-decisions/` | 44 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
 | `result-filter/` | 5 | result filtering and query limiting (CC-036) |
 | `resource-checks/` | 5 | every value of every `resourceRef` evaluated (CC-061) |
 | `resource-ids/` | 14 | `idPattern` and `scopePattern` of the declarations, including the former built-in systems (CC-056, CC-074) |

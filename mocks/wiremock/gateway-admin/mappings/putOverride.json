@@ -37,12 +37,13 @@
       "response": {
         "status": 200,
         "headers": {
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "id": "block-drop-table",
-          "target": "all-servers",
-          "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+          "id": "override-block-drop-table",
+          "target": "gateway",
+          "text": "forbid (principal, action == Action::\"call\", resource is Tool) when { resource.name == \"drop_table\" };",
           "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
           "setAt": "2026-11-06T09:30:00Z"
         }
@@ -124,6 +125,31 @@
       }
     },
     {
+      "name": "putOverride 412 stale",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/overrides/{id}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=stale($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 412,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_failed"
+        }
+      }
+    },
+    {
       "name": "putOverride 422 permit",
       "priority": 2,
       "request": {
@@ -147,6 +173,31 @@
           "error": "override_rejected",
           "reason": "not_forbid",
           "message": "an override is forbid only"
+        }
+      }
+    },
+    {
+      "name": "putOverride 428 required",
+      "priority": 2,
+      "request": {
+        "method": "PUT",
+        "urlPathTemplate": "/admin/v1/policy/overrides/{id}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 428,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "precondition_required"
         }
       }
     }

@@ -1,0 +1,111 @@
+{
+  "description": "The system id prometheus is reserved: mcp-prometheus is the certificate CN of a platform component or of the platform itself.",
+  "expected": {
+    "valid": false,
+    "rule": "schema"
+  },
+  "manifest": {
+    "serverId": "mcp-prometheus",
+    "version": "0.1.0",
+    "system": "prometheus",
+    "internalUrl": "https://mcp-notes.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth"
+      ]
+    },
+    "resourceTypes": [
+      {
+        "type": "Notes::Notebook",
+        "attributes": [
+          "name",
+          "labels"
+        ],
+        "idPattern": "^[a-z][a-z0-9-]{0,31}$",
+        "scopePattern": "^[a-z][a-z0-9-]{0,31}$",
+        "earlyScopeCheck": true,
+        "classification": {
+          "attribute": "labels",
+          "kind": "set",
+          "required": true
+        }
+      },
+      {
+        "type": "Notes::Note",
+        "attributes": [
+          "title",
+          "pinned"
+        ],
+        "parent": "Notes::Notebook",
+        "parentAttribute": "notebook",
+        "idPattern": "^[1-9][0-9]{0,11}$"
+      },
+      {
+        "type": "Notes::Folder",
+        "attributes": [
+          "path",
+          "classification"
+        ],
+        "idPattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
+        "scopePattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
+        "classification": {
+          "attribute": "classification",
+          "kind": "set",
+          "required": false
+        }
+      }
+    ],
+    "tools": [
+      {
+        "name": "get_folder",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "folderPath",
+            "type": "Notes::Folder"
+          }
+        ],
+        "definition": {
+          "name": "get_folder",
+          "title": "Get folder",
+          "description": "Returns one folder of the notes system.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "folderPath": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
+                "maxLength": 128
+              }
+            },
+            "required": [
+              "folderPath"
+            ],
+            "additionalProperties": false
+          },
+          "annotations": {
+            "readOnlyHint": true
+          }
+        },
+        "definitionHash": "sha256:62fb83ee152d4b75b536e6288b14a5c107737e0cf18ab1b598a19d7c1061e1ff"
+      }
+    ],
+    "policies": {
+      "namespace": "Notes",
+      "schema": "// Neutral fixture fragment used by the contract vectors: a notes system that no production server implements. It has a flat\n// type that can be granted and checked early (Notebook), a child with a parent (Note) and a path-shaped type whose scopes\n// are prefixes of its path (Folder).\n\nnamespace Notes {\n  entity Notebook {\n    name: String,\n    labels: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n  entity Note in [Notebook] {\n    title: String,\n    pinned?: Bool,\n    notebook: Notebook,\n    scopes: Set<ResourceScope>,\n  };\n  entity Folder {\n    path: String,\n    classification?: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n\n  action \"read\", \"update\", \"delete\", \"admin\" appliesTo {\n    principal: [User],\n    resource: [Notebook, Note, Folder],\n    context: RequestContext,\n  };\n}\n",
+      "files": [
+        {
+          "name": "read.cedar",
+          "text": "@id(\"notes-read\")\npermit (\n  principal in UserGroup::\"mcp-notes-read\",\n  action == Notes::Action::\"read\",\n  resource\n)\nwhen { resource is Notes::Notebook || resource is Notes::Note || resource is Notes::Folder };\n"
+        },
+        {
+          "name": "update.cedar",
+          "text": "// Changes only inside granted scopes; a note carries the scope of its notebook, a folder the scope of every prefix of its path.\n\n@id(\"notes-update-in-scope\")\npermit (\n  principal in UserGroup::\"mcp-notes-write\",\n  action == Notes::Action::\"update\",\n  resource\n)\nwhen { principal in resource.scopes };\n\n@id(\"notes-delete-in-scope\")\npermit (\n  principal in UserGroup::\"mcp-notes-destructive\",\n  action == Notes::Action::\"delete\",\n  resource is Notes::Note\n)\nwhen { principal in resource.scopes };\n"
+        }
+      ]
+    },
+    "policiesHash": "sha256:df44130c9c927820befbaf612b82928e1162655de31ae601bc35b3058399ec05"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "description": "An override that does not validate against the composed schema of the server: the server refuses every call.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": false
+    },
+    "prv": 41,
+    "refreshed": null
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "overrides_invalid"
+  }
+}

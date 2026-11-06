@@ -47,8 +47,8 @@
           "path",
           "classification"
         ],
-        "idPattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
-        "scopePattern": "^[a-z0-9]+(?:/[a-z0-9]+){0,4}$",
+        "idPattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
+        "scopePattern": "^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$",
         "classification": {
           "attribute": "classification",
           "kind": "set",
@@ -92,6 +92,6 @@
         "definitionHash": "sha256:b86101b21594e8f007ebe9348d5b4c38942756bbfb43812f3fa25d443d0e95d6"
       }
     ],
-    "policiesHash": "sha256:e30b2bad2bf888bb80577007027e8172cd064d523328a937ff3f835f6399c946"
+    "policiesHash": "sha256:df44130c9c927820befbaf612b82928e1162655de31ae601bc35b3058399ec05"
   }
 }

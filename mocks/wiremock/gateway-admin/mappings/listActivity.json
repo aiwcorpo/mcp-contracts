@@ -54,7 +54,7 @@
             "tool": "get_issue",
             "risk": "READ_ONLY",
             "decision": "allow",
-            "policyRevision": "20261026120000-a1b2c3d",
+            "policyRevision": 41,
             "credentialType": "user-secret",
             "outcome": "ok",
             "errorCode": null,

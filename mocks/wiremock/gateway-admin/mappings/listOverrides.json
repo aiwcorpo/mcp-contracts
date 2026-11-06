@@ -41,9 +41,9 @@
         },
         "jsonBody": [
           {
-            "id": "block-drop-table",
-            "target": "all-servers",
-            "text": "forbid (principal, action, resource is Tool) when { resource.name == \"drop_table\" };",
+            "id": "override-block-drop-table",
+            "target": "gateway",
+            "text": "forbid (principal, action == Action::\"call\", resource is Tool) when { resource.name == \"drop_table\" };",
             "setBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
             "setAt": "2026-11-06T09:30:00Z"
           }

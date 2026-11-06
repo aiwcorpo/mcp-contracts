@@ -1,0 +1,14 @@
+{
+  "description": "A server that has no policy data refuses.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": null,
+    "prv": null,
+    "refreshed": null
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "policy_data_unavailable"
+  }
+}

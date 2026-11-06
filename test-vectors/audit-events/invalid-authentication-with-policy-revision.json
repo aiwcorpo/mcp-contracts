@@ -11,6 +11,6 @@
     "event": "authentication",
     "reason": "bad_signature",
     "outcome": "denied",
-    "policyRevision": "20261026120000-a1b2c3d"
+    "policyRevision": 41
   }
 }

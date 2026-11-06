@@ -2,10 +2,12 @@
   "description": "Delete needs the destructive group; the note is in the granted notebook.",
   "covers": [],
   "policies": {
+    "namespace": "Notes",
     "schema": "test-vectors/fixtures/notes/schema.cedarschema",
     "policies": [
       "test-vectors/fixtures/notes"
-    ]
+    ],
+    "platformServer": true
   },
   "builder": {
     "level": "server",

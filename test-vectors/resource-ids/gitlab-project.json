@@ -8,8 +8,8 @@
   ],
   "invalid": [
     "app",
-    "team-a/app.atom",
     "team-a/app/",
-    "team-a/../x"
+    "team-a/../x",
+    "/app"
   ]
 }

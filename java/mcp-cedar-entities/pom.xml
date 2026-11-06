@@ -34,6 +34,11 @@
             <groupId>pl.aiwcorpo.mcp</groupId>
             <artifactId>mcp-contracts</artifactId>
         </dependency>
+        <dependency>
+            <groupId>pl.aiwcorpo.mcp</groupId>
+            <artifactId>mcp-manifest</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Already a runtime dependency of cedar-java; needed at compile time because cedar-java's public
              constructors (Schema, AuthorizationRequest) mention Jackson types. Not used by this API. -->

@@ -1,0 +1,17 @@
+{
+  "description": "The gateway has approved nothing for this server (no approvedPoliciesHash): every call is refused.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 41,
+      "overridesValid": true
+    },
+    "prv": 41,
+    "refreshed": null
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "policies_not_approved"
+  }
+}

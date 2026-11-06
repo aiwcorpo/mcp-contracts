@@ -17,7 +17,7 @@
     "risk": "UPDATE",
     "decision": "deny",
     "reason": "definition_changed",
-    "policyRevision": "20261026120000-a1b2c3d",
+    "policyRevision": 41,
     "outcome": "denied",
     "errorCode": "tool_disabled",
     "argsLength": 64

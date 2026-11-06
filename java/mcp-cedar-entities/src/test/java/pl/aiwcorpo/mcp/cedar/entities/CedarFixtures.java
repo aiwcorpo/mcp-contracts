@@ -24,10 +24,16 @@ final class CedarFixtures {
     }
 
     /** Policies of the vector's {@code policies.policies}: every {@code .cedar} file of each listed directory. */
-    static PolicySet policies(JsonNode policies) {
+    static PolicySet policies(JsonNode policies, ResourceTypes types) {
         List<String> directories = new ArrayList<>();
         policies.get("policies").forEach(d -> directories.add(d.asText()));
-        return policySet(directories);
+        PolicySet own = policySet(directories);
+        if (!policies.path("platformServer").asBoolean(false)) {
+            return own;
+        }
+        String namespace = policies.get("namespace").asText();
+        ResourceTypes ofNamespace = ResourceTypes.of(types.declarations().stream().filter(d -> d.namespace().equals(namespace)).toList());
+        return PolicyFragments.merge(own, PlatformServerPolicies.policySet(ofNamespace));
     }
 
     static PolicySet policySet(List<String> directories) {

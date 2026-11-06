@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash, policiesHash } from './lib/definition-hash.mjs';
+import { policyDataGate } from './lib/policy-data-gate.mjs';
 import { path } from './lib/contracts.mjs';
 import { credentialTypeCheck } from './lib/credential-type-check.mjs';
 import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } from './lib/query-rendering.mjs';
@@ -440,6 +441,17 @@ manifest('invalid-credential-types-mixed', 'acceptedTypes mixes service-account 
   manifest('invalid-resource-type-classification-not-in-attributes', 'The classification attribute is one of the attributes the resolver fills.', mutated((m) => { m.resourceTypes[0].classification.attribute = 'colour'; }), false, 'resource-types-valid');
   manifest('invalid-resource-type-classification-kind', 'kind is string or set.', mutated((m) => { m.resourceTypes[0].classification.kind = 'list'; }), false, 'schema');
   manifest('invalid-resource-type-name-lower-case-namespace', 'A resource type is <Namespace>::<Name>, both starting with a capital.', mutated((m) => { m.resourceTypes[0].type = 'notes::Notebook'; }), false, 'schema');
+  for (const reserved of ['gateway', 'offboarding', 'portal', 'broker', 'prometheus', 'platform', 'admin', 'registry', 'adapter', 'internal', 'ci']) {
+    manifest(`invalid-system-reserved-${reserved}`, `The system id ${reserved} is reserved: mcp-${reserved} is the certificate CN of a platform component or of the platform itself.`, mutated((m) => { m.system = reserved; m.serverId = `mcp-${reserved}`; }), false, 'schema');
+  }
+  const redos = (name, description, pattern, rule = 'resource-types-valid') => manifest(`invalid-resource-type-${name}`, description, mutated((m) => { m.resourceTypes[0].idPattern = pattern; }), false, rule);
+  redos('id-pattern-nested-quantifier', 'A quantifier on a group that contains a quantifier backtracks catastrophically on a hostile id: ^(.*a){12}$.', '^(.*a){12}$');
+  redos('id-pattern-plus-in-star', 'The classic ^(a+)+$.', '^(a+)+$');
+  redos('id-pattern-overlapping-alternatives', 'Alternatives of a quantified group that can start with the same character: ^(a|aa)+$.', '^(a|aa)+$');
+  redos('id-pattern-back-reference', 'A back reference is outside the grammar.', '^([a-z])\\1$');
+  redos('id-pattern-lookahead', 'Lookaround is outside the grammar (the id length is capped in code, so no lookahead is needed for it).', '^(?=[a-z]{1,9}$)[a-z]+$');
+  redos('id-pattern-too-long', 'A pattern longer than 512 characters.', `^${'a'.repeat(520)}$`);
+  manifest('valid-resource-type-disjoint-alternatives', 'A quantified group with alternatives that start with disjoint characters is linear and stays valid.', mutated((m) => { m.resourceTypes[0].idPattern = '^[a-z0-9](?:/[a-z0-9]|[a-z0-9])*$'; }), true);
   manifest('invalid-adapter-with-policies', 'An adapter has no policies member: its policies are its own.', (() => { const m = adapterManifest(); m.policies = { namespace: 'Jira', schema: 'namespace Jira {}', files: [] }; m.policiesHash = policiesHash(m.policies, m.resourceTypes).hash; return m; })(), false, 'schema');
   manifest('invalid-adapter-with-resource-types', 'An adapter has no resourceRefs, so it declares no resource type.', (() => { const m = adapterManifest(); m.resourceTypes = [{ type: 'Jira::Issue', attributes: [], idPattern: '^[A-Z]+$' }]; return m; })(), false, 'schema');
 }
@@ -551,12 +563,12 @@ audit('gateway-tool-call-allowed', 'Gateway, allowed tool call on an endpoint wi
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=jira&access=read',
   clientRequestId: 'client-req-17', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', decision: 'allow',
-  policyRevision: '20261026120000-a1b2c3d', credentialType: 'user-secret', outcome: 'ok', errorCode: null, latencyMs: 42, argsLength: 118,
+  policyRevision: 41, credentialType: 'user-secret', outcome: 'ok', errorCode: null, latencyMs: 42, argsLength: 118,
 }, true);
 audit('gateway-policy-deny', 'Gateway policy decision: deny by forbid.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
-  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'policy_forbid', policyRevision: '20261026120000-a1b2c3d',
+  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'policy_forbid', policyRevision: 41,
   outcome: 'denied', errorCode: 'access_denied', argsLength: 64,
 }, true);
 const adminSub = '3b0d6f2e-91c4-4d7a-8a52-6c1e4f7a9d10';
@@ -593,13 +605,13 @@ audit('invalid-definition-hash-format', 'definitionHash must be sha256:<64 hex> 
 audit('gateway-definition-changed', 'The definition the server presents differs from the approved one: the tool is refused as tool_disabled (CC-133).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
-  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'definition_changed', policyRevision: '20261026120000-a1b2c3d',
+  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'definition_changed', policyRevision: 41,
   outcome: 'denied', errorCode: 'tool_disabled', argsLength: 64,
 }, true);
 audit('gateway-tool-not-served', 'An approved tool that the server no longer serves: the call is refused as tool_disabled (CC-161).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
-  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'tool_not_served', policyRevision: '20261026120000-a1b2c3d',
+  tool: 'create_issue', risk: 'UPDATE', decision: 'deny', reason: 'tool_not_served', policyRevision: 41,
   outcome: 'denied', errorCode: 'tool_disabled', argsLength: 64,
 }, true);
 audit('server-credential-type-mismatch', 'The type in X-MCP-Credential-Type differs from the type configured in the server: the call is refused (CC-166).', {
@@ -623,18 +635,18 @@ audit('gateway-limit-store-unavailable', 'The counter of the limits does not ans
 audit('gateway-filter-scope', 'Tool that the user may call and the filter of the address leaves out: policy_decision with reason filter_scope (CC-170, CC-174).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=gitlab', server: 'mcp-jira',
-  tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'filter_scope', policyRevision: '20261026120000-a1b2c3d',
+  tool: 'delete_issue', risk: 'DESTRUCTIVE', decision: 'deny', reason: 'filter_scope', policyRevision: 41,
   outcome: 'denied', errorCode: 'not_found_or_denied', argsLength: 12,
 }, true);
 audit('gateway-invalid-filter', 'A query that is not a filter: policy_decision with reason invalid_filter, outcome error, no filter field (nothing could be normalized, CC-170).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code',
-  decision: 'deny', reason: 'invalid_filter', policyRevision: '20261026120000-a1b2c3d', outcome: 'error',
+  decision: 'deny', reason: 'invalid_filter', policyRevision: 41, outcome: 'error',
 }, true);
 audit('gateway-audit-suppressed-summary', 'Summary written when the window of a user and reason closes: how many refusals of that reason were left out of the audit (CC-191). The refusals themselves were not throttled.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code',
-  decision: 'deny', reason: 'not_granted', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'not_found_or_denied', suppressedCount: 17, suppressedTargets: 4,
+  decision: 'deny', reason: 'not_granted', policyRevision: 41, outcome: 'denied', errorCode: 'not_found_or_denied', suppressedCount: 17, suppressedTargets: 4,
 }, true);
 audit('gateway-kill-switch-set', 'An administrator switched a tool off (CC-194); the free text of the administrator is not in the event.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
@@ -647,7 +659,7 @@ audit('gateway-kill-switch-cleared', 'An administrator lifted the switch of a wh
 audit('gateway-kill-switch-refusal', 'A call of a switched tool: refused as tool_disabled, the reason kill_switch tells it from a definition waiting for approval (CC-194).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira', tool: 'update_issue', risk: 'UPDATE',
-  decision: 'deny', reason: 'kill_switch', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'tool_disabled', argsLength: 40,
+  decision: 'deny', reason: 'kill_switch', policyRevision: 41, outcome: 'denied', errorCode: 'tool_disabled', argsLength: 40,
 }, true);
 audit('gateway-registry-adapter-tool-classified', 'An administrator approved a tool of an adapter and gave it a risk (CC-193); the event is the same as for any approval, with the new risk.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
@@ -674,7 +686,7 @@ audit('invalid-broker-authentication-key-source-unavailable', 'key_source_unavai
 audit('gateway-filter-mismatch', 'The filter of a request differs from the filter bound to the session (CC-172); filter is the normalized filter of the request.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', filter: 'systems=gitlab',
-  decision: 'deny', reason: 'filter_mismatch', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied',
+  decision: 'deny', reason: 'filter_mismatch', policyRevision: 41, outcome: 'denied',
 }, true);
 audit('invalid-filter-field-not-canonical', 'filter is the canonical form: parameters in the fixed order (CC-170).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call', filter: 'access=read&systems=jira',
@@ -836,7 +848,7 @@ audit('server-resource-denied', 'Server denied a resolved resource (Restricted p
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'policy_decision',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',
   tool: 'get_issue', risk: 'READ_ONLY', resource: { type: 'Jira::Issue', id: 'ABC-123', parent: 'Jira::Project::HR' },
-  decision: 'deny', reason: 'policy_forbid', policyRevision: '20261026120000-a1b2c3d', outcome: 'denied', errorCode: 'not_found_or_denied',
+  decision: 'deny', reason: 'policy_forbid', policyRevision: 41, outcome: 'denied', errorCode: 'not_found_or_denied',
 }, true);
 audit('broker-credential-resolve', 'Broker resolved a credential; system carried in server (CC-009).', {
   ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'credential_resolve',
@@ -893,7 +905,7 @@ audit('invalid-authentication-with-username', 'username comes from the claims of
   ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', username: 'jkowalski',
 }, false);
 audit('invalid-authentication-with-policy-revision', 'policyRevision comes from the claims of an unverified token and is not allowed in event authentication (CC-071).', {
-  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', policyRevision: '20261026120000-a1b2c3d',
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', reason: 'bad_signature', outcome: 'denied', policyRevision: 41,
 }, false);
 audit('invalid-authentication-with-filter', 'filter comes from the request before the token is verified and is not allowed in event authentication (CC-071, CC-174).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'authentication', reason: 'bad_signature', outcome: 'denied', filter: 'systems=jira',
@@ -1702,3 +1714,22 @@ toolError('invalid-field-of-other-code', 'connectUrl belongs to credential_requi
 }, false);
 toolError('invalid-unknown-code', 'Code outside C10.', { error: 'forbidden', ...safe('Forbidden.') }, false);
 toolError('invalid-missing-message', 'message is required.', { error: 'not_found_or_denied' }, false);
+
+// ---------- policy data gate (7.0.0) ----------
+{
+  mkdirSync(path('test-vectors', 'policy-data-gate'), { recursive: true });
+  const OWN = 'sha256:' + 'a'.repeat(64);
+  const OTHER = 'sha256:' + 'b'.repeat(64);
+  const data = (revision, approvedPoliciesHash, overridesValid = true) => ({ revision, ...(approvedPoliciesHash !== undefined && { approvedPoliciesHash }), overridesValid });
+  const gate = (name, description, input) => write('policy-data-gate', `${name}.json`, { description, input, expected: policyDataGate(input) });
+  gate('approved-and-current', 'The hash of the server own policies and resource types is the approved one and the data is as new as the token: the call is evaluated.', { ownHash: OWN, held: data(41, OWN), prv: 41, refreshed: null });
+  gate('no-prv-in-token', 'A token without prv leaves the held data in use.', { ownHash: OWN, held: data(41, OWN), prv: null, refreshed: null });
+  gate('nothing-approved', 'The gateway has approved nothing for this server (no approvedPoliciesHash): every call is refused.', { ownHash: OWN, held: data(41), prv: 41, refreshed: null });
+  gate('own-policies-differ', 'The server was deployed with other policies than the approved ones: every call is refused until an administrator approves them.', { ownHash: OTHER, held: data(41, OWN), prv: 41, refreshed: null });
+  gate('no-data-yet', 'A server that has no policy data refuses.', { ownHash: OWN, held: null, prv: null, refreshed: null });
+  gate('prv-newer-refresh-ok', 'The token carries a newer revision: the server refreshes before evaluating, and the refreshed data decides.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: data(41, OWN) });
+  gate('prv-newer-refresh-failed', 'The token carries a newer revision and the refresh failed: refuse, do not evaluate with the older data.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: null });
+  gate('prv-newer-refresh-returns-older', 'The refresh returned data older than the token revision (a stale gateway instance): refuse.', { ownHash: OWN, held: data(40, OWN), prv: 42, refreshed: data(41, OWN) });
+  gate('prv-newer-refresh-unapproves', 'After the refresh the policies are no longer approved: refuse.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: data(41) });
+  gate('override-fails-validation', 'An override that does not validate against the composed schema of the server: the server refuses every call.', { ownHash: OWN, held: data(41, OWN, false), prv: 41, refreshed: null });
+}

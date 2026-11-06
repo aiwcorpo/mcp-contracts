@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -75,7 +76,7 @@ class PolicyDecisionVectorTest {
         AuthorizationResponse response = engine.isAuthorized(
                 CedarRequests.request(request.get("principal"), request.get("action"), request.get("resource"),
                         request.get("context"), schema),
-                CedarFixtures.policies(vector.get("policies")), CedarRequests.entities(vector.get("entities")));
+                CedarFixtures.policies(vector.get("policies"), VectorInputs.resourceTypes(vector.get("builder"))), CedarRequests.entities(vector.get("entities")));
         assertDecision(file, vector.get("expected"), response);
     }
 
@@ -95,12 +96,17 @@ class PolicyDecisionVectorTest {
             withoutTool.removeIf(e -> "Tool".equals(e.getEUID().getType().toString()));
             built = new CedarRequest(built.principal(), built.action(), built.resource(), built.context(), withoutTool);
         }
+        if ("remove-refs".equals(builder.path("adjustment").asText())) {
+            Map<String, com.cedarpolicy.value.Value> context = new java.util.LinkedHashMap<>(built.context());
+            context.remove("refs");
+            built = new CedarRequest(built.principal(), built.action(), built.resource(), context, built.entities());
+        }
         ObjectNode json = VectorInputs.toJson(built);
         assertEquals(vector.get("request").get("context"), json.get("context"), file::toString);
         assertEquals(vector.get("entities"), json.get("entities"), file::toString);
         AuthorizationResponse response = engine.isAuthorized(
                 built.toAuthorizationRequest(CedarFixtures.schema(vector.get("policies"))),
-                CedarFixtures.policies(vector.get("policies")), built.cedarEntities());
+                CedarFixtures.policies(vector.get("policies"), VectorInputs.resourceTypes(vector.get("builder"))), built.cedarEntities());
         assertDecision(file, vector.get("expected"), response);
     }
 
@@ -124,7 +130,7 @@ class PolicyDecisionVectorTest {
         AuthorizationResponse response = engine.isAuthorized(
                 CedarRequests.request(request.get("principal"), request.get("action"), request.get("resource"),
                         request.get("context"), CedarFixtures.schema(vector.get("policies"))),
-                permitsOnly(CedarFixtures.policies(vector.get("policies"))), CedarRequests.entities(vector.get("entities")));
+                permitsOnly(CedarFixtures.policies(vector.get("policies"), VectorInputs.resourceTypes(vector.get("builder")))), CedarRequests.entities(vector.get("entities")));
         assertTrue(response.success.orElseThrow().isAllowed(), () -> file + " is not allowed without forbids: " + response);
     }
 

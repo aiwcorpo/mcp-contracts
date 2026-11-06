@@ -27,7 +27,7 @@ class ResourceCheckVectorTest {
         JsonNode vector = JSON.readTree(file.toFile());
         EntityBuilder builder = VectorInputs.builder(vector, vector.get("input"));
         ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(
-                new BasicAuthorizationEngine(), CedarFixtures.policies(vector.get("policies")), CedarFixtures.schema(vector.get("policies"))));
+                new BasicAuthorizationEngine(), CedarFixtures.policies(vector.get("policies"), VectorInputs.resourceTypes(vector)), CedarFixtures.schema(vector.get("policies"))));
         JsonNode input = vector.get("input");
         List<ResolvedResource> resources = new ArrayList<>();
         vector.get("resources").forEach(r -> resources.add(VectorInputs.resource(r)));
@@ -43,7 +43,7 @@ class ResourceCheckVectorTest {
         JsonNode vector = JSON.readTree(file.toFile());
         EntityBuilder builder = VectorInputs.builder(vector, vector.get("input"));
         ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(
-                new BasicAuthorizationEngine(), CedarFixtures.policies(vector.get("policies")), CedarFixtures.schema(vector.get("policies"))));
+                new BasicAuthorizationEngine(), CedarFixtures.policies(vector.get("policies"), VectorInputs.resourceTypes(vector)), CedarFixtures.schema(vector.get("policies"))));
         JsonNode input = vector.get("input");
         java.util.Map<String, ResolvedResource> byId = new java.util.HashMap<>();
         vector.get("resources").forEach(r -> byId.put(r.get("type").asText() + "/" + r.get("id").asText(), VectorInputs.resource(r)));

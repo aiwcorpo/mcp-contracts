@@ -11,11 +11,11 @@ import com.cedarpolicy.model.schema.Schema;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -31,6 +31,12 @@ public final class PolicyFragments {
 
     /** Actions a fragment may declare; {@code call} belongs to the gateway. */
     static final Set<String> SERVER_ACTIONS = Set.of("read", "update", "delete", "admin");
+
+    /** Prefix of the ids of the platform policies; a server policy may not use it. */
+    public static final String PLATFORM_ID_PREFIX = "platform-";
+    /** Prefix of the ids of emergency overrides; a server policy may not use it. */
+    public static final String OVERRIDE_ID_PREFIX = "override-";
+    private static final Pattern OVERRIDE_ID = Pattern.compile("^override-[a-z0-9][a-z0-9-]{0,54}$");
 
     private static final Pattern NAMESPACE = Pattern.compile("^[A-Z][A-Za-z0-9]{0,30}$");
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -49,6 +55,29 @@ public final class PolicyFragments {
         public boolean ok() {
             return errors.isEmpty();
         }
+    }
+
+    /**
+     * Joins policy sets (platform, generated platform server policies, fragment, overrides) into the set that is evaluated.
+     * Two policies with the same id are an error, never a merge: an override with the id of a platform policy would replace it.
+     *
+     * @throws IllegalArgumentException on a duplicate id; the caller must refuse to evaluate (deny)
+     */
+    public static PolicySet merge(PolicySet... sets) {
+        Set<Policy> all = new LinkedHashSet<>();
+        Set<String> ids = new HashSet<>();
+        for (PolicySet set : sets) {
+            if (!set.templates.isEmpty()) {
+                throw new IllegalArgumentException("templates are not used by the platform");
+            }
+            for (Policy policy : set.policies) {
+                if (!ids.add(policy.policyID)) {
+                    throw new IllegalArgumentException("duplicate policy id " + policy.policyID);
+                }
+                all.add(policy);
+            }
+        }
+        return new PolicySet(all);
     }
 
     /** @return base schema text followed by the fragment text: the schema both sides validate against */
@@ -129,9 +158,21 @@ public final class PolicyFragments {
         }
         JsonNode own = composed.get(namespace);
         checkScopes(own, errors);
-        own.path("actions").fieldNames().forEachRemaining(action -> {
+        own.path("actions").fields().forEachRemaining(entry -> {
+            String action = entry.getKey();
             if (!SERVER_ACTIONS.contains(action)) {
                 errors.add("action not allowed in a fragment: " + action);
+            }
+            JsonNode appliesTo = entry.getValue().path("appliesTo");
+            // A foreign principal or context type would let the fragment read attributes that the platform does not give.
+            List<String> principals = new ArrayList<>();
+            appliesTo.path("principalTypes").forEach(t -> principals.add(t.asText()));
+            if (!principals.equals(List.of("User"))) {
+                errors.add("action " + action + " must apply to principal [User]");
+            }
+            JsonNode context = appliesTo.path("context");
+            if (!"RequestContext".equals(context.path("type").asText()) || context.has("attributes")) {
+                errors.add("action " + action + " must use context RequestContext");
             }
         });
         if (types != null) {
@@ -144,21 +185,43 @@ public final class PolicyFragments {
             errors.add(e.getMessage());
             return new Result(errors);
         }
+        for (Policy policy : policies.policies) {
+            if (policy.policyID.startsWith(PLATFORM_ID_PREFIX) || policy.policyID.startsWith(OVERRIDE_ID_PREFIX)) {
+                errors.add("policy id " + policy.policyID + " uses a prefix reserved for the platform or for overrides");
+            }
+        }
         errors.addAll(forbiddenReferences(policies));
         errors.addAll(validatePolicies(new Schema(composeSchemaText(fragmentSchema)), policies));
         return new Result(errors);
     }
 
+    /** Where an emergency override applies. */
+    public enum OverrideTarget {
+        /** The decision on {@code call}: the policy must be {@code action == Action::"call"} on {@code resource is Tool}. */
+        GATEWAY,
+        /** One server: validated against the base schema and the fragment of that server; no {@code Tool}, no {@code call}. */
+        SERVER,
+        /** Every server: validated against the fragment of each registered server; no {@code Tool}, no {@code call}. */
+        ALL_SERVERS
+    }
+
     /**
-     * Rules for an emergency override (C5): exactly one policy, {@code forbid} only, no template, validates against the
-     * base schema and, when the override targets a server, against the composed schema of its fragment.
+     * Rules for an emergency override (C5): id {@code override-<name>}; exactly one policy, {@code forbid} only, no template,
+     * an {@code @id} in the text equal to the id. A {@code GATEWAY} override must name {@code Action::"call"} and
+     * {@code resource is Tool}, so it cannot be a policy that blocks nothing. A server override validates against the base
+     * schema composed with the fragment (every fragment, for {@code ALL_SERVERS}) and may not mention {@code Tool} or
+     * {@code call}, which are decided by the gateway.
      *
-     * @param id the override id; becomes the policy id, a different {@code @id} in the text is an error
+     * @param id the override id; becomes the policy id
      * @param text Cedar text of the override
-     * @param targetFragmentSchema fragment schema of the target server, empty for a target of {@code gateway} or
-     *        {@code all-servers}
+     * @param target where it applies
+     * @param fragmentSchemas for {@code SERVER} the fragment schema of the target server, for {@code ALL_SERVERS} the
+     *        fragment schemas of all registered servers; ignored for {@code GATEWAY}
      */
-    public static Result validateOverride(String id, String text, Optional<String> targetFragmentSchema) {
+    public static Result validateOverride(String id, String text, OverrideTarget target, Collection<String> fragmentSchemas) {
+        if (!OVERRIDE_ID.matcher(id).matches()) {
+            return new Result(List.of("an override id is override-<name> (lower case letters, digits and hyphens)"));
+        }
         PolicySet policies;
         try {
             policies = PolicySet.parsePolicies(text);
@@ -170,6 +233,7 @@ public final class PolicyFragments {
         }
         List<String> errors = new ArrayList<>();
         Policy policy = policies.policies.iterator().next();
+        PolicySet named = new PolicySet(Set.of(new Policy(policy.policySrc, id)));
         try {
             if (policy.effect() != Effect.FORBID) {
                 errors.add("an override is forbid only");
@@ -178,11 +242,29 @@ public final class PolicyFragments {
             if (declared != null && !declared.equals(id)) {
                 errors.add("@id " + declared + " differs from the override id " + id);
             }
-        } catch (InternalException e) {
+            JsonNode est = JSON.readTree(policy.toJson());
+            if (target == OverrideTarget.GATEWAY) {
+                boolean isCall = "Action".equals(est.path("action").path("entity").path("type").asText())
+                        && "call".equals(est.path("action").path("entity").path("id").asText())
+                        && "==".equals(est.path("action").path("op").asText());
+                boolean onTool = "is".equals(est.path("resource").path("op").asText())
+                        && "Tool".equals(est.path("resource").path("entity_type").asText());
+                if (!isCall || !onTool) {
+                    errors.add("a gateway override must be action == Action::\"call\" on resource is Tool");
+                }
+            } else if (mentionsGatewayOnly(est)) {
+                errors.add("a server override may not mention Action::\"call\" or Tool");
+            }
+        } catch (Exception e) {
             return new Result(List.of("the override cannot be read: " + e.getMessage()));
         }
-        Schema schema = targetFragmentSchema.map(PolicyFragments::composeSchema).orElseGet(McpCedarSchema::schema);
-        errors.addAll(validatePolicies(schema, new PolicySet(Set.of(new Policy(policy.policySrc, id)))));
+        if (target == OverrideTarget.GATEWAY || fragmentSchemas.isEmpty()) {
+            errors.addAll(validatePolicies(McpCedarSchema.schema(), named));
+        } else {
+            for (String fragment : fragmentSchemas) {
+                errors.addAll(validatePolicies(composeSchema(fragment), named));
+            }
+        }
         return new Result(errors);
     }
 

@@ -1,13 +1,13 @@
 package pl.aiwcorpo.mcp.cedar.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -170,19 +170,101 @@ class PolicyFragmentsTest {
     @Test
     void overridesAreForbidOnlyAndOneAtATime() {
         String forbid = "forbid (principal, action == Action::\"call\", resource is Tool) when { resource.name == \"drop_table\" };";
-        assertTrue(PolicyFragments.validateOverride("block-drop", forbid, Optional.empty()).ok());
-        assertTrue(PolicyFragments.validateOverride("block-drop", "@id(\"block-drop\") " + forbid, Optional.empty()).ok());
-        assertTrue(!PolicyFragments.validateOverride("other", "@id(\"block-drop\") " + forbid, Optional.empty()).ok());
-        assertTrue(!PolicyFragments.validateOverride("x", "permit (principal, action, resource);", Optional.empty()).ok());
-        assertTrue(!PolicyFragments.validateOverride("x", forbid + "\n" + forbid, Optional.empty()).ok());
-        assertTrue(!PolicyFragments.validateOverride("x", "forbid (", Optional.empty()).ok());
+        PolicyFragments.OverrideTarget gateway = PolicyFragments.OverrideTarget.GATEWAY;
+        assertTrue(PolicyFragments.validateOverride("override-block-drop", forbid, gateway, List.of()).ok());
+        assertTrue(PolicyFragments.validateOverride("override-block-drop", "@id(\"override-block-drop\") " + forbid, gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-other", "@id(\"override-block-drop\") " + forbid, gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-x", "permit (principal, action, resource);", gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-x", forbid + "\n" + forbid, gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-x", "forbid (", gateway, List.of()).ok());
     }
 
     @Test
-    void overrideOnAServerResourceIsValidatedAgainstItsFragment() {
-        String text = "forbid (principal, action, resource is Notes::Notebook) when { resource.labels.contains(\"secret\") };";
-        assertTrue(PolicyFragments.validateOverride("no-secret", text, Optional.of(schema(NOTES_DIR))).ok());
-        assertTrue(!PolicyFragments.validateOverride("no-secret", text, Optional.empty()).ok());
+    void overrideIdsNeedThePrefixAndCannotTakeAPlatformId() {
+        String forbid = "forbid (principal, action == Action::\"call\", resource is Tool);";
+        for (String id : List.of("block-drop", "platform-call-write-outside-scope", "override-", "Override-x", "override-a_b")) {
+            assertTrue(!PolicyFragments.validateOverride(id, forbid, PolicyFragments.OverrideTarget.GATEWAY, List.of()).ok(), id);
+        }
+        com.cedarpolicy.model.policy.PolicySet platform = McpCedarSchema.platformPolicies();
+        com.cedarpolicy.model.policy.PolicySet clash = PolicyFragments.policySet(Map.of("o.cedar",
+                "@id(\"platform-call-write-outside-scope\") forbid (principal, action, resource);"));
+        assertThrows(IllegalArgumentException.class, () -> PolicyFragments.merge(platform, clash));
+        assertEquals(3, PolicyFragments.merge(platform).policies.size());
+    }
+
+    @Test
+    void aGatewayOverrideThatBlocksNothingIsRefused() {
+        PolicyFragments.OverrideTarget gateway = PolicyFragments.OverrideTarget.GATEWAY;
+        assertTrue(!PolicyFragments.validateOverride("override-a", "forbid (principal, action, resource) when { principal.username == \"x\" };", gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-a", "forbid (principal, action == Action::\"call\", resource);", gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-a", "forbid (principal, action, resource is Tool);", gateway, List.of()).ok());
+    }
+
+    @Test
+    void serverOverridesAreCheckedAgainstEveryFragmentAndCannotTouchTool() {
+        PolicyFragments.OverrideTarget all = PolicyFragments.OverrideTarget.ALL_SERVERS;
+        List<String> fragments = List.of(schema(NOTES_DIR), schema(JIRA_DIR));
+        assertTrue(PolicyFragments.validateOverride("override-no-claude-ai", "forbid (principal, action, resource) when { context.client == \"claude-ai\" };", all, fragments).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-notes-only", "forbid (principal, action, resource is Notes::Notebook);", all, fragments).ok(),
+                "a type of one server does not validate against the other");
+        assertTrue(!PolicyFragments.validateOverride("override-tool", "forbid (principal, action, resource is Tool);", all, fragments).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-call", "forbid (principal, action == Action::\"call\", resource);", all, fragments).ok());
+        PolicyFragments.OverrideTarget server = PolicyFragments.OverrideTarget.SERVER;
+        assertTrue(PolicyFragments.validateOverride("override-secret", "forbid (principal, action, resource is Notes::Notebook) when { resource.labels.contains(\"secret\") };", server, List.of(schema(NOTES_DIR))).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-secret", "forbid (principal, action, resource is Notes::Notebook) when { resource.labels.contains(\"secret\") };", server, List.of(schema(JIRA_DIR))).ok());
+    }
+
+    @Test
+    void fragmentActionsMustApplyToUserAndRequestContext() {
+        String foreign = """
+                namespace Notes {
+                  entity Folder { scopes: Set<ResourceScope> };
+                  type Ctx = { x: Long };
+                  action "read" appliesTo { principal: [Folder], resource: [Folder], context: Ctx };
+                }
+                """;
+        PolicyFragments.Result result = validate("Notes", foreign, Map.of());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("principal [User]")), result::toString);
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("RequestContext")), result::toString);
+    }
+
+    @Test
+    void fragmentPoliciesCannotUseReservedIdPrefixes() {
+        for (String id : List.of("platform-x", "override-x")) {
+            PolicyFragments.Result result = validate("Notes", schema(NOTES_DIR), Map.of("a.cedar",
+                    "@id(\"" + id + "\") forbid (principal, action == Notes::Action::\"read\", resource is Notes::Notebook);"));
+            assertTrue(!result.ok(), id);
+        }
+    }
+
+    @Test
+    void generatedPlatformServerPoliciesValidateForEveryExampleSystem() throws Exception {
+        for (String dir : List.of(JIRA_DIR, NOTES_DIR, "cedar/examples/systems/confluence", "cedar/examples/systems/gitlab",
+                "cedar/examples/systems/opensearch", "cedar/examples/systems/servicedesk")) {
+            Map<String, String> texts = PlatformServerPolicies.texts(types(dir));
+            assertTrue(!texts.isEmpty(), dir);
+            String namespace = dir.endsWith("jira") ? "Jira" : dir.endsWith("notes") ? "Notes" : types(dir).declarations().get(0).namespace();
+            PolicyFragments.Result own = PolicyFragments.validateFragment(namespace, schema(dir), Map.of(), types(dir));
+            assertTrue(own.ok(), own::toString);
+            com.cedarpolicy.model.policy.PolicySet generated = PolicyFragments.policySet(texts);
+            var response = new com.cedarpolicy.BasicAuthorizationEngine().validate(new com.cedarpolicy.model.ValidationRequest(
+                    PolicyFragments.composeSchema(schema(dir)), generated));
+            assertTrue(response.validationPassed() && response.success.orElseThrow().validationWarnings.isEmpty(), () -> dir + ": " + response);
+            assertTrue(texts.keySet().stream().allMatch(id -> id.startsWith(PolicyFragments.PLATFORM_ID_PREFIX)), dir);
+        }
+    }
+
+    @Test
+    void restrictedIsForbiddenThroughTheParentChain() {
+        Map<String, String> texts = PlatformServerPolicies.texts(types(JIRA_DIR));
+        assertTrue(texts.containsKey("platform-jira-restricted-project"));
+        assertTrue(texts.containsKey("platform-jira-restricted-issue-by-project"));
+        assertTrue(texts.get("platform-jira-restricted-issue-by-project").contains("resource.project.category == \"restricted\""));
+        assertTrue(texts.containsKey("platform-jira-issue-service-account-outside-scope"));
+    }
+
+    @Test
+    void policySetTakesTheIdFromTheAnnotation() {
         assertEquals(1, PolicyFragments.policySet(Map.of("f", "@id(\"a\") forbid (principal, action, resource);")).policies.size());
     }
 }

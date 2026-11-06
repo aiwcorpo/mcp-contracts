@@ -5,10 +5,12 @@
     "forbid_overrides_permit"
   ],
   "policies": {
+    "namespace": "Notes",
     "schema": "test-vectors/fixtures/notes/schema.cedarschema",
     "policies": [
       "test-vectors/fixtures/notes"
-    ]
+    ],
+    "platformServer": true
   },
   "builder": {
     "level": "server",
@@ -190,7 +192,7 @@
   "expected": {
     "decision": "deny",
     "determiningPolicies": [
-      "notes-forbid-restricted-folder"
+      "platform-notes-restricted-folder"
     ]
   }
 }

@@ -4,10 +4,12 @@
     "scope_hierarchy"
   ],
   "policies": {
+    "namespace": "Notes",
     "schema": "test-vectors/fixtures/notes/schema.cedarschema",
     "policies": [
       "test-vectors/fixtures/notes"
-    ]
+    ],
+    "platformServer": true
   },
   "builder": {
     "level": "server",

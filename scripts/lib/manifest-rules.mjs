@@ -1,8 +1,11 @@
 // Rules of C5/C6 that JSON Schema cannot express (README: "Manifest semantic rules", CC-005, CC-018).
 import { manifestEntryHash, policiesHash } from './definition-hash.mjs';
 
+export const RESERVED_SYSTEM_IDS = ['gateway', 'offboarding', 'portal', 'broker', 'prometheus', 'platform', 'admin', 'registry', 'adapter', 'internal', 'ci'];
+
 export function manifestRuleViolations(manifest) {
   const violations = [];
+  if (RESERVED_SYSTEM_IDS.includes(manifest.system)) violations.push('system-not-reserved');
   if (manifest.serverId !== `mcp-${manifest.system}`) violations.push('serverId-matches-system');
   // CC-168: the credential types of a system are either service-account alone or user types; a mix would let the Cedar context (the default type of
   // the system) hide a service account.
@@ -33,6 +36,137 @@ export function manifestRuleViolations(manifest) {
 }
 
 const ATTRIBUTE = /^[a-z][A-Za-z0-9]*$/;
+export const MAX_PATTERN_LENGTH = 512;
+export const MAX_ID_LENGTH = 1024;
+
+// The grammar of idPattern and scopePattern, chosen so that matching is linear: at most 512 characters, no back references, no
+// lookaround, no quantifier applied to a group that contains a quantifier, and every quantified group with alternatives lets them
+// start with disjoint characters ((a|aa)+ is out). Twin of PatternGrammar in mcp-manifest. Returns the first violation or null.
+function firstCharacters(branch) {
+  if (branch === '') return null;
+  const set = new Set();
+  const c = branch[0];
+  if (c === '[') {
+    const end = branch.indexOf(']');
+    if (end < 0 || branch[1] === '^') return null;
+    const inner = branch.slice(1, end);
+    for (let i = 0; i < inner.length; i++) {
+      let a = inner[i];
+      if (a === '\\') {
+        if (i + 1 >= inner.length || /[A-Za-z0-9]/.test(inner[i + 1])) return null;
+        a = inner[++i];
+      }
+      if (i + 2 < inner.length && inner[i + 1] === '-') {
+        const b = inner[i + 2];
+        if (b === '\\') return null;
+        for (let k = a.charCodeAt(0); k <= b.charCodeAt(0); k++) set.add(k);
+        i += 2;
+      } else set.add(a.charCodeAt(0));
+    }
+    return set;
+  }
+  if (c === '\\') {
+    if (branch.length < 2) return null;
+    const e = branch[1];
+    if (e === 'd') { for (let k = 48; k <= 57; k++) set.add(k); return set; }
+    if (/[A-Za-z0-9]/.test(e)) return null;
+    set.add(e.charCodeAt(0));
+    return set;
+  }
+  if ('().*+?{|^$'.includes(c)) return null;
+  set.add(c.charCodeAt(0));
+  return set;
+}
+
+function ambiguousAlternatives(body) {
+  const branches = [];
+  let depth = 0;
+  let inClass = false;
+  let from = 0;
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (c === '\\') i++;
+    else if (inClass) inClass = c !== ']';
+    else if (c === '[') inClass = true;
+    else if (c === '(') depth++;
+    else if (c === ')') depth--;
+    else if (c === '|' && depth === 0) { branches.push(body.slice(from, i)); from = i + 1; }
+  }
+  branches.push(body.slice(from));
+  if (branches.length < 2) return null;
+  const seen = new Set();
+  for (const branch of branches) {
+    const first = firstCharacters(branch);
+    if (first === null) return 'alternatives in a quantified group must start with a literal or a simple class';
+    for (const k of first) {
+      if (seen.has(k)) return 'alternatives in a quantified group overlap';
+    }
+    for (const k of first) seen.add(k);
+  }
+  return null;
+}
+
+export function grammarViolation(regex) {
+  if (regex.length > MAX_PATTERN_LENGTH) return `longer than ${MAX_PATTERN_LENGTH} characters`;
+  const groups = [];
+  let inClass = false;
+  let lastClosedHadQuantifier = false;
+  let lastBody = null;
+  for (let i = 0; i < regex.length; i++) {
+    const c = regex[i];
+    if (c === '\\') {
+      const next = regex[i + 1] ?? ' ';
+      if (!inClass && ((next >= '1' && next <= '9') || next === 'k')) return 'back reference';
+      i++;
+      lastClosedHadQuantifier = false;
+      lastBody = null;
+      continue;
+    }
+    if (inClass) { inClass = c !== ']'; continue; }
+    if (c === '[') {
+      inClass = true;
+    } else if (c === '(') {
+      if (/^\(\?(=|!|<=|<!)/.test(regex.slice(i))) return 'lookaround';
+      let bodyStart = i + 1;
+      if (regex.startsWith('(?:', i)) { bodyStart = i + 3; i += 2; }
+      else if (regex.startsWith('(?<', i)) {
+        const close = regex.indexOf('>', i);
+        if (close < 0) return 'unsupported group syntax';
+        bodyStart = close + 1;
+        i = close;
+      } else if (regex.startsWith('(?', i)) return 'unsupported group syntax';
+      groups.push({ bodyStart, had: false });
+      lastBody = null;
+      continue;
+    } else if (c === ')') {
+      if (groups.length === 0) return 'unbalanced parenthesis';
+      const group = groups.pop();
+      if (group.had && groups.length > 0) groups[groups.length - 1].had = true;
+      lastClosedHadQuantifier = group.had;
+      lastBody = regex.slice(group.bodyStart, i);
+      continue;
+    } else if (c === '*' || c === '+' || c === '?' || c === '{') {
+      if (c === '{' && !/^\{\d+(,\d*)?\}/.test(regex.slice(i))) {
+        lastClosedHadQuantifier = false;
+        lastBody = null;
+        continue;
+      }
+      if (lastClosedHadQuantifier) return 'quantifier applied to a group that contains a quantifier';
+      if (lastBody !== null) {
+        const ambiguous = ambiguousAlternatives(lastBody);
+        if (ambiguous) return ambiguous;
+      }
+      if (groups.length > 0) groups[groups.length - 1].had = true;
+      if (c === '{') i = regex.indexOf('}', i);
+      lastClosedHadQuantifier = false;
+      lastBody = null;
+      continue;
+    }
+    lastClosedHadQuantifier = false;
+    lastBody = null;
+  }
+  return groups.length === 0 ? null : 'unbalanced parenthesis';
+}
 const namespaceOf = (type) => type.slice(0, type.indexOf('::'));
 
 // 7.0.0: the declarations are the only source of what the entity builder knows, so an inconsistent one is refused at
@@ -59,7 +193,7 @@ function resourceTypeViolations(manifest) {
     if (d.earlyScopeCheck && d.scopePattern === undefined) found.add('resource-types-valid');
     if (d.classification && !attributes.includes(d.classification.attribute)) found.add('resource-types-valid');
     for (const pattern of [d.idPattern, d.scopePattern]) {
-      if (pattern !== undefined && (!anchoredPattern(pattern) || !compiles(pattern))) found.add('resource-types-valid');
+      if (pattern !== undefined && (!anchoredPattern(pattern) || grammarViolation(pattern) !== null || !compiles(pattern))) found.add('resource-types-valid');
     }
   }
   const namespaces = new Set(manifest.resourceTypes.map((r) => namespaceOf(r.type)));

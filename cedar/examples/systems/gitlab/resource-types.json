@@ -1,17 +1,33 @@
 [
   {
     "type": "GitLab::Group",
-    "attributes": ["path", "classification", "inheritedClassification"],
-    "idPattern": "^(?=.{1,1024}$)(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){0,19}$",
-    "scopePattern": "^(?=.{1,1024}$)(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){0,19}$",
-    "classification": {"attribute": "classification", "kind": "set", "required": false}
+    "attributes": [
+      "path",
+      "classification",
+      "inheritedClassification"
+    ],
+    "idPattern": "^[A-Za-z0-9](?:[._/-][A-Za-z0-9]|[A-Za-z0-9])*$",
+    "scopePattern": "^[A-Za-z0-9](?:[._/-][A-Za-z0-9]|[A-Za-z0-9])*$",
+    "classification": {
+      "attribute": "classification",
+      "kind": "set",
+      "required": false
+    }
   },
   {
     "type": "GitLab::Project",
-    "attributes": ["path", "classification", "inheritedClassification"],
+    "attributes": [
+      "path",
+      "classification",
+      "inheritedClassification"
+    ],
     "parent": "GitLab::Group",
     "parentAttribute": "group",
-    "idPattern": "^(?=.{1,1024}$)(?!.*\\.(?:git|atom)$)[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*(?:/[A-Za-z0-9](?:[._-]?[A-Za-z0-9])*){1,20}$",
-    "classification": {"attribute": "classification", "kind": "set", "required": false}
+    "idPattern": "^[A-Za-z0-9](?:[._-][A-Za-z0-9]|[A-Za-z0-9])*/[A-Za-z0-9](?:[._/-][A-Za-z0-9]|[A-Za-z0-9])*$",
+    "classification": {
+      "attribute": "classification",
+      "kind": "set",
+      "required": false
+    }
   }
 ]

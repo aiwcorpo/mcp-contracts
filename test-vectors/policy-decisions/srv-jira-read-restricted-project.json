@@ -5,10 +5,12 @@
     "forbid_overrides_permit"
   ],
   "policies": {
+    "namespace": "Jira",
     "schema": "cedar/examples/systems/jira/schema.cedarschema",
     "policies": [
       "cedar/examples/systems/jira"
-    ]
+    ],
+    "platformServer": true
   },
   "builder": {
     "level": "server",
@@ -124,7 +126,7 @@
   "expected": {
     "decision": "deny",
     "determiningPolicies": [
-      "jira-forbid-restricted-project"
+      "platform-jira-restricted-project"
     ]
   }
 }

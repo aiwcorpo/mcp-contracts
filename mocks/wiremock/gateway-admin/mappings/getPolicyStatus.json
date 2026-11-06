@@ -43,11 +43,11 @@
           "instances": [
             {
               "instanceId": "mcp-gateway-0",
-              "revision": "20261026120000-a1b2c3d"
+              "revision": 41
             },
             {
               "instanceId": "mcp-gateway-1",
-              "revision": "20261026120000-a1b2c3d"
+              "revision": 41
             }
           ]
         }
