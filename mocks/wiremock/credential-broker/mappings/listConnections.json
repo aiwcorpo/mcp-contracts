@@ -47,6 +47,7 @@
             "type": "user-secret",
             "status": "connected",
             "backendUser": "jkowalski",
+            "verified": true,
             "expiresAt": "2027-01-31T00:00:00Z",
             "connectedAt": "2026-10-01T08:00:00Z",
             "lastUsedAt": "2026-10-26T19:58:00Z"
@@ -56,6 +57,7 @@
             "type": "user-oauth",
             "status": "connected",
             "backendUser": "jkowalski",
+            "verified": true,
             "expiresAt": null,
             "connectedAt": "2026-09-30T08:00:00Z",
             "lastUsedAt": null

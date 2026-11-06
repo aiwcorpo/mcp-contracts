@@ -43,7 +43,8 @@
         },
         "jsonBody": {
           "status": "connected",
-          "backendUser": "jkowalski"
+          "backendUser": "jkowalski",
+          "verified": true
         }
       }
     },

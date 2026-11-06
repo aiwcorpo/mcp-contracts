@@ -48,19 +48,13 @@
           "baseUrl": "https://notes.internal/api",
           "adapter": "generic-rest",
           "supportedTypes": [
-            "user-oauth"
+            "user-secret"
           ],
-          "defaultType": "user-oauth",
+          "defaultType": "user-secret",
           "secretScheme": "Bearer",
-          "oauth": {
-            "clientId": "mcp-broker-notes",
-            "authorizeUrl": "https://notes.internal/oauth/authorize",
-            "tokenUrl": "https://notes.internal/oauth/token",
-            "scopes": [
-              "notes.read",
-              "notes.write"
-            ],
-            "clientSecretSet": true
+          "whoami": {
+            "path": "/api/me",
+            "usernameField": "username"
           }
         }
       }

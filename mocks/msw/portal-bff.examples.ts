@@ -174,6 +174,7 @@ export const portalBffExamples: OperationExamples[] = [
                 "type": "user-secret",
                 "status": "connected",
                 "backendUser": "jkowalski",
+                "verified": true,
                 "expiresAt": "2027-01-31T00:00:00Z",
                 "connectedAt": "2026-10-01T08:00:00Z",
                 "lastUsedAt": "2026-10-26T19:58:00Z"
@@ -300,6 +301,7 @@ export const portalBffExamples: OperationExamples[] = [
                 "type": "user-secret",
                 "status": "expiring",
                 "backendUser": "jkowalski",
+                "verified": true,
                 "expiresAt": "2026-10-30T00:00:00Z",
                 "connectedAt": "2026-10-01T08:00:00Z",
                 "lastUsedAt": "2026-10-26T19:58:00Z"
@@ -340,6 +342,7 @@ export const portalBffExamples: OperationExamples[] = [
                 "type": "user-oauth",
                 "status": "revoked",
                 "backendUser": "jkowalski",
+                "verified": true,
                 "expiresAt": null,
                 "connectedAt": "2026-09-15T08:00:00Z",
                 "lastUsedAt": "2026-10-20T12:00:00Z"
@@ -489,6 +492,7 @@ export const portalBffExamples: OperationExamples[] = [
             "type": "user-secret",
             "status": "connected",
             "backendUser": "jkowalski",
+            "verified": true,
             "expiresAt": "2027-01-31T00:00:00Z",
             "connectedAt": "2026-10-01T08:00:00Z",
             "lastUsedAt": "2026-10-26T19:58:00Z"
@@ -606,6 +610,7 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "status": "connected",
           "backendUser": "jkowalski",
+          "verified": true,
           "expiresAt": "2027-01-31T00:00:00Z"
         },
         "headers": {
@@ -3236,19 +3241,13 @@ export const portalBffExamples: OperationExamples[] = [
             "baseUrl": "https://notes.internal/api",
             "adapter": "generic-rest",
             "supportedTypes": [
-              "user-oauth"
+              "user-secret"
             ],
-            "defaultType": "user-oauth",
+            "defaultType": "user-secret",
             "secretScheme": "Bearer",
-            "oauth": {
-              "clientId": "mcp-broker-notes",
-              "authorizeUrl": "https://notes.internal/oauth/authorize",
-              "tokenUrl": "https://notes.internal/oauth/token",
-              "scopes": [
-                "notes.read",
-                "notes.write"
-              ],
-              "clientSecretSet": true
+            "whoami": {
+              "path": "/api/me",
+              "usernameField": "username"
             }
           }
         ],
@@ -3303,19 +3302,13 @@ export const portalBffExamples: OperationExamples[] = [
           "baseUrl": "https://notes.internal/api",
           "adapter": "generic-rest",
           "supportedTypes": [
-            "user-oauth"
+            "user-secret"
           ],
-          "defaultType": "user-oauth",
+          "defaultType": "user-secret",
           "secretScheme": "Bearer",
-          "oauth": {
-            "clientId": "mcp-broker-notes",
-            "authorizeUrl": "https://notes.internal/oauth/authorize",
-            "tokenUrl": "https://notes.internal/oauth/token",
-            "scopes": [
-              "notes.read",
-              "notes.write"
-            ],
-            "clientSecretSet": true
+          "whoami": {
+            "path": "/api/me",
+            "usernameField": "username"
           }
         },
         "headers": {
@@ -3390,19 +3383,13 @@ export const portalBffExamples: OperationExamples[] = [
           "baseUrl": "https://notes.internal/api",
           "adapter": "generic-rest",
           "supportedTypes": [
-            "user-oauth"
+            "user-secret"
           ],
-          "defaultType": "user-oauth",
+          "defaultType": "user-secret",
           "secretScheme": "Bearer",
-          "oauth": {
-            "clientId": "mcp-broker-notes",
-            "authorizeUrl": "https://notes.internal/oauth/authorize",
-            "tokenUrl": "https://notes.internal/oauth/token",
-            "scopes": [
-              "notes.read",
-              "notes.write"
-            ],
-            "clientSecretSet": true
+          "whoami": {
+            "path": "/api/me",
+            "usernameField": "username"
           }
         },
         "headers": {
