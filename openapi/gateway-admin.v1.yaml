@@ -306,6 +306,8 @@ paths:
         that passes is registered. The binding serverId -> system/internalUrl comes only from the registry of servers (`/admin/v1/servers`), never from
         the manifest; a manifest that disagrees is rejected with 422 and nothing is stored.
 
+        **Access groups (CC-245).** A manifest that removes or changes the `additionalGroup` of an already registered tool leaves that tool `pending_approval` (`change: changed`) whatever its risk, because it widens access; adding one is a narrowing and follows the normal rule.
+
         **Policies (7.0.0).** The manifest carries the policy fragment of the server (`policies`, `policiesHash`) and the
         declarations of its resource types (`resourceTypes`: id and scope patterns, parent, classification). The gateway
         validates them (the base schema `cedar/mcp.cedarschema` and the fragment compose and validate in strict mode, the

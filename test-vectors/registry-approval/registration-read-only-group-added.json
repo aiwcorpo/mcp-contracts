@@ -1,0 +1,18 @@
+{
+  "description": "Adding an additionalGroup narrows access and follows the normal rule: a READ_ONLY change is approved.",
+  "input": {
+    "approved": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "additionalGroup": "mcp-opensearch-ops"
+    }
+  },
+  "expected": {
+    "state": "approved",
+    "change": "changed"
+  }
+}

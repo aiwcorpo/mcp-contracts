@@ -84,6 +84,8 @@ się `upstream-unavailable-policy-data`. Opisy `PolicyRevision` i `prv` mówią 
 
 **Poprawki po przeglądzie bezpieczeństwa portalu (CC-244, w 7.0.0).** `exchangeAudience` musi być na liście dozwolonych odbiorców w konfiguracji brokera (inaczej `422 system_rejected`, powód `audience_not_allowed`); wzorzec `OverrideTarget` ma ten sam negatywny lookahead zarezerwowanych id co `ServerId`; 7.0.0 jest niewydane i jego treść może się zmieniać do tagu.
 
+**Zmiana `additionalGroup` (CC-245, w 7.0.0).** Rejestracja, która usuwa albo zmienia `additionalGroup` już zarejestrowanego narzędzia, czeka na administratora niezależnie od ryzyka (poszerza dostęp, a zmiana `READ_ONLY` byłaby inaczej zatwierdzona samym przeglądem commita); dodanie grupy zawęża i podlega zwykłej regule. Wektory `registry-approval/registration-*`.
+
 **Migracja per składnik.**
 - *gateway:* rejestr serwerów w PostgreSQL i API `/admin/v1/servers`; `ResourceTypes.union` z zarejestrowanych manifestów, `ScopeMapping.ofRegistered`; `EntityBuilder(types, mapping)`; decyzja `call` z
   `McpCedarSchema.platformPolicies()` i nadpisań; `GET /internal/v1/policy-data` i `prv`; zatwierdzenie `policiesHash`; walidacja fragmentu przy rejestracji; `MCP_ALLOWED_CLIENTS` w kodzie.

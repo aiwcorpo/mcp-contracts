@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash, policiesHash } from './lib/definition-hash.mjs';
 import { policyDataGate } from './lib/policy-data-gate.mjs';
+import { registrationDecision } from './lib/registry-approval.mjs';
 import { path } from './lib/contracts.mjs';
 import { credentialTypeCheck } from './lib/credential-type-check.mjs';
 import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } from './lib/query-rendering.mjs';
@@ -1780,4 +1781,20 @@ toolError('invalid-missing-message', 'message is required.', { error: 'not_found
   gate('prv-newer-refresh-returns-older', 'The refresh returned data older than the token revision (a stale gateway instance): refuse.', { ownHash: OWN, held: data(40, OWN), prv: 42, refreshed: data(41, OWN) });
   gate('prv-newer-refresh-unapproves', 'After the refresh the policies are no longer approved: refuse.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: data(41) });
   gate('override-fails-validation', 'An override that does not validate against the composed schema of the server: the server refuses every call.', { ownHash: OWN, held: data(41, OWN, false), prv: 41, refreshed: null });
+}
+
+// ---------- registration and additionalGroup (CC-245) ----------
+{
+  mkdirSync(path('test-vectors', 'registry-approval'), { recursive: true });
+  const H = (c) => 'sha256:' + c.repeat(64);
+  const reg = (name, description, input) => write('registry-approval', `${name}.json`, { description, input, expected: registrationDecision(input) });
+  const entry = (risk, hash, additionalGroup) => ({ risk, definitionHash: H(hash), ...(additionalGroup !== undefined && { additionalGroup }) });
+  reg('registration-read-only-group-removed', 'A READ_ONLY tool loses its additionalGroup: the commit review alone would widen access, so it waits for an administrator.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'b') });
+  reg('registration-read-only-group-changed', 'A READ_ONLY tool changes its additionalGroup: pending as well.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-support') });
+  reg('registration-read-only-group-added', 'Adding an additionalGroup narrows access and follows the normal rule: a READ_ONLY change is approved.', { approved: entry('READ_ONLY', 'a'), submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-ops') });
+  reg('registration-new-read-only-with-group', 'A new READ_ONLY tool with an additionalGroup is approved by the registration.', { approved: null, submitted: entry('READ_ONLY', 'a', 'mcp-opensearch-ops') });
+  reg('registration-read-only-group-kept-other-change', 'The group stays and something else changes: the normal rule, approved.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-ops') });
+  reg('registration-unchanged', 'An entry with the same hash stays approved.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'a', 'mcp-opensearch-ops') });
+  reg('registration-update-group-removed', 'An UPDATE tool that loses its group waits, for the group (and it would wait for the change anyway).', { approved: entry('UPDATE', 'a', 'mcp-opensearch-ops'), submitted: entry('UPDATE', 'b') });
+  reg('registration-update-new', 'A new UPDATE tool waits for an administrator (CC-097).', { approved: null, submitted: entry('UPDATE', 'a') });
 }

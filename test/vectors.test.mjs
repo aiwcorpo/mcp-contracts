@@ -17,7 +17,7 @@ import { auditThrottle, issueCursor, listChangedNotification, listChangedSequenc
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 import { killSwitchDecision } from '../scripts/lib/kill-switch.mjs';
 import { submissionDecision } from '../scripts/lib/adapter-registry.mjs';
-import { adapterToolState, approveDecision } from '../scripts/lib/registry-approval.mjs';
+import { adapterToolState, approveDecision, registrationDecision } from '../scripts/lib/registry-approval.mjs';
 
 const ajv = createAjv();
 
@@ -566,7 +566,7 @@ test('approval with a classification of an adapter tool (CC-193, CC-206)', () =>
   const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
   assert.deepEqual([...reasons].sort(), ['classification_inconsistent', 'classification_not_allowed', 'classification_required', 'risk_lowered']);
   for (const { name, data } of vectors) {
-    assert.deepEqual('entry' in data.input ? approveDecision(data.input) : adapterToolState(data.input), data.expected, name);
+    assert.deepEqual('entry' in data.input ? approveDecision(data.input) : 'submitted' in data.input ? registrationDecision(data.input) : adapterToolState(data.input), data.expected, name);
   }
 });
 

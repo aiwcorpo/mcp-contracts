@@ -1,0 +1,15 @@
+{
+  "description": "A new UPDATE tool waits for an administrator (CC-097).",
+  "input": {
+    "approved": null,
+    "submitted": {
+      "risk": "UPDATE",
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "new",
+    "pendingReason": "risk"
+  }
+}

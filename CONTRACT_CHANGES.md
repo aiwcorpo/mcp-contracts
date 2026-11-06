@@ -4356,3 +4356,11 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zmiana:** `exchangeAudience` w `SystemAdminRequest` musi być na liście dozwolonych odbiorców (lub wzorców) w konfiguracji brokera; inna wartość to `422 system_rejected` z powodem `audience_not_allowed` (opis `putAdminSystem`, `SystemRejected`). Wzorzec `OverrideTarget` ma negatywny lookahead zarezerwowanych id jak `ServerId` (CC-237 A1); BFF używa schematu gatewaya. README i CHANGELOG mówią, że 7.0.0 jest niewydane.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-245 | C5/C6 | Zmiana `additionalGroup` narzędzia czeka na administratora
+
+- **Źródło:** decyzja koordynatora z 2026-11-06 (uzupełnienie CC-242 i CC-133).
+- **Stan:** według CC-133 nowe albo zmienione narzędzie `READ_ONLY` jest zatwierdzane przez samą rejestrację (przegląd commita), więc usunięcie albo zmiana `additionalGroup` takiego narzędzia poszerzyłaby dostęp bez administratora.
+- **Zmiana:** rejestracja, która usuwa albo zmienia `additionalGroup` już zarejestrowanego narzędzia, jest `pending_approval` (`change: changed`) niezależnie od ryzyka, jak zmiana ryzyka dla `UPDATE` i `DESTRUCTIVE`; dodanie `additionalGroup` do nowego albo istniejącego narzędzia zawęża i podlega normalnej regule. Tekst w README (rejestr i przypinanie definicji) i w opisie `registerServer`; referencja `registrationDecision` w `scripts/lib/registry-approval.mjs`, wektory `registry-approval/registration-*`.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

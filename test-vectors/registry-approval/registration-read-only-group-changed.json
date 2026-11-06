@@ -1,0 +1,20 @@
+{
+  "description": "A READ_ONLY tool changes its additionalGroup: pending as well.",
+  "input": {
+    "approved": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "additionalGroup": "mcp-opensearch-ops"
+    },
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "additionalGroup": "mcp-opensearch-support"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "changed",
+    "pendingReason": "additional_group_changed"
+  }
+}
