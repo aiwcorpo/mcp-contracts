@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cedarpolicy.BasicAuthorizationEngine;
-import com.cedarpolicy.model.AuthorizationResponse;
 import com.cedarpolicy.model.EntityValidationRequest;
+import com.cedarpolicy.model.schema.Schema;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Path;
@@ -34,79 +34,113 @@ class EntityBuilderVectorTest {
         JsonNode expected = vector.get("expected");
         String level = vector.get("level").asText();
         if (expected.has("error")) {
-            var e = assertThrows(EntityBuilderException.class, () -> VectorInputs.build(level, vector.get("input"), vector.get("staticEntities").asText()));
+            var e = assertThrows(EntityBuilderException.class, () -> VectorInputs.build(level, vector.get("input"), vector));
             assertEquals(expected.get("error").asText(), e.code().wireCode());
             return;
         }
-        CedarRequest built = VectorInputs.build(level, vector.get("input"), vector.get("staticEntities").asText());
+        CedarRequest built = VectorInputs.build(level, vector.get("input"), vector);
         assertEquals(expected, VectorInputs.toJson(built));
+    }
 
-        engine.validateEntities(new EntityValidationRequest(CedarFixtures.schema(), new ArrayList<>(built.entities())));
-        AuthorizationResponse response = engine.isAuthorized(
-                built.toAuthorizationRequest(CedarFixtures.schema()), CedarFixtures.examplePolicies(), built.cedarEntities());
+    /** The entities and the request of every vector conform to the base schema composed with the fragments of the example systems. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("vectors")
+    void builtEntitiesValidateAgainstTheComposedSchema(Path file) throws Exception {
+        JsonNode vector = JSON.readTree(file.toFile());
+        if (vector.get("expected").has("error")) {
+            return;
+        }
+        CedarRequest built = VectorInputs.build(vector.get("level").asText(), vector.get("input"), vector);
+        Schema schema = PolicyFragments.composeSchema(composedFragments(vector));
+        engine.validateEntities(new EntityValidationRequest(schema, new ArrayList<>(built.entities())));
+        var response = engine.isAuthorized(built.toAuthorizationRequest(schema), new com.cedarpolicy.model.policy.PolicySet(), built.cedarEntities());
         assertTrue(response.success.isPresent(), () -> file + ": " + response);
     }
 
+    /** One schema text of every fragment whose resource types the vector loads. */
+    private static String composedFragments(JsonNode vector) {
+        StringBuilder text = new StringBuilder();
+        vector.get("resourceTypes").forEach(path -> {
+            String dir = path.asText().substring(0, path.asText().lastIndexOf('/'));
+            text.append(ContractFiles.read(ContractFiles.resolve(dir + "/schema.cedarschema"))).append('\n');
+        });
+        return text.toString();
+    }
+
     @Test
-    void mappingRejectsParentsThatAreNotScopes() throws Exception {
-        var entities = com.cedarpolicy.model.entity.Entities.parse(
-                "[{\"uid\":{\"type\":\"UserGroup\",\"id\":\"mcp-x\"},\"attrs\":{},\"parents\":[{\"type\":\"UserGroup\",\"id\":\"mcp-y\"}]}]");
-        var e = assertThrows(EntityBuilderException.class, () -> ScopeMapping.fromStaticEntities(entities.getEntities()));
-        assertEquals(EntityBuilderException.Code.INTERNAL_ERROR, e.code());
-        var badId = com.cedarpolicy.model.entity.Entities.parse(
-                "[{\"uid\":{\"type\":\"UserGroup\",\"id\":\"mcp-x\"},\"attrs\":{},\"parents\":[{\"type\":\"ResourceScope\",\"id\":\"Jira::Issue/ABC-1\"}]}]");
-        assertThrows(EntityBuilderException.class, () -> ScopeMapping.fromStaticEntities(badId.getEntities()));
+    void mappingRejectsScopeIdsThatDoNotMatchTheDeclarations() {
+        ResourceTypes types = ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve("cedar/examples/systems/jira/resource-types.json")));
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.of(types, Map.of("mcp-x", List.of("Jira::Issue/ABC-1"))));
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.of(types, Map.of("mcp-x", List.of("Jira::Project/abc"))));
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.of(types, Map.of("mcp-x", List.of("Mystery::Place/x"))));
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.of(types, Map.of("mcp-x", List.of("Jira::Project/"))));
+    }
+
+    @Test
+    void registeredMappingSkipsOnlyTypesNoServerDeclares() {
+        ResourceTypes types = ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve("cedar/examples/systems/jira/resource-types.json")));
+        ScopeMapping mapping = ScopeMapping.ofRegistered(types,
+                Map.of("mcp-x", List.of("Jira::Project/ABC", "Removed::Thing/foo")));
+        assertEquals(List.of("Jira::Project/ABC"), List.copyOf(mapping.scopesOf("mcp-x")));
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.ofRegistered(types, Map.of("mcp-x", List.of("Jira::Project/abc"))));
+    }
+
+    @Test
+    void mappingFromThePolicyDataShape() {
+        ResourceTypes types = ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve("cedar/examples/systems/jira/resource-types.json")));
+        ScopeMapping mapping = ScopeMapping.fromJson(types,
+                "[{\"group\":\"mcp-a\",\"scopes\":[\"Jira::Project/DEF\",\"Jira::Project/ABC\"]},{\"group\":\"mcp-b\",\"scopes\":[]}]", false);
+        assertEquals(List.of("Jira::Project/ABC", "Jira::Project/DEF"), List.copyOf(mapping.scopesOf("mcp-a")));
+        assertTrue(mapping.scopesOf("mcp-b").isEmpty());
+        assertThrows(EntityBuilderException.class, () -> ScopeMapping.fromJson(types,
+                "[{\"group\":\"mcp-a\",\"scopes\":[]},{\"group\":\"mcp-a\",\"scopes\":[]}]", false));
     }
 
     @Test
     void longOverflowIsABuilderError() {
         Caller caller = Caller.of("u", "u", List.of(), "claude-code");
-        ToolDescriptor tool = new ToolDescriptor("mcp-jira", "jira", "get_issue", "READ_ONLY", "read", List.of());
-        var resource = ResolvedResource.of("Jira::Project", "ABC",
-                Map.of("key", "ABC", "size", new java.math.BigInteger("99999999999999999999")));
-        assertThrows(EntityBuilderException.class, () -> new EntityBuilder().forResource(caller, tool, Map.of(), resource));
+        ToolDescriptor tool = new ToolDescriptor("mcp-notes", "notes", "get_folder", "READ_ONLY", "read", List.of());
+        ResourceTypes types = ResourceTypes.of(List.of(new ResourceTypeDeclaration("Notes::Counter", List.of("size"),
+                java.util.Optional.empty(), java.util.Optional.empty(), "^[a-z]+$", java.util.Optional.empty(), false, java.util.Optional.empty())));
+        var resource = ResolvedResource.of("Notes::Counter", "c", Map.of("size", new java.math.BigInteger("99999999999999999999")));
+        assertThrows(EntityBuilderException.class,
+                () -> new EntityBuilder(types, ScopeMapping.empty()).forResource(caller, tool, Map.of(), resource));
     }
 
     @Test
-    void queryConstraintComesFromTheMapping() {
+    void queryConstraintComesFromTheMapping() throws Exception {
+        JsonNode vector = JSON.readTree("{\"resourceTypes\": [\"cedar/examples/systems/jira/resource-types.json\","
+                + " \"test-vectors/fixtures/notes/resource-types.json\"], \"scopeMapping\": \"test-vectors/fixtures/scope-mapping.json\"}");
         Caller caller = Caller.of("u", "u", List.of("mcp-jira-proj-ABC", "mcp-jira-proj-DEF"), "claude-code");
-        QueryConstraint c = VectorInputs.builder("cedar/examples/static-entities.json").queryConstraint(caller, "Jira::Project");
-        assertEquals(List.of("ABC", "DEF"), List.copyOf(c.granted()));
-        assertTrue(new EntityBuilder().queryConstraint(caller, "Jira::Project").granted().isEmpty());
+        EntityBuilder builder = VectorInputs.builder(vector);
+        assertEquals(List.of("ABC", "DEF"), List.copyOf(builder.queryConstraint(caller, "Jira::Project").granted()));
+        assertTrue(new EntityBuilder(builder.resourceTypes(), ScopeMapping.empty()).queryConstraint(caller, "Jira::Project").granted().isEmpty());
+        assertThrows(EntityBuilderException.class, () -> builder.queryConstraint(caller, "Jira::Issue"));
     }
 
     @Test
     void pathPrefixesStopAtSlashes() {
-        assertEquals(List.of("team-a", "team-a/sub", "team-a/sub/app"), List.copyOf(ResourceScopes.pathPrefixes("team-a/sub/app")));
+        assertEquals(List.of("team-a", "team-a/sub", "team-a/sub/app"), List.copyOf(Scopes.pathPrefixes("team-a/sub/app")));
     }
 
     @Test
-    void namePrefixesStopAtDashes() {
+    void dashPrefixesStopAtDashes() {
         assertEquals(List.of("logs", "logs-team", "logs-team-a", "logs-team-a-2026.10"),
-                List.copyOf(ScopeGroups.namePrefixes("logs-team-a-2026.10")));
-        assertEquals(List.of("logs"), List.copyOf(ScopeGroups.namePrefixes("logs")));
-    }
-
-    @Test
-    void refsFieldNaming() {
-        assertEquals("jiraProject", ScopeGroups.refsField("Jira::Project"));
-        assertEquals("opensearchIndex", ScopeGroups.refsField("OpenSearch::Index"));
-        assertEquals("servicedeskTicket", ScopeGroups.refsField("ServiceDesk::Ticket"));
+                List.copyOf(Scopes.dashPrefixes("logs-team-a-2026.10")));
+        assertEquals(List.of("logs"), List.copyOf(Scopes.dashPrefixes("logs")));
     }
 
     @Test
     void integralNumbersFromAnyJsonParserBecomeIds() {
-        ToolDescriptor tool = new ToolDescriptor("mcp-servicedesk", "servicedesk", "get_ticket", "READ_ONLY", "read",
-                List.of(new ResourceRef("ticketId", "ServiceDesk::Ticket")));
+        ResourceTypes types = ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve("test-vectors/fixtures/notes/resource-types.json")));
+        ToolDescriptor tool = new ToolDescriptor("mcp-notes", "notes", "get_note", "READ_ONLY", "read",
+                List.of(new ResourceRef("noteId", "Notes::Note")));
         Caller caller = Caller.of("u", "u", List.of(), "claude-code");
+        EntityBuilder builder = new EntityBuilder(types, ScopeMapping.empty());
         for (Object id : List.of(4711, 4711L, 4711.0d, new java.math.BigDecimal("4711"))) {
-            CedarRequest request = new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", id));
-            var refs = (com.cedarpolicy.value.CedarMap) request.context().get("refs");
-            assertEquals(List.of(new com.cedarpolicy.value.PrimString("4711")), List.copyOf(
-                    (com.cedarpolicy.value.CedarList) refs.get("servicedeskTicket")));
+            assertEquals(List.of("4711"), builder.resourceValues(tool, Map.of("noteId", id)).stream().map(Map.Entry::getValue).toList());
         }
-        var e = assertThrows(EntityBuilderException.class, () ->
-                new EntityBuilder().forToolCall(caller, tool, Map.of("ticketId", 47.5)));
+        var e = assertThrows(EntityBuilderException.class, () -> builder.forToolCall(caller, tool, Map.of("noteId", 47.5)));
         assertEquals(EntityBuilderException.Code.INVALID_ARGUMENT, e.code());
     }
 

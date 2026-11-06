@@ -1,0 +1,114 @@
+{
+  "description": "A neutral system: the same two platform policies decide, nothing names it.",
+  "covers": [],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "notesreader",
+        "grp": [
+          "mcp-notes-read"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "get_note",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "noteId",
+            "type": "Notes::Note"
+          }
+        ]
+      },
+      "arguments": {
+        "noteId": "17"
+      }
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "notes__get_note"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "notes__get_note"
+      },
+      "attrs": {
+        "server": "mcp-notes",
+        "name": "get_note",
+        "risk": "READ_ONLY",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        }
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000006"
+      },
+      "attrs": {
+        "username": "notesreader",
+        "client": "claude-code",
+        "scopes": []
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "platform-call-by-group"
+    ]
+  }
+}

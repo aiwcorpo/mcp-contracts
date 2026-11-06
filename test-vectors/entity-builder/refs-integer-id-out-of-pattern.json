@@ -1,0 +1,38 @@
+{
+  "description": "An integer that does not match the idPattern (leading zero is impossible, so 0) is refused.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_note",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "noteId",
+          "type": "Notes::Note"
+        }
+      ]
+    },
+    "arguments": {
+      "noteId": 0
+    }
+  },
+  "expected": {
+    "error": "invalid_argument"
+  }
+}

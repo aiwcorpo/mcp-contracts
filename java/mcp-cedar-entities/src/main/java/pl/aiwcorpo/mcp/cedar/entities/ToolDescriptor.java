@@ -30,6 +30,21 @@ public record ToolDescriptor(
         resourceRefs = List.copyOf(Objects.requireNonNull(resourceRefs, "resourceRefs"));
     }
 
+    /**
+     * @return the group a user needs to call the tool: {@code mcp-<system>-read} for READ_ONLY, {@code -write} for UPDATE and
+     *         {@code -destructive} for DESTRUCTIVE (C9), the only place where a group name is derived; the value of
+     *         {@code Tool.requiredGroup}
+     * @throws EntityBuilderException {@code INTERNAL_ERROR} for another risk
+     */
+    public String requiredGroup() {
+        return "mcp-" + system + "-" + switch (risk) {
+            case "READ_ONLY" -> "read";
+            case "UPDATE" -> "write";
+            case "DESTRUCTIVE" -> "destructive";
+            default -> throw new EntityBuilderException(EntityBuilderException.Code.INTERNAL_ERROR, "unknown risk " + risk);
+        };
+    }
+
     /** @return client-visible name {@code <system>__<name>}, also the id of the Cedar {@code Tool} entity */
     public String qualifiedName() {
         return system + "__" + name;

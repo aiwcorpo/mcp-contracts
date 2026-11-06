@@ -1,8 +1,18 @@
 {
   "description": "An element whose project the resolver returned without category is dropped (CC-062).",
-  "staticEntities": "cedar/examples/static-entities.json",
-  "policies": "cedar/examples",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "cedar/examples/systems/jira/schema.cedarschema",
+    "policies": [
+      "cedar/examples/systems/jira"
+    ]
+  },
   "input": {
+    "credentialType": "user-oauth",
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
       "usr": "reader",
@@ -39,8 +49,14 @@
         "attrs": {
           "key": "ABC",
           "category": "Software"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/ABC"
+      ]
     },
     {
       "type": "Jira::Issue",
@@ -53,8 +69,14 @@
         "id": "ABC",
         "attrs": {
           "key": "ABC"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/ABC"
+      ]
     }
   ],
   "expected": {

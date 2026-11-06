@@ -1,61 +1,13 @@
 // JavaScript implementation of cedar/entity-builder.md, used to generate vectors. The Java library
 // java/mcp-cedar-entities must produce the same output; two implementations agreeing is what makes the vectors
-// trustworthy.
+// trustworthy. It knows no resource type: everything comes from the resourceTypes declarations it is given.
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { path as contractPath } from './contracts.mjs';
+import { anchoredPattern } from './manifest-rules.mjs';
 
-// Per-system id patterns (common.schema.json, CC-056): one source for the schemas and this builder.
-const COMMON = JSON.parse(readFileSync(fileURLToPath(new URL('../../schemas/common.schema.json', import.meta.url)), 'utf8')).$defs;
-const ID_PATTERNS = Object.fromEntries(Object.entries(COMMON.ResourceIdPatterns.const).map(([type, kinds]) => [type,
-  Object.fromEntries(Object.entries(kinds).map(([kind, def]) => [kind, new RegExp(COMMON[def].pattern, 'u')]))]));
-export function validId(type, kind, id) {
-  const pattern = ID_PATTERNS[type]?.[kind];
-  return pattern !== undefined && typeof id === 'string' && pattern.test(id);
-}
-
-const SCOPE_FIELDS = ['jiraProjects', 'confluenceSpaces', 'gitlabGroups', 'opensearchIndexPrefixes', 'servicedeskQueues'];
-// Scope field of principal.scopes for each grantable flat resource type.
-const SCOPE_FIELD_BY_TYPE = {
-  'Jira::Project': 'jiraProjects',
-  'Confluence::Space': 'confluenceSpaces',
-  'GitLab::Group': 'gitlabGroups',
-  'OpenSearch::Index': 'opensearchIndexPrefixes',
-  'ServiceDesk::Queue': 'servicedeskQueues',
-};
-// Types a mapping in entities/static.json may grant (CC-037). Confluence::Page grants a page tree.
-export const SCOPE_TYPES = [...Object.keys(SCOPE_FIELD_BY_TYPE), 'Confluence::Page'];
-// context.refs fields whose ids are grantable flat scopes and therefore become ResourceScope entities.
-const SCOPE_REF_TYPES = new Set(['Jira::Project', 'Confluence::Space', 'GitLab::Group', 'ServiceDesk::Queue']);
-const RESOURCE_TYPES = new Set([
-  'Jira::Project', 'Jira::Issue', 'Confluence::Space', 'Confluence::Page', 'GitLab::Group', 'GitLab::Project',
-  'OpenSearch::Index', 'ServiceDesk::Queue', 'ServiceDesk::Ticket',
-]);
-const PARENT_ATTRIBUTE = {
-  'Jira::Issue': 'project',
-  'Confluence::Page': 'space',
-  'GitLab::Project': 'group',
-  'ServiceDesk::Ticket': 'queue',
-};
-// Classification attributes a resolver must deliver (CC-062): without them a Restricted rule could not match.
-const REQUIRED_CLASSIFICATION = {
-  'Jira::Project': ['category', (v) => typeof v === 'string'],
-  'Confluence::Space': ['labels', Array.isArray],
-  'OpenSearch::Index': ['tags', Array.isArray],
-};
-// Classification attributes and their shape; values are normalized to one canonical form (CC-067).
-const CLASSIFICATION = {
-  'Jira::Project': ['category', 'string'],
-  'Confluence::Space': ['labels', 'set'],
-  'OpenSearch::Index': ['tags', 'set'],
-  'GitLab::Group': ['classification', 'set'],
-  'GitLab::Project': ['classification', 'set'],
-  'ServiceDesk::Queue': ['classification', 'set'],
-};
-// Same as Java String.trim() plus ASCII-only lower case, so both builders agree byte for byte.
-export const normalizeClassification = (value) => value.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '').replace(/[A-Z]/g, (c) => c.toLowerCase());
-const RISKS = new Set(['READ_ONLY', 'UPDATE', 'DESTRUCTIVE']);
-const ACTIONS = new Set(['read', 'update', 'delete', 'admin']);
+const TYPE = /^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$/;
+const ATTRIBUTE = /^[a-z][A-Za-z0-9]*$/;
 
 export class BuilderError extends Error {
   constructor(code, message) {
@@ -64,6 +16,63 @@ export class BuilderError extends Error {
   }
 }
 
+/** Declarations (the resourceTypes array of a manifest) as a registry; throws on an inconsistent set. */
+export function resourceTypes(declarations) {
+  const byType = new Map();
+  for (const d of declarations) {
+    if (byType.has(d.type)) throw new Error(`resource type declared twice: ${d.type}`);
+    byType.set(d.type, d);
+  }
+  const registry = new Map();
+  for (const d of byType.values()) {
+    const namespace = d.type.split('::')[0];
+    if (!TYPE.test(d.type)) throw new Error(`not a resource type: ${d.type}`);
+    const attributes = d.attributes ?? [];
+    if (new Set(attributes).size !== attributes.length || attributes.some((a) => !ATTRIBUTE.test(a) || a === 'scopes')) {
+      throw new Error(`${d.type}: attributes not allowed`);
+    }
+    if ((d.parent === undefined) !== (d.parentAttribute === undefined)) throw new Error(`${d.type}: parent and parentAttribute go together`);
+    if (d.parent !== undefined) {
+      if (!byType.has(d.parent) || d.parent.split('::')[0] !== namespace) throw new Error(`${d.type}: parent not declared in the same namespace`);
+      if (!ATTRIBUTE.test(d.parentAttribute) || d.parentAttribute === 'scopes' || attributes.includes(d.parentAttribute)) {
+        throw new Error(`${d.type}: parentAttribute not allowed`);
+      }
+    }
+    if (!anchoredPattern(d.idPattern)) throw new Error(`${d.type}: idPattern must be anchored`);
+    if (d.scopePattern !== undefined && !anchoredPattern(d.scopePattern)) throw new Error(`${d.type}: scopePattern must be anchored`);
+    if (d.earlyScopeCheck && d.scopePattern === undefined) throw new Error(`${d.type}: earlyScopeCheck needs a scopePattern`);
+    if (d.classification && !attributes.includes(d.classification.attribute)) throw new Error(`${d.type}: classification attribute not in attributes`);
+    registry.set(d.type, {
+      declaration: { ...d, attributes },
+      id: new RegExp(d.idPattern, 'u'),
+      scope: d.scopePattern === undefined ? null : new RegExp(d.scopePattern, 'u'),
+    });
+  }
+  return registry;
+}
+
+/** Reads and joins resource-types.json files (paths relative to the repository root). */
+export function loadResourceTypes(paths) {
+  return resourceTypes(paths.flatMap((p) => JSON.parse(readFileSync(contractPath(p), 'utf8'))));
+}
+
+export const validId = (types, type, id) => typeof id === 'string' && (types.get(type)?.id.test(id) ?? false);
+export const validScopeLocalId = (types, type, id) => typeof id === 'string' && (types.get(type)?.scope?.test(id) ?? false);
+
+// Scope id <Type>/<local>; the type is everything before the first slash.
+function scopeType(types, scopeId) {
+  const slash = scopeId.indexOf('/');
+  if (slash <= 0 || slash === scopeId.length - 1) return undefined;
+  const type = scopeId.slice(0, slash);
+  return validScopeLocalId(types, type, scopeId.slice(slash + 1)) ? type : undefined;
+}
+
+// Same as Java String.trim() plus ASCII-only lower case, so both builders agree byte for byte.
+export const normalizeClassification = (value) => value.replace(/^[\u0000- ]+|[\u0000- ]+$/g, '').replace(/[A-Z]/g, (c) => c.toLowerCase());
+const RISKS = new Set(['READ_ONLY', 'UPDATE', 'DESTRUCTIVE']);
+const ACTIONS = new Set(['read', 'update', 'delete', 'admin']);
+const REQUIRED_GROUP_SUFFIX = { READ_ONLY: 'read', UPDATE: 'write', DESTRUCTIVE: 'destructive' };
+
 // Array.prototype.sort without a comparator orders by UTF-16 code units, like Java String.compareTo.
 const sortedSet = (values) => [...new Set(values)].sort();
 const uid = (type, id) => ({ type, id });
@@ -71,40 +80,29 @@ const ref = (type, id) => ({ __entity: { type, id } });
 const scopeId = (type, id) => `${type}/${id}`;
 const scopeRefs = (ids) => sortedSet(ids).map((id) => ref('ResourceScope', id));
 
-export function refsField(resourceType) {
-  const [namespace, type] = resourceType.split('::');
-  return namespace.toLowerCase() + type;
-}
-
-export function namePrefixes(name) {
-  const parts = name.split('-');
-  return sortedSet(parts.map((_, i) => parts.slice(0, i + 1).join('-')));
-}
-
 export function pathPrefixes(path) {
   const parts = path.split('/');
   return sortedSet(parts.map((_, i) => parts.slice(0, i + 1).join('/')));
 }
 
-/** Parses the scope mapping out of entities/static.json (Cedar entity JSON). */
-export function scopeMapping(staticEntities) {
+export function dashPrefixes(name) {
+  const parts = name.split('-');
+  return sortedSet(parts.map((_, i) => parts.slice(0, i + 1).join('-')));
+}
+
+/** Parses the scopeMapping of the policy data ([{group, scopes}]) against the declared types. */
+export function scopeMapping(types, entries, { skipUndeclared = false } = {}) {
   const mapping = new Map();
-  for (const entity of staticEntities) {
-    if (entity.uid.type !== 'UserGroup') continue;
+  for (const entry of entries) {
     const scopes = [];
-    for (const parent of entity.parents ?? []) {
-      if (parent.type !== 'ResourceScope') {
-        throw new BuilderError('internal_error', `UserGroup ${entity.uid.id}: parent ${parent.type} is not a ResourceScope`);
-      }
-      const slash = parent.id.indexOf('/');
-      const type = parent.id.slice(0, slash);
-      if (slash <= 0 || !SCOPE_TYPES.includes(type) || !validId(type, 'scope', parent.id.slice(slash + 1))) {
-        throw new BuilderError('internal_error', `UserGroup ${entity.uid.id}: invalid scope id ${parent.id}`);
-      }
-      scopes.push(parent.id);
+    for (const id of entry.scopes ?? []) {
+      const slash = id.indexOf('/');
+      if (skipUndeclared && !types.has(slash > 0 ? id.slice(0, slash) : '')) continue;
+      if (scopeType(types, id) === undefined) throw new BuilderError('internal_error', `group ${entry.group}: invalid scope id ${id}`);
+      scopes.push(id);
     }
-    if (mapping.has(entity.uid.id)) throw new BuilderError('internal_error', `UserGroup ${entity.uid.id} listed twice`);
-    mapping.set(entity.uid.id, sortedSet(scopes));
+    if (!entry.group || mapping.has(entry.group)) throw new BuilderError('internal_error', `group missing or listed twice: ${entry.group}`);
+    mapping.set(entry.group, sortedSet(scopes));
   }
   return mapping;
 }
@@ -126,7 +124,26 @@ function argumentIds(argumentName, value) {
 
 const CREDENTIAL_TYPES = new Set(['user-oauth', 'user-secret', 'token-exchange', 'service-account']);
 
-function buildContext({ caller, tool, arguments: args = {}, credentialType }) {
+function declaration(types, type) {
+  const entry = types.get(type);
+  if (!entry) throw new BuilderError('internal_error', `unknown resource type ${type}`);
+  return entry.declaration;
+}
+
+/** Every value of every resourceRef argument as { type, id }, in argument order. */
+export function resourceValues(types, tool, args = {}) {
+  const values = [];
+  for (const { argument, type } of tool.resourceRefs) {
+    declaration(types, type);
+    for (const id of argumentIds(argument, args[argument])) {
+      if (!validId(types, type, id)) throw new BuilderError('invalid_argument', `${argument}: not a valid ${type} id`);
+      values.push({ type, id });
+    }
+  }
+  return values;
+}
+
+function buildContext(types, { caller, tool, arguments: args = {}, credentialType }) {
   if (!RISKS.has(tool.risk)) throw new BuilderError('internal_error', `unknown risk ${tool.risk}`);
   if (!ACTIONS.has(tool.action)) throw new BuilderError('internal_error', `unknown action ${tool.action}`);
   const context = { client: caller.azp };
@@ -138,34 +155,17 @@ function buildContext({ caller, tool, arguments: args = {}, credentialType }) {
     if (!Number.isInteger(caller.mfa) || caller.mfa < 0) throw new BuilderError('invalid_argument', 'mfa age must be >= 0');
     context.mfaAge = caller.mfa;
   }
-  const refIds = {};
-  for (const { argument, type } of tool.resourceRefs) {
-    if (!RESOURCE_TYPES.has(type)) throw new BuilderError('internal_error', `unknown resource type ${type}`);
-    const field = refsField(type);
-    const ids = argumentIds(argument, args[argument]);
-    for (const id of ids) {
-      if (!validId(type, 'resource', id)) throw new BuilderError('invalid_argument', `${argument}: not a valid ${type} id`);
-    }
-    refIds[field] = { type, ids: [...(refIds[field]?.ids ?? []), ...ids] };
-  }
-  context.refs = {};
-  for (const [field, { type, ids }] of Object.entries(refIds)) {
-    context.refs[field] = SCOPE_REF_TYPES.has(type) ? scopeRefs(ids.map((id) => scopeId(type, id))) : sortedSet(ids);
-  }
+  const early = resourceValues(types, tool, args)
+    .filter(({ type }) => types.get(type).declaration.earlyScopeCheck)
+    .map(({ type, id }) => scopeId(type, id));
+  context.refs = scopeRefs(early);
   return context;
 }
 
 function principalEntities(caller, mapping) {
   const groups = sortedSet(caller.grp.filter((g) => g.startsWith('mcp-')));
-  const byField = Object.fromEntries(SCOPE_FIELDS.map((f) => [f, []]));
-  for (const group of groups) {
-    for (const id of mapping.get(group) ?? []) {
-      const field = SCOPE_FIELD_BY_TYPE[id.slice(0, id.indexOf('/'))];
-      if (field) byField[field].push(id);
-    }
-  }
-  const scopes = Object.fromEntries(SCOPE_FIELDS.map((f) => [f, scopeRefs(byField[f])]));
-  const attrs = { username: caller.usr, client: caller.azp, scopes };
+  const userScopes = sortedSet(groups.flatMap((g) => mapping.get(g) ?? []));
+  const attrs = { username: caller.usr, client: caller.azp, scopes: scopeRefs(userScopes) };
   if (caller.mfa !== undefined) attrs.mfaAge = caller.mfa;
   return [
     { uid: uid('User', caller.sub), attrs, parents: groups.map((g) => uid('UserGroup', g)) },
@@ -173,82 +173,48 @@ function principalEntities(caller, mapping) {
   ];
 }
 
-function resourceScopeIds(resource, parent) {
-  const a = resource.attrs ?? {};
-  switch (resource.type) {
-    case 'Jira::Project': return [scopeId('Jira::Project', resource.id)];
-    case 'Jira::Issue': return [scopeId('Jira::Project', parent.id)];
-    case 'Confluence::Space': return [scopeId('Confluence::Space', resource.id)];
-    case 'Confluence::Page':
-      return [scopeId('Confluence::Space', parent.id),
-        ...(a.ancestorIds ?? []).map((p) => scopeId('Confluence::Page', p)), scopeId('Confluence::Page', resource.id)];
-    case 'GitLab::Group': return pathPrefixes(resource.id).map((p) => scopeId('GitLab::Group', p));
-    case 'GitLab::Project': return pathPrefixes(parent.id).map((p) => scopeId('GitLab::Group', p));
-    case 'OpenSearch::Index': return namePrefixes(resource.id).map((p) => scopeId('OpenSearch::Index', p));
-    case 'ServiceDesk::Queue': return [scopeId('ServiceDesk::Queue', resource.id)];
-    case 'ServiceDesk::Ticket': return [scopeId('ServiceDesk::Queue', parent.id)];
-    default: throw new BuilderError('internal_error', `unknown resource type ${resource.type}`);
+function normalizedClassification(type, classification, attrs) {
+  const { attribute, kind, required } = classification;
+  const value = attrs[attribute];
+  if (value === undefined || value === null) {
+    if (required) throw new BuilderError('internal_error', `${type} without ${attribute}`);
+    return;
+  }
+  if (kind === 'string') {
+    if (typeof value !== 'string') throw new BuilderError('internal_error', `${type}.${attribute} must be a string`);
+    attrs[attribute] = normalizeClassification(value);
+  } else {
+    if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) {
+      throw new BuilderError('internal_error', `${type}.${attribute} must be a list of strings`);
+    }
+    attrs[attribute] = sortedSet(value.map(normalizeClassification));
   }
 }
 
-function systemEntity(resource, parent) {
-  if (!validId(resource.type, 'resource', resource.id)) {
-    throw new BuilderError('internal_error', `resolved ${resource.type} has an invalid id`);
-  }
-  for (const a of resource.attrs?.ancestorIds ?? []) {
-    if (!validId('Confluence::Page', 'resource', a)) throw new BuilderError('internal_error', 'invalid ancestor page id');
-  }
-  // Classification of the ancestor groups of a GitLab group or project (CC-129): the server passes it as
-  // attrs.ancestorClassifications { <group path>: [topics] } for exactly the groups above a group, or all groups on the path of a
-  // project. The builder turns it into inheritedClassification; missing or incomplete data refuses the resource.
-  let inherited;
-  if (resource.type === 'GitLab::Group' || resource.type === 'GitLab::Project') {
-    const given = resource.attrs?.ancestorClassifications;
-    const expected = resource.type === 'GitLab::Group' ? pathPrefixes(resource.id).slice(0, -1) : pathPrefixes(parent?.id ?? '');
-    if (given === null || given === undefined || typeof given !== 'object' || Array.isArray(given)) {
-      throw new BuilderError('internal_error', `${resource.type} without ancestorClassifications`);
-    }
-    const keys = Object.keys(given).sort();
-    if (keys.length !== expected.length || [...expected].sort().some((k, i) => k !== keys[i])) {
-      throw new BuilderError('internal_error', `${resource.type} ancestorClassifications do not match the ancestor groups`);
-    }
-    inherited = [];
-    for (const topics of Object.values(given)) {
-      if (!Array.isArray(topics) || topics.some((v) => typeof v !== 'string')) {
-        throw new BuilderError('internal_error', `${resource.type}.ancestorClassifications must hold lists of strings`);
-      }
-      inherited.push(...topics.map(normalizeClassification));
-    }
-  }
-  const required = REQUIRED_CLASSIFICATION[resource.type];
-  if (required && !required[1](resource.attrs?.[required[0]])) {
-    throw new BuilderError('internal_error', `${resource.type} without ${required[0]}`);
-  }
+function resourceEntity(types, resource, parent) {
+  const d = declaration(types, resource.type);
+  if (!validId(types, resource.type, resource.id)) throw new BuilderError('internal_error', `resolved ${resource.type} has an invalid id`);
+  const input = Object.fromEntries(Object.entries(resource.attrs ?? {}).filter(([, v]) => v !== null && v !== undefined));
+  if (d.classification) normalizedClassification(resource.type, d.classification, input);
   const out = {};
-  for (const [k, v] of Object.entries(resource.attrs ?? {})) {
-    if (k === 'ancestorClassifications') continue;
-    if (v !== null && v !== undefined) out[k] = k === 'ancestorIds' ? sortedSet(v) : v;
+  for (const [name, value] of Object.entries(input)) {
+    if (!d.attributes.includes(name)) throw new BuilderError('internal_error', `${resource.type}: attribute ${name} is not declared`);
+    out[name] = value;
   }
-  if (inherited) out.inheritedClassification = sortedSet(inherited);
-  const classification = CLASSIFICATION[resource.type];
-  if (classification && out[classification[0]] !== undefined) {
-    const [name, shape] = classification;
-    if (shape === 'string') {
-      if (typeof out[name] !== 'string') throw new BuilderError('internal_error', `${resource.type}.${name} must be a string`);
-      out[name] = normalizeClassification(out[name]);
-    } else {
-      if (!Array.isArray(out[name]) || out[name].some((v) => typeof v !== 'string')) {
-        throw new BuilderError('internal_error', `${resource.type}.${name} must be a list of strings`);
-      }
-      out[name] = sortedSet(out[name].map(normalizeClassification));
-    }
-  }
-  if (PARENT_ATTRIBUTE[resource.type]) {
+  let parents = [];
+  if (d.parent !== undefined) {
     if (!parent) throw new BuilderError('internal_error', `${resource.type} needs its parent`);
-    out[PARENT_ATTRIBUTE[resource.type]] = ref(parent.type, parent.id);
+    if (parent.type !== d.parent) throw new BuilderError('internal_error', `${resource.type} needs a parent of type ${d.parent}`);
+    out[d.parentAttribute] = ref(parent.type, parent.id);
+    parents = [uid(parent.type, parent.id)];
+  } else if (parent) {
+    throw new BuilderError('internal_error', `${resource.type} declares no parent`);
   }
-  out.scopes = scopeRefs(resourceScopeIds(resource, parent));
-  return { uid: uid(resource.type, resource.id), attrs: out, parents: parent ? [uid(parent.type, parent.id)] : [] };
+  for (const scope of resource.scopes ?? []) {
+    if (scopeType(types, scope) === undefined) throw new BuilderError('internal_error', `${resource.type}: invalid scope id ${scope}`);
+  }
+  out.scopes = scopeRefs(resource.scopes ?? []);
+  return { uid: uid(resource.type, resource.id), attrs: out, parents };
 }
 
 function sortEntities(entities) {
@@ -258,23 +224,28 @@ function sortEntities(entities) {
   });
 }
 
-export function build(level, input, staticEntities) {
+/** Builds { principal, action, resource, context, entities } for level 'gateway' or 'server'. */
+export function build(level, input, types, mapping) {
   const { caller, tool } = input;
-  const mapping = scopeMapping(staticEntities);
-  const context = buildContext(input);
+  const context = buildContext(types, input);
   const entities = principalEntities(caller, mapping);
   let action;
   let resource;
   if (level === 'gateway') {
     action = uid('Action', 'call');
     resource = uid('Tool', `${tool.system}__${tool.name}`);
-    entities.push({ uid: resource, attrs: { server: tool.serverId, name: tool.name, risk: tool.risk }, parents: [] });
+    entities.push({
+      uid: resource,
+      attrs: { server: tool.serverId, name: tool.name, risk: tool.risk, requiredGroup: ref('UserGroup', `mcp-${tool.system}-${REQUIRED_GROUP_SUFFIX[tool.risk]}`) },
+      parents: [],
+    });
   } else {
-    action = uid('Action', tool.action);
     const { resource: resolved } = input;
+    const d = declaration(types, resolved.type);
+    action = uid(`${d.type.split('::')[0]}::Action`, tool.action);
     resource = uid(resolved.type, resolved.id);
-    if (resolved.parent) entities.push(systemEntity(resolved.parent, resolved.parent.parent));
-    entities.push(systemEntity(resolved, resolved.parent));
+    for (let p = resolved.parent; p; p = p.parent) entities.push(resourceEntity(types, p, p.parent));
+    entities.push(resourceEntity(types, resolved, resolved.parent));
   }
   return { principal: uid('User', caller.sub), action, resource, context, entities: sortEntities(entities) };
 }

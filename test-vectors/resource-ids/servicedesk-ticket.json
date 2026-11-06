@@ -1,4 +1,5 @@
 {
+  "resourceTypes": "cedar/examples/systems/servicedesk/resource-types.json",
   "type": "ServiceDesk::Ticket",
   "kind": "resource",
   "valid": [

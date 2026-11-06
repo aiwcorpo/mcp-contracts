@@ -1,4 +1,5 @@
 {
+  "resourceTypes": "cedar/examples/systems/confluence/resource-types.json",
   "type": "Confluence::Space",
   "kind": "resource",
   "valid": [

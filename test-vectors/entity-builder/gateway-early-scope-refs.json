@@ -1,0 +1,143 @@
+{
+  "description": "Only the ids of types declared earlyScopeCheck reach context.refs, as ResourceScope ids.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000002",
+      "usr": "writer",
+      "grp": [
+        "mcp-jira-read",
+        "mcp-jira-write",
+        "mcp-jira-proj-ABC"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "create_issue",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectKey",
+          "type": "Jira::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectKey": "ABC"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000002"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__create_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": [
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
+          }
+        }
+      ]
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "jira__create_issue"
+        },
+        "attrs": {
+          "server": "mcp-jira",
+          "name": "create_issue",
+          "risk": "UPDATE",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-jira-write"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000002"
+        },
+        "attrs": {
+          "username": "writer",
+          "client": "claude-code",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-proj-ABC"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

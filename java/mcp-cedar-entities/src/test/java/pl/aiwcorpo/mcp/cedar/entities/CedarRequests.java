@@ -4,6 +4,7 @@ import com.cedarpolicy.CedarJson;
 import com.cedarpolicy.model.AuthorizationRequest;
 import com.cedarpolicy.model.entity.Entities;
 import com.cedarpolicy.model.entity.Entity;
+import com.cedarpolicy.model.schema.Schema;
 import com.cedarpolicy.value.EntityTypeName;
 import com.cedarpolicy.value.EntityUID;
 import com.cedarpolicy.value.Value;
@@ -49,9 +50,9 @@ final class CedarRequests {
     }
 
     /** Request validated against the schema, so a context that does not conform fails the vector. */
-    static AuthorizationRequest request(JsonNode principal, JsonNode action, JsonNode resource, JsonNode context)
+    static AuthorizationRequest request(JsonNode principal, JsonNode action, JsonNode resource, JsonNode context, Schema schema)
             throws JsonProcessingException {
         return new AuthorizationRequest(uid(principal), uid(action), uid(resource),
-                Optional.of(context(context)), Optional.of(CedarFixtures.schema()), true);
+                Optional.of(context(context)), Optional.of(schema), true);
     }
 }

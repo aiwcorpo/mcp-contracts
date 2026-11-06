@@ -40,8 +40,8 @@ public record CedarRequest(
     }
 
     /**
-     * Request validated against the schema of the loaded policy bundle; a request that does not conform is
-     * reported by cedar-java as a failure, which callers must treat as deny.
+     * Request validated against the schema (the base schema, or the base schema composed with the fragment of
+     * the server); a request that does not conform is reported by cedar-java as a failure, which callers must treat as deny.
      */
     public AuthorizationRequest toAuthorizationRequest(Schema schema) {
         return new AuthorizationRequest(principal, action, resource, Optional.of(context),

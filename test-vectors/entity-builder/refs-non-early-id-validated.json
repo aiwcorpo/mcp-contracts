@@ -1,0 +1,98 @@
+{
+  "description": "A type that is not early-check still has its ids validated, and does not reach refs.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_folder",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {
+      "folderPath": "team/sub"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "notes__get_folder"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "notes__get_folder"
+        },
+        "attrs": {
+          "server": "mcp-notes",
+          "name": "get_folder",
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-read"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000006"
+        },
+        "attrs": {
+          "username": "notesreader",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

@@ -1,4 +1,5 @@
 {
+  "resourceTypes": "cedar/examples/systems/gitlab/resource-types.json",
   "type": "GitLab::Group",
   "kind": "resource",
   "valid": [

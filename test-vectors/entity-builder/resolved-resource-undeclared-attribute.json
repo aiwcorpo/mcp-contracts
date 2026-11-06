@@ -1,0 +1,60 @@
+{
+  "description": "An attribute that the manifest does not declare is refused: the schema would refuse the entity anyway.",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_note",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "noteId",
+          "type": "Notes::Note"
+        }
+      ]
+    },
+    "arguments": {
+      "noteId": "17"
+    },
+    "resource": {
+      "type": "Notes::Note",
+      "id": "17",
+      "attrs": {
+        "title": "Note 17",
+        "color": "red"
+      },
+      "parent": {
+        "type": "Notes::Notebook",
+        "id": "alpha",
+        "attrs": {
+          "name": "alpha",
+          "labels": []
+        },
+        "scopes": [
+          "Notes::Notebook/alpha"
+        ]
+      },
+      "scopes": [
+        "Notes::Notebook/alpha"
+      ]
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

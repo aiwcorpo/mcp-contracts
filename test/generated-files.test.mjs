@@ -12,14 +12,15 @@ for (const file of OPENAPI_FILES) {
   });
 }
 
-import { build, BuilderError } from '../scripts/lib/entity-builder.mjs';
+import { build, BuilderError, loadResourceTypes, scopeMapping } from '../scripts/lib/entity-builder.mjs';
 import { listJson, readJson } from '../scripts/lib/contracts.mjs';
 
 test('entity-builder vectors agree with scripts/lib/entity-builder.mjs', () => {
   for (const { name, data } of listJson('test-vectors', 'entity-builder')) {
     let actual;
     try {
-      actual = build(data.level, data.input, readJson(data.staticEntities));
+      const types = loadResourceTypes(data.resourceTypes);
+      actual = build(data.level, data.input, types, scopeMapping(types, readJson(data.scopeMapping)));
     } catch (e) {
       if (!(e instanceof BuilderError)) throw e;
       actual = { error: e.code };
@@ -31,9 +32,9 @@ test('entity-builder vectors agree with scripts/lib/entity-builder.mjs', () => {
 import { createHash, createPublicKey } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 
-test('cedar/mcp.cedarschema is frozen for the 5.0 line (byte hash, LF only)', () => {
+test('cedar/mcp.cedarschema is frozen for the 7.0 line (byte hash, LF only)', () => {
   const bytes = readFileSync(path('cedar', 'mcp.cedarschema'));
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), '51d71b2dbb7f61fd2593cf4c2f1a2373dea06e8b4431425a3f1aa24fa10a0ba5');
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), '48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5');
   assert.ok(!bytes.includes(0x0d));
 });
 

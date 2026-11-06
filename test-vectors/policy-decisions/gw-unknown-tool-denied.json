@@ -1,0 +1,135 @@
+{
+  "description": "A tool that is not in the registry has no Tool entity: deny, also for a user in every group.",
+  "covers": [
+    "unknown_tool"
+  ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000002",
+        "usr": "writer",
+        "grp": [
+          "mcp-jira-read",
+          "mcp-jira-write",
+          "mcp-jira-proj-ABC"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ]
+      },
+      "arguments": {
+        "issueKey": "ABC-1"
+      }
+    },
+    "adjustment": "remove-tool-entity"
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000002"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__get_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000002"
+      },
+      "attrs": {
+        "username": "writer",
+        "client": "claude-code",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Jira::Project/ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

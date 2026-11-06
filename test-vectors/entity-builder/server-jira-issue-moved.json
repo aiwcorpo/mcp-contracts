@@ -1,22 +1,28 @@
 {
-  "description": "Server: issue key says ABC but the system resolved it into HR (Restricted).",
+  "description": "The project comes from the system, not from the key: ABC-1 now lives in HR.",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
-      "sub": "b1a7c0de-0000-4000-8000-000000000001",
-      "usr": "reader",
+      "sub": "b1a7c0de-0000-4000-8000-000000000002",
+      "usr": "writer",
       "grp": [
-        "mcp-jira-read"
+        "mcp-jira-read",
+        "mcp-jira-write",
+        "mcp-jira-proj-ABC"
       ],
       "azp": "claude-code"
     },
     "tool": {
       "serverId": "mcp-jira",
       "system": "jira",
-      "name": "get_issue",
-      "risk": "READ_ONLY",
-      "action": "read",
+      "name": "update_issue",
+      "risk": "UPDATE",
+      "action": "update",
       "resourceRefs": [
         {
           "argument": "issueKey",
@@ -25,13 +31,13 @@
       ]
     },
     "arguments": {
-      "issueKey": "ABC-123"
+      "issueKey": "ABC-1"
     },
     "resource": {
       "type": "Jira::Issue",
-      "id": "ABC-123",
+      "id": "ABC-1",
       "attrs": {
-        "key": "ABC-123"
+        "key": "ABC-1"
       },
       "parent": {
         "type": "Jira::Project",
@@ -39,39 +45,41 @@
         "attrs": {
           "key": "HR",
           "category": "Restricted"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/HR"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/HR"
+      ]
     }
   },
   "expected": {
     "principal": {
       "type": "User",
-      "id": "b1a7c0de-0000-4000-8000-000000000001"
+      "id": "b1a7c0de-0000-4000-8000-000000000002"
     },
     "action": {
-      "type": "Action",
-      "id": "read"
+      "type": "Jira::Action",
+      "id": "update"
     },
     "resource": {
       "type": "Jira::Issue",
-      "id": "ABC-123"
+      "id": "ABC-1"
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraIssue": [
-          "ABC-123"
-        ]
-      }
+      "refs": []
     },
     "entities": [
       {
         "uid": {
           "type": "Jira::Issue",
-          "id": "ABC-123"
+          "id": "ABC-1"
         },
         "attrs": {
-          "key": "ABC-123",
+          "key": "ABC-1",
           "project": {
             "__entity": {
               "type": "Jira::Project",
@@ -116,23 +124,45 @@
       {
         "uid": {
           "type": "User",
-          "id": "b1a7c0de-0000-4000-8000-000000000001"
+          "id": "b1a7c0de-0000-4000-8000-000000000002"
         },
         "attrs": {
-          "username": "reader",
+          "username": "writer",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
+              }
+            }
+          ]
         },
         "parents": [
           {
             "type": "UserGroup",
+            "id": "mcp-jira-proj-ABC"
+          },
+          {
+            "type": "UserGroup",
             "id": "mcp-jira-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
           }
         ]
       },
@@ -140,6 +170,14 @@
         "uid": {
           "type": "UserGroup",
           "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
         },
         "attrs": {},
         "parents": []

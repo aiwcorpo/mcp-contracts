@@ -1,0 +1,109 @@
+{
+  "description": "A folder list: restricted folders are dropped at any depth, the others are kept; the query is limited to the granted folder prefixes.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
+  "input": {
+    "credentialType": "user-oauth",
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "noteswriter",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-write",
+        "mcp-notes-nb-alpha",
+        "mcp-notes-folder-team"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "search_folders",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "Notes::Folder",
+      "id": "team",
+      "attrs": {
+        "path": "team"
+      },
+      "scopes": [
+        "Notes::Folder/team"
+      ]
+    },
+    {
+      "type": "Notes::Folder",
+      "id": "team/sub",
+      "attrs": {
+        "path": "team/sub",
+        "classification": [
+          "restricted"
+        ]
+      },
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/sub"
+      ]
+    },
+    {
+      "type": "Notes::Folder",
+      "id": "team/sub/leaf",
+      "attrs": {
+        "path": "team/sub/leaf"
+      },
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/sub",
+        "Notes::Folder/team/sub/leaf"
+      ]
+    },
+    {
+      "type": "Notes::Folder",
+      "id": "platform",
+      "attrs": {
+        "path": "platform"
+      },
+      "scopes": [
+        "Notes::Folder/platform"
+      ]
+    }
+  ],
+  "expected": {
+    "kept": [
+      "team",
+      "team/sub/leaf",
+      "platform"
+    ],
+    "queryConstraints": {
+      "Notes::Folder": {
+        "granted": [
+          "team"
+        ]
+      },
+      "Notes::Notebook": {
+        "granted": [
+          "alpha"
+        ]
+      }
+    }
+  }
+}

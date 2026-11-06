@@ -25,9 +25,9 @@ class ResourceCheckVectorTest {
     @MethodSource("vectors")
     void callAllowedOnlyWhenEveryResourceIs(Path file) throws Exception {
         JsonNode vector = JSON.readTree(file.toFile());
-        EntityBuilder builder = VectorInputs.builder(vector.get("staticEntities").asText());
+        EntityBuilder builder = VectorInputs.builder(vector, vector.get("input"));
         ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(
-                new BasicAuthorizationEngine(), CedarFixtures.examplePolicies(), CedarFixtures.schema()));
+                new BasicAuthorizationEngine(), CedarFixtures.policies(vector.get("policies")), CedarFixtures.schema(vector.get("policies"))));
         JsonNode input = vector.get("input");
         List<ResolvedResource> resources = new ArrayList<>();
         vector.get("resources").forEach(r -> resources.add(VectorInputs.resource(r)));
@@ -41,9 +41,9 @@ class ResourceCheckVectorTest {
     @MethodSource("vectors")
     void checkAllEnumeratesEveryValue(Path file) throws Exception {
         JsonNode vector = JSON.readTree(file.toFile());
-        EntityBuilder builder = VectorInputs.builder(vector.get("staticEntities").asText());
+        EntityBuilder builder = VectorInputs.builder(vector, vector.get("input"));
         ResultFilter filter = new ResultFilter(builder, ResultFilter.cedarAuthorizer(
-                new BasicAuthorizationEngine(), CedarFixtures.examplePolicies(), CedarFixtures.schema()));
+                new BasicAuthorizationEngine(), CedarFixtures.policies(vector.get("policies")), CedarFixtures.schema(vector.get("policies"))));
         JsonNode input = vector.get("input");
         java.util.Map<String, ResolvedResource> byId = new java.util.HashMap<>();
         vector.get("resources").forEach(r -> byId.put(r.get("type").asText() + "/" + r.get("id").asText(), VectorInputs.resource(r)));

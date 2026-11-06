@@ -1,0 +1,119 @@
+{
+  "description": "Notes of a notebook labelled restricted are dropped through the parent attribute.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
+  "input": {
+    "credentialType": "user-oauth",
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_note",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "noteId",
+          "type": "Notes::Note"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "Notes::Note",
+      "id": "1",
+      "attrs": {
+        "title": "Note 1"
+      },
+      "parent": {
+        "type": "Notes::Notebook",
+        "id": "alpha",
+        "attrs": {
+          "name": "alpha",
+          "labels": []
+        },
+        "scopes": [
+          "Notes::Notebook/alpha"
+        ]
+      },
+      "scopes": [
+        "Notes::Notebook/alpha"
+      ]
+    },
+    {
+      "type": "Notes::Note",
+      "id": "2",
+      "attrs": {
+        "title": "Note 2"
+      },
+      "parent": {
+        "type": "Notes::Notebook",
+        "id": "beta",
+        "attrs": {
+          "name": "beta",
+          "labels": [
+            "restricted"
+          ]
+        },
+        "scopes": [
+          "Notes::Notebook/beta"
+        ]
+      },
+      "scopes": [
+        "Notes::Notebook/beta"
+      ]
+    },
+    {
+      "type": "Notes::Note",
+      "id": "3",
+      "attrs": {
+        "title": "Note 3"
+      },
+      "parent": {
+        "type": "Notes::Notebook",
+        "id": "alpha",
+        "attrs": {
+          "name": "alpha",
+          "labels": [
+            "draft"
+          ]
+        },
+        "scopes": [
+          "Notes::Notebook/alpha"
+        ]
+      },
+      "scopes": [
+        "Notes::Notebook/alpha"
+      ]
+    }
+  ],
+  "expected": {
+    "kept": [
+      "1",
+      "3"
+    ],
+    "queryConstraints": {
+      "Notes::Notebook": {
+        "granted": []
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "resourceTypes": "test-vectors/fixtures/notes/resource-types.json",
+  "type": "Notes::Folder",
+  "kind": "scope",
+  "valid": [
+    "team",
+    "team/sub"
+  ],
+  "invalid": [
+    "team/",
+    "team/..",
+    ""
+  ]
+}

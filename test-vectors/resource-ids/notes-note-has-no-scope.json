@@ -1,0 +1,10 @@
+{
+  "resourceTypes": "test-vectors/fixtures/notes/resource-types.json",
+  "type": "Notes::Note",
+  "kind": "scope",
+  "valid": [],
+  "invalid": [
+    "17",
+    "1"
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "description": "Archive two folders, both inside the scope.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
+  "input": {
+    "credentialType": "user-oauth",
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "noteswriter",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-write",
+        "mcp-notes-nb-alpha",
+        "mcp-notes-folder-team"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "archive_folders",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "folderPaths",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {
+      "folderPaths": [
+        "team/a",
+        "team/sub/b"
+      ]
+    }
+  },
+  "resources": [
+    {
+      "type": "Notes::Folder",
+      "id": "team/a",
+      "attrs": {
+        "path": "team/a"
+      },
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/a"
+      ]
+    },
+    {
+      "type": "Notes::Folder",
+      "id": "team/sub/b",
+      "attrs": {
+        "path": "team/sub/b"
+      },
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/sub",
+        "Notes::Folder/team/sub/b"
+      ]
+    }
+  ],
+  "expected": {
+    "allowed": true
+  }
+}

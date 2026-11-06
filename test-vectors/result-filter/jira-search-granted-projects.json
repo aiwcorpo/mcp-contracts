@@ -1,8 +1,18 @@
 {
-  "description": "Jira search: the server drops every returned issue that is Restricted or that it cannot evaluate (no category on its project); issues of granted projects are kept.",
-  "staticEntities": "cedar/examples/static-entities.json",
-  "policies": "cedar/examples",
+  "description": "Search: the server drops every returned issue that is restricted or that it cannot evaluate (no category on its project); issues of granted projects are kept, reading is not limited by scope.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "cedar/examples/systems/jira/schema.cedarschema",
+    "policies": [
+      "cedar/examples/systems/jira"
+    ]
+  },
   "input": {
+    "credentialType": "user-oauth",
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000003",
       "usr": "writer2",
@@ -44,8 +54,14 @@
         "attrs": {
           "key": "ABC",
           "category": "Software"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/ABC"
+      ]
     },
     {
       "type": "Jira::Issue",
@@ -59,8 +75,14 @@
         "attrs": {
           "key": "DEF",
           "category": "Software"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/DEF"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/DEF"
+      ]
     },
     {
       "type": "Jira::Issue",
@@ -74,8 +96,14 @@
         "attrs": {
           "key": "HR",
           "category": "Restricted"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/HR"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/HR"
+      ]
     },
     {
       "type": "Jira::Issue",

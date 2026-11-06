@@ -1,4 +1,5 @@
 {
+  "resourceTypes": "cedar/examples/systems/confluence/resource-types.json",
   "type": "Confluence::Page",
   "kind": "resource",
   "valid": [

@@ -1,96 +1,84 @@
 {
-  "description": "Archive three projects; one of them is outside the scope, so the whole call is denied.",
-  "staticEntities": "cedar/examples/static-entities.json",
-  "policies": "cedar/examples",
+  "description": "Archive three folders; one of them is outside the scope (teamx is not team), so the whole call is denied.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
   "input": {
+    "credentialType": "user-oauth",
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000007",
-      "usr": "gitlabwriter",
+      "usr": "noteswriter",
       "grp": [
-        "mcp-gitlab-read",
-        "mcp-gitlab-write",
-        "mcp-gitlab-grp-team-a"
+        "mcp-notes-read",
+        "mcp-notes-write",
+        "mcp-notes-nb-alpha",
+        "mcp-notes-folder-team"
       ],
       "azp": "claude-code"
     },
     "tool": {
-      "serverId": "mcp-gitlab",
-      "system": "gitlab",
-      "name": "archive_projects",
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "archive_folders",
       "risk": "UPDATE",
       "action": "update",
       "resourceRefs": [
         {
-          "argument": "projectPaths",
-          "type": "GitLab::Project"
+          "argument": "folderPaths",
+          "type": "Notes::Folder"
         }
       ]
     },
     "arguments": {
-      "projectPaths": [
-        "team-a/app",
-        "team-a/sub/svc",
-        "team-ab/app"
+      "folderPaths": [
+        "team/a",
+        "team/sub/b",
+        "teamx/a"
       ]
     }
   },
   "resources": [
     {
-      "type": "GitLab::Project",
-      "id": "team-a/app",
+      "type": "Notes::Folder",
+      "id": "team/a",
       "attrs": {
-        "path": "team-a/app",
-        "ancestorClassifications": {
-          "team-a": []
-        }
+        "path": "team/a"
       },
-      "parent": {
-        "type": "GitLab::Group",
-        "id": "team-a",
-        "attrs": {
-          "path": "team-a",
-          "ancestorClassifications": {}
-        }
-      }
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/a"
+      ]
     },
     {
-      "type": "GitLab::Project",
-      "id": "team-a/sub/svc",
+      "type": "Notes::Folder",
+      "id": "team/sub/b",
       "attrs": {
-        "path": "team-a/sub/svc",
-        "ancestorClassifications": {
-          "team-a": [],
-          "team-a/sub": []
-        }
+        "path": "team/sub/b"
       },
-      "parent": {
-        "type": "GitLab::Group",
-        "id": "team-a/sub",
-        "attrs": {
-          "path": "team-a/sub",
-          "ancestorClassifications": {
-            "team-a": []
-          }
-        }
-      }
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/sub",
+        "Notes::Folder/team/sub/b"
+      ]
     },
     {
-      "type": "GitLab::Project",
-      "id": "team-ab/app",
+      "type": "Notes::Folder",
+      "id": "teamx/a",
       "attrs": {
-        "path": "team-ab/app",
-        "ancestorClassifications": {
-          "team-ab": []
-        }
+        "path": "teamx/a"
       },
-      "parent": {
-        "type": "GitLab::Group",
-        "id": "team-ab",
-        "attrs": {
-          "path": "team-ab",
-          "ancestorClassifications": {}
-        }
-      }
+      "scopes": [
+        "Notes::Folder/teamx",
+        "Notes::Folder/teamx/a"
+      ]
     }
   ],
   "expected": {

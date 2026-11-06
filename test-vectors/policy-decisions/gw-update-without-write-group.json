@@ -3,9 +3,20 @@
   "covers": [
     "write_without_write_group"
   ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
   "builder": {
     "level": "gateway",
-    "staticEntities": "cedar/examples/static-entities.json",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -33,7 +44,6 @@
       }
     }
   },
-  "policies": "cedar/examples",
   "request": {
     "principal": {
       "type": "User",
@@ -49,11 +59,7 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraIssue": [
-          "ABC-1"
-        ]
-      }
+      "refs": []
     }
   },
   "entities": [
@@ -65,7 +71,13 @@
       "attrs": {
         "server": "mcp-jira",
         "name": "update_issue",
-        "risk": "UPDATE"
+        "risk": "UPDATE",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        }
       },
       "parents": []
     },
@@ -77,13 +89,7 @@
       "attrs": {
         "username": "reader",
         "client": "claude-code",
-        "scopes": {
-          "jiraProjects": [],
-          "confluenceSpaces": [],
-          "gitlabGroups": [],
-          "opensearchIndexPrefixes": [],
-          "servicedeskQueues": []
-        }
+        "scopes": []
       },
       "parents": [
         {

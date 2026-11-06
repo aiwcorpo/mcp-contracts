@@ -1,7 +1,11 @@
 {
-  "description": "resourceRefs with a type outside the model: denied.",
+  "description": "A resourceRef type no registered server declared: internal_error. There is no built-in type.",
   "level": "gateway",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -14,18 +18,18 @@
     "tool": {
       "serverId": "mcp-jira",
       "system": "jira",
-      "name": "get_board",
+      "name": "get_thing",
       "risk": "READ_ONLY",
       "action": "read",
       "resourceRefs": [
         {
-          "argument": "boardId",
-          "type": "Jira::Board"
+          "argument": "thing",
+          "type": "Jira::Thing"
         }
       ]
     },
     "arguments": {
-      "boardId": "7"
+      "thing": "x"
     }
   },
   "expected": {

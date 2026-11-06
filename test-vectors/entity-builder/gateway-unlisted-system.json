@@ -1,0 +1,91 @@
+{
+  "description": "A system that appears nowhere in the contracts: the Tool entity is built from the tool entry alone.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000a",
+      "usr": "weatherreader",
+      "grp": [
+        "mcp-weather-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-weather",
+      "system": "weather",
+      "name": "forecast",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": []
+    },
+    "arguments": {}
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000a"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "weather__forecast"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "weather__forecast"
+        },
+        "attrs": {
+          "server": "mcp-weather",
+          "name": "forecast",
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-weather-read"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000a"
+        },
+        "attrs": {
+          "username": "weatherreader",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-weather-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-weather-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

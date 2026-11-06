@@ -22,23 +22,34 @@ final class VectorInputs {
     private VectorInputs() {
     }
 
-    /** Builder with the scope mapping of the given static entities file (path relative to the repository root). */
-    static EntityBuilder builder(String staticEntitiesPath) {
-        return BUILDERS.computeIfAbsent(staticEntitiesPath, p -> {
-            try {
-                return new EntityBuilder(ScopeMapping.fromStaticEntities(
-                        com.cedarpolicy.model.entity.Entities.parse(ContractFiles.resolve(p)).getEntities()));
-            } catch (java.io.IOException e) {
-                throw new java.io.UncheckedIOException(e);
-            }
+    /** Resource types and scope mapping named by a vector: {@code resourceTypes} (paths) and {@code scopeMapping} (path). */
+    static EntityBuilder builder(JsonNode vector) {
+        String key = vector.get("resourceTypes").toString() + vector.get("scopeMapping").asText();
+        return BUILDERS.computeIfAbsent(key, k -> {
+            ResourceTypes types = resourceTypes(vector);
+            return new EntityBuilder(types, ScopeMapping.fromJson(types,
+                    ContractFiles.read(ContractFiles.resolve(vector.get("scopeMapping").asText())), false));
         });
     }
 
-    static CedarRequest build(String level, JsonNode input, String staticEntitiesPath) {
+    /** The builder of the vector, with the credential type of the input when it names one. */
+    static EntityBuilder builder(JsonNode vector, JsonNode input) {
+        EntityBuilder builder = builder(vector);
+        return input.has("credentialType") ? builder.withCredentialType(input.get("credentialType").asText()) : builder;
+    }
+
+    static ResourceTypes resourceTypes(JsonNode vector) {
+        List<ResourceTypeDeclaration> all = new ArrayList<>();
+        vector.get("resourceTypes").forEach(path -> all.addAll(
+                ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve(path.asText()))).declarations()));
+        return ResourceTypes.of(all);
+    }
+
+    static CedarRequest build(String level, JsonNode input, JsonNode vector) {
         Caller caller = caller(input);
         ToolDescriptor tool = tool(input);
         Map<String, Object> arguments = arguments(input);
-        EntityBuilder builder = builder(staticEntitiesPath);
+        EntityBuilder builder = builder(vector);
         if (input.has("credentialType")) {
             builder = builder.withCredentialType(input.get("credentialType").asText());
         }
@@ -78,7 +89,9 @@ final class VectorInputs {
         Map<String, Object> attrs = node.has("attrs")
                 ? JSON.convertValue(node.get("attrs"), new TypeReference<Map<String, Object>>() { })
                 : Map.of();
-        ResolvedResource resource = ResolvedResource.of(node.get("type").asText(), node.get("id").asText(), attrs);
+        List<String> scopes = new ArrayList<>();
+        node.path("scopes").forEach(s -> scopes.add(s.asText()));
+        ResolvedResource resource = ResolvedResource.of(node.get("type").asText(), node.get("id").asText(), attrs).withScopes(scopes);
         return node.has("parent") ? resource.withParent(resource(node.get("parent"))) : resource;
     }
 

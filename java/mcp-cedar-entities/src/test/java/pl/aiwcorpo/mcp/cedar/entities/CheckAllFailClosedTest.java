@@ -12,23 +12,23 @@ import org.junit.jupiter.api.Test;
 /** ResultFilter.checkAll and allAllowed never allow without a policy decision on a resource (2.0.2). */
 class CheckAllFailClosedTest {
 
-    private static final ToolDescriptor UPDATE_PROJECT = new ToolDescriptor("mcp-gitlab", "gitlab", "archive_projects", "UPDATE",
-            "update", List.of(new ResourceRef("projectPaths", "GitLab::Project")));
-    private static final ToolDescriptor NO_REFS = new ToolDescriptor("mcp-jira", "jira", "list_projects", "READ_ONLY", "read", List.of());
-    private static final Caller WRITER = Caller.of("u", "writer", List.of("mcp-gitlab-read", "mcp-gitlab-write", "mcp-gitlab-grp-team-a"), "claude-code");
+    private static final ToolDescriptor ARCHIVE = new ToolDescriptor("mcp-notes", "notes", "archive_folders", "UPDATE",
+            "update", List.of(new ResourceRef("folderPaths", "Notes::Folder")));
+    private static final ToolDescriptor NO_REFS = new ToolDescriptor("mcp-notes", "notes", "list_notebooks", "READ_ONLY", "read", List.of());
+    private static final Caller WRITER = Caller.of("u", "writer", List.of("mcp-notes-read", "mcp-notes-write"), "claude-code");
 
-    private final ResultFilter allowEverything = new ResultFilter(
-            VectorInputs.builder("cedar/examples/static-entities.json"), request -> true);
+    private final ResultFilter allowEverything = new ResultFilter(new EntityBuilder(
+            ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve("test-vectors/fixtures/notes/resource-types.json"))),
+            ScopeMapping.empty()), request -> true);
 
-    private static ResolvedResource project(String path) {
-        return ResolvedResource.of("GitLab::Project", path, Map.of("path", path))
-                .withParent(ResolvedResource.of("GitLab::Group", path.substring(0, path.lastIndexOf('/')), Map.of("path", path.substring(0, path.lastIndexOf('/')))));
+    private static ResolvedResource folder(String path) {
+        return ResolvedResource.of("Notes::Folder", path, Map.of("path", path)).withScopes(List.of(Scopes.id("Notes::Folder", path)));
     }
 
     @Test
     void declaredRefsWithoutValuesAreDenied() {
-        for (Map<String, ?> arguments : List.<Map<String, ?>>of(Map.of(), Map.of("projectPaths", List.of()))) {
-            ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, UPDATE_PROJECT, arguments, (t, id) -> project(id), Optional.empty());
+        for (Map<String, ?> arguments : List.<Map<String, ?>>of(Map.of(), Map.of("folderPaths", List.of()))) {
+            ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, ARCHIVE, arguments, (t, id) -> folder(id), Optional.empty());
             assertFalse(result.allowed());
             assertEquals(Optional.of("no_resource"), result.reason());
         }
@@ -41,27 +41,34 @@ class CheckAllFailClosedTest {
 
     @Test
     void resolverReturningAnotherTypeIsDenied() {
-        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, UPDATE_PROJECT, Map.of("projectPaths", List.of("team-a/app")),
-                (t, id) -> ResolvedResource.of("GitLab::Group", "team-a", Map.of("path", "team-a")), Optional.empty());
+        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, ARCHIVE, Map.of("folderPaths", List.of("team/a")),
+                (t, id) -> ResolvedResource.of("Notes::Notebook", "alpha", Map.of("name", "alpha", "labels", List.of())), Optional.empty());
         assertEquals(Optional.of("resource_type_mismatch"), result.reason());
     }
 
     @Test
     void resolverReturningAnInvalidIdIsDenied() {
-        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, UPDATE_PROJECT, Map.of("projectPaths", List.of("team-a/app")),
-                (t, id) -> project("team-a/app,other"), Optional.empty());
+        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, ARCHIVE, Map.of("folderPaths", List.of("team/a")),
+                (t, id) -> folder("team/a,other"), Optional.empty());
         assertEquals(Optional.of("resource_id_invalid"), result.reason());
     }
 
     @Test
     void resolverReturningNothingIsDenied() {
-        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, UPDATE_PROJECT, Map.of("projectPaths", List.of("team-a/app")),
+        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, ARCHIVE, Map.of("folderPaths", List.of("team/a")),
                 (t, id) -> null, Optional.empty());
         assertEquals(Optional.of("not_resolved"), result.reason());
     }
 
     @Test
+    void anArgumentThatIsNotAnIdIsDeniedBeforeResolving() {
+        ResultFilter.CheckResult result = allowEverything.checkAll(WRITER, ARCHIVE, Map.of("folderPaths", List.of("team/../x")),
+                (t, id) -> folder("team/a"), Optional.empty());
+        assertEquals(Optional.of("invalid_argument"), result.reason());
+    }
+
+    @Test
     void allAllowedWithAnEmptyListIsFalse() {
-        assertFalse(allowEverything.allAllowed(WRITER, UPDATE_PROJECT, Map.of(), List.of()));
+        assertFalse(allowEverything.allAllowed(WRITER, ARCHIVE, Map.of(), List.of()));
     }
 }

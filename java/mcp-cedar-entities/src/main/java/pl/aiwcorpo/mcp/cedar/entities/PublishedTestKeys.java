@@ -7,7 +7,7 @@ import java.util.HexFormat;
 import java.util.Set;
 
 /**
- * The keys published in mcp-contracts test-vectors/keys (EC P-256 for JWTs, Ed25519 for policy bundles), as SHA-256
+ * The keys published in mcp-contracts test-vectors/keys (EC P-256, for JWTs), as SHA-256
  * of their SubjectPublicKeyInfo. Production receivers refuse these keys under any kid or configured id (CC-044).
  * Same list as {@code mcp-contracts/security/published-test-keys.json} in the mcp-contracts jar; a test keeps both
  * in line with the key files.
@@ -19,9 +19,7 @@ public final class PublishedTestKeys {
             "2c9b2f1e8cc291d8f9ab8a2c312726a1d9162253038d3670363084d5e2a07147",
             "f776f49706b7fa2a9368b66d075bbb8ae737911125f4f144187b9a586f31eccc",
             "c679efaec91adf76e792b3d56d1d59d5da3a3a6c4378da690c9c00f6ceff010a",
-            "8a264c8d907f48620d4f5963d2e5250766b5845cd5263677554575041e86de2f",
-            "8db9a660309553b8fa6bc1a2024195c530a0ca42fc93ae78430e9d8eb0f7b29e",
-            "6b13d12c070d542518df833f18ac1137c78edf3cf2dfcd23211aab4e470383b9");
+            "8a264c8d907f48620d4f5963d2e5250766b5845cd5263677554575041e86de2f");
 
     private PublishedTestKeys() {
     }

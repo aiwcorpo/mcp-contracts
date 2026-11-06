@@ -1,0 +1,17 @@
+{
+  "resourceTypes": "test-vectors/fixtures/notes/resource-types.json",
+  "type": "Notes::Notebook",
+  "kind": "resource",
+  "valid": [
+    "alpha",
+    "team-1"
+  ],
+  "invalid": [
+    "Alpha",
+    "1alpha",
+    "alpha_1",
+    "alpha team",
+    "",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ]
+}

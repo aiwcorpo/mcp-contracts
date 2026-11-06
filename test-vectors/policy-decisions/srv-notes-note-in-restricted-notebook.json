@@ -1,0 +1,235 @@
+{
+  "description": "A note of a notebook labelled restricted (the builder normalizes the label).",
+  "covers": [
+    "restricted",
+    "forbid_overrides_permit"
+  ],
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
+  "builder": {
+    "level": "server",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000007",
+        "usr": "noteswriter",
+        "grp": [
+          "mcp-notes-read",
+          "mcp-notes-write",
+          "mcp-notes-nb-alpha",
+          "mcp-notes-folder-team"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "update_note",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "noteId",
+            "type": "Notes::Note"
+          }
+        ]
+      },
+      "arguments": {
+        "noteId": "17"
+      },
+      "resource": {
+        "type": "Notes::Note",
+        "id": "17",
+        "attrs": {
+          "title": "Note 17"
+        },
+        "parent": {
+          "type": "Notes::Notebook",
+          "id": "alpha",
+          "attrs": {
+            "name": "alpha",
+            "labels": [
+              " Restricted"
+            ]
+          },
+          "scopes": [
+            "Notes::Notebook/alpha"
+          ]
+        },
+        "scopes": [
+          "Notes::Notebook/alpha"
+        ]
+      },
+      "credentialType": "user-oauth"
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000007"
+    },
+    "action": {
+      "type": "Notes::Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "Notes::Note",
+      "id": "17"
+    },
+    "context": {
+      "client": "claude-code",
+      "credentialType": "user-oauth",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Notes::Note",
+        "id": "17"
+      },
+      "attrs": {
+        "title": "Note 17",
+        "notebook": {
+          "__entity": {
+            "type": "Notes::Notebook",
+            "id": "alpha"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Notes::Notebook/alpha"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "Notes::Notebook",
+          "id": "alpha"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Notes::Notebook",
+        "id": "alpha"
+      },
+      "attrs": {
+        "name": "alpha",
+        "labels": [
+          "restricted"
+        ],
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Notes::Notebook/alpha"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000007"
+      },
+      "attrs": {
+        "username": "noteswriter",
+        "client": "claude-code",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Notes::Folder/team"
+            }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Notes::Notebook/alpha"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-folder-team"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-nb-alpha"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-folder-team"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Notes::Folder/team"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-nb-alpha"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Notes::Notebook/alpha"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "notes-forbid-restricted-note"
+    ]
+  }
+}

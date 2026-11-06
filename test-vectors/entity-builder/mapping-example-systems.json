@@ -1,0 +1,191 @@
+{
+  "description": "The scope mapping of the former built-in systems is valid against their declarations: the User.scopes of a member of several groups.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json",
+    "cedar/examples/systems/confluence/resource-types.json",
+    "cedar/examples/systems/opensearch/resource-types.json",
+    "cedar/examples/systems/servicedesk/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000b",
+      "usr": "confluencereader",
+      "grp": [
+        "mcp-confluence-space-ENG",
+        "mcp-gitlab-grp-team-a",
+        "mcp-opensearch-idx-logs-team-a",
+        "mcp-servicedesk-queue-42"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-servicedesk",
+      "system": "servicedesk",
+      "name": "update_ticket",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "queueId",
+          "type": "ServiceDesk::Queue"
+        }
+      ]
+    },
+    "arguments": {
+      "queueId": "42"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000b"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "servicedesk__update_ticket"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": [
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "ServiceDesk::Queue/42"
+          }
+        }
+      ]
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "servicedesk__update_ticket"
+        },
+        "attrs": {
+          "server": "mcp-servicedesk",
+          "name": "update_ticket",
+          "risk": "UPDATE",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-servicedesk-write"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000b"
+        },
+        "attrs": {
+          "username": "confluencereader",
+          "client": "claude-code",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Confluence::Space/ENG"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "ServiceDesk::Queue/42"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-confluence-space-ENG"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-gitlab-grp-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-opensearch-idx-logs-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-servicedesk-queue-42"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-confluence-space-ENG"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Confluence::Space/ENG"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "GitLab::Group/team-a"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-idx-logs-team-a"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "OpenSearch::Index/logs-team-a"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-servicedesk-queue-42"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "ServiceDesk::Queue/42"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,9 +1,20 @@
 {
-  "description": "Create in a project granted by mcp-jira-proj-ABC.",
+  "description": "Create in a project granted by mcp-jira-proj-ABC: the early check passes.",
   "covers": [],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
   "builder": {
     "level": "gateway",
-    "staticEntities": "cedar/examples/static-entities.json",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000002",
@@ -29,12 +40,10 @@
         ]
       },
       "arguments": {
-        "projectKey": "ABC",
-        "summary": "x"
+        "projectKey": "ABC"
       }
     }
   },
-  "policies": "cedar/examples",
   "request": {
     "principal": {
       "type": "User",
@@ -50,16 +59,14 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraProject": [
-          {
-            "__entity": {
-              "type": "ResourceScope",
-              "id": "Jira::Project/ABC"
-            }
+      "refs": [
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
           }
-        ]
-      }
+        }
+      ]
     }
   },
   "entities": [
@@ -71,7 +78,13 @@
       "attrs": {
         "server": "mcp-jira",
         "name": "create_issue",
-        "risk": "UPDATE"
+        "risk": "UPDATE",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        }
       },
       "parents": []
     },
@@ -83,20 +96,14 @@
       "attrs": {
         "username": "writer",
         "client": "claude-code",
-        "scopes": {
-          "jiraProjects": [
-            {
-              "__entity": {
-                "type": "ResourceScope",
-                "id": "Jira::Project/ABC"
-              }
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
             }
-          ],
-          "confluenceSpaces": [],
-          "gitlabGroups": [],
-          "opensearchIndexPrefixes": [],
-          "servicedeskQueues": []
-        }
+          }
+        ]
       },
       "parents": [
         {
@@ -146,7 +153,7 @@
   "expected": {
     "decision": "allow",
     "determiningPolicies": [
-      "jira-call-update"
+      "platform-call-by-group"
     ]
   }
 }

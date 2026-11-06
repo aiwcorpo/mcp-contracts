@@ -1,0 +1,117 @@
+{
+  "description": "A classification set is normalized and deduplicated.",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_folder",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {
+      "folderPath": "team"
+    },
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team",
+      "attrs": {
+        "path": "team",
+        "classification": [
+          " Restricted",
+          "restricted",
+          "Confidential"
+        ]
+      },
+      "scopes": [
+        "Notes::Folder/team"
+      ]
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Notes::Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Notes::Folder",
+          "id": "team"
+        },
+        "attrs": {
+          "path": "team",
+          "classification": [
+            "confidential",
+            "restricted"
+          ],
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team"
+              }
+            }
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000006"
+        },
+        "attrs": {
+          "username": "notesreader",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

@@ -20,13 +20,13 @@ import org.junit.jupiter.api.Test;
 class FrozenArtifactsTest {
 
     /**
-     * Bundles carry the schema byte for byte (CC-059), so every 5.x component must ship the same file; any change,
-     * even to the header comment or line endings, makes bundles of other 5.x components fail with schema_mismatch.
+     * The base schema is composed with the fragment text of every server, so a change of a single byte can make a
+     * fragment that validated yesterday fail today: the file is frozen within a major line and its hash is checked.
      */
-    private static final String MCP_CEDARSCHEMA_SHA256 = "51d71b2dbb7f61fd2593cf4c2f1a2373dea06e8b4431425a3f1aa24fa10a0ba5";
+    private static final String MCP_CEDARSCHEMA_SHA256 = "48ab34c4e8cab2a48154c180fed51f48d1e6b1200e54751d32431ad35ae2d1d5";
 
     @Test
-    void cedarSchemaIsFrozenForTheWhole5xLine() throws Exception {
+    void cedarSchemaIsFrozenForTheWhole7xLine() throws Exception {
         byte[] file = Files.readAllBytes(ContractFiles.resolve("cedar/mcp.cedarschema"));
         assertEquals(MCP_CEDARSCHEMA_SHA256, sha256(file));
         assertEquals(MCP_CEDARSCHEMA_SHA256, sha256(McpCedarSchema.text().getBytes(StandardCharsets.UTF_8)));
@@ -39,8 +39,7 @@ class FrozenArtifactsTest {
         for (Path pem : ContractFiles.list("test-vectors/keys", ".public.pem")) {
             String base64 = ContractFiles.read(pem).replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", "");
             byte[] der = Base64.getDecoder().decode(base64);
-            String algorithm = pem.getFileName().toString().startsWith("test-policy") ? "Ed25519" : "EC";
-            fromFiles.add(PublishedTestKeys.spkiSha256(KeyFactory.getInstance(algorithm).generatePublic(new X509EncodedKeySpec(der))));
+            fromFiles.add(PublishedTestKeys.spkiSha256(KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(der))));
         }
         assertEquals(fromFiles, new TreeSet<>(PublishedTestKeys.SPKI_SHA256));
         JsonNode resource = new ObjectMapper().readTree(ContractFiles.resolve("security/published-test-keys.json").toFile());

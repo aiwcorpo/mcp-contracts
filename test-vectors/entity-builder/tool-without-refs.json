@@ -1,7 +1,11 @@
 {
-  "description": "Tool with no resourceRefs: refs is an empty record.",
+  "description": "Tool with no resourceRefs: refs is an empty set.",
   "level": "gateway",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -38,7 +42,7 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {}
+      "refs": []
     },
     "entities": [
       {
@@ -49,7 +53,13 @@
         "attrs": {
           "server": "mcp-jira",
           "name": "list_projects",
-          "risk": "READ_ONLY"
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-jira-read"
+            }
+          }
         },
         "parents": []
       },
@@ -61,13 +71,7 @@
         "attrs": {
           "username": "reader",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
+          "scopes": []
         },
         "parents": [
           {

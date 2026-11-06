@@ -25,6 +25,8 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import pl.aiwcorpo.mcp.cedar.entities.EntityBuilderException.Code;
+import pl.aiwcorpo.mcp.cedar.entities.ResourceTypeDeclaration.Classification;
+import pl.aiwcorpo.mcp.cedar.entities.ResourceTypeDeclaration.Kind;
 
 /**
  * Builds Cedar requests for MCP tool calls exactly as specified in {@code cedar/entity-builder.md}. Stateless after
@@ -33,72 +35,52 @@ import pl.aiwcorpo.mcp.cedar.entities.EntityBuilderException.Code;
  */
 public final class EntityBuilder {
 
-    private static final Map<String, String> PARENT_ATTRIBUTE = Map.of(
-            "Jira::Issue", "project",
-            "Confluence::Page", "space",
-            "GitLab::Project", "group",
-            "ServiceDesk::Ticket", "queue");
-    private static final Set<String> RESOURCE_TYPES = Set.of(
-            "Jira::Project", "Jira::Issue", "Confluence::Space", "Confluence::Page", "GitLab::Group", "GitLab::Project",
-            "OpenSearch::Index", "ServiceDesk::Queue", "ServiceDesk::Ticket");
-    // refs of these types name a grantable flat scope and become ResourceScope entities (CC-037).
-    private static final Set<String> SCOPE_REF_TYPES = Set.of(
-            "Jira::Project", "Confluence::Space", "GitLab::Group", "ServiceDesk::Queue");
     // A typo in risk would otherwise skip every rule that compares resource.risk (e.g. the MFA rule for DESTRUCTIVE).
     private static final Set<String> RISKS = Set.of("READ_ONLY", "UPDATE", "DESTRUCTIVE");
     private static final Set<String> ACTIONS = Set.of("read", "update", "delete", "admin");
-    // Classification attributes a resolver must deliver (CC-062); without them a Restricted rule could not match.
-    // Classification attributes normalized to one canonical form (CC-067): attribute -> true for a set of strings.
-    private static final Map<String, Map.Entry<String, Boolean>> CLASSIFICATION = Map.of(
-            "Jira::Project", Map.entry("category", false),
-            "Confluence::Space", Map.entry("labels", true),
-            "OpenSearch::Index", Map.entry("tags", true),
-            "GitLab::Group", Map.entry("classification", true),
-            "GitLab::Project", Map.entry("classification", true),
-            "ServiceDesk::Queue", Map.entry("classification", true));
-    private static final Map<String, String> REQUIRED_CLASSIFICATION = Map.of(
-            "Jira::Project", "category",
-            "Confluence::Space", "labels",
-            "OpenSearch::Index", "tags");
     private static final Comparator<Entity> BY_TYPE_THEN_ID = Comparator
             .<Entity, String>comparing(e -> e.getEUID().getType().toString())
             .thenComparing(e -> e.getEUID().getId().toString());
 
     private static final Set<String> CREDENTIAL_TYPES = Set.of("user-oauth", "user-secret", "token-exchange", "service-account");
 
+    private final ResourceTypes types;
     private final ScopeMapping scopeMapping;
     private final String credentialType;
 
-    /** Builder without scope mapping: no group grants any resource scope. */
-    public EntityBuilder() {
-        this(ScopeMapping.empty());
-    }
-
     /**
-     * @param scopeMapping group -> scopes from {@code entities/static.json} of the loaded main policy bundle; build a
-     *        new builder when a new bundle is loaded
+     * @param types the declared resource types: of the registered servers at the gateway, of the own manifest at a
+     *        server; build a new builder when they change
+     * @param scopeMapping group -> scopes from the policy data (administrator data); build a new builder when the
+     *        mapping changes. The mapping must have been validated against {@code types}.
      */
-    public EntityBuilder(ScopeMapping scopeMapping) {
-        this(scopeMapping, null);
+    public EntityBuilder(ResourceTypes types, ScopeMapping scopeMapping) {
+        this(types, scopeMapping, null);
     }
 
-    private EntityBuilder(ScopeMapping scopeMapping, String credentialType) {
+    private EntityBuilder(ResourceTypes types, ScopeMapping scopeMapping, String credentialType) {
+        this.types = Objects.requireNonNull(types, "types");
         this.scopeMapping = Objects.requireNonNull(scopeMapping, "scopeMapping");
         this.credentialType = credentialType;
+    }
+
+    /** @return the resource types this builder knows */
+    public ResourceTypes resourceTypes() {
+        return types;
     }
 
     /**
      * @param type type of the credential used for the call (CC-136): {@code user-oauth}, {@code user-secret},
      *        {@code token-exchange} or {@code service-account}; it becomes {@code context.credentialType}
      * @return a builder like this one that puts the credential type into the context of every request; the builder
-     *         itself stays unchanged (the gateway builds a request per call, with the type from the broker's answer)
+     *         itself stays unchanged (the gateway builds a request per call, with the type from its configuration)
      * @throws EntityBuilderException for any other value
      */
     public EntityBuilder withCredentialType(String type) {
         if (type == null || !CREDENTIAL_TYPES.contains(type)) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown credentialType " + type);
         }
-        return new EntityBuilder(scopeMapping, type);
+        return new EntityBuilder(types, scopeMapping, type);
     }
 
     /**
@@ -119,50 +101,63 @@ public final class EntityBuilder {
         attrs.put("server", new PrimString(tool.serverId()));
         attrs.put("name", new PrimString(tool.name()));
         attrs.put("risk", new PrimString(tool.risk()));
+        attrs.put("requiredGroup", uid("UserGroup", tool.requiredGroup()));
         entities.add(new Entity(resource, attrs, Set.of()));
         return result(caller, uid("Action", "call"), resource, context, entities);
     }
 
     /**
-     * Server evaluation: {@code Action::"<tool action>"} on the resolved resource. Also used for every element a
-     * search or list tool returns (see {@link ResultFilter}).
+     * Server evaluation: {@code <Namespace>::Action::"<tool action>"} on the resolved resource, where the namespace is
+     * that of the resource type. Also used for every element a search or list tool returns (see {@link ResultFilter}).
      *
      * @param caller the calling user (from the internal JWT)
      * @param tool the server's own manifest entry of the tool
      * @param arguments arguments of the call, as for {@link #forToolCall}
-     * @param resource the resource resolved from the system, with its parent where the type has one
+     * @param resource the resolved resource, with its parent where the type declares one
      * @return request and entities
-     * @throws EntityBuilderException when a resource argument is not an identifier or the input is inconsistent
+     * @throws EntityBuilderException when a resource argument is not an identifier or the resource does not match its
+     *         declaration
      */
     public CedarRequest forResource(Caller caller, ToolDescriptor tool, Map<String, ?> arguments, ResolvedResource resource) {
         Map<String, Value> context = context(caller, tool, arguments);
         List<Entity> entities = principalEntities(caller);
         Objects.requireNonNull(resource, "resource");
-        resource.parent().ifPresent(parent -> entities.add(systemEntity(parent, parent.parent())));
-        entities.add(systemEntity(resource, resource.parent()));
-        return result(caller, uid("Action", tool.action()), uid(resource.type(), resource.id()), context, entities);
+        ResourceTypeDeclaration declaration = declaration(resource.type());
+        Optional<ResolvedResource> ancestor = resource.parent();
+        while (ancestor.isPresent()) {
+            entities.add(resourceEntity(ancestor.get(), ancestor.get().parent()));
+            ancestor = ancestor.get().parent();
+        }
+        entities.add(resourceEntity(resource, resource.parent()));
+        return result(caller, uid(declaration.namespace() + "::Action", tool.action()), uid(resource.type(), resource.id()),
+                context, entities);
     }
 
     /**
      * What a search or list query must be limited to for one grantable resource type (CC-036): the ids granted to
-     * the user by the scope mapping. The server adds them to the backend query (index pattern) where the backend does
-     * not enforce the user's own rights (OpenSearch). The query limit does not replace result filtering.
+     * the user by the scope mapping. The server adds them to the backend query where the backend does not enforce the
+     * user's own rights. The query limit does not replace result filtering.
      *
-     * @param resourceType one of {@link ResourceScopes#GRANTABLE_TYPES}
+     * @param resourceType a declared type that has a {@code scopePattern}
      */
     public QueryConstraint queryConstraint(Caller caller, String resourceType) {
-        if (!ResourceScopes.GRANTABLE_TYPES.contains(resourceType)) {
+        if (!types.isGrantable(resourceType)) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "not a grantable resource type: " + resourceType);
         }
         TreeSet<String> granted = new TreeSet<>();
         for (String group : mcpGroups(caller)) {
             for (String scope : scopeMapping.scopesOf(group)) {
-                if (resourceType.equals(ResourceScopes.typeOf(scope).orElse(""))) {
-                    granted.add(ResourceScopes.localId(scope));
+                if (resourceType.equals(types.scopeType(scope).orElse(""))) {
+                    granted.add(ResourceTypes.localId(scope));
                 }
             }
         }
         return new QueryConstraint(resourceType, granted);
+    }
+
+    private ResourceTypeDeclaration declaration(String type) {
+        return types.declaration(type).orElseThrow(() ->
+                new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + type));
     }
 
     private static CedarRequest result(Caller caller, EntityUID action, EntityUID resource, Map<String, Value> context,
@@ -190,46 +185,29 @@ public final class EntityBuilder {
             throw invalid("mfa age must be >= 0");
         }
         caller.mfaAgeSeconds().ifPresent(age -> context.put("mfaAge", new PrimLong(age)));
-        Map<String, String> typeByField = new LinkedHashMap<>();
-        Map<String, List<String>> idsByField = new LinkedHashMap<>();
-        for (ResourceRef ref : tool.resourceRefs()) {
-            if (!RESOURCE_TYPES.contains(ref.type())) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + ref.type());
+        List<String> refScopes = new ArrayList<>();
+        for (Map.Entry<String, String> value : resourceValues(tool, arguments)) {
+            if (types.isEarlyScopeCheck(value.getKey())) {
+                refScopes.add(Scopes.id(value.getKey(), value.getValue()));
             }
-            String field = ScopeGroups.refsField(ref.type());
-            typeByField.put(field, ref.type());
-            List<String> ids = argumentIds(ref.argument(), arguments.get(ref.argument()));
-            for (String id : ids) {
-                if (!ResourceIds.isValid(ref.type(), ResourceIds.Kind.RESOURCE, id)) {
-                    throw invalid(ref.argument() + ": not a valid " + ref.type() + " id");
-                }
-            }
-            idsByField.computeIfAbsent(field, k -> new ArrayList<>()).addAll(ids);
         }
-        Map<String, Value> refsValue = new LinkedHashMap<>();
-        idsByField.forEach((field, ids) -> {
-            String type = typeByField.get(field);
-            refsValue.put(field, SCOPE_REF_TYPES.contains(type)
-                    ? scopeSet(ids.stream().map(id -> ResourceScopes.id(type, id)).toList())
-                    : stringSet(new TreeSet<>(ids)));
-        });
-        context.put("refs", new CedarMap(refsValue));
+        context.put("refs", scopeSet(refScopes));
         return context;
     }
 
     /**
-     * Every value of every resourceRef argument as (type, id), in argument order, validated like {@code refs}.
+     * Every value of every resourceRef argument as (type, id), in argument order, validated against the declared
+     * {@code idPattern} like {@code context.refs}.
      *
-     * @throws EntityBuilderException {@code INVALID_ARGUMENT} for a value that is not a valid id
+     * @throws EntityBuilderException {@code INVALID_ARGUMENT} for a value that is not a valid id, {@code INTERNAL_ERROR}
+     *         for a type no server declared
      */
-    static List<Map.Entry<String, String>> resourceValues(ToolDescriptor tool, Map<String, ?> arguments) {
+    List<Map.Entry<String, String>> resourceValues(ToolDescriptor tool, Map<String, ?> arguments) {
         List<Map.Entry<String, String>> values = new ArrayList<>();
         for (ResourceRef ref : tool.resourceRefs()) {
-            if (!RESOURCE_TYPES.contains(ref.type())) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + ref.type());
-            }
+            declaration(ref.type());
             for (String id : argumentIds(ref.argument(), arguments.get(ref.argument()))) {
-                if (!ResourceIds.isValid(ref.type(), ResourceIds.Kind.RESOURCE, id)) {
+                if (!types.isValidId(ref.type(), id)) {
                     throw invalid(ref.argument() + ": not a valid " + ref.type() + " id");
                 }
                 values.add(Map.entry(ref.type(), id));
@@ -293,106 +271,64 @@ public final class EntityBuilder {
 
     private List<Entity> principalEntities(Caller caller) {
         SortedSet<String> groups = mcpGroups(caller);
-        Map<String, List<String>> byField = new LinkedHashMap<>();
-        ScopeGroups.SCOPE_FIELDS.forEach(f -> byField.put(f, new ArrayList<>()));
         List<Entity> entities = new ArrayList<>();
         Set<EntityUID> userParents = new LinkedHashSet<>();
+        Set<String> userScopes = new TreeSet<>();
         for (String group : groups) {
             SortedSet<String> scopes = scopeMapping.scopesOf(group);
             Set<EntityUID> groupParents = new LinkedHashSet<>();
             for (String scope : scopes) {
                 groupParents.add(uid("ResourceScope", scope));
-                ScopeGroups.scopeField(ResourceScopes.typeOf(scope).orElse(""))
-                        .ifPresent(field -> byField.get(field).add(scope));
+                userScopes.add(scope);
             }
             EntityUID groupUid = uid("UserGroup", group);
             userParents.add(groupUid);
             entities.add(new Entity(groupUid, Map.of(), groupParents));
         }
-        Map<String, Value> scopes = new LinkedHashMap<>();
-        byField.forEach((field, ids) -> scopes.put(field, scopeSet(ids)));
         Map<String, Value> attrs = new LinkedHashMap<>();
         attrs.put("username", new PrimString(caller.username()));
         attrs.put("client", new PrimString(caller.client()));
-        attrs.put("scopes", new CedarMap(scopes));
+        attrs.put("scopes", scopeSet(userScopes));
         caller.mfaAgeSeconds().ifPresent(age -> attrs.put("mfaAge", new PrimLong(age)));
         entities.add(new Entity(uid("User", caller.sub()), attrs, userParents));
         return entities;
     }
 
-    private static Entity systemEntity(ResolvedResource resource, Optional<ResolvedResource> parent) {
-        if (!RESOURCE_TYPES.contains(resource.type())) {
-            throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + resource.type());
-        }
-        if (!ResourceIds.isValid(resource.type(), ResourceIds.Kind.RESOURCE, resource.id())) {
+    private Entity resourceEntity(ResolvedResource resource, Optional<ResolvedResource> parent) {
+        ResourceTypeDeclaration declaration = declaration(resource.type());
+        if (!types.isValidId(resource.type(), resource.id())) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "resolved " + resource.type() + " has an invalid id");
         }
-        String classification = REQUIRED_CLASSIFICATION.get(resource.type());
-        if (classification != null) {
-            Object value = resource.attributes().get(classification);
-            boolean ok = "category".equals(classification) ? value instanceof CharSequence : value instanceof Collection<?>;
-            if (!ok) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " without " + classification);
-            }
-        }
-        Map<String, Object> input = normalizedClassification(resource);
-        Set<String> inherited = inheritedClassification(resource, parent);
-        input.remove("ancestorClassifications");
         Map<String, Value> attrs = new TreeMap<>();
-        if (inherited != null) {
-            attrs.put("inheritedClassification", stringSet(new TreeSet<>(inherited)));
+        Map<String, Object> input = new LinkedHashMap<>(resource.attributes());
+        declaration.classification().ifPresent(c -> normalizeClassification(resource.type(), c, input));
+        for (Map.Entry<String, Object> attribute : input.entrySet()) {
+            if (!declaration.attributes().contains(attribute.getKey())) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR,
+                        resource.type() + ": attribute " + attribute.getKey() + " is not declared");
+            }
+            attrs.put(attribute.getKey(), toValue(resource.type() + "." + attribute.getKey(), attribute.getValue()));
         }
-        input.forEach((name, value) -> attrs.put(name, "ancestorIds".equals(name)
-                ? stringSet(new TreeSet<>(asStrings(resource.type() + ".ancestorIds", value)))
-                : toValue(resource.type() + "." + name, value)));
-        String parentAttribute = PARENT_ATTRIBUTE.get(resource.type());
-        if (parentAttribute != null) {
+        Set<EntityUID> parents = Set.of();
+        if (declaration.parent().isPresent()) {
             ResolvedResource p = parent.orElseThrow(() -> new EntityBuilderException(Code.INTERNAL_ERROR,
                     resource.type() + " needs its parent"));
-            attrs.put(parentAttribute, uid(p.type(), p.id()));
+            if (!p.type().equals(declaration.parent().get())) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR,
+                        resource.type() + " needs a parent of type " + declaration.parent().get());
+            }
+            attrs.put(declaration.parentAttribute().get(), uid(p.type(), p.id()));
+            parents = Set.of(uid(p.type(), p.id()));
+        } else if (parent.isPresent()) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " declares no parent");
         }
-        attrs.put("scopes", scopeSet(scopeIds(resource, parent)));
-        Set<EntityUID> parents = parent.map(p -> Set.of(uid(p.type(), p.id()))).orElse(Set.of());
+        for (String scope : resource.scopes()) {
+            if (types.scopeType(scope).isEmpty()) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + ": invalid scope id " + scope);
+            }
+        }
+        attrs.put("scopes", scopeSet(resource.scopes()));
         return new Entity(uid(resource.type(), resource.id()), attrs, parents);
-    }
-
-    /**
-     * Classification of the ancestor groups of a GitLab group or project (CC-129): the server passes
-     * {@code ancestorClassifications} as a map from group path to topics, for exactly the groups above a group, or all
-     * groups on the path of a project. Returns the normalized union, {@code null} for other types, and refuses a resource whose
-     * ancestor data is missing or does not match the path (fail-closed).
-     */
-    private static Set<String> inheritedClassification(ResolvedResource resource, Optional<ResolvedResource> parent) {
-        boolean group = "GitLab::Group".equals(resource.type());
-        if (!group && !"GitLab::Project".equals(resource.type())) {
-            return null;
-        }
-        Object given = resource.attributes().get("ancestorClassifications");
-        if (!(given instanceof Map<?, ?> map)) {
-            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " without ancestorClassifications");
-        }
-        Set<String> expected = new TreeSet<>(ResourceScopes.pathPrefixes(group ? resource.id() : parent.map(ResolvedResource::id).orElse("")));
-        if (group) {
-            expected.remove(resource.id());
-        }
-        Set<String> keys = new TreeSet<>();
-        map.keySet().forEach(k -> keys.add(String.valueOf(k)));
-        if (!keys.equals(expected)) {
-            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " ancestorClassifications do not match the ancestor groups");
-        }
-        Set<String> union = new TreeSet<>();
-        for (Object topics : map.values()) {
-            if (!(topics instanceof Collection<?> values)) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + ".ancestorClassifications must hold lists of strings");
-            }
-            for (Object element : values) {
-                if (!(element instanceof CharSequence text)) {
-                    throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + ".ancestorClassifications must hold lists of strings");
-                }
-                union.add(normalizeClassification(text.toString()));
-            }
-        }
-        return union;
     }
 
     /** Trim (as {@link String#trim()}) and lower-case ASCII letters only, so Java and JavaScript agree exactly. */
@@ -406,74 +342,37 @@ public final class EntityBuilder {
         return out.toString();
     }
 
-    private static Map<String, Object> normalizedClassification(ResolvedResource resource) {
-        Map<String, Object> attributes = new LinkedHashMap<>(resource.attributes());
-        Map.Entry<String, Boolean> classification = CLASSIFICATION.get(resource.type());
-        if (classification == null || !attributes.containsKey(classification.getKey())) {
-            return attributes;
-        }
-        String name = classification.getKey();
+    /**
+     * Normalizes the declared classification attribute in place (CC-067) and refuses a resource whose required
+     * classification is missing or has the wrong shape (CC-062): without it a rule on "restricted" could not match.
+     */
+    private static void normalizeClassification(String type, Classification classification, Map<String, Object> attributes) {
+        String name = classification.attribute();
         Object value = attributes.get(name);
-        if (!classification.getValue()) {
+        if (value == null) {
+            if (classification.required()) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, type + " without " + name);
+            }
+            return;
+        }
+        if (classification.kind() == Kind.STRING) {
             if (!(value instanceof CharSequence text)) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + "." + name + " must be a string");
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, type + "." + name + " must be a string");
             }
             attributes.put(name, normalizeClassification(text.toString()));
-            return attributes;
+            return;
         }
         if (!(value instanceof Collection<?> values)) {
-            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + "." + name + " must be a list of strings");
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, type + "." + name + " must be a list of strings");
         }
         TreeSet<String> normalized = new TreeSet<>();
         for (Object element : values) {
             if (!(element instanceof CharSequence text)) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + "." + name + " must be a list of strings");
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, type + "." + name + " must be a list of strings");
             }
             normalized.add(normalizeClassification(text.toString()));
         }
         attributes.put(name, new ArrayList<>(normalized));
-        return attributes;
-    }
-
-    /** Scope ids of the resource and all its containers (cedar/entity-builder.md, CC-037). */
-    private static List<String> scopeIds(ResolvedResource resource, Optional<ResolvedResource> parent) {
-        String parentId = parent.map(ResolvedResource::id).orElse("");
-        List<String> ids = new ArrayList<>();
-        switch (resource.type()) {
-            case "Jira::Project" -> ids.add(ResourceScopes.id("Jira::Project", resource.id()));
-            case "Jira::Issue" -> ids.add(ResourceScopes.id("Jira::Project", parentId));
-            case "Confluence::Space" -> ids.add(ResourceScopes.id("Confluence::Space", resource.id()));
-            case "Confluence::Page" -> {
-                ids.add(ResourceScopes.id("Confluence::Space", parentId));
-                Object ancestors = resource.attributes().get("ancestorIds");
-                if (ancestors != null) {
-                    asStrings("Confluence::Page.ancestorIds", ancestors).forEach(a -> ids.add(ResourceScopes.id("Confluence::Page", a)));
-                }
-                ids.add(ResourceScopes.id("Confluence::Page", resource.id()));
-            }
-            case "GitLab::Group" -> ResourceScopes.pathPrefixes(resource.id()).forEach(p -> ids.add(ResourceScopes.id("GitLab::Group", p)));
-            case "GitLab::Project" -> ResourceScopes.pathPrefixes(parentId).forEach(p -> ids.add(ResourceScopes.id("GitLab::Group", p)));
-            case "OpenSearch::Index" -> ScopeGroups.namePrefixes(resource.id()).forEach(p -> ids.add(ResourceScopes.id("OpenSearch::Index", p)));
-            case "ServiceDesk::Queue" -> ids.add(ResourceScopes.id("ServiceDesk::Queue", resource.id()));
-            case "ServiceDesk::Ticket" -> ids.add(ResourceScopes.id("ServiceDesk::Queue", parentId));
-            default -> throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown resource type " + resource.type());
-        }
-        return ids;
-    }
-
-    private static List<String> asStrings(String path, Object value) {
-        if (!(value instanceof Collection<?> collection)) {
-            throw new EntityBuilderException(Code.INTERNAL_ERROR, path + ": expected a list of ids");
-        }
-        List<String> out = new ArrayList<>();
-        for (Object element : collection) {
-            String id = scalarId(element).orElseThrow(() -> new EntityBuilderException(Code.INTERNAL_ERROR, path + ": not an id"));
-            if (path.endsWith(".ancestorIds") && !ResourceIds.isValid("Confluence::Page", ResourceIds.Kind.RESOURCE, id)) {
-                throw new EntityBuilderException(Code.INTERNAL_ERROR, path + ": invalid page id");
-            }
-            out.add(id);
-        }
-        return out;
     }
 
     private static Value toValue(String path, Object value) {
@@ -510,12 +409,6 @@ public final class EntityBuilder {
             return new CedarMap(record);
         }
         throw new EntityBuilderException(Code.INTERNAL_ERROR, path + ": unsupported attribute value");
-    }
-
-    private static CedarList stringSet(Collection<String> values) {
-        CedarList list = new CedarList();
-        values.forEach(v -> list.add(new PrimString(v)));
-        return list;
     }
 
     private static CedarList scopeSet(Collection<String> scopeIds) {

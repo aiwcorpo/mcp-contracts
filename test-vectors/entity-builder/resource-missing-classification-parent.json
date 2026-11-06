@@ -1,7 +1,11 @@
 {
-  "description": "Issue whose resolved project lacks category: refused (CC-062).",
+  "description": "The parent project of an issue has no category: the issue is not built (internal_error).",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -38,8 +42,14 @@
         "id": "ABC",
         "attrs": {
           "key": "ABC"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/ABC"
+      ]
     }
   },
   "expected": {

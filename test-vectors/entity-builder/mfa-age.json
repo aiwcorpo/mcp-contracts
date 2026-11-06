@@ -1,7 +1,11 @@
 {
   "description": "mfa claim becomes principal.mfaAge and context.mfaAge.",
   "level": "gateway",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000004",
@@ -47,11 +51,7 @@
     "context": {
       "client": "claude-code",
       "mfaAge": 120,
-      "refs": {
-        "jiraIssue": [
-          "ABC-1"
-        ]
-      }
+      "refs": []
     },
     "entities": [
       {
@@ -62,7 +62,13 @@
         "attrs": {
           "server": "mcp-jira",
           "name": "delete_issue",
-          "risk": "DESTRUCTIVE"
+          "risk": "DESTRUCTIVE",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-jira-destructive"
+            }
+          }
         },
         "parents": []
       },
@@ -74,20 +80,14 @@
         "attrs": {
           "username": "destroyer",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Jira::Project/ABC"
-                }
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
               }
-            ],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          },
+            }
+          ],
           "mfaAge": 120
         },
         "parents": [

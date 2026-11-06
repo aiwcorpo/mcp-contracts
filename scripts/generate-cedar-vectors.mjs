@@ -1,8 +1,22 @@
-// Generates test-vectors/entity-builder and test-vectors/policy-decisions with scripts/lib/entity-builder.mjs.
-// Expected decisions are written here by hand; the Java tests evaluate them with cedar-java.
+// Generates test-vectors/entity-builder, policy-decisions, result-filter, resource-checks and resource-ids with
+// scripts/lib/entity-builder.mjs. Expected decisions are written here by hand; the Java tests evaluate them with cedar-java.
+// No vector depends on a system being built in: every one names the resourceTypes declarations it runs on, either the
+// Jira example (cedar/examples/systems/jira), the neutral Notes fixture (test-vectors/fixtures/notes) or, for the id and
+// scope derivations of the former built-in systems, the other example declarations.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { build as buildEntities, BuilderError, pathPrefixes } from './lib/entity-builder.mjs';
+import {
+  build as buildEntities, BuilderError, dashPrefixes, loadResourceTypes, pathPrefixes, scopeMapping, validId, validScopeLocalId,
+} from './lib/entity-builder.mjs';
+
+const JIRA = 'cedar/examples/systems/jira/resource-types.json';
+const NOTES = 'test-vectors/fixtures/notes/resource-types.json';
+const CONFLUENCE = 'cedar/examples/systems/confluence/resource-types.json';
+const GITLAB = 'cedar/examples/systems/gitlab/resource-types.json';
+const OPENSEARCH = 'cedar/examples/systems/opensearch/resource-types.json';
+const SERVICEDESK = 'cedar/examples/systems/servicedesk/resource-types.json';
+const MAPPING = 'test-vectors/fixtures/scope-mapping.json';
+const MAPPING_EXAMPLE_SYSTEMS = 'test-vectors/fixtures/scope-mapping-example-systems.json';
 
 const SUB = {
   reader: 'b1a7c0de-0000-4000-8000-000000000001',
@@ -10,33 +24,25 @@ const SUB = {
   writer2: 'b1a7c0de-0000-4000-8000-000000000003',
   destroyer: 'b1a7c0de-0000-4000-8000-000000000004',
   nobody: 'b1a7c0de-0000-4000-8000-000000000005',
-  gitlabReader: 'b1a7c0de-0000-4000-8000-000000000006',
-  gitlabWriter: 'b1a7c0de-0000-4000-8000-000000000007',
-  osReader: 'b1a7c0de-0000-4000-8000-000000000008',
-  confluenceReader: 'b1a7c0de-0000-4000-8000-000000000009',
-  sdReader: 'b1a7c0de-0000-4000-8000-00000000000a',
-  confluenceEditor: 'b1a7c0de-0000-4000-8000-00000000000b',
-  platform: 'b1a7c0de-0000-4000-8000-00000000000c',
-  confluenceWriter: 'b1a7c0de-0000-4000-8000-00000000000d',
-  sdWriter: 'b1a7c0de-0000-4000-8000-00000000000e',
-  osWriter: 'b1a7c0de-0000-4000-8000-00000000000f',
+  notesReader: 'b1a7c0de-0000-4000-8000-000000000006',
+  notesWriter: 'b1a7c0de-0000-4000-8000-000000000007',
+  notesDestroyer: 'b1a7c0de-0000-4000-8000-000000000008',
+  teamWriter: 'b1a7c0de-0000-4000-8000-000000000009',
+  weatherReader: 'b1a7c0de-0000-4000-8000-00000000000a',
+  confluenceReader: 'b1a7c0de-0000-4000-8000-00000000000b',
+  gitlabWriter: 'b1a7c0de-0000-4000-8000-00000000000c',
 };
 const caller = (name, grp, extra = {}) => ({ sub: SUB[name], usr: name.toLowerCase(), grp, azp: 'claude-code', ...extra });
-
 const users = {
   reader: () => caller('reader', ['mcp-jira-read']),
   writer: () => caller('writer', ['mcp-jira-read', 'mcp-jira-write', 'mcp-jira-proj-ABC']),
   writer2: () => caller('writer2', ['mcp-jira-read', 'mcp-jira-write', 'mcp-jira-proj-ABC', 'mcp-jira-proj-DEF']),
   destroyer: (extra) => caller('destroyer', ['mcp-jira-read', 'mcp-jira-destructive', 'mcp-jira-proj-ABC'], extra),
   nobody: () => caller('nobody', []),
-  gitlabReader: () => caller('gitlabReader', ['mcp-gitlab-read']),
-  gitlabWriter: () => caller('gitlabWriter', ['mcp-gitlab-read', 'mcp-gitlab-write', 'mcp-gitlab-grp-team-a']),
-  osReader: () => caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-logs-team-a']),
-  confluenceReader: () => caller('confluenceReader', ['mcp-confluence-read', 'mcp-confluence-space-ENG']),
-  sdReader: () => caller('sdReader', ['mcp-servicedesk-read', 'mcp-servicedesk-queue-42']),
-  confluenceWriter: () => caller('confluenceWriter', ['mcp-confluence-read', 'mcp-confluence-write', 'mcp-confluence-space-ENG']),
-  sdWriter: () => caller('sdWriter', ['mcp-servicedesk-read', 'mcp-servicedesk-write', 'mcp-servicedesk-queue-42']),
-  osWriter: () => caller('osWriter', ['mcp-opensearch-read', 'mcp-opensearch-write', 'mcp-opensearch-idx-logs-team-a']),
+  notesReader: () => caller('notesReader', ['mcp-notes-read']),
+  notesWriter: () => caller('notesWriter', ['mcp-notes-read', 'mcp-notes-write', 'mcp-notes-nb-alpha', 'mcp-notes-folder-team']),
+  notesDestroyer: () => caller('notesDestroyer', ['mcp-notes-read', 'mcp-notes-destructive', 'mcp-notes-nb-alpha']),
+  weatherReader: () => caller('weatherReader', ['mcp-weather-read']),
 };
 
 const tool = (system, name, risk, action, resourceRefs = []) => ({ serverId: `mcp-${system}`, system, name, risk, action, resourceRefs });
@@ -52,521 +58,416 @@ const tools = {
     { argument: 'toProject', type: 'Jira::Project' },
   ]),
   listProjects: tool('jira', 'list_projects', 'READ_ONLY', 'read'),
-  getProject: tool('gitlab', 'get_project', 'READ_ONLY', 'read', [{ argument: 'projectPath', type: 'GitLab::Project' }]),
-  createProject: tool('gitlab', 'create_project', 'UPDATE', 'update', [{ argument: 'groupPath', type: 'GitLab::Group' }]),
-  updateProject: tool('gitlab', 'update_project', 'UPDATE', 'update', [{ argument: 'projectPath', type: 'GitLab::Project' }]),
-  searchIndex: tool('opensearch', 'search', 'READ_ONLY', 'read', [{ argument: 'index', type: 'OpenSearch::Index' }]),
-  getTicket: tool('servicedesk', 'get_ticket', 'READ_ONLY', 'read', [{ argument: 'ticketId', type: 'ServiceDesk::Ticket' }]),
-  getPage: tool('confluence', 'get_page', 'READ_ONLY', 'read', [{ argument: 'pageId', type: 'Confluence::Page' }]),
-  updatePage: tool('confluence', 'update_page', 'UPDATE', 'update', [{ argument: 'pageId', type: 'Confluence::Page' }]),
-  updateGroup: tool('gitlab', 'update_group', 'UPDATE', 'update', [{ argument: 'groupPath', type: 'GitLab::Group' }]),
-  transferProject: tool('gitlab', 'transfer_project', 'UPDATE', 'update', [
-    { argument: 'projectPath', type: 'GitLab::Project' }, { argument: 'targetGroup', type: 'GitLab::Group' }]),
-  archiveProjects: tool('gitlab', 'archive_projects', 'UPDATE', 'update', [{ argument: 'projectPaths', type: 'GitLab::Project' }]),
-  searchSpace: tool('confluence', 'search_space', 'READ_ONLY', 'read', [{ argument: 'spaceKey', type: 'Confluence::Space' }]),
-  createPage: tool('confluence', 'create_page', 'UPDATE', 'update', [{ argument: 'parentId', type: 'Confluence::Page' }]),
-  updateSpace: tool('confluence', 'update_space', 'UPDATE', 'update', [{ argument: 'spaceKey', type: 'Confluence::Space' }]),
-  addNote: tool('servicedesk', 'add_note', 'UPDATE', 'update', [{ argument: 'ticketId', type: 'ServiceDesk::Ticket' }]),
-  tagIndex: tool('opensearch', 'tag_index', 'UPDATE', 'update', [{ argument: 'index', type: 'OpenSearch::Index' }]),
-  listQueueTickets: tool('servicedesk', 'list_queue_tickets', 'READ_ONLY', 'read', [{ argument: 'queueId', type: 'ServiceDesk::Queue' }]),
+  getNote: tool('notes', 'get_note', 'READ_ONLY', 'read', [{ argument: 'noteId', type: 'Notes::Note' }]),
+  getFolder: tool('notes', 'get_folder', 'READ_ONLY', 'read', [{ argument: 'folderPath', type: 'Notes::Folder' }]),
+  searchNotebooks: tool('notes', 'search_notebooks', 'READ_ONLY', 'read', [{ argument: 'notebook', type: 'Notes::Notebook' }]),
+  searchFolders: tool('notes', 'search_folders', 'READ_ONLY', 'read', [{ argument: 'folderPath', type: 'Notes::Folder' }]),
+  updateNote: tool('notes', 'update_note', 'UPDATE', 'update', [{ argument: 'noteId', type: 'Notes::Note' }]),
+  updateNotebook: tool('notes', 'update_notebook', 'UPDATE', 'update', [{ argument: 'notebook', type: 'Notes::Notebook' }]),
+  updateFolder: tool('notes', 'update_folder', 'UPDATE', 'update', [{ argument: 'folderPath', type: 'Notes::Folder' }]),
+  deleteNote: tool('notes', 'delete_note', 'DESTRUCTIVE', 'delete', [{ argument: 'noteId', type: 'Notes::Note' }]),
+  moveFolder: tool('notes', 'move_folder', 'UPDATE', 'update', [
+    { argument: 'folderPath', type: 'Notes::Folder' }, { argument: 'targetFolder', type: 'Notes::Folder' }]),
+  archiveFolders: tool('notes', 'archive_folders', 'UPDATE', 'update', [{ argument: 'folderPaths', type: 'Notes::Folder' }]),
+  forecast: tool('weather', 'forecast', 'READ_ONLY', 'read'),
 };
 
-const project = (key, category = '') => ({ type: 'Jira::Project', id: key, attrs: { key, category } });
-const issue = (key, projectKey, category) => ({ type: 'Jira::Issue', id: key, attrs: { key }, parent: project(projectKey, category) });
-
-// Scope mapping of the example bundle (CC-037); vectors refer to it by path.
-const STATIC_PATH = 'cedar/examples/static-entities.json';
-const STATIC = JSON.parse(readFileSync(path(STATIC_PATH), 'utf8'));
+const project = (key, category = '') => ({ type: 'Jira::Project', id: key, attrs: { key, category }, scopes: [`Jira::Project/${key}`] });
+const issue = (key, projectKey, category) => ({
+  type: 'Jira::Issue', id: key, attrs: { key }, parent: project(projectKey, category), scopes: [`Jira::Project/${projectKey}`],
+});
+const notebook = (id, labels = []) => ({ type: 'Notes::Notebook', id, attrs: { name: id, labels }, scopes: [`Notes::Notebook/${id}`] });
+const note = (id, notebookId, labels, attrs = {}) => ({
+  type: 'Notes::Note', id, attrs: { title: `Note ${id}`, ...attrs }, parent: notebook(notebookId, labels), scopes: [`Notes::Notebook/${notebookId}`],
+});
+// The server derives the scopes of a folder from its path; the vectors use the same prefix rule the starter offers.
+const folder = (id, classification) => ({
+  type: 'Notes::Folder', id, attrs: { path: id, ...(classification !== undefined && { classification }) },
+  scopes: pathPrefixes(id).map((p) => `Notes::Folder/${p}`),
+});
 
 const outDir = (name) => {
   rmSync(path('test-vectors', name), { recursive: true, force: true });
   mkdirSync(path('test-vectors', name), { recursive: true });
 };
-// GitLab resources carry the classification of their ancestor groups (CC-129). Unless a vector sets ancestorClassifications itself
-// (an explicit null leaves it out on purpose), every ancestor group gets no topics.
-function withAncestors(value) {
-  if (Array.isArray(value)) return value.map(withAncestors);
-  if (value === null || typeof value !== 'object') return value;
-  const out = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withAncestors(v)]));
-  if ((out.type === 'GitLab::Group' || out.type === 'GitLab::Project') && out.attrs && !('ancestorClassifications' in out.attrs)) {
-    const groupPath = out.type === 'GitLab::Group' ? out.id : (out.parent?.id ?? out.id.slice(0, out.id.lastIndexOf('/')));
-    const groups = out.type === 'GitLab::Group' ? pathPrefixes(out.id).slice(0, -1) : pathPrefixes(groupPath);
-    out.attrs = { ...out.attrs, ancestorClassifications: Object.fromEntries(groups.map((g) => [g, []])) };
-  }
-  return out;
-}
-const build = (level, input, staticEntities) => buildEntities(level, withAncestors(input), staticEntities);
-const write = (dir, name, value) => writeFileSync(path('test-vectors', dir, `${name}.json`), JSON.stringify(withAncestors(value), null, 2) + '\n');
+const write = (dir, name, value) => writeFileSync(path('test-vectors', dir, `${name}.json`), JSON.stringify(value, null, 2) + '\n');
+
+const registries = new Map();
+const registry = (paths) => {
+  const key = paths.join('|');
+  if (!registries.has(key)) registries.set(key, loadResourceTypes(paths));
+  return registries.get(key);
+};
+const mappingFor = (types, mappingPath) => scopeMapping(types, JSON.parse(readFileSync(path(mappingPath), 'utf8')));
+const buildFor = (level, input, { resourceTypes = [JIRA, NOTES], scopeMappingPath = MAPPING } = {}) => {
+  const types = registry(resourceTypes);
+  return buildEntities(level, input, types, mappingFor(types, scopeMappingPath));
+};
 
 // ---------- entity builder ----------
 outDir('entity-builder');
-const builderVector = (name, description, level, input) => {
+const builderVector = (name, description, level, input, options = {}) => {
+  const { resourceTypes = [JIRA, NOTES], scopeMappingPath = MAPPING } = options;
   let expected;
   try {
-    expected = build(level, input, STATIC);
+    expected = buildFor(level, input, options);
   } catch (e) {
     if (!(e instanceof BuilderError)) throw e;
     expected = { error: e.code };
   }
-  write('entity-builder', name, { description, level, staticEntities: STATIC_PATH, input, expected });
+  write('entity-builder', name, { description, level, resourceTypes, scopeMapping: scopeMappingPath, input, expected });
 };
 
-builderVector('gateway-basic', 'Gateway: reader calls get_issue; issue key goes to refs.jiraIssue only.', 'gateway',
+builderVector('gateway-basic', 'Gateway: reader calls get_issue; Jira::Issue is not an early-check type, so refs is empty, and the tool needs the group mcp-jira-read.', 'gateway',
   { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-123' } });
-builderVector('scopes-from-mapping', 'principal.scopes come only from the bundle mapping: unmapped groups (even with a conventional name), names differing in case and non-mcp groups grant nothing; mcp-team-platform shows a name that does not encode its scopes.', 'gateway', {
+builderVector('gateway-early-scope-refs', 'Only the ids of types declared earlyScopeCheck reach context.refs, as ResourceScope ids.', 'gateway',
+  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC' } });
+builderVector('gateway-required-group-update', 'Tool.requiredGroup of an UPDATE tool is mcp-<system>-write.', 'gateway',
+  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('gateway-required-group-destructive', 'Tool.requiredGroup of a DESTRUCTIVE tool is mcp-<system>-destructive, for a system the contracts have never heard of.', 'gateway',
+  { caller: users.notesDestroyer(), tool: tools.deleteNote, arguments: { noteId: '17' } });
+builderVector('gateway-unlisted-system', 'A system that appears nowhere in the contracts: the Tool entity is built from the tool entry alone.', 'gateway',
+  { caller: users.weatherReader(), tool: tools.forecast, arguments: {} });
+builderVector('scopes-from-mapping', 'User.scopes is one flat set of every scope of the mapped groups: unmapped groups (even with a conventional name), names differing in case and non-mcp groups grant nothing; mcp-team-platform shows a name that does not encode its scopes.', 'gateway', {
   caller: caller('reader', [
-    'mcp-jira-read', 'mcp-jira-proj-ABC', 'mcp-jira-proj-DEF', 'mcp-confluence-space-ENG', 'mcp-gitlab-grp-team-a',
-    'mcp-opensearch-idx-logs-team-a', 'mcp-servicedesk-queue-42', 'mcp-client-claude-code', 'mcp-platform-admin',
-    'mcp-gitlab-grp-team-c', 'mcp-jira-proj-abc', 'mcp-team-platform', 'employees',
+    'mcp-jira-read', 'mcp-jira-proj-ABC', 'mcp-jira-proj-DEF', 'mcp-notes-nb-alpha', 'mcp-notes-folder-team', 'mcp-notes-folder-team-sub',
+    'mcp-client-claude-code', 'mcp-platform-admin', 'mcp-notes-folder-unmapped', 'mcp-jira-proj-abc', 'mcp-team-platform', 'employees',
   ]),
   tool: tools.listProjects,
   arguments: {},
 });
 builderVector('refs-array-deduplicated', 'Array argument becomes a sorted set without duplicates.', 'gateway',
   { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['DEF', 'ABC', 'ABC'] } });
-builderVector('refs-missing-argument', 'Declared resourceRef whose argument is absent: field present with an empty set.', 'gateway',
+builderVector('refs-missing-argument', 'Declared resourceRef whose argument is absent: refs is an empty set.', 'gateway',
   { caller: users.reader(), tool: tools.searchIssues, arguments: {} });
-builderVector('refs-integer-id', 'Integer argument converted to its decimal string.', 'gateway',
-  { caller: caller('reader', ['mcp-servicedesk-read']), tool: tools.getTicket, arguments: { ticketId: 4711 } });
+builderVector('refs-integer-id', 'An integer argument is converted to its decimal string and checked against the idPattern of the type.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: 4711 } });
+builderVector('refs-integer-id-out-of-pattern', 'An integer that does not match the idPattern (leading zero is impossible, so 0) is refused.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: 0 } });
 builderVector('refs-invalid-object', 'Object as a resource id: builder fails, the call is denied (fail-closed, invalid_argument).', 'gateway',
   { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: { key: 'ABC-123' } } });
 builderVector('refs-two-arguments-same-type', 'Two arguments of the same type are merged into one set.', 'gateway',
   { caller: users.writer(), tool: tools.moveIssue, arguments: { issueKey: 'ABC-1', fromProject: 'ABC', toProject: 'DEF' } });
-builderVector('tool-without-refs', 'Tool with no resourceRefs: refs is an empty record.', 'gateway',
+builderVector('refs-jira-project-injection', 'A project key that carries JQL is refused by the idPattern, also for an early-check type.', 'gateway',
+  { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC) OR project in (HR'] } });
+builderVector('refs-folder-path-traversal', 'A path argument with .. does not match the idPattern of a path-shaped type.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team/../platform' } });
+builderVector('refs-non-early-id-validated', 'A type that is not early-check still has its ids validated, and does not reach refs.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team/sub' } });
+builderVector('tool-without-refs', 'Tool with no resourceRefs: refs is an empty set.', 'gateway',
   { caller: users.reader(), tool: tools.listProjects, arguments: { anything: 'ignored' } });
 builderVector('tool-unknown-risk', 'Registry entry with a risk outside READ_ONLY, UPDATE, DESTRUCTIVE: denied, a typo must not bypass risk rules.', 'gateway',
   { caller: users.destroyer({ mfa: 60 }), tool: { ...tools.deleteIssue, risk: 'DESTRUCTlVE' }, arguments: { issueKey: 'ABC-1' } });
+builderVector('tool-unknown-resource-type', 'A resourceRef type no registered server declared: internal_error. There is no built-in type.', 'gateway',
+  { caller: users.reader(), tool: tool('jira', 'get_thing', 'READ_ONLY', 'read', [{ argument: 'thing', type: 'Jira::Thing' }]), arguments: { thing: 'x' } });
+builderVector('tool-resource-type-of-no-registered-server', 'A type of a server that is not in the registry (the Confluence example is not loaded here): internal_error.', 'gateway',
+  { caller: users.reader(), tool: tool('confluence', 'get_page', 'READ_ONLY', 'read', [{ argument: 'pageId', type: 'Confluence::Page' }]), arguments: { pageId: '1000' } });
 builderVector('mfa-age', 'mfa claim becomes principal.mfaAge and context.mfaAge.', 'gateway',
   { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
-builderVector('credential-type-service-account', 'The caller of the builder knows the credential type of the call (for the gateway, the answer of the broker): context.credentialType (CC-136).', 'gateway',
-  { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 501 }, credentialType: 'service-account' });
-builderVector('credential-type-user-oauth-on-server', 'The same on the server level.', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software'), credentialType: 'user-oauth' });
-builderVector('credential-type-unknown', 'A value outside the four credential types is refused: internal_error (CC-136).', 'gateway',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, credentialType: 'api-key' });
-builderVector('server-jira-issue', 'Server: resolved issue with parent project; project attribute duplicates the parent edge.', 'server',
+builderVector('mfa-negative', 'A negative MFA age is invalid_argument.', 'gateway',
+  { caller: users.destroyer({ mfa: -1 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('credential-type-user-oauth-on-server', 'context.credentialType is set when the caller gives it (CC-136).', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, credentialType: 'user-oauth', resource: folder('team') });
+builderVector('credential-type-service-account', 'service-account in the context.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, credentialType: 'service-account' });
+builderVector('credential-type-unknown', 'A fifth credential type is internal_error.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, credentialType: 'service_account' });
+
+builderVector('server-jira-issue', 'Server: the issue, its project as parent entity and as attribute, scopes of the project from the resolver.', 'server',
   { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') });
-builderVector('server-jira-issue-moved', 'Server: issue key says ABC but the system resolved it into HR (Restricted).', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-123' }, resource: issue('ABC-123', 'HR', 'Restricted') });
-builderVector('server-opensearch-index', 'Server: index scopes are every dash prefix of the name.', 'server', {
-  caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-2026.10' },
-  resource: { type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: ['logs'] } } });
-builderVector('server-gitlab-project', 'Server: GitLab project in a subgroup; scopes are every ancestor group path.', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
-  resource: { type: 'GitLab::Project', id: 'team-a/sub/app', attrs: { path: 'team-a/sub/app' },
-    parent: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub' } } } });
-builderVector('server-confluence-page-tree', 'Server: page scopes are its space, its ancestor pages and itself.', 'server', {
-  caller: caller('confluenceEditor', ['mcp-confluence-read', 'mcp-confluence-write', 'mcp-confluence-handbook-editors']),
-  tool: tools.updatePage, arguments: { pageId: '1234' },
-  resource: { type: 'Confluence::Page', id: '1234', attrs: { id: '1234', ancestorIds: ['1100', '1000'] },
-    parent: { type: 'Confluence::Space', id: 'HB', attrs: { key: 'HB', labels: [] } } } });
-builderVector('resource-null-attribute', 'A null attribute from the resolver means "no attribute"; for the required classification (category) the builder refuses the entity (CC-062).', 'server',
-  { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC'] },
-    resource: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC', category: null } } });
-builderVector('resource-missing-classification-parent', 'Issue whose resolved project lacks category: refused (CC-062).', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' },
-    resource: { type: 'Jira::Issue', id: 'ABC-1', attrs: { key: 'ABC-1' }, parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' } } } });
-builderVector('resource-missing-labels', 'Confluence space without labels: refused (CC-062).', 'server',
-  { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'ENG' },
-    resource: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG' } } });
-builderVector('mfa-negative', 'Negative mfa age is not possible; refused like the JWT schema (minimum 0, CC-065).', 'gateway',
-  { caller: users.destroyer({ mfa: -5 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
-builderVector('refs-opensearch-index-list', 'Index argument with a comma list: not one concrete index name (CC-056, review H1).', 'gateway',
-  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-x,secret-y' } });
-builderVector('refs-opensearch-index-wildcard', 'Index argument with wildcards (CC-056).', 'gateway',
-  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-*,*' } });
-builderVector('refs-jira-project-injection', 'Project key that would break out of a JQL list (CC-056, review H2).', 'gateway',
-  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC) OR project in (HR' } });
-// CC-129: classification of the ancestor groups becomes inheritedClassification; missing or wrong data refuses the resource.
-const gitlabProjectWith = (projectPath, groupPath, ancestorClassifications, extraAttrs = {}) => ({
-  type: 'GitLab::Project', id: projectPath, attrs: { path: projectPath, ...extraAttrs, ancestorClassifications },
-  parent: { type: 'GitLab::Group', id: groupPath, attrs: { path: groupPath, ancestorClassifications: Object.fromEntries(pathPrefixes(groupPath).slice(0, -1).map((g) => [g, []])) } },
-});
-builderVector('server-gitlab-project-inherited-classification', 'Server: inheritedClassification is the normalized union of the topics of every ancestor group (hr and hr/payroll), not of the project itself (CC-129).', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'hr/payroll/app' },
-  resource: gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: [' Restricted '], 'hr/payroll': ['Backend', 'backend'] }, { classification: ['Own'] }) });
-builderVector('server-gitlab-group-inherited-classification', 'Server: a group gets the topics of the groups above it, not its own (CC-129).', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'hr/payroll' },
-  resource: { type: 'GitLab::Group', id: 'hr/payroll', attrs: { path: 'hr/payroll', classification: ['payroll'], ancestorClassifications: { hr: ['RESTRICTED'] } } } });
-builderVector('server-gitlab-top-level-group-no-ancestors', 'Server: a top-level group has no ancestors: an empty map is complete, inheritedClassification is empty (CC-129).', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a' },
-  resource: { type: 'GitLab::Group', id: 'team-a', attrs: { path: 'team-a', ancestorClassifications: {} } } });
-builderVector('server-gitlab-project-without-ancestor-data', 'Server: no ancestor data for a project: refused (internal_error), fail-closed (CC-129).', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
-  resource: { type: 'GitLab::Project', id: 'team-a/sub/app', attrs: { path: 'team-a/sub/app', ancestorClassifications: null },
-    parent: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': [] } } } } });
-builderVector('server-gitlab-group-without-ancestor-data', 'Server: no ancestor data for a group: refused, even for a top-level group where it would be empty (the server must say so).', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a' },
-  resource: { type: 'GitLab::Group', id: 'team-a', attrs: { path: 'team-a', ancestorClassifications: null } } });
-builderVector('server-gitlab-project-missing-ancestor', 'Server: the ancestor data lacks a group of the path (team-a/sub): refused, a restricted middle group must not be skipped (CC-129).', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
-  resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': [] }) });
-builderVector('server-gitlab-project-unknown-ancestor', 'Server: the ancestor data names a group that is not on the path: refused.', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
-  resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': [], 'team-a/sub': [], 'team-b': ['restricted'] }) });
-builderVector('server-gitlab-group-includes-itself', 'Server: the ancestors of a group do not include the group itself: refused.', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a/sub' },
-  resource: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': [], 'team-a/sub': [] } } } });
-builderVector('server-gitlab-ancestor-topics-wrong-shape', 'Server: topics of an ancestor that are not a list of strings: refused.', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/app' },
-  resource: gitlabProjectWith('team-a/app', 'team-a', { 'team-a': 'restricted' }) });
-builderVector('refs-gitlab-path-traversal', 'GitLab path with .. segments.', 'gateway',
-  { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-a/../team-b' } });
-builderVector('resolved-resource-invalid-id', 'Resolver returned an index id with a comma; the builder refuses to build it.', 'server', {
-  caller: users.osReader(), tool: tools.searchIndex, arguments: {},
-  resource: { type: 'OpenSearch::Index', id: 'logs-team-a,secret', attrs: { name: 'logs-team-a,secret', tags: [] } } });
-builderVector('resolved-resource-invalid-id-security', 'Resolver returned the hidden system index .security: refused (CC-074).', 'server', {
-  caller: users.osReader(), tool: tools.searchIndex, arguments: {},
-  resource: { type: 'OpenSearch::Index', id: '.security', attrs: { name: '.security', tags: [] } } });
-builderVector('resolved-resource-invalid-id-data-stream', 'Resolver returned a data stream backing index .ds-logs-000001: refused (CC-074).', 'server', {
-  caller: users.osReader(), tool: tools.searchIndex, arguments: {},
-  resource: { type: 'OpenSearch::Index', id: '.ds-logs-000001', attrs: { name: '.ds-logs-000001', tags: [] } } });
-builderVector('refs-opensearch-index-leading-dot', 'Index argument naming a hidden system index (CC-074).', 'gateway',
-  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: '.security' } });
-builderVector('tool-unknown-resource-type', 'resourceRefs with a type outside the model: denied.', 'gateway',
-  { caller: users.reader(), tool: tool('jira', 'get_board', 'READ_ONLY', 'read', [{ argument: 'boardId', type: 'Jira::Board' }]), arguments: { boardId: '7' } });
+builderVector('server-jira-issue-moved', 'The project comes from the system, not from the key: ABC-1 now lives in HR.', 'server',
+  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'HR', 'Restricted') });
+for (const [suffix, value] of [['canonical', 'restricted'], ['trailing-space', 'Restricted '], ['upper-case', 'RESTRICTED']]) {
+  builderVector(`classification-normalized-${suffix}`, `Classification string ${JSON.stringify(value)} is normalized (trim, ASCII lower case) to restricted (CC-067).`, 'server',
+    { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: project('HR', value) });
+}
+builderVector('classification-set-normalized', 'A classification set is normalized and deduplicated.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: folder('team', [' Restricted', 'restricted', 'Confidential']) });
+builderVector('classification-wrong-shape', 'A classification string given as a list: internal_error.', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: { ...project('HR'), attrs: { key: 'HR', category: ['restricted'] } } });
+builderVector('classification-set-wrong-shape', 'A classification set with a non-string element: internal_error.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: folder('team', ['restricted', 7]) });
+builderVector('classification-optional-absent', 'An optional classification may be absent.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: folder('team') });
+builderVector('resource-missing-classification-parent', 'The parent project of an issue has no category: the issue is not built (internal_error).', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: { ...issue('ABC-1', 'ABC', 'Software'), parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' }, scopes: ['Jira::Project/ABC'] } } });
+builderVector('resource-missing-labels', 'A notebook without the required labels is not built.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: { ...note('17', 'alpha', []), parent: { type: 'Notes::Notebook', id: 'alpha', attrs: { name: 'alpha' }, scopes: ['Notes::Notebook/alpha'] } } });
+builderVector('resource-null-attribute', 'A null attribute means the attribute is absent.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [], { pinned: null }) });
+builderVector('resource-optional-attribute', 'An optional declared attribute that the resolver gives is kept.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [], { pinned: true }) });
+builderVector('resolved-resource-invalid-id', 'A resolved resource whose id does not match its idPattern is not built.', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('abc-1', 'ABC', 'Software') });
+builderVector('resolved-resource-undeclared-attribute', 'An attribute that the manifest does not declare is refused: the schema would refuse the entity anyway.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [], { color: 'red' }) });
+builderVector('resolved-resource-scopes-attribute', 'scopes is not an attribute the resolver may set; it comes from the scopes input.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [], { scopes: ['Notes::Notebook/beta'] }) });
+builderVector('resolved-resource-parent-attribute', 'The parent attribute is added by the builder; the resolver does not give it.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [], { notebook: 'alpha' }) });
+builderVector('resolved-resource-parent-missing', 'A type that declares a parent needs it.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: { type: 'Notes::Note', id: '17', attrs: { title: 'x' }, scopes: [] } });
+builderVector('resolved-resource-parent-wrong-type', 'The parent must be of the declared parent type.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: { ...note('17', 'alpha', []), parent: folder('team') } });
+builderVector('resolved-resource-parent-not-declared', 'A type without a declared parent does not take one.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: { ...folder('team'), parent: notebook('alpha') } });
+builderVector('resolved-resource-unknown-type', 'A resolved resource of an undeclared type is not built.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: { type: 'Notes::Drawer', id: 'x', attrs: {}, scopes: [] } });
+builderVector('resolved-resource-scope-of-undeclared-type', 'A scope id of a type nobody declared is internal_error.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: { ...folder('team'), scopes: ['Notes::Drawer/x'] } });
+builderVector('resolved-resource-scope-not-matching-pattern', 'A scope id whose local part does not match the scopePattern of its type is internal_error.', 'server',
+  { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: { ...folder('team'), scopes: ['Notes::Folder/Team'] } });
+builderVector('resolved-resource-scope-of-ungrantable-type', 'A type without a scopePattern cannot appear in scopes.', 'server',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' }, resource: { ...note('17', 'alpha', []), scopes: ['Notes::Note/17'] } });
+builderVector('server-notes-note', 'Server: a note carries the scope of its notebook; the notebook labels are normalized.', 'server',
+  { caller: users.notesWriter(), tool: tools.updateNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', ['Draft']) });
+builderVector('server-notes-folder-path-scopes', 'Server: the scopes of a folder are the prefixes of its path (Scopes.pathPrefixes), a grant on team covers team/sub/leaf.', 'server',
+  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team/sub/leaf' }, resource: folder('team/sub/leaf') });
+builderVector('server-gitlab-project-path-prefixes', 'Scope derivation of the former GitLab server as data: a project carries the scopes of every group on its path; the topics of the ancestors are the server\'s own business (inheritedClassification is an ordinary declared attribute).', 'server', {
+  caller: caller('gitlabWriter', ['mcp-gitlab-read', 'mcp-gitlab-write', 'mcp-gitlab-grp-team-a']),
+  tool: tool('gitlab', 'update_project', 'UPDATE', 'update', [{ argument: 'projectPath', type: 'GitLab::Project' }]),
+  arguments: { projectPath: 'team-a/sub/app' },
+  resource: {
+    type: 'GitLab::Project', id: 'team-a/sub/app', attrs: { path: 'team-a/sub/app', classification: ['Internal'], inheritedClassification: ['restricted'] },
+    parent: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', inheritedClassification: ['restricted'] }, scopes: pathPrefixes('team-a/sub').map((p) => `GitLab::Group/${p}`) },
+    scopes: pathPrefixes('team-a/sub').map((p) => `GitLab::Group/${p}`),
+  },
+}, { resourceTypes: [GITLAB, CONFLUENCE, OPENSEARCH, SERVICEDESK], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('server-opensearch-index-dash-prefixes', 'Scope derivation of the former OpenSearch server as data: an index carries the scope of every dash prefix of its name (Scopes.dashPrefixes).', 'server', {
+  caller: caller('reader', ['mcp-opensearch-read', 'mcp-opensearch-idx-logs-team-a']),
+  tool: tool('opensearch', 'search', 'READ_ONLY', 'read', [{ argument: 'index', type: 'OpenSearch::Index' }]),
+  arguments: { index: 'logs-team-a-2026.10' },
+  resource: { type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: ['Prod'] }, scopes: dashPrefixes('logs-team-a-2026.10').map((p) => `OpenSearch::Index/${p}`) },
+}, { resourceTypes: [GITLAB, CONFLUENCE, OPENSEARCH, SERVICEDESK], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('server-confluence-page-tree', 'Scope derivation of the former Confluence server as data: a page carries its space and the page ids of its ancestors, so a grant on page 1000 covers the tree below it.', 'server', {
+  caller: caller('confluenceReader', ['mcp-confluence-read', 'mcp-confluence-handbook-editors']),
+  tool: tool('confluence', 'update_page', 'UPDATE', 'update', [{ argument: 'pageId', type: 'Confluence::Page' }]),
+  arguments: { pageId: '1002' },
+  resource: {
+    type: 'Confluence::Page', id: '1002', attrs: { id: '1002', ancestorIds: ['1000', '1001'] },
+    parent: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG', labels: [] }, scopes: ['Confluence::Space/ENG'] },
+    scopes: ['Confluence::Space/ENG', 'Confluence::Page/1000', 'Confluence::Page/1001', 'Confluence::Page/1002'],
+  },
+}, { resourceTypes: [GITLAB, CONFLUENCE, OPENSEARCH, SERVICEDESK], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('mapping-example-systems', 'The scope mapping of the former built-in systems is valid against their declarations: the User.scopes of a member of several groups.', 'gateway', {
+  caller: caller('confluenceReader', ['mcp-confluence-space-ENG', 'mcp-gitlab-grp-team-a', 'mcp-opensearch-idx-logs-team-a', 'mcp-servicedesk-queue-42']),
+  tool: tool('servicedesk', 'update_ticket', 'UPDATE', 'update', [{ argument: 'queueId', type: 'ServiceDesk::Queue' }]),
+  arguments: { queueId: '42' },
+}, { resourceTypes: [GITLAB, CONFLUENCE, OPENSEARCH, SERVICEDESK], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
 
 // ---------- policy decisions ----------
+// Gateway decisions use the platform policies (cedar/platform) and the example overrides; server decisions use the policies
+// of the fragment of the server, composed with the base schema.
 outDir('policy-decisions');
+const JIRA_FRAGMENT = { schema: 'cedar/examples/systems/jira/schema.cedarschema', policies: ['cedar/examples/systems/jira'] };
+const NOTES_FRAGMENT = { schema: 'test-vectors/fixtures/notes/schema.cedarschema', policies: ['test-vectors/fixtures/notes'] };
+const GATEWAY_POLICIES = { schema: null, policies: ['cedar/platform', 'cedar/examples/overrides'] };
 let decisionCount = 0;
-const decision = (name, description, level, input, expected, { covers = [], mutate, adjustment, recordedInput } = {}) => {
-  const built = build(level, input, STATIC);
-  if (mutate) mutate(built);
+const decision = (name, description, level, rawInput, expected, { covers = [], adjustment, policies } = {}) => {
+  // A server always knows its credential type (CC-136); a vector that does not name one runs with a user credential.
+  const input = level === 'server' && !('credentialType' in rawInput) ? { ...rawInput, credentialType: 'user-oauth' } : rawInput;
+  const built = buildFor(level, input);
   decisionCount++;
   write('policy-decisions', name, {
     description,
     covers,
+    policies: policies ?? (level === 'gateway' ? GATEWAY_POLICIES : (input.resource.type.startsWith('Notes::') ? NOTES_FRAGMENT : JIRA_FRAGMENT)),
     // How request and entities were produced; implementations can rebuild them from this input.
-    builder: { level, staticEntities: STATIC_PATH, input: recordedInput ?? input, ...((adjustment ?? (mutate && 'remove-tool-entity')) && { adjustment: adjustment ?? 'remove-tool-entity' }) },
-    policies: 'cedar/examples',
+    builder: { level, resourceTypes: [JIRA, NOTES], scopeMapping: MAPPING, input, ...(adjustment && { adjustment }) },
     request: { principal: built.principal, action: built.action, resource: built.resource, context: built.context },
-    entities: built.entities,
+    entities: built.entities.filter((e) => adjustment !== 'remove-tool-entity' || e.uid.type !== 'Tool'),
     expected,
   });
 };
 const allow = (...determiningPolicies) => ({ decision: 'allow', determiningPolicies });
 const deny = (...determiningPolicies) => ({ decision: 'deny', determiningPolicies });
 
-decision('gw-jira-read-allowed', 'Reader calls a READ_ONLY Jira tool.', 'gateway',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, allow('jira-call-read'));
+decision('gw-read-allowed', 'Reader calls a READ_ONLY tool: the platform permit applies, whatever the server.', 'gateway',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'));
 decision('gw-no-group-denied', 'User without any mcp- group: default deny.', 'gateway',
   { caller: users.nobody(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['no_group'] });
-decision('gw-other-system-group-denied', 'mcp-gitlab-read does not open Jira.', 'gateway',
-  { caller: users.gitlabReader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['no_group'] });
+decision('gw-other-system-group-denied', 'mcp-notes-read does not open a Jira tool: the required group is derived from the system of the tool.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['no_group'] });
 decision('gw-update-without-write-group', 'UPDATE tool without mcp-jira-write.', 'gateway',
   { caller: users.reader(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['write_without_write_group'] });
-decision('gw-update-allowed', 'UPDATE tool with mcp-jira-write; issue key alone is checked on the server.', 'gateway',
-  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' } }, allow('jira-call-update'));
-decision('gw-create-in-scope', 'Create in a project granted by mcp-jira-proj-ABC.', 'gateway',
-  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC', summary: 'x' } }, allow('jira-call-update'));
-decision('gw-create-outside-scope', 'Create in DEF without mcp-jira-proj-DEF: forbid wins over the group permit.', 'gateway',
-  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'DEF', summary: 'x' } },
-  deny('jira-call-write-outside-scope'), { covers: ['forbid_overrides_permit'] });
-decision('gw-destructive-fresh-mfa', 'DESTRUCTIVE with mcp-jira-destructive and MFA 120 s ago.', 'gateway',
-  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, allow('jira-call-destructive'));
-decision('gw-destructive-unknown-mfa', 'DESTRUCTIVE without mfa claim (unknown = stale).', 'gateway',
-  { caller: users.destroyer(), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } },
-  deny('destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
-decision('gw-destructive-stale-mfa', 'DESTRUCTIVE with MFA two hours ago.', 'gateway',
-  { caller: users.destroyer({ mfa: 7200 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } },
-  deny('destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
-decision('gw-destructive-without-group', 'DESTRUCTIVE with fresh MFA but only read and write groups.', 'gateway',
-  { caller: { ...users.writer(), mfa: 60 }, tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny());
-decision('gw-unknown-tool', 'Tool absent from the registry: no Tool entity, every policy errors or does not match, deny.', 'gateway',
-  { caller: users.reader(), tool: tool('jira', 'drop_project', 'READ_ONLY', 'read'), arguments: {} }, deny(),
-  { covers: ['unknown_tool'], mutate: (b) => { b.entities = b.entities.filter((e) => e.uid.type !== 'Tool'); } });
-decision('gw-search-read-any-project', 'Reads are not scope-limited at the gateway; the system enforces the user\'s own rights.', 'gateway',
-  { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC', 'HR'] } }, allow('jira-call-read'));
-decision('gw-gitlab-read-allowed', 'GitLab reader.', 'gateway',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'team-a/app' } }, allow('gitlab-call-read'));
-decision('gw-gitlab-write-without-group', 'GitLab UPDATE in a granted group, but without mcp-gitlab-write.', 'gateway',
-  { caller: caller('gitlabReader', ['mcp-gitlab-read', 'mcp-gitlab-grp-team-a']), tool: tools.createProject, arguments: { groupPath: 'team-a' } },
-  deny(), { covers: ['write_without_write_group'] });
-decision('gw-gitlab-write-outside-scope-passes-gateway', 'GitLab UPDATE into team-b with scope team-a passes the gateway: group scopes are hierarchical and checked by the server (srv-gitlab-create-in-sibling-group).', 'gateway',
-  { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-b' } }, allow('gitlab-call-update'));
-decision('gw-gitlab-write-in-scope', 'GitLab UPDATE into team-a.', 'gateway',
-  { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-a' } }, allow('gitlab-call-update'));
+decision('gw-update-allowed', 'UPDATE tool with mcp-jira-write; an issue key alone is checked on the server (not an early-check type).', 'gateway',
+  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'));
+decision('gw-create-in-scope', 'Create in a project granted by mcp-jira-proj-ABC: the early check passes.', 'gateway',
+  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'ABC' } }, allow('platform-call-by-group'));
+decision('gw-create-outside-scope', 'Create in a project the user is not granted: the platform forbid overrides the group permit.', 'gateway',
+  { caller: users.writer(), tool: tools.createIssue, arguments: { projectKey: 'DEF' } }, deny('platform-call-write-outside-scope'),
+  { covers: ['forbid_overrides_permit', 'scope_hierarchy'] });
+decision('gw-move-one-project-outside', 'Two granted projects and one that is not: every id must be granted.', 'gateway',
+  { caller: users.writer2(), tool: tools.moveIssue, arguments: { issueKey: 'ABC-1', fromProject: 'ABC', toProject: 'GHI' } }, deny('platform-call-write-outside-scope'),
+  { covers: ['forbid_overrides_permit', 'every_resource_ref'] });
+decision('gw-move-both-granted', 'Both projects granted.', 'gateway',
+  { caller: users.writer2(), tool: tools.moveIssue, arguments: { issueKey: 'ABC-1', fromProject: 'ABC', toProject: 'DEF' } }, allow('platform-call-by-group'),
+  { covers: ['every_resource_ref'] });
+decision('gw-read-outside-scope-allowed', 'Reading is not limited by scope at the gateway; the server decides.', 'gateway',
+  { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['DEF'] } }, allow('platform-call-by-group'), { covers: ['search_results'] });
+decision('gw-unknown-tool-denied', 'A tool that is not in the registry has no Tool entity: deny, also for a user in every group.', 'gateway',
+  { caller: users.writer(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, deny(), { covers: ['unknown_tool'], adjustment: 'remove-tool-entity' });
+decision('gw-destructive-allowed-with-fresh-mfa', 'DESTRUCTIVE tool with the destructive group and an MFA 60 seconds old.', 'gateway',
+  { caller: users.destroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'));
+decision('gw-destructive-without-mfa', 'DESTRUCTIVE tool, no mfa claim: step-up override forbids.', 'gateway',
+  { caller: users.destroyer(), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
+decision('gw-destructive-with-stale-mfa', 'DESTRUCTIVE tool, MFA two hours old: step-up override forbids.', 'gateway',
+  { caller: users.destroyer({ mfa: 7200 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('destructive-requires-fresh-mfa'), { covers: ['forbid_overrides_permit'] });
+decision('gw-notes-read-allowed', 'A neutral system: the same two platform policies decide, nothing names it.', 'gateway',
+  { caller: users.notesReader(), tool: tools.getNote, arguments: { noteId: '17' } }, allow('platform-call-by-group'));
+decision('gw-notes-update-notebook-in-scope', 'Notes notebook is an early-check type: granted notebook passes.', 'gateway',
+  { caller: users.notesWriter(), tool: tools.updateNotebook, arguments: { notebook: 'alpha' } }, allow('platform-call-by-group'));
+decision('gw-notes-update-notebook-outside-scope', 'Notes notebook is an early-check type: a notebook outside the grant is forbidden at the gateway.', 'gateway',
+  { caller: users.notesWriter(), tool: tools.updateNotebook, arguments: { notebook: 'gamma' } }, deny('platform-call-write-outside-scope'), { covers: ['forbid_overrides_permit'] });
+decision('gw-notes-update-folder-not-early', 'Notes folder is not early-check (its scopes are path prefixes): the gateway leaves a folder outside the exact grants to the server.', 'gateway',
+  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team/sub' } }, allow('platform-call-by-group'));
+decision('gw-system-unknown-to-everything', 'A system added at runtime and never mentioned in any file: allowed by its own group alone.', 'gateway',
+  { caller: users.weatherReader(), tool: tools.forecast, arguments: {} }, allow('platform-call-by-group'));
 
-decision('srv-read-issue-allowed', 'Server: read an issue in a normal project.', 'server',
+decision('srv-jira-read-allowed', 'Server: reader reads an issue of an ordinary project.', 'server',
   { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, allow('jira-read'));
-decision('srv-read-restricted-issue', 'Server: issue in a Restricted project; forbid wins over jira-read.', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-7' }, resource: issue('HR-7', 'HR', 'Restricted') },
-  deny('jira-forbid-restricted-issue'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-moved-issue-restricted', 'Server: ABC-123 was moved to HR (Restricted); the argument still looks like ABC.', 'server',
-  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-123' }, resource: issue('ABC-123', 'HR', 'Restricted') },
-  deny('jira-forbid-restricted-issue'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-read-restricted-project', 'Server: Restricted project itself.', 'server',
-  { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['HR'] }, resource: project('HR', 'Restricted') },
-  deny('jira-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-read-project-without-category', 'Server: project without a category in Jira (category "" by the resolver).', 'server',
-  { caller: users.reader(), tool: tools.searchIssues, arguments: { projectKeys: ['ABC'] }, resource: project('ABC') }, allow('jira-read'));
-decision('srv-read-without-group', 'Server: no mcp-jira-read.', 'server',
+decision('srv-jira-read-nobody-denied', 'Server: no group, no permit.', 'server',
   { caller: users.nobody(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, deny(), { covers: ['no_group'] });
-decision('srv-update-in-scope', 'Server: update in ABC with mcp-jira-proj-ABC.', 'server',
-  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') },
-  allow('jira-update-issue-in-scope'));
-decision('srv-update-outside-scope', 'Server: update an issue of DEF with scope ABC only.', 'server',
-  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'DEF-5' }, resource: issue('DEF-5', 'DEF', 'Software') }, deny());
-decision('srv-update-without-write-group', 'Server: update without mcp-jira-write.', 'server',
-  { caller: users.reader(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') },
-  deny(), { covers: ['write_without_write_group'] });
-decision('srv-delete-in-scope', 'Server: delete in scope with mcp-jira-destructive.', 'server',
-  { caller: users.destroyer({ mfa: 120 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') },
-  allow('jira-delete-issue-in-scope'));
-const group = (groupPath) => ({ type: 'GitLab::Group', id: groupPath, attrs: { path: groupPath } });
-const projectIn = (projectPath) => ({ type: 'GitLab::Project', id: projectPath, attrs: { path: projectPath },
-  parent: group(projectPath.slice(0, projectPath.lastIndexOf('/'))) });
-decision('srv-gitlab-subgroup-covered', 'Server: grant on team-a covers a project in subgroup team-a/sub (CC-037).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' }, resource: projectIn('team-a/sub/app') },
-  allow('gitlab-update-project-in-scope'), { covers: ['scope_hierarchy'] });
-decision('srv-gitlab-sibling-not-covered', 'Server: grant on team-a does not cover sibling group team-b.', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-b/sub/app' }, resource: projectIn('team-b/sub/app') },
-  deny(), { covers: ['scope_hierarchy'] });
-decision('srv-gitlab-similar-prefix-not-covered', 'Server: grant on team-a does not cover team-ab (path segments, not string prefix).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-ab/app' }, resource: projectIn('team-ab/app') },
-  deny(), { covers: ['scope_hierarchy'] });
-decision('srv-gitlab-group-without-mapping', 'Server: mcp-gitlab-grp-team-c follows the naming convention but has no mapping in the bundle, so it grants nothing.', 'server',
-  { caller: caller('gitlabWriter', ['mcp-gitlab-read', 'mcp-gitlab-write', 'mcp-gitlab-grp-team-c']), tool: tools.updateProject,
-    arguments: { projectPath: 'team-c/app' }, resource: projectIn('team-c/app') },
-  deny(), { covers: ['scope_hierarchy', 'no_group'] });
-decision('srv-gitlab-mapping-name-without-path', 'Server: mcp-team-platform grants GitLab group platform although its name encodes no path.', 'server',
-  { caller: caller('platform', ['mcp-gitlab-read', 'mcp-gitlab-write', 'mcp-team-platform']), tool: tools.updateProject,
-    arguments: { projectPath: 'platform/api' }, resource: projectIn('platform/api') },
-  allow('gitlab-update-project-in-scope'), { covers: ['scope_hierarchy'] });
-decision('srv-gitlab-create-in-sibling-group', 'Server: creating a project in team-b (resolved group) with scope team-a.', 'server',
-  { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-b' }, resource: group('team-b') }, deny());
-decision('srv-gitlab-create-in-subgroup', 'Server: creating a project in team-a/sub with scope team-a.', 'server',
-  { caller: users.gitlabWriter(), tool: tools.createProject, arguments: { groupPath: 'team-a/sub' }, resource: group('team-a/sub') },
-  allow('gitlab-update-group-in-scope'), { covers: ['scope_hierarchy'] });
-const editor = () => caller('confluenceEditor', ['mcp-confluence-read', 'mcp-confluence-write', 'mcp-confluence-handbook-editors']);
-decision('srv-confluence-page-tree-covered', 'Server: page 1234 under granted page 1000.', 'server',
-  { caller: editor(), tool: tools.updatePage, arguments: { pageId: '1234' },
-    resource: { type: 'Confluence::Page', id: '1234', attrs: { id: '1234', ancestorIds: ['1000', '1100'] }, parent: { type: 'Confluence::Space', id: 'HB', attrs: { key: 'HB', labels: [] } } } },
-  allow('confluence-update-page-in-scope'), { covers: ['scope_hierarchy'] });
-decision('srv-confluence-page-outside-tree', 'Server: page 2000 in another tree of the same space.', 'server',
-  { caller: editor(), tool: tools.updatePage, arguments: { pageId: '2000' },
-    resource: { type: 'Confluence::Page', id: '2000', attrs: { id: '2000', ancestorIds: ['1999'] }, parent: { type: 'Confluence::Space', id: 'HB', attrs: { key: 'HB', labels: [] } } } },
-  deny(), { covers: ['scope_hierarchy'] });
-decision('gw-search-without-project-passes-gateway', 'Search without project keys passes the gateway (nothing to compare); the server must limit the query and filter results (CC-036).', 'gateway',
-  { caller: users.writer2(), tool: tools.searchIssues, arguments: { text: 'outage' } },
-  allow('jira-call-read'), { covers: ['search_results'] });
-decision('srv-gitlab-update-in-scope', 'Server: GitLab project in group team-a.', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/app' },
-  resource: { type: 'GitLab::Project', id: 'team-a/app', attrs: { path: 'team-a/app' }, parent: { type: 'GitLab::Group', id: 'team-a', attrs: { path: 'team-a' } } },
-}, allow('gitlab-update-project-in-scope'));
-decision('srv-gitlab-update-outside-scope', 'Server: GitLab project in group team-b.', 'server', {
-  caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-b/app' },
-  resource: { type: 'GitLab::Project', id: 'team-b/app', attrs: { path: 'team-b/app' }, parent: { type: 'GitLab::Group', id: 'team-b', attrs: { path: 'team-b' } } },
-}, deny());
-decision('srv-opensearch-prefix-match', 'Server: index logs-team-a-2026.10 within prefix logs-team-a.', 'server', {
-  caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-2026.10' },
-  resource: { type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: ['logs'] } },
-}, allow('opensearch-read-in-scope'));
-decision('srv-opensearch-prefix-boundary', 'Server: logs-team-ab is not inside prefix logs-team-a (dash boundary).', 'server', {
-  caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-ab' },
-  resource: { type: 'OpenSearch::Index', id: 'logs-team-ab', attrs: { name: 'logs-team-ab', tags: [] } },
-}, deny());
-decision('srv-confluence-restricted-page', 'Server: page in a space labelled restricted.', 'server', {
-  caller: users.confluenceReader(), tool: tools.getPage, arguments: { pageId: '90210' },
-  resource: { type: 'Confluence::Page', id: '90210', attrs: { id: '90210' },
-    parent: { type: 'Confluence::Space', id: 'LEGAL', attrs: { key: 'LEGAL', labels: ['restricted'] } } },
-}, deny('confluence-forbid-restricted-page'), { covers: ['restricted', 'forbid_overrides_permit'] });
-
-const page = (id, spaceKey, labels = []) => ({ type: 'Confluence::Page', id, attrs: { id },
-  parent: { type: 'Confluence::Space', id: spaceKey, attrs: { key: spaceKey, labels } } });
-const ticket = (id, queueId) => ({ type: 'ServiceDesk::Ticket', id, attrs: { id },
-  parent: { type: 'ServiceDesk::Queue', id: queueId, attrs: { id: queueId } } });
-const gitlabProject = (projectPath) => {
-  const group = projectPath.slice(0, projectPath.lastIndexOf('/'));
-  return { type: 'GitLab::Project', id: projectPath, attrs: { path: projectPath },
-    parent: { type: 'GitLab::Group', id: group, attrs: { path: group } } };
-};
-
-decision('gw-confluence-read-allowed', 'Confluence reader calls a READ_ONLY Confluence tool.', 'gateway',
-  { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'OPS' } }, allow('confluence-call-read'));
-decision('srv-confluence-read-allowed', 'Server: page in a normal space.', 'server',
-  { caller: users.confluenceReader(), tool: tools.getPage, arguments: { pageId: '1001' }, resource: page('1001', 'ENG') }, allow('confluence-read'));
-decision('srv-servicedesk-read-allowed', 'Server: ticket in queue 42.', 'server',
-  { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-read'));
-// Write groups of Confluence, service desk and OpenSearch, and update on a Confluence space (CC-148).
-decision('gw-confluence-update-allowed', 'Confluence writer calls an UPDATE tool.', 'gateway',
-  { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '1001' } }, allow('confluence-call-update'));
-decision('gw-confluence-update-without-write-group', 'Confluence reader calls an UPDATE tool.', 'gateway',
-  { caller: users.confluenceReader(), tool: tools.createPage, arguments: { parentId: '1001' } }, deny(), { covers: ['write_without_write_group'] });
-decision('gw-servicedesk-update-allowed', 'Service desk writer calls an UPDATE tool (add_note).', 'gateway',
-  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 501 } }, allow('servicedesk-call-update'));
-decision('gw-servicedesk-update-without-write-group', 'Service desk reader calls add_note.', 'gateway',
-  { caller: users.sdReader(), tool: tools.addNote, arguments: { ticketId: 501 } }, deny(), { covers: ['write_without_write_group'] });
-decision('gw-opensearch-update-allowed', 'OpenSearch writer calls an UPDATE tool.', 'gateway',
-  { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-a-2026.10' } }, allow('opensearch-call-update'));
-decision('srv-confluence-create-page-under-parent-in-scope', 'Server: create_page under parent page 1001 of space ENG, the resource is the parent page.', 'server',
-  { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '1001' }, resource: page('1001', 'ENG') }, allow('confluence-update-page-in-scope'));
-decision('srv-confluence-create-page-under-parent-outside-scope', 'Server: the parent page lies in space OPS, which the writer has no grant for.', 'server',
-  { caller: users.confluenceWriter(), tool: tools.createPage, arguments: { parentId: '2002' }, resource: page('2002', 'OPS') }, deny());
-decision('srv-confluence-update-space-in-scope', 'Server: update on the space itself.', 'server',
-  { caller: users.confluenceWriter(), tool: tools.updateSpace, arguments: { spaceKey: 'ENG' },
-    resource: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG', labels: [] } } }, allow('confluence-update-space-in-scope'));
-decision('srv-confluence-update-space-outside-scope', 'Server: update on a space without a grant.', 'server',
-  { caller: users.confluenceWriter(), tool: tools.updateSpace, arguments: { spaceKey: 'OPS' },
-    resource: { type: 'Confluence::Space', id: 'OPS', attrs: { key: 'OPS', labels: [] } } }, deny());
-decision('srv-servicedesk-add-note-in-scope', 'Server: add_note on a ticket of queue 42.', 'server',
-  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 501 }, resource: ticket('501', '42') }, allow('servicedesk-update-ticket-in-scope'));
-decision('srv-servicedesk-add-note-outside-scope', 'Server: add_note on a ticket of queue 7.', 'server',
-  { caller: users.sdWriter(), tool: tools.addNote, arguments: { ticketId: 777 }, resource: ticket('777', '7'), credentialType: 'user-secret' }, deny());
-decision('srv-opensearch-update-index-in-scope', 'Server: update on an index below the granted prefix.', 'server',
-  { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-a-2026.10' },
-    resource: { type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } } }, allow('opensearch-update-index-in-scope'));
-decision('srv-opensearch-update-index-outside-scope', 'Server: update on an index of another team.', 'server',
-  { caller: users.osWriter(), tool: tools.tagIndex, arguments: { index: 'logs-team-b-2026.10' },
-    resource: { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } } }, deny());
-// context.credentialType (CC-136): reading a service desk queue outside the grant with the service account is forbidden, also without the type.
-const sdRead = (credentialType, queueId, extra = {}) => ({
-  caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 900 }, resource: ticket('900', queueId), ...(credentialType && { credentialType }), ...extra });
-decision('srv-servicedesk-service-account-ticket-outside-scope-denied', 'Ticket of queue 7, the user has queue 42, the credential is the service account: forbidden.', 'server',
-  sdRead('service-account', '7'), deny('servicedesk-service-account-ticket-outside-scope'), { covers: ['forbid_overrides_permit'] });
-decision('srv-servicedesk-without-credential-type-ticket-outside-scope-denied', 'The same without a credential type: the rule is fail-closed and still forbids.', 'server',
-  sdRead(null, '7'), deny('servicedesk-service-account-ticket-outside-scope'), { covers: ['forbid_overrides_permit'] });
-decision('srv-servicedesk-service-account-ticket-in-scope-allowed', 'Ticket of queue 42 with the service account: inside the grant, allowed.', 'server',
-  sdRead('service-account', '42'), allow('servicedesk-read'));
-decision('srv-servicedesk-unknown-credential-type-ticket-outside-scope-denied', 'A credential type outside the four (a typo, a fifth type) is not a user credential: the allow-list in the rule makes it forbidden (CC-164). The builder refuses such a value, so the request is given as it is and the builder input is recorded with the refused value.', 'server',
-  sdRead('user-secret', '7'), deny('servicedesk-service-account-ticket-outside-scope'),
-  { covers: ['forbid_overrides_permit'], adjustment: 'unknown-credential-type', recordedInput: sdRead('api-key', '7'), mutate: (b) => { b.context.credentialType = 'api-key'; } });
-decision('srv-servicedesk-user-credential-ticket-outside-scope-allowed', 'A user credential is not touched by the rule: the system applies the rights of the user.', 'server',
-  sdRead('user-secret', '7'), allow('servicedesk-read'));
-decision('srv-servicedesk-service-account-queue-outside-scope-denied', 'Queue 7 with the service account and no grant: forbidden.', 'server',
-  { caller: users.sdReader(), tool: tools.listQueueTickets, arguments: { queueId: 7 }, resource: { type: 'ServiceDesk::Queue', id: '7', attrs: { id: '7' } }, credentialType: 'service-account' },
-  deny('servicedesk-service-account-queue-outside-scope'), { covers: ['forbid_overrides_permit'] });
-
+decision('srv-jira-read-restricted-project', 'Restricted project is never available, even to a reader.', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: project('HR', 'Restricted') }, deny('jira-forbid-restricted-project'),
+  { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-jira-read-restricted-issue', 'Issue of a restricted project: forbid through the parent attribute.', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-1' }, resource: issue('HR-1', 'HR', 'Restricted') }, deny('jira-forbid-restricted-issue'),
+  { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-moved-issue-restricted', 'ABC-1 was moved into a restricted project: the project comes from the system, not from the key (cedar/entity-builder.md section 4).', 'server',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'HR', 'Restricted') }, deny('jira-forbid-restricted-issue'),
+  { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-jira-update-issue-in-scope', 'Update an issue of a granted project.', 'server',
+  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, allow('jira-update-issue-in-scope'));
+decision('srv-jira-update-issue-outside-scope', 'Update an issue of a project that is not granted: default deny.', 'server',
+  { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'DEF-1' }, resource: issue('DEF-1', 'DEF', 'Software') }, deny(), { covers: ['scope_hierarchy'] });
+decision('srv-jira-update-without-write-group', 'In scope but without the write group.', 'server',
+  { caller: caller('reader', ['mcp-jira-read', 'mcp-jira-proj-ABC']), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, deny(),
+  { covers: ['write_without_write_group'] });
+decision('srv-jira-delete-in-scope', 'Delete needs the destructive group and the scope.', 'server',
+  { caller: users.destroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, allow('jira-delete-issue-in-scope'));
+decision('srv-jira-delete-with-write-group-only', 'The write group does not delete.', 'server',
+  { caller: users.writer(), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, deny());
+decision('srv-jira-group-named-like-a-project-grants-nothing', 'A group whose name merely looks like a grant (case differs) is not in the mapping and grants nothing.', 'server',
+  { caller: caller('writer', ['mcp-jira-read', 'mcp-jira-write', 'mcp-jira-proj-abc']), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, deny());
+decision('srv-notes-folder-subpath-in-scope', 'A grant on the folder team covers team/sub/leaf: the folder carries every prefix of its path as scope.', 'server',
+  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team/sub/leaf' }, resource: folder('team/sub/leaf') }, allow('notes-update-in-scope'),
+  { covers: ['scope_hierarchy'] });
+decision('srv-notes-folder-sibling-outside-scope', 'A grant on team does not cover teamx/a: the scope matches whole path segments.', 'server',
+  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'teamx/a' }, resource: folder('teamx/a') }, deny(), { covers: ['scope_hierarchy'] });
+decision('srv-notes-note-in-scope', 'A note carries the scope of its notebook.', 'server',
+  { caller: users.notesWriter(), tool: tools.updateNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', []) }, allow('notes-update-in-scope'));
+decision('srv-notes-note-in-restricted-notebook', 'A note of a notebook labelled restricted (the builder normalizes the label).', 'server',
+  { caller: users.notesWriter(), tool: tools.updateNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', [' Restricted']) }, deny('notes-forbid-restricted-note'),
+  { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-notes-folder-restricted', 'A folder classified restricted.', 'server',
+  { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team' }, resource: folder('team', ['RESTRICTED']) }, deny('notes-forbid-restricted-folder'),
+  { covers: ['restricted', 'forbid_overrides_permit'] });
+decision('srv-notes-delete-note', 'Delete needs the destructive group; the note is in the granted notebook.', 'server',
+  { caller: users.notesDestroyer(), tool: tools.deleteNote, arguments: { noteId: '17' }, resource: note('17', 'alpha', []) }, allow('notes-delete-in-scope'));
+{
+  const folderRead = (name, description, credentialType, expected, input = {}) => decision(name, description, 'server', {
+    caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'platform' }, credentialType, resource: folder('platform'), ...input,
+  }, expected);
+  folderRead('srv-notes-service-account-outside-grant', 'A service account reads a folder outside the grants of the user: forbidden (CC-136).', 'service-account', deny('notes-service-account-folder-outside-scope'));
+  folderRead('srv-notes-user-oauth-outside-grant', 'A user credential is limited by the system itself, so the rule does not touch it.', 'user-oauth', allow('notes-read'));
+  folderRead('srv-notes-credential-type-missing', 'Without a credentialType the rule fails closed, like a service account (CC-164).', undefined, deny('notes-service-account-folder-outside-scope'));
+  folderRead('srv-notes-service-account-inside-grant', 'A service account inside the grants of the user: allowed.', 'service-account', allow('notes-read'),
+    { caller: caller('notesReader', ['mcp-notes-read', 'mcp-team-platform']) });
+}
 console.log(`policy decisions: ${decisionCount}`);
 
 // ---------- result filtering (CC-036) ----------
 outDir('result-filter');
-const resultFilter = (name, description, input, items, kept, queryConstraints) =>
-  write('result-filter', name, { description, staticEntities: STATIC_PATH, policies: 'cedar/examples', input, items,
-    expected: { kept, queryConstraints } });
+const resultFilter = (name, description, fragment, rawInput, items, kept, queryConstraints) => {
+  const input = { credentialType: 'user-oauth', ...rawInput };
+  write('result-filter', name, {
+    description, resourceTypes: [JIRA, NOTES], scopeMapping: MAPPING, policies: fragment, input, items, expected: { kept, queryConstraints },
+  });
+};
 
 resultFilter('jira-search-granted-projects',
-  'Jira search: the server drops every returned issue that is Restricted or that it cannot evaluate (no category on its project); issues of granted projects are kept.',
-  { caller: users.writer2(), tool: tools.searchIssues, arguments: { text: 'outage' } },
+  'Search: the server drops every returned issue that is restricted or that it cannot evaluate (no category on its project); issues of granted projects are kept, reading is not limited by scope.',
+  JIRA_FRAGMENT, { caller: users.writer2(), tool: tools.searchIssues, arguments: { text: 'outage' } },
   [issue('ABC-7', 'ABC', 'Software'), issue('DEF-9', 'DEF', 'Software'), issue('HR-1', 'HR', 'Restricted'),
     { type: 'Jira::Issue', id: 'ABC-8', attrs: { key: 'ABC-8' } }],
   ['ABC-7', 'DEF-9'],
   { 'Jira::Project': { granted: ['ABC', 'DEF'] } });
-resultFilter('opensearch-search-granted-prefixes',
-  'OpenSearch search: the index pattern is limited to granted prefixes, and results from other indices are dropped.',
-  { caller: users.osReader(), tool: tools.searchIndex, arguments: {} },
-  [{ type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } },
-    { type: 'OpenSearch::Index', id: 'logs-team-b-2026.10', attrs: { name: 'logs-team-b-2026.10', tags: [] } },
-    { type: 'OpenSearch::Index', id: 'logs-team-ab', attrs: { name: 'logs-team-ab', tags: [] } }],
-  ['logs-team-a-2026.10'],
-  { 'OpenSearch::Index': { granted: ['logs-team-a'] } });
-resultFilter('gitlab-projects-in-restricted-subtree',
-  'GitLab project list: projects below a restricted group are dropped at any depth (CC-129), the others are kept.',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: {} },
-  [gitlabProjectWith('team-a/app', 'team-a', { 'team-a': [] }), gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: ['restricted'], 'hr/payroll': [] }),
-    gitlabProjectWith('hr/app', 'hr', { hr: ['restricted'] })],
-  ['team-a/app'],
-  { 'GitLab::Group': { granted: [] } });
-resultFilter('confluence-pages-restricted-space-dropped',
-  'Confluence page search: reads are not limited by the grant of a space, so pages of ENG and OPS are kept and the page of a restricted space is dropped.',
-  { caller: users.confluenceReader(), tool: tools.getPage, arguments: {} },
-  [page('1001', 'ENG'), page('2002', 'OPS'), page('3003', 'ENG', ['restricted'])],
-  ['1001', '2002'],
-  { 'Confluence::Page': { granted: [] },
-    'Confluence::Space': { granted: ['ENG'] } });
-resultFilter('servicedesk-tickets-by-grant',
-  'Service desk ticket list for a user granted queue 42.',
-  { caller: users.sdReader(), tool: tools.getTicket, arguments: {} },
-  [ticket('501', '42'), ticket('777', '7')],
-  ['501'],
-  { 'ServiceDesk::Queue': { granted: ['42'] } });
-resultFilter('opensearch-no-grants',
-  'User with mcp-opensearch-read but no mapped index prefix: granted is empty, so the server must not query at all; any returned index is dropped.',
-  { caller: caller('osReader', ['mcp-opensearch-read', 'mcp-opensearch-idx-unmapped']), tool: tools.searchIndex, arguments: {} },
-  [{ type: 'OpenSearch::Index', id: 'logs-team-a-2026.10', attrs: { name: 'logs-team-a-2026.10', tags: [] } }],
-  [],
-  { 'OpenSearch::Index': { granted: [] } });
+resultFilter('jira-project-without-category', 'An element whose project the resolver returned without category is dropped (CC-062).',
+  JIRA_FRAGMENT, { caller: users.reader(), tool: tools.searchIssues, arguments: {} },
+  [issue('ABC-7', 'ABC', 'Software'), { ...issue('ABC-8', 'ABC', 'Software'), parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' }, scopes: ['Jira::Project/ABC'] } }],
+  ['ABC-7'],
+  { 'Jira::Project': { granted: [] } });
+resultFilter('notes-folders-restricted-dropped',
+  'A folder list: restricted folders are dropped at any depth, the others are kept; the query is limited to the granted folder prefixes.',
+  NOTES_FRAGMENT, { caller: users.notesWriter(), tool: tools.searchFolders, arguments: {} },
+  [folder('team'), folder('team/sub', ['restricted']), folder('team/sub/leaf'), folder('platform')],
+  ['team', 'team/sub/leaf', 'platform'],
+  { 'Notes::Folder': { granted: ['team'] }, 'Notes::Notebook': { granted: ['alpha'] } });
+resultFilter('notes-no-grants',
+  'User with the read group but no mapped scope: granted is empty. Reading is not limited by scope, so the filter keeps the element; the empty grant is what stops a query against a backend that does not enforce rights.',
+  NOTES_FRAGMENT, { caller: caller('notesReader', ['mcp-notes-read', 'mcp-notes-folder-unmapped']), tool: tools.searchFolders, arguments: {} },
+  [folder('team')],
+  ['team'],
+  { 'Notes::Folder': { granted: [] }, 'Notes::Notebook': { granted: [] } });
+resultFilter('notes-notes-of-restricted-notebook',
+  'Notes of a notebook labelled restricted are dropped through the parent attribute.',
+  NOTES_FRAGMENT, { caller: users.notesReader(), tool: tools.getNote, arguments: {} },
+  [note('1', 'alpha', []), note('2', 'beta', ['restricted']), note('3', 'alpha', ['draft'])],
+  ['1', '3'],
+  { 'Notes::Notebook': { granted: [] } });
 
 // ---------- every value of every resourceRef (CC-061) ----------
 outDir('resource-checks');
 const resourceCheck = (name, description, input, resources, allowed) =>
-  write('resource-checks', name, { description, staticEntities: STATIC_PATH, policies: 'cedar/examples', input, resources,
-    expected: { allowed } });
-resourceCheck('transfer-inside-scope', 'Transfer team-a/app to team-a/sub: source project and target group are both evaluated and allowed.',
-  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-a/sub' } },
-  [projectIn('team-a/app'), group('team-a/sub')], true);
-resourceCheck('transfer-to-sibling-group', 'Transfer team-a/app to team-b: the source is allowed, the target is not, so the call is denied.',
-  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' } },
-  [projectIn('team-a/app'), group('team-b')], false);
-resourceCheck('transfer-from-sibling-group', 'Transfer team-b/app into team-a: the target is allowed, the source is not.',
-  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-b/app', targetGroup: 'team-a' } },
-  [projectIn('team-b/app'), group('team-a')], false);
-resourceCheck('array-with-one-outside', 'Archive three projects; one of them is outside the scope, so the whole call is denied.',
-  { caller: users.gitlabWriter(), tool: tools.archiveProjects, arguments: { projectPaths: ['team-a/app', 'team-a/sub/svc', 'team-ab/app'] } },
-  [projectIn('team-a/app'), projectIn('team-a/sub/svc'), projectIn('team-ab/app')], false);
-resultFilter('jira-project-without-category', 'An element whose project the resolver returned without category is dropped (CC-062).',
-  { caller: users.reader(), tool: tools.searchIssues, arguments: {} },
-  [issue('ABC-7', 'ABC', 'Software'), { type: 'Jira::Issue', id: 'ABC-8', attrs: { key: 'ABC-8' }, parent: { type: 'Jira::Project', id: 'ABC', attrs: { key: 'ABC' } } }],
-  ['ABC-7'],
-  { 'Jira::Project': { granted: [] } });
-decision('srv-transfer-target-outside-scope', 'Server, transfer_project: the target group team-b is evaluated on its own and denied (CC-061).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' }, resource: group('team-b') },
+  write('resource-checks', name, { description, resourceTypes: [JIRA, NOTES], scopeMapping: MAPPING, policies: NOTES_FRAGMENT, input: { credentialType: 'user-oauth', ...input }, resources, expected: { allowed } });
+resourceCheck('transfer-inside-scope', 'Move team/a under team/sub: source and target folder are both evaluated and allowed.',
+  { caller: users.notesWriter(), tool: tools.moveFolder, arguments: { folderPath: 'team/a', targetFolder: 'team/sub' } },
+  [folder('team/a'), folder('team/sub')], true);
+resourceCheck('transfer-to-sibling-group', 'Move team/a to platform: the source is allowed, the target is not, so the call is denied.',
+  { caller: users.notesWriter(), tool: tools.moveFolder, arguments: { folderPath: 'team/a', targetFolder: 'platform' } },
+  [folder('team/a'), folder('platform')], false);
+resourceCheck('transfer-from-sibling-group', 'Move platform/a into team: the target is allowed, the source is not.',
+  { caller: users.notesWriter(), tool: tools.moveFolder, arguments: { folderPath: 'platform/a', targetFolder: 'team' } },
+  [folder('platform/a'), folder('team')], false);
+resourceCheck('array-with-one-outside', 'Archive three folders; one of them is outside the scope (teamx is not team), so the whole call is denied.',
+  { caller: users.notesWriter(), tool: tools.archiveFolders, arguments: { folderPaths: ['team/a', 'team/sub/b', 'teamx/a'] } },
+  [folder('team/a'), folder('team/sub/b'), folder('teamx/a')], false);
+resourceCheck('array-all-inside', 'Archive two folders, both inside the scope.',
+  { caller: users.notesWriter(), tool: tools.archiveFolders, arguments: { folderPaths: ['team/a', 'team/sub/b'] } },
+  [folder('team/a'), folder('team/sub/b')], true);
+decision('srv-transfer-target-outside-scope', 'Server, move_folder: the target folder platform is evaluated on its own and denied (CC-061).', 'server',
+  { caller: users.notesWriter(), tool: tools.moveFolder, arguments: { folderPath: 'team/a', targetFolder: 'platform' }, resource: folder('platform') },
   deny(), { covers: ['scope_hierarchy', 'every_resource_ref'] });
-decision('srv-transfer-source-in-scope', 'Server, transfer_project: the source project team-a/app is allowed; the call still needs every other value allowed.', 'server',
-  { caller: users.gitlabWriter(), tool: tools.transferProject, arguments: { projectPath: 'team-a/app', targetGroup: 'team-b' }, resource: projectIn('team-a/app') },
-  allow('gitlab-update-project-in-scope'), { covers: ['scope_hierarchy', 'every_resource_ref'] });
+decision('srv-transfer-source-in-scope', 'Server, move_folder: the source folder team/a is allowed; the call still needs every other value allowed.', 'server',
+  { caller: users.notesWriter(), tool: tools.moveFolder, arguments: { folderPath: 'team/a', targetFolder: 'platform' }, resource: folder('team/a') },
+  allow('notes-update-in-scope'), { covers: ['scope_hierarchy', 'every_resource_ref'] });
 
-// ---------- classification: normalization and new systems (CC-057, CC-067) ----------
-for (const [suffix, value] of [['canonical', 'restricted'], ['trailing-space', 'Restricted '], ['upper-case', 'RESTRICTED']]) {
-  decision(`srv-jira-restricted-${suffix}`, `Server: project category "${value}" is normalized to "restricted" and forbidden (CC-067).`, 'server',
-    { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'HR-2' }, resource: issue('HR-2', 'HR', value) },
-    deny('jira-forbid-restricted-issue'), { covers: ['restricted', 'forbid_overrides_permit'] });
-}
-decision('srv-gitlab-restricted-project-topic', 'Server: GitLab project with topic "Restricted" (CC-057).', 'server',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'team-a/secret' },
-    resource: { ...projectIn('team-a/secret'), attrs: { path: 'team-a/secret', classification: ['Restricted', 'backend'] } } },
-  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-gitlab-project-in-restricted-group', 'Server: project of a GitLab group with topic restricted is forbidden through its group (CC-057).', 'server',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'legal/app' },
-    resource: { type: 'GitLab::Project', id: 'legal/app', attrs: { path: 'legal/app' },
-      parent: { type: 'GitLab::Group', id: 'legal', attrs: { path: 'legal', classification: [' restricted'] } } } },
-  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-gitlab-project-two-levels-below-restricted-group', 'Server: topics are not inherited in GitLab; the restricted topic is on hr only, the project is two levels below, and it is still forbidden through inheritedClassification (CC-129).', 'server',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'hr/payroll/app' },
-    resource: gitlabProjectWith('hr/payroll/app', 'hr/payroll', { hr: ['Restricted'], 'hr/payroll': [] }) },
-  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-gitlab-subgroup-of-restricted-group', 'Server: a subgroup of a restricted group is forbidden itself (CC-129).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a/sub' },
-    resource: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': ['restricted'] } } } },
-  deny('gitlab-forbid-restricted-group'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-gitlab-ancestor-topic-spelling-normalized', 'Server: the topic of an ancestor is normalized like every classification (trim, ASCII lower case): " RESTRICTED " forbids (CC-067, CC-129).', 'server',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'legal/a/b/app' },
-    resource: gitlabProjectWith('legal/a/b/app', 'legal/a/b', { legal: [' RESTRICTED '], 'legal/a': [], 'legal/a/b': [] }) },
-  deny('gitlab-forbid-restricted-project'), { covers: ['restricted'] });
-decision('srv-gitlab-group-unclassified-allowed', 'Server: GitLab has no topics for groups, so a group has no classification; the group in scope is allowed (3.1.1, decision of 2026-10-28).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateGroup, arguments: { groupPath: 'team-a/sub' },
-    resource: { type: 'GitLab::Group', id: 'team-a/sub', attrs: { path: 'team-a/sub', ancestorClassifications: { 'team-a': [] } } } },
-  allow('gitlab-update-group-in-scope'));
-decision('srv-gitlab-project-topic-in-unclassified-group-denied', 'Server: the project carries the topic restricted, its groups carry none: the project is denied, the group above it is not (3.1.1, projects are classified, groups are not).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/secret' },
-    resource: gitlabProjectWith('team-a/sub/secret', 'team-a/sub', { 'team-a': [], 'team-a/sub': [] }, { classification: ['Restricted'] }) },
-  deny('gitlab-forbid-restricted-project'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-gitlab-ancestors-without-restricted-allowed', 'Server: ancestors with other topics do not forbid; the grant on team-a covers the project (CC-129 control case).', 'server',
-  { caller: users.gitlabWriter(), tool: tools.updateProject, arguments: { projectPath: 'team-a/sub/app' },
-    resource: gitlabProjectWith('team-a/sub/app', 'team-a/sub', { 'team-a': ['backend'], 'team-a/sub': ['frontend'] }) },
-  allow('gitlab-update-project-in-scope'));
-decision('srv-servicedesk-ticket-in-restricted-queue', 'Server: ticket of a queue with category Restricted (CC-057).', 'server',
-  { caller: users.sdReader(), tool: tools.getTicket, arguments: { ticketId: 900 },
-    resource: { type: 'ServiceDesk::Ticket', id: '900', attrs: { id: '900' },
-      parent: { type: 'ServiceDesk::Queue', id: '42', attrs: { id: '42', classification: ['Restricted'] } } } },
-  deny('servicedesk-forbid-restricted-ticket'), { covers: ['restricted', 'forbid_overrides_permit'] });
-decision('srv-opensearch-restricted-index', 'Server: index tagged RESTRICTED (CC-067).', 'server',
-  { caller: users.osReader(), tool: tools.searchIndex, arguments: { index: 'logs-team-a-hr' },
-    resource: { type: 'OpenSearch::Index', id: 'logs-team-a-hr', attrs: { name: 'logs-team-a-hr', tags: ['RESTRICTED'] } } },
-  deny('opensearch-forbid-restricted-index'), { covers: ['restricted', 'forbid_overrides_permit'] });
-builderVector('classification-normalized', 'Labels are trimmed, lower-cased (ASCII only) and deduplicated (CC-067).', 'server',
-  { caller: users.confluenceReader(), tool: tools.searchSpace, arguments: { spaceKey: 'ENG' },
-    resource: { type: 'Confluence::Space', id: 'ENG', attrs: { key: 'ENG', labels: [' Restricted', 'restricted ', 'Public', 'ÄRGER'] } } });
-builderVector('classification-wrong-shape', 'GitLab classification must be a list of strings.', 'server',
-  { caller: users.gitlabReader(), tool: tools.getProject, arguments: { projectPath: 'team-a/app' },
-    resource: { ...projectIn('team-a/app'), attrs: { path: 'team-a/app', classification: 'restricted' } } });
+// ---------- id and scope patterns of the declarations ----------
+// The patterns of the former built-in systems are data now: these vectors check the declarations that ship as examples.
+outDir('resource-ids');
+const ids = (name, resourceTypes, type, kind, valid, invalid) => {
+  const types = registry([resourceTypes]);
+  const check = kind === 'resource' ? validId : validScopeLocalId;
+  for (const id of valid) if (!check(types, type, id)) throw new Error(`${name}: ${JSON.stringify(id)} should be valid`);
+  for (const id of invalid) if (check(types, type, id)) throw new Error(`${name}: ${JSON.stringify(id)} should be invalid`);
+  write('resource-ids', name, { resourceTypes, type, kind, valid, invalid });
+};
+ids('jira-project', JIRA, 'Jira::Project', 'resource', ['ABC', 'HR', 'PLAT_2', 'A1'], ['abc', 'A', 'ABCDEFGHIJK', '1AB', 'AB-C', 'ABC) OR project in (HR', 'AB C', '"ABC"', 'ABC\n']);
+ids('jira-issue', JIRA, 'Jira::Issue', 'resource', ['ABC-1', 'PLAT_2-4711'], ['ABC-0', 'abc-1', 'ABC-1 OR 1=1', 'ABC', 'ABC-01']);
+ids('confluence-space', CONFLUENCE, 'Confluence::Space', 'resource', ['ENG', 'eng2', 'HB'], ['~jkowalski', 'ENG DOCS', 'ENG-1', 'ENG"', '']);
+ids('confluence-page', CONFLUENCE, 'Confluence::Page', 'resource', ['1', '1000', '9223372036854775807'], ['0', '01', '12a', '-5', '1 OR 1=1']);
+ids('gitlab-group', GITLAB, 'GitLab::Group', 'resource', ['team-a', 'team-a/sub', 'Team_A.v2', 'a'],
+  ['team-a/', '/team-a', 'team-a//sub', 'team-a/../team-b', '-team', 'team-', 'team--a', 'team.git', 'team a', '.hidden']);
+ids('gitlab-project', GITLAB, 'GitLab::Project', 'resource', ['team-a/app', 'team-a/sub/svc'], ['app', 'team-a/app.atom', 'team-a/app/', 'team-a/../x']);
+ids('opensearch-index', OPENSEARCH, 'OpenSearch::Index', 'resource', ['logs-team-a-2026.10', 'logs', 'kibana_1', '0logs'],
+  ['logs-team-a-x,secret-y', 'logs-team-a-*,*', 'logs-*', '_all', '-logs', 'Logs', 'remote:logs', '<logs-{now/d}>', 'logs team', '.', '..',
+    '.security', '.kibana_1', '.opendistro_security', '.ds-logs-000001']);
+ids('opensearch-prefix', OPENSEARCH, 'OpenSearch::Index', 'scope', ['logs-team-a', 'logs', 'a', '0'],
+  ['logs-', 'logs.', 'logs-*', 'logs,x', '_x', '.ds-logs', '.security', '.']);
+ids('servicedesk-queue', SERVICEDESK, 'ServiceDesk::Queue', 'resource', ['42', 'IT_support', 'q-1'], ['', '-1', 'q 1', 'q/1', '42;DROP']);
+ids('servicedesk-ticket', SERVICEDESK, 'ServiceDesk::Ticket', 'resource', ['501', 'INC-1'], ['INC 1', 'INC/1', '']);
+ids('notes-notebook', NOTES, 'Notes::Notebook', 'resource', ['alpha', 'team-1'], ['Alpha', '1alpha', 'alpha_1', 'alpha team', '', 'a'.repeat(33)]);
+ids('notes-folder', NOTES, 'Notes::Folder', 'resource', ['team', 'team/sub', 'a/b/c/d/e'], ['team/', '/team', 'team//sub', 'team/../x', 'Team', 'a/b/c/d/e/f']);
+ids('notes-folder-scope', NOTES, 'Notes::Folder', 'scope', ['team', 'team/sub'], ['team/', 'team/..', '']);
+ids('notes-note-has-no-scope', NOTES, 'Notes::Note', 'scope', [], ['17', '1']);

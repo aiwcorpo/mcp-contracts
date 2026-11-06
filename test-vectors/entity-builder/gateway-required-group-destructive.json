@@ -1,0 +1,136 @@
+{
+  "description": "Tool.requiredGroup of a DESTRUCTIVE tool is mcp-<system>-destructive, for a system the contracts have never heard of.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000008",
+      "usr": "notesdestroyer",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-destructive",
+        "mcp-notes-nb-alpha"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "delete_note",
+      "risk": "DESTRUCTIVE",
+      "action": "delete",
+      "resourceRefs": [
+        {
+          "argument": "noteId",
+          "type": "Notes::Note"
+        }
+      ]
+    },
+    "arguments": {
+      "noteId": "17"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000008"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "notes__delete_note"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "notes__delete_note"
+        },
+        "attrs": {
+          "server": "mcp-notes",
+          "name": "delete_note",
+          "risk": "DESTRUCTIVE",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-destructive"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000008"
+        },
+        "attrs": {
+          "username": "notesdestroyer",
+          "client": "claude-code",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Notebook/alpha"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-destructive"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-nb-alpha"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-destructive"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-nb-alpha"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Notes::Notebook/alpha"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

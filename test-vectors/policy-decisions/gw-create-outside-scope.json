@@ -1,11 +1,23 @@
 {
-  "description": "Create in DEF without mcp-jira-proj-DEF: forbid wins over the group permit.",
+  "description": "Create in a project the user is not granted: the platform forbid overrides the group permit.",
   "covers": [
-    "forbid_overrides_permit"
+    "forbid_overrides_permit",
+    "scope_hierarchy"
   ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
   "builder": {
     "level": "gateway",
-    "staticEntities": "cedar/examples/static-entities.json",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000002",
@@ -31,12 +43,10 @@
         ]
       },
       "arguments": {
-        "projectKey": "DEF",
-        "summary": "x"
+        "projectKey": "DEF"
       }
     }
   },
-  "policies": "cedar/examples",
   "request": {
     "principal": {
       "type": "User",
@@ -52,16 +62,14 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraProject": [
-          {
-            "__entity": {
-              "type": "ResourceScope",
-              "id": "Jira::Project/DEF"
-            }
+      "refs": [
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "Jira::Project/DEF"
           }
-        ]
-      }
+        }
+      ]
     }
   },
   "entities": [
@@ -73,7 +81,13 @@
       "attrs": {
         "server": "mcp-jira",
         "name": "create_issue",
-        "risk": "UPDATE"
+        "risk": "UPDATE",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-jira-write"
+          }
+        }
       },
       "parents": []
     },
@@ -85,20 +99,14 @@
       "attrs": {
         "username": "writer",
         "client": "claude-code",
-        "scopes": {
-          "jiraProjects": [
-            {
-              "__entity": {
-                "type": "ResourceScope",
-                "id": "Jira::Project/ABC"
-              }
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
             }
-          ],
-          "confluenceSpaces": [],
-          "gitlabGroups": [],
-          "opensearchIndexPrefixes": [],
-          "servicedeskQueues": []
-        }
+          }
+        ]
       },
       "parents": [
         {
@@ -148,7 +156,7 @@
   "expected": {
     "decision": "deny",
     "determiningPolicies": [
-      "jira-call-write-outside-scope"
+      "platform-call-write-outside-scope"
     ]
   }
 }

@@ -1,44 +1,150 @@
 {
-  "description": "A null attribute from the resolver means \"no attribute\"; for the required classification (category) the builder refuses the entity (CC-062).",
+  "description": "A null attribute means the attribute is absent.",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
-      "sub": "b1a7c0de-0000-4000-8000-000000000001",
-      "usr": "reader",
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
       "grp": [
-        "mcp-jira-read"
+        "mcp-notes-read"
       ],
       "azp": "claude-code"
     },
     "tool": {
-      "serverId": "mcp-jira",
-      "system": "jira",
-      "name": "search_issues",
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_note",
       "risk": "READ_ONLY",
       "action": "read",
       "resourceRefs": [
         {
-          "argument": "projectKeys",
-          "type": "Jira::Project"
+          "argument": "noteId",
+          "type": "Notes::Note"
         }
       ]
     },
     "arguments": {
-      "projectKeys": [
-        "ABC"
-      ]
+      "noteId": "17"
     },
     "resource": {
-      "type": "Jira::Project",
-      "id": "ABC",
+      "type": "Notes::Note",
+      "id": "17",
       "attrs": {
-        "key": "ABC",
-        "category": null
-      }
+        "title": "Note 17",
+        "pinned": null
+      },
+      "parent": {
+        "type": "Notes::Notebook",
+        "id": "alpha",
+        "attrs": {
+          "name": "alpha",
+          "labels": []
+        },
+        "scopes": [
+          "Notes::Notebook/alpha"
+        ]
+      },
+      "scopes": [
+        "Notes::Notebook/alpha"
+      ]
     }
   },
   "expected": {
-    "error": "internal_error"
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Notes::Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Notes::Note",
+      "id": "17"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Notes::Note",
+          "id": "17"
+        },
+        "attrs": {
+          "title": "Note 17",
+          "notebook": {
+            "__entity": {
+              "type": "Notes::Notebook",
+              "id": "alpha"
+            }
+          },
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Notebook/alpha"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "Notes::Notebook",
+            "id": "alpha"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "Notes::Notebook",
+          "id": "alpha"
+        },
+        "attrs": {
+          "name": "alpha",
+          "labels": [],
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Notebook/alpha"
+              }
+            }
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000006"
+        },
+        "attrs": {
+          "username": "notesreader",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
   }
 }

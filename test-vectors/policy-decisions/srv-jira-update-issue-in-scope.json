@@ -1,0 +1,204 @@
+{
+  "description": "Update an issue of a granted project.",
+  "covers": [],
+  "policies": {
+    "schema": "cedar/examples/systems/jira/schema.cedarschema",
+    "policies": [
+      "cedar/examples/systems/jira"
+    ]
+  },
+  "builder": {
+    "level": "server",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000002",
+        "usr": "writer",
+        "grp": [
+          "mcp-jira-read",
+          "mcp-jira-write",
+          "mcp-jira-proj-ABC"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "action": "update",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ]
+      },
+      "arguments": {
+        "issueKey": "ABC-1"
+      },
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-1",
+        "attrs": {
+          "key": "ABC-1"
+        },
+        "parent": {
+          "type": "Jira::Project",
+          "id": "ABC",
+          "attrs": {
+            "key": "ABC",
+            "category": "Software"
+          },
+          "scopes": [
+            "Jira::Project/ABC"
+          ]
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "credentialType": "user-oauth"
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000002"
+    },
+    "action": {
+      "type": "Jira::Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-1"
+    },
+    "context": {
+      "client": "claude-code",
+      "credentialType": "user-oauth",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Jira::Issue",
+        "id": "ABC-1"
+      },
+      "attrs": {
+        "key": "ABC-1",
+        "project": {
+          "__entity": {
+            "type": "Jira::Project",
+            "id": "ABC"
+          }
+        },
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "Jira::Project",
+          "id": "ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "Jira::Project",
+        "id": "ABC"
+      },
+      "attrs": {
+        "key": "ABC",
+        "category": "software",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000002"
+      },
+      "attrs": {
+        "username": "writer",
+        "client": "claude-code",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-write"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Jira::Project/ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-write"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "jira-update-issue-in-scope"
+    ]
+  }
+}

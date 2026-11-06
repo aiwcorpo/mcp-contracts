@@ -1,12 +1,22 @@
 {
-  "description": "Server: ABC-123 was moved to HR (Restricted); the argument still looks like ABC.",
+  "description": "ABC-1 was moved into a restricted project: the project comes from the system, not from the key (cedar/entity-builder.md section 4).",
   "covers": [
     "restricted",
     "forbid_overrides_permit"
   ],
+  "policies": {
+    "schema": "cedar/examples/systems/jira/schema.cedarschema",
+    "policies": [
+      "cedar/examples/systems/jira"
+    ]
+  },
   "builder": {
     "level": "server",
-    "staticEntities": "cedar/examples/static-entities.json",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -30,13 +40,13 @@
         ]
       },
       "arguments": {
-        "issueKey": "ABC-123"
+        "issueKey": "ABC-1"
       },
       "resource": {
         "type": "Jira::Issue",
-        "id": "ABC-123",
+        "id": "ABC-1",
         "attrs": {
-          "key": "ABC-123"
+          "key": "ABC-1"
         },
         "parent": {
           "type": "Jira::Project",
@@ -44,42 +54,45 @@
           "attrs": {
             "key": "HR",
             "category": "Restricted"
-          }
-        }
-      }
+          },
+          "scopes": [
+            "Jira::Project/HR"
+          ]
+        },
+        "scopes": [
+          "Jira::Project/HR"
+        ]
+      },
+      "credentialType": "user-oauth"
     }
   },
-  "policies": "cedar/examples",
   "request": {
     "principal": {
       "type": "User",
       "id": "b1a7c0de-0000-4000-8000-000000000001"
     },
     "action": {
-      "type": "Action",
+      "type": "Jira::Action",
       "id": "read"
     },
     "resource": {
       "type": "Jira::Issue",
-      "id": "ABC-123"
+      "id": "ABC-1"
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraIssue": [
-          "ABC-123"
-        ]
-      }
+      "credentialType": "user-oauth",
+      "refs": []
     }
   },
   "entities": [
     {
       "uid": {
         "type": "Jira::Issue",
-        "id": "ABC-123"
+        "id": "ABC-1"
       },
       "attrs": {
-        "key": "ABC-123",
+        "key": "ABC-1",
         "project": {
           "__entity": {
             "type": "Jira::Project",
@@ -129,13 +142,7 @@
       "attrs": {
         "username": "reader",
         "client": "claude-code",
-        "scopes": {
-          "jiraProjects": [],
-          "confluenceSpaces": [],
-          "gitlabGroups": [],
-          "opensearchIndexPrefixes": [],
-          "servicedeskQueues": []
-        }
+        "scopes": []
       },
       "parents": [
         {

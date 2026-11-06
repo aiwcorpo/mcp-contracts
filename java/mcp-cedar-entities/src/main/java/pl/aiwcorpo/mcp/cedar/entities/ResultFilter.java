@@ -76,7 +76,7 @@ public final class ResultFilter {
     @FunctionalInterface
     public interface ResourceResolver {
         /**
-         * @param type Cedar type from the manifest resourceRef, e.g. {@code GitLab::Group}
+         * @param type Cedar type from the manifest resourceRef, e.g. {@code Jira::Project}
          * @param id the argument value (already checked against the id pattern)
          * @return the resource with canonical id, parent and classification from the system
          */
@@ -122,7 +122,7 @@ public final class ResultFilter {
             Optional<ResolvedResource> creationContainer) {
         List<Map.Entry<String, String>> values;
         try {
-            values = EntityBuilder.resourceValues(tool, arguments);
+            values = builder.resourceValues(tool, arguments);
         } catch (EntityBuilderException e) {
             return CheckResult.denied(null, null, e.code() == EntityBuilderException.Code.INVALID_ARGUMENT ? "invalid_argument" : "evaluation_error");
         }
@@ -139,7 +139,7 @@ public final class ResultFilter {
             if (!value.getKey().equals(resource.type())) {
                 return CheckResult.denied(value.getKey(), value.getValue(), "resource_type_mismatch");
             }
-            if (!ResourceIds.isValid(resource.type(), ResourceIds.Kind.RESOURCE, resource.id())) {
+            if (!builder.resourceTypes().isValidId(resource.type(), resource.id())) {
                 return CheckResult.denied(value.getKey(), value.getValue(), "resource_id_invalid");
             }
             CheckResult result = evaluate(caller, tool, arguments, resource, value.getKey(), value.getValue());
@@ -149,7 +149,7 @@ public final class ResultFilter {
         }
         if (creationContainer.isPresent()) {
             ResolvedResource container = creationContainer.get();
-            if (!ResourceIds.isValid(container.type(), ResourceIds.Kind.RESOURCE, container.id())) {
+            if (!builder.resourceTypes().isValidId(container.type(), container.id())) {
                 return CheckResult.denied(container.type(), container.id(), "resource_id_invalid");
             }
             return evaluate(caller, tool, arguments, container, container.type(), container.id());

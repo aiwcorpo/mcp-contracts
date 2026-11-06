@@ -3,9 +3,9 @@
   pl.aiwcorpo.mcp:mcp-cedar-entities - the shared Cedar entity builder of the MCP platform (C7, C9, CC-019).
 
   Used by the gateway (Action::"call" on Tool) and by the starter (action on a resolved system resource) so that
-  both evaluate the same policy bundle on identical entities. Specification: cedar/entity-builder.md.
+  both evaluate the same policies on identical entities. Specification: cedar/entity-builder.md.
   Dependencies are deliberately minimal: cedar-java (uber, with native libraries), its own jackson-databind 2.x and
-  mcp-contracts (resources, for the bundled Cedar schema). No Spring; no Jackson types in this API.
+  mcp-contracts (resources, for the base Cedar schema and the platform policies). No Spring; no Jackson types in this API.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -15,14 +15,14 @@
     <parent>
         <groupId>pl.aiwcorpo.mcp</groupId>
         <artifactId>mcp-contracts-parent</artifactId>
-        <version>6.3.2</version>
+        <version>7.0.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>mcp-cedar-entities</artifactId>
     <packaging>jar</packaging>
     <name>Aiwcorpo MCP Platform :: Cedar entity builder</name>
-    <description>Builds Cedar principal, resource, context and entities for MCP tool calls (C7, C9).</description>
+    <description>Builds Cedar principal, resource, context and entities for MCP tool calls and validates server policy fragments (C7, C9).</description>
 
     <dependencies>
         <dependency>
@@ -40,6 +40,12 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Compile time only: a cedar-java validation response exposes its errors and warnings as Guava lists. -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

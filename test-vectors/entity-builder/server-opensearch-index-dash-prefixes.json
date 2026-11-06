@@ -1,0 +1,162 @@
+{
+  "description": "Scope derivation of the former OpenSearch server as data: an index carries the scope of every dash prefix of its name (Scopes.dashPrefixes).",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json",
+    "cedar/examples/systems/confluence/resource-types.json",
+    "cedar/examples/systems/opensearch/resource-types.json",
+    "cedar/examples/systems/servicedesk/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-opensearch-read",
+        "mcp-opensearch-idx-logs-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-opensearch",
+      "system": "opensearch",
+      "name": "search",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "index",
+          "type": "OpenSearch::Index"
+        }
+      ]
+    },
+    "arguments": {
+      "index": "logs-team-a-2026.10"
+    },
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10",
+      "attrs": {
+        "name": "logs-team-a-2026.10",
+        "tags": [
+          "Prod"
+        ]
+      },
+      "scopes": [
+        "OpenSearch::Index/logs",
+        "OpenSearch::Index/logs-team",
+        "OpenSearch::Index/logs-team-a",
+        "OpenSearch::Index/logs-team-a-2026.10"
+      ]
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000001"
+    },
+    "action": {
+      "type": "OpenSearch::Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "OpenSearch::Index",
+      "id": "logs-team-a-2026.10"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "OpenSearch::Index",
+          "id": "logs-team-a-2026.10"
+        },
+        "attrs": {
+          "name": "logs-team-a-2026.10",
+          "tags": [
+            "prod"
+          ],
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-a-2026.10"
+              }
+            }
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000001"
+        },
+        "attrs": {
+          "username": "reader",
+          "client": "claude-code",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "OpenSearch::Index/logs-team-a"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-opensearch-idx-logs-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-opensearch-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-idx-logs-team-a"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "OpenSearch::Index/logs-team-a"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-opensearch-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

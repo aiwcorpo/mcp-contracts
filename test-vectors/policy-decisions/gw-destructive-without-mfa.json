@@ -1,0 +1,154 @@
+{
+  "description": "DESTRUCTIVE tool, no mfa claim: step-up override forbids.",
+  "covers": [
+    "forbid_overrides_permit"
+  ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000004",
+        "usr": "destroyer",
+        "grp": [
+          "mcp-jira-read",
+          "mcp-jira-destructive",
+          "mcp-jira-proj-ABC"
+        ],
+        "azp": "claude-code"
+      },
+      "tool": {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "name": "delete_issue",
+        "risk": "DESTRUCTIVE",
+        "action": "delete",
+        "resourceRefs": [
+          {
+            "argument": "issueKey",
+            "type": "Jira::Issue"
+          }
+        ]
+      },
+      "arguments": {
+        "issueKey": "ABC-1"
+      }
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000004"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__delete_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "Tool",
+        "id": "jira__delete_issue"
+      },
+      "attrs": {
+        "server": "mcp-jira",
+        "name": "delete_issue",
+        "risk": "DESTRUCTIVE",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-jira-destructive"
+          }
+        }
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000004"
+      },
+      "attrs": {
+        "username": "destroyer",
+        "client": "claude-code",
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Jira::Project/ABC"
+            }
+          }
+        ]
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-destructive"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-proj-ABC"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-destructive"
+      },
+      "attrs": {},
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-proj-ABC"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Jira::Project/ABC"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-jira-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "destructive-requires-fresh-mfa"
+    ]
+  }
+}

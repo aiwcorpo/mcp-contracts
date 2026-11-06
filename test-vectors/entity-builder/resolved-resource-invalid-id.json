@@ -1,38 +1,56 @@
 {
-  "description": "Resolver returned an index id with a comma; the builder refuses to build it.",
+  "description": "A resolved resource whose id does not match its idPattern is not built.",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
-      "sub": "b1a7c0de-0000-4000-8000-000000000008",
-      "usr": "osreader",
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
       "grp": [
-        "mcp-opensearch-read",
-        "mcp-opensearch-idx-logs-team-a"
+        "mcp-jira-read"
       ],
       "azp": "claude-code"
     },
     "tool": {
-      "serverId": "mcp-opensearch",
-      "system": "opensearch",
-      "name": "search",
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "get_issue",
       "risk": "READ_ONLY",
       "action": "read",
       "resourceRefs": [
         {
-          "argument": "index",
-          "type": "OpenSearch::Index"
+          "argument": "issueKey",
+          "type": "Jira::Issue"
         }
       ]
     },
-    "arguments": {},
+    "arguments": {
+      "issueKey": "ABC-1"
+    },
     "resource": {
-      "type": "OpenSearch::Index",
-      "id": "logs-team-a,secret",
+      "type": "Jira::Issue",
+      "id": "abc-1",
       "attrs": {
-        "name": "logs-team-a,secret",
-        "tags": []
-      }
+        "key": "abc-1"
+      },
+      "parent": {
+        "type": "Jira::Project",
+        "id": "ABC",
+        "attrs": {
+          "key": "ABC",
+          "category": "Software"
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/ABC"
+      ]
     }
   },
   "expected": {

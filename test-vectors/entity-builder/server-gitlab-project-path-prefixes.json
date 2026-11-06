@@ -1,0 +1,219 @@
+{
+  "description": "Scope derivation of the former GitLab server as data: a project carries the scopes of every group on its path; the topics of the ancestors are the server's own business (inheritedClassification is an ordinary declared attribute).",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json",
+    "cedar/examples/systems/confluence/resource-types.json",
+    "cedar/examples/systems/opensearch/resource-types.json",
+    "cedar/examples/systems/servicedesk/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000c",
+      "usr": "gitlabwriter",
+      "grp": [
+        "mcp-gitlab-read",
+        "mcp-gitlab-write",
+        "mcp-gitlab-grp-team-a"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "update_project",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "projectPath",
+          "type": "GitLab::Project"
+        }
+      ]
+    },
+    "arguments": {
+      "projectPath": "team-a/sub/app"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "team-a/sub/app",
+      "attrs": {
+        "path": "team-a/sub/app",
+        "classification": [
+          "Internal"
+        ],
+        "inheritedClassification": [
+          "restricted"
+        ]
+      },
+      "parent": {
+        "type": "GitLab::Group",
+        "id": "team-a/sub",
+        "attrs": {
+          "path": "team-a/sub",
+          "inheritedClassification": [
+            "restricted"
+          ]
+        },
+        "scopes": [
+          "GitLab::Group/team-a",
+          "GitLab::Group/team-a/sub"
+        ]
+      },
+      "scopes": [
+        "GitLab::Group/team-a",
+        "GitLab::Group/team-a/sub"
+      ]
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000c"
+    },
+    "action": {
+      "type": "GitLab::Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "GitLab::Project",
+      "id": "team-a/sub/app"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "GitLab::Group",
+          "id": "team-a/sub"
+        },
+        "attrs": {
+          "path": "team-a/sub",
+          "inheritedClassification": [
+            "restricted"
+          ],
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a/sub"
+              }
+            }
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "GitLab::Project",
+          "id": "team-a/sub/app"
+        },
+        "attrs": {
+          "path": "team-a/sub/app",
+          "classification": [
+            "internal"
+          ],
+          "inheritedClassification": [
+            "restricted"
+          ],
+          "group": {
+            "__entity": {
+              "type": "GitLab::Group",
+              "id": "team-a/sub"
+            }
+          },
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a/sub"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "GitLab::Group",
+            "id": "team-a/sub"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000c"
+        },
+        "attrs": {
+          "username": "gitlabwriter",
+          "client": "claude-code",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "GitLab::Group/team-a"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-gitlab-grp-team-a"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-gitlab-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-gitlab-write"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-grp-team-a"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "GitLab::Group/team-a"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-gitlab-write"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

@@ -1,4 +1,5 @@
 {
+  "resourceTypes": "cedar/examples/systems/opensearch/resource-types.json",
   "type": "OpenSearch::Index",
   "kind": "scope",
   "valid": [

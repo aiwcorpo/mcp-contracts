@@ -1,53 +1,46 @@
 package pl.aiwcorpo.mcp.cedar.entities;
 
-import com.cedarpolicy.model.exception.InternalException;
-import com.cedarpolicy.model.policy.Policy;
 import com.cedarpolicy.model.policy.PolicySet;
 import com.cedarpolicy.model.schema.Schema;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 final class CedarFixtures {
 
     private CedarFixtures() {
     }
 
-    static Schema schema() {
-        return new Schema(ContractFiles.read(ContractFiles.resolve("cedar/mcp.cedarschema")));
+    /** Base schema alone, or composed with the fragment schema file named by the vector ({@code schema}, may be null). */
+    static Schema schema(JsonNode policies) {
+        JsonNode fragment = policies.get("schema");
+        return fragment == null || fragment.isNull()
+                ? McpCedarSchema.schema()
+                : PolicyFragments.composeSchema(ContractFiles.read(ContractFiles.resolve(fragment.asText())));
     }
 
-    static PolicySet examplePolicies() {
-        return withAnnotatedIds(ContractFiles.list("cedar/examples", ".cedar"));
+    /** Policies of the vector's {@code policies.policies}: every {@code .cedar} file of each listed directory. */
+    static PolicySet policies(JsonNode policies) {
+        List<String> directories = new ArrayList<>();
+        policies.get("policies").forEach(d -> directories.add(d.asText()));
+        return policySet(directories);
     }
 
-    /**
-     * Cedar numbers policies policy0, policy1, ... per parse. Vectors name the determining policies by
-     * their @id annotation, so the set is rebuilt with those ids; duplicates across files fail here.
-     */
-    static PolicySet withAnnotatedIds(Iterable<Path> files) {
-        Set<Policy> policies = new HashSet<>();
-        Map<String, Path> seen = new HashMap<>();
-        for (Path file : files) {
-            try {
-                PolicySet parsed = PolicySet.parsePolicies(ContractFiles.read(file));
-                for (Policy policy : parsed.policies) {
-                    String id = policy.getAnnotation("id");
-                    if (id == null || id.isBlank()) {
-                        throw new IllegalStateException("policy without @id in " + file);
-                    }
-                    Path previous = seen.put(id, file);
-                    if (previous != null) {
-                        throw new IllegalStateException("duplicate @id " + id + " in " + file + " and " + previous);
-                    }
-                    policies.add(new Policy(policy.policySrc, id));
-                }
-            } catch (InternalException e) {
-                throw new IllegalStateException("cannot parse " + file + ": " + e.getMessage(), e);
+    static PolicySet policySet(List<String> directories) {
+        Map<String, String> texts = new LinkedHashMap<>();
+        for (String directory : directories) {
+            for (Path file : ContractFiles.list(directory, ".cedar")) {
+                texts.put(directory + "/" + file.getFileName(), ContractFiles.read(file));
             }
         }
-        return new PolicySet(policies);
+        return PolicyFragments.policySet(texts);
+    }
+
+    static boolean isDirectory(String relative) {
+        return Files.isDirectory(ContractFiles.resolve(relative));
     }
 }

@@ -1,0 +1,48 @@
+{
+  "description": "A scope id whose local part does not match the scopePattern of its type is internal_error.",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_folder",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {
+      "folderPath": "team"
+    },
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team",
+      "attrs": {
+        "path": "team"
+      },
+      "scopes": [
+        "Notes::Folder/Team"
+      ]
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

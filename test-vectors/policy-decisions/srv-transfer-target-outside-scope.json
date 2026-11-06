@@ -1,99 +1,100 @@
 {
-  "description": "Server, transfer_project: the target group team-b is evaluated on its own and denied (CC-061).",
+  "description": "Server, move_folder: the target folder platform is evaluated on its own and denied (CC-061).",
   "covers": [
     "scope_hierarchy",
     "every_resource_ref"
   ],
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
   "builder": {
     "level": "server",
-    "staticEntities": "cedar/examples/static-entities.json",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
     "input": {
       "caller": {
         "sub": "b1a7c0de-0000-4000-8000-000000000007",
-        "usr": "gitlabwriter",
+        "usr": "noteswriter",
         "grp": [
-          "mcp-gitlab-read",
-          "mcp-gitlab-write",
-          "mcp-gitlab-grp-team-a"
+          "mcp-notes-read",
+          "mcp-notes-write",
+          "mcp-notes-nb-alpha",
+          "mcp-notes-folder-team"
         ],
         "azp": "claude-code"
       },
       "tool": {
-        "serverId": "mcp-gitlab",
-        "system": "gitlab",
-        "name": "transfer_project",
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "move_folder",
         "risk": "UPDATE",
         "action": "update",
         "resourceRefs": [
           {
-            "argument": "projectPath",
-            "type": "GitLab::Project"
+            "argument": "folderPath",
+            "type": "Notes::Folder"
           },
           {
-            "argument": "targetGroup",
-            "type": "GitLab::Group"
+            "argument": "targetFolder",
+            "type": "Notes::Folder"
           }
         ]
       },
       "arguments": {
-        "projectPath": "team-a/app",
-        "targetGroup": "team-b"
+        "folderPath": "team/a",
+        "targetFolder": "platform"
       },
       "resource": {
-        "type": "GitLab::Group",
-        "id": "team-b",
+        "type": "Notes::Folder",
+        "id": "platform",
         "attrs": {
-          "path": "team-b",
-          "ancestorClassifications": {}
-        }
-      }
+          "path": "platform"
+        },
+        "scopes": [
+          "Notes::Folder/platform"
+        ]
+      },
+      "credentialType": "user-oauth"
     }
   },
-  "policies": "cedar/examples",
   "request": {
     "principal": {
       "type": "User",
       "id": "b1a7c0de-0000-4000-8000-000000000007"
     },
     "action": {
-      "type": "Action",
+      "type": "Notes::Action",
       "id": "update"
     },
     "resource": {
-      "type": "GitLab::Group",
-      "id": "team-b"
+      "type": "Notes::Folder",
+      "id": "platform"
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "gitlabProject": [
-          "team-a/app"
-        ],
-        "gitlabGroup": [
-          {
-            "__entity": {
-              "type": "ResourceScope",
-              "id": "GitLab::Group/team-b"
-            }
-          }
-        ]
-      }
+      "credentialType": "user-oauth",
+      "refs": []
     }
   },
   "entities": [
     {
       "uid": {
-        "type": "GitLab::Group",
-        "id": "team-b"
+        "type": "Notes::Folder",
+        "id": "platform"
       },
       "attrs": {
-        "path": "team-b",
-        "inheritedClassification": [],
+        "path": "platform",
         "scopes": [
           {
             "__entity": {
               "type": "ResourceScope",
-              "id": "GitLab::Group/team-b"
+              "id": "Notes::Folder/platform"
             }
           }
         ]
@@ -106,55 +107,72 @@
         "id": "b1a7c0de-0000-4000-8000-000000000007"
       },
       "attrs": {
-        "username": "gitlabwriter",
+        "username": "noteswriter",
         "client": "claude-code",
-        "scopes": {
-          "jiraProjects": [],
-          "confluenceSpaces": [],
-          "gitlabGroups": [
-            {
-              "__entity": {
-                "type": "ResourceScope",
-                "id": "GitLab::Group/team-a"
-              }
+        "scopes": [
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Notes::Folder/team"
             }
-          ],
-          "opensearchIndexPrefixes": [],
-          "servicedeskQueues": []
-        }
+          },
+          {
+            "__entity": {
+              "type": "ResourceScope",
+              "id": "Notes::Notebook/alpha"
+            }
+          }
+        ]
       },
       "parents": [
         {
           "type": "UserGroup",
-          "id": "mcp-gitlab-grp-team-a"
+          "id": "mcp-notes-folder-team"
         },
         {
           "type": "UserGroup",
-          "id": "mcp-gitlab-read"
+          "id": "mcp-notes-nb-alpha"
         },
         {
           "type": "UserGroup",
-          "id": "mcp-gitlab-write"
+          "id": "mcp-notes-read"
+        },
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-write"
         }
       ]
     },
     {
       "uid": {
         "type": "UserGroup",
-        "id": "mcp-gitlab-grp-team-a"
+        "id": "mcp-notes-folder-team"
       },
       "attrs": {},
       "parents": [
         {
           "type": "ResourceScope",
-          "id": "GitLab::Group/team-a"
+          "id": "Notes::Folder/team"
         }
       ]
     },
     {
       "uid": {
         "type": "UserGroup",
-        "id": "mcp-gitlab-read"
+        "id": "mcp-notes-nb-alpha"
+      },
+      "attrs": {},
+      "parents": [
+        {
+          "type": "ResourceScope",
+          "id": "Notes::Notebook/alpha"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-read"
       },
       "attrs": {},
       "parents": []
@@ -162,7 +180,7 @@
     {
       "uid": {
         "type": "UserGroup",
-        "id": "mcp-gitlab-write"
+        "id": "mcp-notes-write"
       },
       "attrs": {},
       "parents": []

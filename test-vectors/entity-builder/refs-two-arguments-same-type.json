@@ -1,7 +1,11 @@
 {
   "description": "Two arguments of the same type are merged into one set.",
   "level": "gateway",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000002",
@@ -55,25 +59,20 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraIssue": [
-          "ABC-1"
-        ],
-        "jiraProject": [
-          {
-            "__entity": {
-              "type": "ResourceScope",
-              "id": "Jira::Project/ABC"
-            }
-          },
-          {
-            "__entity": {
-              "type": "ResourceScope",
-              "id": "Jira::Project/DEF"
-            }
+      "refs": [
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "Jira::Project/ABC"
           }
-        ]
-      }
+        },
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "Jira::Project/DEF"
+          }
+        }
+      ]
     },
     "entities": [
       {
@@ -84,7 +83,13 @@
         "attrs": {
           "server": "mcp-jira",
           "name": "move_issue",
-          "risk": "UPDATE"
+          "risk": "UPDATE",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-jira-write"
+            }
+          }
         },
         "parents": []
       },
@@ -96,20 +101,14 @@
         "attrs": {
           "username": "writer",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Jira::Project/ABC"
-                }
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
               }
-            ],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
+            }
+          ]
         },
         "parents": [
           {

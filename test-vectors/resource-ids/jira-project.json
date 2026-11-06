@@ -1,4 +1,5 @@
 {
+  "resourceTypes": "cedar/examples/systems/jira/resource-types.json",
   "type": "Jira::Project",
   "kind": "resource",
   "valid": [
@@ -15,6 +16,7 @@
     "AB-C",
     "ABC) OR project in (HR",
     "AB C",
-    "\"ABC\""
+    "\"ABC\"",
+    "ABC\n"
   ]
 }

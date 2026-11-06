@@ -1,14 +1,19 @@
 {
-  "description": "Server: page scopes are its space, its ancestor pages and itself.",
+  "description": "Scope derivation of the former Confluence server as data: a page carries its space and the page ids of its ancestors, so a grant on page 1000 covers the tree below it.",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json",
+    "cedar/examples/systems/confluence/resource-types.json",
+    "cedar/examples/systems/opensearch/resource-types.json",
+    "cedar/examples/systems/servicedesk/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-00000000000b",
-      "usr": "confluenceeditor",
+      "usr": "confluencereader",
       "grp": [
         "mcp-confluence-read",
-        "mcp-confluence-write",
         "mcp-confluence-handbook-editors"
       ],
       "azp": "claude-code"
@@ -27,26 +32,35 @@
       ]
     },
     "arguments": {
-      "pageId": "1234"
+      "pageId": "1002"
     },
     "resource": {
       "type": "Confluence::Page",
-      "id": "1234",
+      "id": "1002",
       "attrs": {
-        "id": "1234",
+        "id": "1002",
         "ancestorIds": [
-          "1100",
-          "1000"
+          "1000",
+          "1001"
         ]
       },
       "parent": {
         "type": "Confluence::Space",
-        "id": "HB",
+        "id": "ENG",
         "attrs": {
-          "key": "HB",
+          "key": "ENG",
           "labels": []
-        }
-      }
+        },
+        "scopes": [
+          "Confluence::Space/ENG"
+        ]
+      },
+      "scopes": [
+        "Confluence::Space/ENG",
+        "Confluence::Page/1000",
+        "Confluence::Page/1001",
+        "Confluence::Page/1002"
+      ]
     }
   },
   "expected": {
@@ -55,37 +69,33 @@
       "id": "b1a7c0de-0000-4000-8000-00000000000b"
     },
     "action": {
-      "type": "Action",
+      "type": "Confluence::Action",
       "id": "update"
     },
     "resource": {
       "type": "Confluence::Page",
-      "id": "1234"
+      "id": "1002"
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "confluencePage": [
-          "1234"
-        ]
-      }
+      "refs": []
     },
     "entities": [
       {
         "uid": {
           "type": "Confluence::Page",
-          "id": "1234"
+          "id": "1002"
         },
         "attrs": {
-          "id": "1234",
+          "id": "1002",
           "ancestorIds": [
             "1000",
-            "1100"
+            "1001"
           ],
           "space": {
             "__entity": {
               "type": "Confluence::Space",
-              "id": "HB"
+              "id": "ENG"
             }
           },
           "scopes": [
@@ -98,19 +108,19 @@
             {
               "__entity": {
                 "type": "ResourceScope",
-                "id": "Confluence::Page/1100"
+                "id": "Confluence::Page/1001"
               }
             },
             {
               "__entity": {
                 "type": "ResourceScope",
-                "id": "Confluence::Page/1234"
+                "id": "Confluence::Page/1002"
               }
             },
             {
               "__entity": {
                 "type": "ResourceScope",
-                "id": "Confluence::Space/HB"
+                "id": "Confluence::Space/ENG"
               }
             }
           ]
@@ -118,23 +128,23 @@
         "parents": [
           {
             "type": "Confluence::Space",
-            "id": "HB"
+            "id": "ENG"
           }
         ]
       },
       {
         "uid": {
           "type": "Confluence::Space",
-          "id": "HB"
+          "id": "ENG"
         },
         "attrs": {
-          "key": "HB",
+          "key": "ENG",
           "labels": [],
           "scopes": [
             {
               "__entity": {
                 "type": "ResourceScope",
-                "id": "Confluence::Space/HB"
+                "id": "Confluence::Space/ENG"
               }
             }
           ]
@@ -147,15 +157,16 @@
           "id": "b1a7c0de-0000-4000-8000-00000000000b"
         },
         "attrs": {
-          "username": "confluenceeditor",
+          "username": "confluencereader",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Confluence::Page/1000"
+              }
+            }
+          ]
         },
         "parents": [
           {
@@ -165,10 +176,6 @@
           {
             "type": "UserGroup",
             "id": "mcp-confluence-read"
-          },
-          {
-            "type": "UserGroup",
-            "id": "mcp-confluence-write"
           }
         ]
       },
@@ -189,14 +196,6 @@
         "uid": {
           "type": "UserGroup",
           "id": "mcp-confluence-read"
-        },
-        "attrs": {},
-        "parents": []
-      },
-      {
-        "uid": {
-          "type": "UserGroup",
-          "id": "mcp-confluence-write"
         },
         "attrs": {},
         "parents": []

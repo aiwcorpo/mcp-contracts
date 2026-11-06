@@ -1,0 +1,38 @@
+{
+  "description": "A type of a server that is not in the registry (the Confluence example is not loaded here): internal_error.",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000001",
+      "usr": "reader",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-confluence",
+      "system": "confluence",
+      "name": "get_page",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "pageId",
+          "type": "Confluence::Page"
+        }
+      ]
+    },
+    "arguments": {
+      "pageId": "1000"
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

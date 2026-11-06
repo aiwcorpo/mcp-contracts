@@ -1,39 +1,55 @@
 {
-  "description": "Confluence space without labels: refused (CC-062).",
+  "description": "A notebook without the required labels is not built.",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
-      "sub": "b1a7c0de-0000-4000-8000-000000000009",
-      "usr": "confluencereader",
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
       "grp": [
-        "mcp-confluence-read",
-        "mcp-confluence-space-ENG"
+        "mcp-notes-read"
       ],
       "azp": "claude-code"
     },
     "tool": {
-      "serverId": "mcp-confluence",
-      "system": "confluence",
-      "name": "search_space",
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_note",
       "risk": "READ_ONLY",
       "action": "read",
       "resourceRefs": [
         {
-          "argument": "spaceKey",
-          "type": "Confluence::Space"
+          "argument": "noteId",
+          "type": "Notes::Note"
         }
       ]
     },
     "arguments": {
-      "spaceKey": "ENG"
+      "noteId": "17"
     },
     "resource": {
-      "type": "Confluence::Space",
-      "id": "ENG",
+      "type": "Notes::Note",
+      "id": "17",
       "attrs": {
-        "key": "ENG"
-      }
+        "title": "Note 17"
+      },
+      "parent": {
+        "type": "Notes::Notebook",
+        "id": "alpha",
+        "attrs": {
+          "name": "alpha"
+        },
+        "scopes": [
+          "Notes::Notebook/alpha"
+        ]
+      },
+      "scopes": [
+        "Notes::Notebook/alpha"
+      ]
     }
   },
   "expected": {

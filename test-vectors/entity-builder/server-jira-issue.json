@@ -1,7 +1,11 @@
 {
-  "description": "Server: resolved issue with parent project; project attribute duplicates the parent edge.",
+  "description": "Server: the issue, its project as parent entity and as attribute, scopes of the project from the resolver.",
   "level": "server",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000002",
@@ -41,8 +45,14 @@
         "attrs": {
           "key": "ABC",
           "category": "Software"
-        }
-      }
+        },
+        "scopes": [
+          "Jira::Project/ABC"
+        ]
+      },
+      "scopes": [
+        "Jira::Project/ABC"
+      ]
     }
   },
   "expected": {
@@ -51,7 +61,7 @@
       "id": "b1a7c0de-0000-4000-8000-000000000002"
     },
     "action": {
-      "type": "Action",
+      "type": "Jira::Action",
       "id": "update"
     },
     "resource": {
@@ -60,11 +70,7 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "jiraIssue": [
-          "ABC-1"
-        ]
-      }
+      "refs": []
     },
     "entities": [
       {
@@ -123,20 +129,14 @@
         "attrs": {
           "username": "writer",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Jira::Project/ABC"
-                }
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
               }
-            ],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
+            }
+          ]
         },
         "parents": [
           {

@@ -1,0 +1,65 @@
+{
+  "description": "User with the read group but no mapped scope: granted is empty. Reading is not limited by scope, so the filter keeps the element; the empty grant is what stops a query against a backend that does not enforce rights.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
+  "input": {
+    "credentialType": "user-oauth",
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-folder-unmapped"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "search_folders",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {}
+  },
+  "items": [
+    {
+      "type": "Notes::Folder",
+      "id": "team",
+      "attrs": {
+        "path": "team"
+      },
+      "scopes": [
+        "Notes::Folder/team"
+      ]
+    }
+  ],
+  "expected": {
+    "kept": [
+      "team"
+    ],
+    "queryConstraints": {
+      "Notes::Folder": {
+        "granted": []
+      },
+      "Notes::Notebook": {
+        "granted": []
+      }
+    }
+  }
+}

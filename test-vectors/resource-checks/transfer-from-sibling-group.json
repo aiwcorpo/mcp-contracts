@@ -1,66 +1,72 @@
 {
-  "description": "Transfer team-b/app into team-a: the target is allowed, the source is not.",
-  "staticEntities": "cedar/examples/static-entities.json",
-  "policies": "cedar/examples",
+  "description": "Move platform/a into team: the target is allowed, the source is not.",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "policies": {
+    "schema": "test-vectors/fixtures/notes/schema.cedarschema",
+    "policies": [
+      "test-vectors/fixtures/notes"
+    ]
+  },
   "input": {
+    "credentialType": "user-oauth",
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000007",
-      "usr": "gitlabwriter",
+      "usr": "noteswriter",
       "grp": [
-        "mcp-gitlab-read",
-        "mcp-gitlab-write",
-        "mcp-gitlab-grp-team-a"
+        "mcp-notes-read",
+        "mcp-notes-write",
+        "mcp-notes-nb-alpha",
+        "mcp-notes-folder-team"
       ],
       "azp": "claude-code"
     },
     "tool": {
-      "serverId": "mcp-gitlab",
-      "system": "gitlab",
-      "name": "transfer_project",
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "move_folder",
       "risk": "UPDATE",
       "action": "update",
       "resourceRefs": [
         {
-          "argument": "projectPath",
-          "type": "GitLab::Project"
+          "argument": "folderPath",
+          "type": "Notes::Folder"
         },
         {
-          "argument": "targetGroup",
-          "type": "GitLab::Group"
+          "argument": "targetFolder",
+          "type": "Notes::Folder"
         }
       ]
     },
     "arguments": {
-      "projectPath": "team-b/app",
-      "targetGroup": "team-a"
+      "folderPath": "platform/a",
+      "targetFolder": "team"
     }
   },
   "resources": [
     {
-      "type": "GitLab::Project",
-      "id": "team-b/app",
+      "type": "Notes::Folder",
+      "id": "platform/a",
       "attrs": {
-        "path": "team-b/app",
-        "ancestorClassifications": {
-          "team-b": []
-        }
+        "path": "platform/a"
       },
-      "parent": {
-        "type": "GitLab::Group",
-        "id": "team-b",
-        "attrs": {
-          "path": "team-b",
-          "ancestorClassifications": {}
-        }
-      }
+      "scopes": [
+        "Notes::Folder/platform",
+        "Notes::Folder/platform/a"
+      ]
     },
     {
-      "type": "GitLab::Group",
-      "id": "team-a",
+      "type": "Notes::Folder",
+      "id": "team",
       "attrs": {
-        "path": "team-a",
-        "ancestorClassifications": {}
-      }
+        "path": "team"
+      },
+      "scopes": [
+        "Notes::Folder/team"
+      ]
     }
   ],
   "expected": {

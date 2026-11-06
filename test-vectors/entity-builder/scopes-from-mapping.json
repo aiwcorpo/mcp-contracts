@@ -1,7 +1,11 @@
 {
-  "description": "principal.scopes come only from the bundle mapping: unmapped groups (even with a conventional name), names differing in case and non-mcp groups grant nothing; mcp-team-platform shows a name that does not encode its scopes.",
+  "description": "User.scopes is one flat set of every scope of the mapped groups: unmapped groups (even with a conventional name), names differing in case and non-mcp groups grant nothing; mcp-team-platform shows a name that does not encode its scopes.",
   "level": "gateway",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
       "sub": "b1a7c0de-0000-4000-8000-000000000001",
@@ -10,13 +14,12 @@
         "mcp-jira-read",
         "mcp-jira-proj-ABC",
         "mcp-jira-proj-DEF",
-        "mcp-confluence-space-ENG",
-        "mcp-gitlab-grp-team-a",
-        "mcp-opensearch-idx-logs-team-a",
-        "mcp-servicedesk-queue-42",
+        "mcp-notes-nb-alpha",
+        "mcp-notes-folder-team",
+        "mcp-notes-folder-team-sub",
         "mcp-client-claude-code",
         "mcp-platform-admin",
-        "mcp-gitlab-grp-team-c",
+        "mcp-notes-folder-unmapped",
         "mcp-jira-proj-abc",
         "mcp-team-platform",
         "employees"
@@ -48,7 +51,7 @@
     },
     "context": {
       "client": "claude-code",
-      "refs": {}
+      "refs": []
     },
     "entities": [
       {
@@ -59,7 +62,13 @@
         "attrs": {
           "server": "mcp-jira",
           "name": "list_projects",
-          "risk": "READ_ONLY"
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-jira-read"
+            }
+          }
         },
         "parents": []
       },
@@ -71,89 +80,61 @@
         "attrs": {
           "username": "reader",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Jira::Project/ABC"
-                }
-              },
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Jira::Project/DEF"
-                }
-              },
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Jira::Project/PLAT"
-                }
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/ABC"
               }
-            ],
-            "confluenceSpaces": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "Confluence::Space/ENG"
-                }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/DEF"
               }
-            ],
-            "gitlabGroups": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "GitLab::Group/platform"
-                }
-              },
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "GitLab::Group/team-a"
-                }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Jira::Project/PLAT"
               }
-            ],
-            "opensearchIndexPrefixes": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "OpenSearch::Index/logs-platform"
-                }
-              },
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "OpenSearch::Index/logs-team-a"
-                }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/platform"
               }
-            ],
-            "servicedeskQueues": [
-              {
-                "__entity": {
-                  "type": "ResourceScope",
-                  "id": "ServiceDesk::Queue/42"
-                }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team"
               }
-            ]
-          }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team/sub"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Notebook/alpha"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Notebook/platform"
+              }
+            }
+          ]
         },
         "parents": [
           {
             "type": "UserGroup",
             "id": "mcp-client-claude-code"
-          },
-          {
-            "type": "UserGroup",
-            "id": "mcp-confluence-space-ENG"
-          },
-          {
-            "type": "UserGroup",
-            "id": "mcp-gitlab-grp-team-a"
-          },
-          {
-            "type": "UserGroup",
-            "id": "mcp-gitlab-grp-team-c"
           },
           {
             "type": "UserGroup",
@@ -173,15 +154,23 @@
           },
           {
             "type": "UserGroup",
-            "id": "mcp-opensearch-idx-logs-team-a"
+            "id": "mcp-notes-folder-team"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-folder-team-sub"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-folder-unmapped"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-nb-alpha"
           },
           {
             "type": "UserGroup",
             "id": "mcp-platform-admin"
-          },
-          {
-            "type": "UserGroup",
-            "id": "mcp-servicedesk-queue-42"
           },
           {
             "type": "UserGroup",
@@ -193,40 +182,6 @@
         "uid": {
           "type": "UserGroup",
           "id": "mcp-client-claude-code"
-        },
-        "attrs": {},
-        "parents": []
-      },
-      {
-        "uid": {
-          "type": "UserGroup",
-          "id": "mcp-confluence-space-ENG"
-        },
-        "attrs": {},
-        "parents": [
-          {
-            "type": "ResourceScope",
-            "id": "Confluence::Space/ENG"
-          }
-        ]
-      },
-      {
-        "uid": {
-          "type": "UserGroup",
-          "id": "mcp-gitlab-grp-team-a"
-        },
-        "attrs": {},
-        "parents": [
-          {
-            "type": "ResourceScope",
-            "id": "GitLab::Group/team-a"
-          }
-        ]
-      },
-      {
-        "uid": {
-          "type": "UserGroup",
-          "id": "mcp-gitlab-grp-team-c"
         },
         "attrs": {},
         "parents": []
@@ -276,13 +231,47 @@
       {
         "uid": {
           "type": "UserGroup",
-          "id": "mcp-opensearch-idx-logs-team-a"
+          "id": "mcp-notes-folder-team"
         },
         "attrs": {},
         "parents": [
           {
             "type": "ResourceScope",
-            "id": "OpenSearch::Index/logs-team-a"
+            "id": "Notes::Folder/team"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-folder-team-sub"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Notes::Folder/team/sub"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-folder-unmapped"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-nb-alpha"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Notes::Notebook/alpha"
           }
         ]
       },
@@ -297,34 +286,21 @@
       {
         "uid": {
           "type": "UserGroup",
-          "id": "mcp-servicedesk-queue-42"
-        },
-        "attrs": {},
-        "parents": [
-          {
-            "type": "ResourceScope",
-            "id": "ServiceDesk::Queue/42"
-          }
-        ]
-      },
-      {
-        "uid": {
-          "type": "UserGroup",
           "id": "mcp-team-platform"
         },
         "attrs": {},
         "parents": [
           {
             "type": "ResourceScope",
-            "id": "GitLab::Group/platform"
-          },
-          {
-            "type": "ResourceScope",
             "id": "Jira::Project/PLAT"
           },
           {
             "type": "ResourceScope",
-            "id": "OpenSearch::Index/logs-platform"
+            "id": "Notes::Folder/platform"
+          },
+          {
+            "type": "ResourceScope",
+            "id": "Notes::Notebook/platform"
           }
         ]
       }

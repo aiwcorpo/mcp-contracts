@@ -1,0 +1,184 @@
+{
+  "description": "Server: the scopes of a folder are the prefixes of its path (Scopes.pathPrefixes), a grant on team covers team/sub/leaf.",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000007",
+      "usr": "noteswriter",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-write",
+        "mcp-notes-nb-alpha",
+        "mcp-notes-folder-team"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "update_folder",
+      "risk": "UPDATE",
+      "action": "update",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {
+      "folderPath": "team/sub/leaf"
+    },
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team/sub/leaf",
+      "attrs": {
+        "path": "team/sub/leaf"
+      },
+      "scopes": [
+        "Notes::Folder/team",
+        "Notes::Folder/team/sub",
+        "Notes::Folder/team/sub/leaf"
+      ]
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000007"
+    },
+    "action": {
+      "type": "Notes::Action",
+      "id": "update"
+    },
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team/sub/leaf"
+    },
+    "context": {
+      "client": "claude-code",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Notes::Folder",
+          "id": "team/sub/leaf"
+        },
+        "attrs": {
+          "path": "team/sub/leaf",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team/sub"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team/sub/leaf"
+              }
+            }
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-000000000007"
+        },
+        "attrs": {
+          "username": "noteswriter",
+          "client": "claude-code",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team"
+              }
+            },
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Notebook/alpha"
+              }
+            }
+          ]
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-folder-team"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-nb-alpha"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-write"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-folder-team"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Notes::Folder/team"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-nb-alpha"
+        },
+        "attrs": {},
+        "parents": [
+          {
+            "type": "ResourceScope",
+            "id": "Notes::Notebook/alpha"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-write"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

@@ -1,37 +1,41 @@
 {
-  "description": "Integer argument converted to its decimal string.",
+  "description": "An integer argument is converted to its decimal string and checked against the idPattern of the type.",
   "level": "gateway",
-  "staticEntities": "cedar/examples/static-entities.json",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
   "input": {
     "caller": {
-      "sub": "b1a7c0de-0000-4000-8000-000000000001",
-      "usr": "reader",
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
       "grp": [
-        "mcp-servicedesk-read"
+        "mcp-notes-read"
       ],
       "azp": "claude-code"
     },
     "tool": {
-      "serverId": "mcp-servicedesk",
-      "system": "servicedesk",
-      "name": "get_ticket",
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_note",
       "risk": "READ_ONLY",
       "action": "read",
       "resourceRefs": [
         {
-          "argument": "ticketId",
-          "type": "ServiceDesk::Ticket"
+          "argument": "noteId",
+          "type": "Notes::Note"
         }
       ]
     },
     "arguments": {
-      "ticketId": 4711
+      "noteId": 4711
     }
   },
   "expected": {
     "principal": {
       "type": "User",
-      "id": "b1a7c0de-0000-4000-8000-000000000001"
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
     },
     "action": {
       "type": "Action",
@@ -39,56 +43,52 @@
     },
     "resource": {
       "type": "Tool",
-      "id": "servicedesk__get_ticket"
+      "id": "notes__get_note"
     },
     "context": {
       "client": "claude-code",
-      "refs": {
-        "servicedeskTicket": [
-          "4711"
-        ]
-      }
+      "refs": []
     },
     "entities": [
       {
         "uid": {
           "type": "Tool",
-          "id": "servicedesk__get_ticket"
+          "id": "notes__get_note"
         },
         "attrs": {
-          "server": "mcp-servicedesk",
-          "name": "get_ticket",
-          "risk": "READ_ONLY"
+          "server": "mcp-notes",
+          "name": "get_note",
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-read"
+            }
+          }
         },
         "parents": []
       },
       {
         "uid": {
           "type": "User",
-          "id": "b1a7c0de-0000-4000-8000-000000000001"
+          "id": "b1a7c0de-0000-4000-8000-000000000006"
         },
         "attrs": {
-          "username": "reader",
+          "username": "notesreader",
           "client": "claude-code",
-          "scopes": {
-            "jiraProjects": [],
-            "confluenceSpaces": [],
-            "gitlabGroups": [],
-            "opensearchIndexPrefixes": [],
-            "servicedeskQueues": []
-          }
+          "scopes": []
         },
         "parents": [
           {
             "type": "UserGroup",
-            "id": "mcp-servicedesk-read"
+            "id": "mcp-notes-read"
           }
         ]
       },
       {
         "uid": {
           "type": "UserGroup",
-          "id": "mcp-servicedesk-read"
+          "id": "mcp-notes-read"
         },
         "attrs": {},
         "parents": []
