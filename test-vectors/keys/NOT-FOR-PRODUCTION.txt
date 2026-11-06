@@ -3,5 +3,5 @@ NOT FOR PRODUCTION
 Every private key in this directory is published in the mcp-contracts repository and in the
 mcp-contracts test-vectors jar / npm package. Anyone can sign with them.
 
-Use them only in tests. Never configure a gateway, MCP server, broker or policy receiver outside a test
-with test-gateway-jwks.json, test-policy-bundle.public.* or test-policy-overrides.public.*.
+Use them only in tests. Never configure a gateway, MCP server or broker outside a test with test-gateway-jwks.json or
+any other key of this directory.

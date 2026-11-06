@@ -9,8 +9,6 @@ export const KEYS = [
   { name: 'test-gateway-jwt-b', kid: 'test-gw-2026-10-b', type: 'ec', purpose: 'Gateway internal JWT (C2), active key B (rotation)' },
   { name: 'test-attacker-jwt', kid: 'test-attacker', type: 'ec', purpose: 'Not in any JWKS; signs bad-signature vectors' },
   { name: 'test-idp-corp', kid: 'test-idp-corp', type: 'ec', purpose: 'Stands in for the IdP (C1) in the token passthrough vector' },
-  { name: 'test-policy-bundle', kid: 'test-policy-bundle', type: 'ed25519', purpose: 'Signs policy bundles (C7)' },
-  { name: 'test-policy-overrides', kid: 'test-policy-overrides', type: 'ed25519', purpose: 'Signs overrides bundles (C7), separate key' },
 ];
 
 const dir = (...p) => path('test-vectors', 'keys', ...p);

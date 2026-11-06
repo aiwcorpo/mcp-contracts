@@ -30,7 +30,7 @@ const allowed = [
   /^openapi\/bundled\/[^/]+\.yaml$/,
   /^schemas\/[^/]+\.json$/,
   /^cedar\/(mcp\.cedarschema|entity-builder\.md)$/,
-  /^cedar\/examples\/[^/]+$/,
+  /^cedar\/(platform|examples)\/.+$/,
   /^security\/published-test-keys\.json$/,
   /^test-vectors\/.+$/,
   /^mocks\/msw\/[^/]+\.ts$/,

@@ -60,5 +60,5 @@ for (const jar of jars) {
     console.log(`${jar.slice(ROOT.length + 1)}: LICENSE and NOTICE present`);
   }
 }
-if (jars.length < 5) { failed = true; console.error(`expected at least 5 jars, found ${jars.length}`); }
+if (jars.length < 4) { failed = true; console.error(`expected at least 4 jars, found ${jars.length}`); }
 if (failed) process.exit(1);

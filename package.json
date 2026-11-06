@@ -1,6 +1,6 @@
 {
   "name": "@aiwcorpo/mcp-contracts",
-  "version": "6.3.2",
+  "version": "7.0.0",
   "description": "Contracts of the MCP platform: OpenAPI, JSON Schema, the Cedar schema, test vectors, TypeScript types and MSW handlers.",
   "license": "Apache-2.0",
   "homepage": "https://github.com/aiwcorpo/mcp-contracts#readme",
@@ -51,6 +51,7 @@
     "schemas/*.json",
     "cedar/mcp.cedarschema",
     "cedar/entity-builder.md",
+    "cedar/platform/",
     "cedar/examples/",
     "security/published-test-keys.json",
     "test-vectors/",

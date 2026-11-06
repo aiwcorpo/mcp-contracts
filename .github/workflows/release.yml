@@ -119,13 +119,13 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           v="${version//./\\.}"
-          modules='mcp-contracts|mcp-cedar-entities|mcp-policy-bundle|mcp-manifest'
+          modules='mcp-contracts|mcp-cedar-entities|mcp-manifest'
           cd "$RUNNER_TEMP/packages"
           if find . -mindepth 1 ! -type f ! -type d | grep -q .; then echo "artifact holds a non-regular file" >&2; exit 1; fi
           unexpected="$(find . -type f | sed 's|^\./||' | grep -Evx "npm/aiwcorpo-mcp-contracts-$v\.tgz|maven/parent\.pom\.xml|maven/($modules)/(pom\.xml|($modules)-$v(-sources|-javadoc)?\.jar)|maven/mcp-contracts/mcp-contracts-$v-test-vectors\.jar" || true)"
           if [ -n "$unexpected" ]; then echo "unexpected files in the artifact:" >&2; echo "$unexpected" >&2; exit 1; fi
           test -f "npm/aiwcorpo-mcp-contracts-$version.tgz" -a -f maven/parent.pom.xml
-          for module in mcp-contracts mcp-cedar-entities mcp-policy-bundle mcp-manifest; do
+          for module in mcp-contracts mcp-cedar-entities mcp-manifest; do
             for file in pom.xml "$module-$version.jar" "$module-$version-sources.jar" "$module-$version-javadoc.jar"; do
               test -f "maven/$module/$file"
             done
@@ -198,7 +198,7 @@ jobs:
             sha256sum "$dir/$name" | cut -d' ' -f1 > "$dir/$name.sha256"
           }
           add "$artifacts/parent.pom.xml" mcp-contracts-parent "mcp-contracts-parent-$version.pom"
-          for module in mcp-contracts mcp-cedar-entities mcp-policy-bundle mcp-manifest; do
+          for module in mcp-contracts mcp-cedar-entities mcp-manifest; do
             add "$artifacts/$module/pom.xml" "$module" "$module-$version.pom"
             for suffix in '' -sources -javadoc; do
               add "$artifacts/$module/$module-$version$suffix.jar" "$module" "$module-$version$suffix.jar"
