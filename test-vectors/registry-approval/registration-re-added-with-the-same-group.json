@@ -1,0 +1,16 @@
+{
+  "description": "The tool comes back with the group it was approved with: the normal rule, a READ_ONLY tool is approved.",
+  "input": {
+    "approved": null,
+    "groupFloor": "mcp-opensearch-ops",
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "additionalGroup": "mcp-opensearch-ops"
+    }
+  },
+  "expected": {
+    "state": "approved",
+    "change": "new"
+  }
+}

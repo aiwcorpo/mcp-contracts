@@ -86,6 +86,8 @@ się `upstream-unavailable-policy-data`. Opisy `PolicyRevision` i `prv` mówią 
 
 **Zmiana `additionalGroup` (CC-245, w 7.0.0).** Rejestracja, która usuwa albo zmienia `additionalGroup` już zarejestrowanego narzędzia, czeka na administratora niezależnie od ryzyka (poszerza dostęp, a zmiana `READ_ONLY` byłaby inaczej zatwierdzona samym przeglądem commita); dodanie grupy zawęża i podlega zwykłej regule. Wektory `registry-approval/registration-*`.
 
+**Próg grupy narzędzia (CC-246, w 7.0.0).** Obok progów ryzyka (CC-167) gateway trzyma próg grupy dla narzędzia: ostatnią `additionalGroup`, z którą narzędzie zatwierdzono, także po usunięciu narzędzia i po `deleteServer`; rejestracja, w której narzędzie (nowe albo zarejestrowane ponownie) nie ma `additionalGroup` albo ma inną niż próg, czeka na administratora niezależnie od ryzyka, a zatwierdzenie ustawia próg. Domyka obejście CC-245 przez usunięcie i ponowne dodanie narzędzia. Wektory `registry-approval/registration-*` (12).
+
 **Migracja per składnik.**
 - *gateway:* rejestr serwerów w PostgreSQL i API `/admin/v1/servers`; `ResourceTypes.union` z zarejestrowanych manifestów, `ScopeMapping.ofRegistered`; `EntityBuilder(types, mapping)`; decyzja `call` z
   `McpCedarSchema.platformPolicies()` i nadpisań; `GET /internal/v1/policy-data` i `prv`; zatwierdzenie `policiesHash`; walidacja fragmentu przy rejestracji; `MCP_ALLOWED_CLIENTS` w kodzie.

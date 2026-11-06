@@ -1789,12 +1789,17 @@ toolError('invalid-missing-message', 'message is required.', { error: 'not_found
   const H = (c) => 'sha256:' + c.repeat(64);
   const reg = (name, description, input) => write('registry-approval', `${name}.json`, { description, input, expected: registrationDecision(input) });
   const entry = (risk, hash, additionalGroup) => ({ risk, definitionHash: H(hash), ...(additionalGroup !== undefined && { additionalGroup }) });
-  reg('registration-read-only-group-removed', 'A READ_ONLY tool loses its additionalGroup: the commit review alone would widen access, so it waits for an administrator.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'b') });
-  reg('registration-read-only-group-changed', 'A READ_ONLY tool changes its additionalGroup: pending as well.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-support') });
-  reg('registration-read-only-group-added', 'Adding an additionalGroup narrows access and follows the normal rule: a READ_ONLY change is approved.', { approved: entry('READ_ONLY', 'a'), submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-ops') });
-  reg('registration-new-read-only-with-group', 'A new READ_ONLY tool with an additionalGroup is approved by the registration.', { approved: null, submitted: entry('READ_ONLY', 'a', 'mcp-opensearch-ops') });
-  reg('registration-read-only-group-kept-other-change', 'The group stays and something else changes: the normal rule, approved.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-ops') });
-  reg('registration-unchanged', 'An entry with the same hash stays approved.', { approved: entry('READ_ONLY', 'a', 'mcp-opensearch-ops'), submitted: entry('READ_ONLY', 'a', 'mcp-opensearch-ops') });
-  reg('registration-update-group-removed', 'An UPDATE tool that loses its group waits, for the group (and it would wait for the change anyway).', { approved: entry('UPDATE', 'a', 'mcp-opensearch-ops'), submitted: entry('UPDATE', 'b') });
-  reg('registration-update-new', 'A new UPDATE tool waits for an administrator (CC-097).', { approved: null, submitted: entry('UPDATE', 'a') });
+  const OPS = 'mcp-opensearch-ops';
+  reg('registration-read-only-group-removed', 'A READ_ONLY tool loses its additionalGroup: the commit review alone would widen access, so it waits for an administrator.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'b') });
+  reg('registration-read-only-group-changed', 'A READ_ONLY tool changes its additionalGroup: pending as well.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-support') });
+  reg('registration-read-only-group-added', 'Adding an additionalGroup where there was none narrows access and follows the normal rule: a READ_ONLY change is approved.', { approved: entry('READ_ONLY', 'a'), groupFloor: null, submitted: entry('READ_ONLY', 'b', OPS) });
+  reg('registration-new-read-only-with-group', 'A new READ_ONLY tool with an additionalGroup is approved by the registration.', { approved: null, groupFloor: null, submitted: entry('READ_ONLY', 'a', OPS) });
+  reg('registration-read-only-group-kept-other-change', 'The group stays and something else changes: the normal rule, approved.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'b', OPS) });
+  reg('registration-unchanged', 'An entry with the same hash stays approved.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'a', OPS) });
+  reg('registration-update-group-removed', 'An UPDATE tool that loses its group waits, for the group (and it would wait for the change anyway).', { approved: entry('UPDATE', 'a'), groupFloor: OPS, submitted: entry('UPDATE', 'b') });
+  reg('registration-update-new', 'A new UPDATE tool waits for an administrator (CC-097).', { approved: null, groupFloor: null, submitted: entry('UPDATE', 'a') });
+  reg('registration-removed-then-re-added-without-group', 'The tool was removed in one registration and comes back without its group in the next: it is new, but the group floor survives the removal, so it waits for an administrator (CC-246).', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'c') });
+  reg('registration-re-added-with-the-same-group', 'The tool comes back with the group it was approved with: the normal rule, a READ_ONLY tool is approved.', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'c', OPS) });
+  reg('registration-re-added-with-another-group', 'The tool comes back with another group than the floor: it waits for an administrator.', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'c', 'mcp-opensearch-support') });
+  reg('registration-server-recreated-without-group', 'The floor survives deleteServer, like the risk floors: a server created again registers the tool without its group and waits.', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'd') });
 }

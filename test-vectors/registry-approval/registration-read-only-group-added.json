@@ -1,10 +1,11 @@
 {
-  "description": "Adding an additionalGroup narrows access and follows the normal rule: a READ_ONLY change is approved.",
+  "description": "Adding an additionalGroup where there was none narrows access and follows the normal rule: a READ_ONLY change is approved.",
   "input": {
     "approved": {
       "risk": "READ_ONLY",
       "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
+    "groupFloor": null,
     "submitted": {
       "risk": "READ_ONLY",
       "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",

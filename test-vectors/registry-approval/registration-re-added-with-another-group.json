@@ -1,0 +1,17 @@
+{
+  "description": "The tool comes back with another group than the floor: it waits for an administrator.",
+  "input": {
+    "approved": null,
+    "groupFloor": "mcp-opensearch-ops",
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "additionalGroup": "mcp-opensearch-support"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "new",
+    "pendingReason": "additional_group_changed"
+  }
+}

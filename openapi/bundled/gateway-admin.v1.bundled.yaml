@@ -317,7 +317,7 @@ paths:
         that passes is registered. The binding serverId -> system/internalUrl comes only from the registry of servers (`/admin/v1/servers`), never from
         the manifest; a manifest that disagrees is rejected with 422 and nothing is stored.
 
-        **Access groups (CC-245).** A manifest that removes or changes the `additionalGroup` of an already registered tool leaves that tool `pending_approval` (`change: changed`) whatever its risk, because it widens access; adding one is a narrowing and follows the normal rule.
+        **Access groups (CC-245).** The gateway keeps a group floor per tool (the last `additionalGroup` it was approved with, kept after the tool is removed and after `deleteServer`). A manifest whose tool, new or existing, has no `additionalGroup` or another one than the floor leaves that tool `pending_approval` whatever its risk, because it widens access, and approval sets the floor; adding a group where there was none is a narrowing and follows the normal rule.
 
         **Policies (7.0.0).** The manifest carries the policy fragment of the server (`policies`, `policiesHash`) and the
         declarations of its resource types (`resourceTypes`: id and scope patterns, parent, classification). The gateway
@@ -1797,7 +1797,7 @@ paths:
         policy fragment. Its tools disappear from `tools/list` and a call is refused as for an unknown tool; its certificate
         no longer gets policy data. The entries of the scope mapping for the types of its namespace are removed with it, so that a server added later under the
         same namespace does not inherit grants given to the old one; the audit event lists the removed entries. The risk floors of
-        its tools (CC-167) are kept, keyed by serverId and tool: a server created again under the same serverId cannot bring a
+        its tools (CC-167) and their group floors (CC-246, the last `additionalGroup` approved) are kept, keyed by serverId and tool: a server created again under the same serverId cannot bring a
         former DESTRUCTIVE tool back as READ_ONLY without `acceptRiskLowering` by an administrator. The system in the credential broker is
         removed separately (`deleteAdminSystem`). The audit event is `admin_change`.
       security:

@@ -2,6 +2,7 @@
   "description": "A new READ_ONLY tool with an additionalGroup is approved by the registration.",
   "input": {
     "approved": null,
+    "groupFloor": null,
     "submitted": {
       "risk": "READ_ONLY",
       "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

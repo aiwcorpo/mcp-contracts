@@ -24,16 +24,19 @@ export function approveDecision({ entry, body = {}, floor = null }) {
 }
 
 /**
- * What a registration (PUT of the manifest of the pipeline) does with one tool (CC-097, CC-133, CC-245). `approved` is the approved entry
- * { risk, additionalGroup?, definitionHash } or null for a new tool; `submitted` is the entry of the manifest. A new or changed READ_ONLY
- * tool is approved by the commit review; UPDATE and DESTRUCTIVE wait for an administrator. CC-245: removing or changing the additionalGroup
- * of an already registered tool widens access, so it waits for an administrator whatever the risk; adding one is a narrowing and follows
- * the normal rule.
+ * What a registration (PUT of the manifest of the pipeline) does with one tool (CC-097, CC-133, CC-245, CC-246). `approved` is the approved
+ * entry { risk, definitionHash } or null for a new tool (also a tool that was removed earlier); `submitted` is the entry of the manifest
+ * { risk, definitionHash, additionalGroup? }; `groupFloor` is the last additionalGroup the tool was approved with, or null/absent when it
+ * never had one. The floor is kept after the tool is removed and after deleteServer, like the risk floors (CC-167), so removing a tool and
+ * registering it again cannot drop the group. A new or changed READ_ONLY tool is approved by the commit review; UPDATE and DESTRUCTIVE wait
+ * for an administrator. CC-245/CC-246: a tool (new or existing) whose additionalGroup is missing or differs from a floor widens access, so
+ * it waits for an administrator whatever the risk, and approving it sets the floor to what was approved; adding a group where there was none
+ * is a narrowing and follows the normal rule.
  */
-export function registrationDecision({ approved, submitted }) {
+export function registrationDecision({ approved, submitted, groupFloor = null }) {
   if (approved !== null && approved.definitionHash === submitted.definitionHash) return { state: 'approved', change: 'unchanged' };
   const change = approved === null ? 'new' : 'changed';
-  if (approved !== null && approved.additionalGroup !== undefined && submitted.additionalGroup !== approved.additionalGroup) {
+  if (groupFloor !== null && submitted.additionalGroup !== groupFloor) {
     return { state: 'pending_approval', change, pendingReason: 'additional_group_changed' };
   }
   if (submitted.risk === 'READ_ONLY') return { state: 'approved', change };

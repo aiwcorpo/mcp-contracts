@@ -4364,3 +4364,11 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zmiana:** rejestracja, która usuwa albo zmienia `additionalGroup` już zarejestrowanego narzędzia, jest `pending_approval` (`change: changed`) niezależnie od ryzyka, jak zmiana ryzyka dla `UPDATE` i `DESTRUCTIVE`; dodanie `additionalGroup` do nowego albo istniejącego narzędzia zawęża i podlega normalnej regule. Tekst w README (rejestr i przypinanie definicji) i w opisie `registerServer`; referencja `registrationDecision` w `scripts/lib/registry-approval.mjs`, wektory `registry-approval/registration-*`.
 - **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
 - **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)
+
+## CC-246 | C5/C6 | Próg grupy narzędzia przeżywa usunięcie narzędzia
+
+- **Źródło:** decyzja koordynatora z 2026-11-06 (domknięcie CC-245).
+- **Stan:** CC-245 pilnował zmiany `additionalGroup` tylko dla narzędzia, które już było zarejestrowane. Usunięcie narzędzia w jednej rejestracji i dodanie go bez grupy w następnej robiło z niego "nowe" narzędzie `READ_ONLY`, zatwierdzone przeglądem commita.
+- **Zmiana:** gateway trzyma próg grupy dla narzędzia obok progów ryzyka (CC-167): ostatnią `additionalGroup`, z którą narzędzie zatwierdzono; próg zostaje po usunięciu narzędzia i po `deleteServer` (jak progi ryzyka, CC-240 C4), kluczem jest serverId i narzędzie. Rejestracja, w której narzędzie (nowe albo istniejące) nie ma `additionalGroup` albo ma inną niż próg, jest `pending_approval` niezależnie od ryzyka; zatwierdzenie ustawia próg. Dodanie grupy tam, gdzie progu nie ma, zawęża i podlega normalnej regule. Referencja: `registrationDecision` z polem `groupFloor` w `scripts/lib/registry-approval.mjs`; wektory `registry-approval/registration-*`.
+- **Zgodność wstecz (SemVer):** część wydania 7.0.0: major.
+- **Status:** accepted (decyzja: człowiek/koordynator, 2026-11-06, wydanie 7.0.0)

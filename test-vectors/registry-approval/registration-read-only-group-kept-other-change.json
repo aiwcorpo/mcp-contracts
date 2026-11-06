@@ -3,9 +3,9 @@
   "input": {
     "approved": {
       "risk": "READ_ONLY",
-      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "additionalGroup": "mcp-opensearch-ops"
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
+    "groupFloor": "mcp-opensearch-ops",
     "submitted": {
       "risk": "READ_ONLY",
       "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",

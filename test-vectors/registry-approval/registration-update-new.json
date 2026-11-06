@@ -2,6 +2,7 @@
   "description": "A new UPDATE tool waits for an administrator (CC-097).",
   "input": {
     "approved": null,
+    "groupFloor": null,
     "submitted": {
       "risk": "UPDATE",
       "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

@@ -866,7 +866,7 @@ whose current definition differs. Rules:
 2. **What a deployment approves.** The commit review approves tools that do not change data: a new or changed `READ_ONLY` tool is
    `approved` (`approvedInVersion` = the manifest version), and an entry with an unchanged `definitionHash` stays. A new or changed
    `UPDATE` or `DESTRUCTIVE` tool is `pending_approval` (`change` `new` or `changed`, `pendingVersion` = the manifest version) and
-   waits for an administrator's `approve` (group `mcp-platform-admin`, hash equal to `pendingHash`). **Exception for access groups (CC-245):** a registration that removes or changes the `additionalGroup` of an already registered tool is `pending_approval` (`change` `changed`) whatever the risk, because it widens access (a `READ_ONLY` tool would otherwise be approved by the commit review alone); adding an `additionalGroup` to a new or existing tool is a narrowing and follows the rule above. Vectors `registry-approval/registration-*`. A tool that the manifest no
+   waits for an administrator's `approve` (group `mcp-platform-admin`, hash equal to `pendingHash`). **Exception for access groups (CC-245, CC-246):** the gateway keeps a group floor per tool next to the risk floors (CC-167): the last `additionalGroup` the tool was approved with, kept after the tool is removed and after `deleteServer`. A registration whose tool (new or existing, also one removed earlier and registered again) has no `additionalGroup` or another one than the floor is `pending_approval` (`change` `new` or `changed`) whatever the risk, because it widens access (a `READ_ONLY` tool would otherwise be approved by the commit review alone), and approving it sets the floor to what was approved. Adding an `additionalGroup` where the floor has none is a narrowing and follows the rule above. Vectors `registry-approval/registration-*`. A tool that the manifest no
    longer has is removed. The `admin_change` audit with `definitionHash`: `definition_registered` (approved), `definition_submitted`
    (waiting), `tool_removed`; an approval is `definition_approved` with the administrator's `sub`.
 3. **A change outside a deployment blocks the tool.** The gateway always builds the `tools/list` answer to a client from approved
@@ -1267,7 +1267,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `kill-switch/` | 18 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
 | `balancer-errors/` | 3 | the balancer's `502` after an instance dies mid-request, the constant text about an unknown result (CC-204) |
 | `adapter-registry/` | 13 | the adapter channel: CN, adapter mode, pending with `source: adapter`, a read at runtime (CC-206) |
-| `registry-approval/` | 28 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206) |
+| `registry-approval/` | 32 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206) |
 | `idp-token-claims/` | 8 | IdP token claims: `vs` and `vsc` ignored, not copied into the internal JWT (CC-201) |
 | `oauth-metadata/` | 6 | the protected resource metadata document: `resource` without a query, a query ignored, `/v/` as `404` (CC-171, CC-187) |
 

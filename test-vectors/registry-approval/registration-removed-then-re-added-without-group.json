@@ -1,0 +1,16 @@
+{
+  "description": "The tool was removed in one registration and comes back without its group in the next: it is new, but the group floor survives the removal, so it waits for an administrator (CC-246).",
+  "input": {
+    "approved": null,
+    "groupFloor": "mcp-opensearch-ops",
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "new",
+    "pendingReason": "additional_group_changed"
+  }
+}

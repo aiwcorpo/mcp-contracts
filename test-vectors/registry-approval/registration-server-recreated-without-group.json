@@ -1,0 +1,16 @@
+{
+  "description": "The floor survives deleteServer, like the risk floors: a server created again registers the tool without its group and waits.",
+  "input": {
+    "approved": null,
+    "groupFloor": "mcp-opensearch-ops",
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "new",
+    "pendingReason": "additional_group_changed"
+  }
+}
