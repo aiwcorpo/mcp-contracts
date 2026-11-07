@@ -1,4 +1,4 @@
-// Generates the deterministic vectors: definition-hash, manifests, audit-events, tool-errors, bundles.
+// Generates the deterministic vectors: definition-hash, manifests, audit-events, tool-errors.
 // JWT vectors have their own generator (randomized signatures). Tests verify the committed files.
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';

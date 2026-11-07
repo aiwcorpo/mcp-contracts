@@ -215,7 +215,7 @@ and the `info.version` fields, and the tag `vX.Y.Z`.
 | `pl.aiwcorpo.mcp:mcp-cedar-entities:7.0.0` (jar + javadoc) | Cedar entity builder (C7, C9), validation of policy fragments and overrides | gateway and starter, runtime |
 | `pl.aiwcorpo.mcp:mcp-manifest:7.0.0` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
 | `pl.aiwcorpo.mcp:mcp-contracts-parent:7.0.0` (pom) | parent of the modules | installed together with them |
-| `@aiwcorpo/mcp-contracts@7.0.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@6.3.2`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
+| `@aiwcorpo/mcp-contracts@7.0.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@7.0.0`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
 
 In Maven the test keys (private ones too, which are public by design) are only in the `test-vectors` jar, so that a production
 component cannot load a test JWKS from the classpath by accident. Receiver tests sign tokens with them, so the jar

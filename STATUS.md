@@ -4,8 +4,8 @@ Wersja **7.0.0** (2026-11-06, CC-229 ... CC-236, dynamiczne serwery: systemy, se
 SemVer; `cedar/mcp.cedarschema` jest w 2.1.0 bajtowo taki jak w 2.0.0 (także w 2.1.1 i 2.2.0) (test skrótu przechodzi). Zmiany względem
 1.1.0, na której są broker, BFF i frontend, i wpływ na każdego konsumenta: `CHANGELOG.md`.
 
-Walidacja 5.1.0: `./scripts/verify-all.sh` zielony (`npm test`: 270 testów Node; `./mvnw clean verify`: 579 testów JUnit,
-w tym 327 mcp-cedar-entities, 70 mcp-policy-bundle, 182 mcp-manifest).
+Walidacja 7.0.0 (2026-11-07): `./scripts/verify-all.sh` zielony (`npm test`: 287 testów Node; `./mvnw clean verify`: 620 testów JUnit,
+w tym 344 mcp-cedar-entities, 276 mcp-manifest).
 
 ## Publikacja na Maven Central i npmjs.org (przygotowanie, 2026-11-04)
 
