@@ -697,7 +697,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
   `ServiceDesk::Ticket` nie mają żadnego atrybutu, na którym polityka mogłaby oprzeć taką regułę, więc paczka
   `mcp-policies` nie zamyka danych `Restricted` w tych dwóch systemach.
 - **Wariant przyjęty w `mcp-policies` (1.2.0):** reguły `Restricted` dla Jiry, Confluence i OpenSearch
-  (`tags.contains("restricted")`); GitLab i service desk bez reguły, opisane w `STATUS.md`.
+  (`tags.contains("restricted")`); GitLab i service desk bez reguły.
 - **Propozycja:** opcjonalny atrybut `classification?: String` na `GitLab::Group`, `GitLab::Project` (wartość z
   tematu/etykiety grupy lub projektu, np. topic `restricted`) i `ServiceDesk::Queue` (kategoria kolejki); resolver
   serwera wypełnia go z systemu, a `GitLab::Project.group` i `ServiceDesk::Ticket.queue` pozwalają sprawdzić
@@ -1057,8 +1057,7 @@ Format pozycji: numer `CC-NNN`, kontrakt `Cx`, problem, przyjęty wariant, alter
 Decyzje człowieka z 2026-10-27: CC-080 ... CC-090 `accepted`, wydanie 2.2.0 (CC-085 formalnie major, brak
 konsumentów, adnotacja w `CHANGELOG.md`); CC-091 ... CC-094 i CC-098 `accepted-for-3.0.0` (pivot potwierdzeń,
 wydanie 3.0.0 przed M3, nie w 2.2.0); CC-095 ... CC-097 nadal `proposed` (kamienie M3/M4). Szkice YAML/JSON we
-wpisach CC-091 ... CC-098 są projektami do wydania 3.0.0 albo późniejszego. Źródła: tabela decyzji w
-`mcp-platform-plan/STATUS.md`, analiza luk `mcp-platform-plan/design/luki-api-makiety.md` (G-01 ... G-25) i pivot
+wpisach CC-091 ... CC-098 są projektami do wydania 3.0.0 albo późniejszego. Źródła: analiza luk `mcp-platform-plan/design/luki-api-makiety.md` (G-01 ... G-25) i pivot
 potwierdzeń. Wpisy nie zmieniają tekstu CC-034, CC-048, CC-053 ani CC-077; zakres, w jakim je zastępuje pivot,
 opisuje CC-091.
 
@@ -1461,7 +1460,7 @@ G-15, G-16, G-18, G-22.
 
 ## CC-089 | C1/C3/C5/C12 | Jedna domena: reverse proxy przed web, BFF i gateway'em
 
-- **Zgłasza:** człowiek (decyzja 2026-10-27, STATUS koordynatora)
+- **Zgłasza:** człowiek (decyzja 2026-10-27)
 - **Kamień:** M2, wydanie 2.2.0
 - **Problem:** od M2 portal i gateway mają być pod jedną domeną: `/` -> web, `/api` -> BFF, `/s/` i `/v/` ->
   gateway, serwery MCP tylko za gateway'em. Sprawdzono, co to zmienia w kontraktach. **Schematów ani ścieżek nie
@@ -1704,7 +1703,7 @@ G-15, G-16, G-18, G-22.
   wektorach (`confirmation-binding/`), zmiana semantyki C11 (kod nie jest wydawany przez platformę). Zmiany
   łagodzące (podgląd bez MFA) i nowe pola są minor. **Razem: major dla C11.** Dwie opcje, wybiera człowiek:
   - **A. 2.2.0 z udokumentowanym wyjątkiem** jak w 2.1.0 (CC-071/074/077). Za: jedno wydanie, ws-08 dostaje
-    wszystko na MSW od razu; według STATUS żaden komponent poza mockami nie używa C11 (gateway M3 nie istnieje, BFF i
+    wszystko na MSW od razu; żaden komponent poza mockami nie używa C11 (gateway M3 nie istnieje, BFF i
     web są na M1). Przeciw: od 2.0.0 obowiązuje ścisły SemVer, a to byłby drugi kolejny wyjątek dotykający tej samej
     operacji (`POST` decyzji zmienił się z 204 na 200 w 2.1.0 i znika w 2.2.0); klient wygenerowany z 2.1.x
     dalej wołałby usunięty endpoint, bez ostrzeżenia w typach.
@@ -2833,7 +2832,7 @@ G-15, G-16, G-18, G-22.
 
 ## CC-124 | C1 | Gateway odpowiada 503 `upstream_unavailable`, gdy JWKS IdP jest niedostępny
 
-- **Zgłasza:** gateway (propozycja 9 w `mcp-gateway/STATUS.md`); decyzja człowieka 2026-10-28
+- **Zgłasza:** gateway (propozycja 9); decyzja człowieka 2026-10-28
 - **Kamień:** wydanie 3.0.0
 - **Problem:** gdy gateway nie może pobrać kluczy IdP (JWKS), odpowiadał `401` z `WWW-Authenticate: Bearer
   resource_metadata=...`, jak przy każdym odrzuconym tokenie. Klient OAuth czyta takie `401` jako "zaloguj się ponownie" i
@@ -2871,7 +2870,7 @@ G-15, G-16, G-18, G-22.
 
 ## CC-125 | C8 | Audyt odrzuceń mTLS i tokenów BFF na porcie C5; `replay_store_unavailable` tylko u odbiorców JWT
 
-- **Zgłasza:** gateway (propozycja 8 w `mcp-gateway/STATUS.md`); decyzja człowieka 2026-10-28
+- **Zgłasza:** gateway (propozycja 8); decyzja człowieka 2026-10-28
 - **Kamień:** wydanie 3.0.0
 - **Problem:** CC-120 opisało `client_certificate_rejected` jako powód zdarzenia `authentication`, ale gateway nie
   audytował odrzuceń na własnym porcie administracyjnym (`/admin/v1`, `/actuator/prometheus`), a wektor
@@ -3092,7 +3091,7 @@ G-15, G-16, G-18, G-22.
 
 ## CC-129 | C7 | `inheritedClassification` na `GitLab::Group` i `GitLab::Project`
 
-- **Zgłasza:** przegląd paczki polityk M3 (HIGH-1) i propozycja CC-C w STATUS `mcp-policies`; decyzja człowieka 2026-10-28
+- **Zgłasza:** przegląd paczki polityk M3 (HIGH-1) i propozycja CC-C `mcp-policies`; decyzja człowieka 2026-10-28
 - **Kamień:** wydanie 3.1.0 (zmiana addytywna: minor, ale zmienia bajty `cedar/mcp.cedarschema`, więc paczki polityk i biblioteki muszą przejść razem)
 - **Problem:** topics w GitLabie się nie dziedziczą. Oznaczenie grupy `hr` jako `restricted` nie obejmowało projektu `hr/payroll/app`:
   reguła sprawdzała klasyfikację projektu i jego bezpośredniej grupy (`hr/payroll`). Zasada "restricted zawsze zabrania" miała
@@ -3730,7 +3729,7 @@ Poprawki 5.1.1 (decyzje człowieka, 2026-11-01, po przeglądzie ws-05 i ws-10): 
 
 ---
 
-Pakiet M6 (etap 2 planu M6; propozycje ws-00 z 2026-11-03, decyzje człowieka z 2026-11-03 w `mcp-platform-plan/m6-plan.md`, "Decyzje pakietu kontraktów"; wydanie 6.0.0): CC-192 ... CC-205. Źródła faktów: `STATUS.md` repozytoriów strumieni, `mcp-platform-plan/STATUS.md`, `m5-plan.md` (pkt D, G), `m6-plan.md`, `pytania-eksploatacja.md` (A9), przegląd kodu `mcp-contracts` w HEAD (5.1.3-SNAPSHOT). Liczby oznaczone jako "propozycja" są wyborem ws-00, nie danymi z komponentu.
+Pakiet M6 (etap 2 planu M6; propozycje ws-00 z 2026-11-03, decyzje człowieka z 2026-11-03 w `mcp-platform-plan/m6-plan.md`, "Decyzje pakietu kontraktów"; wydanie 6.0.0): CC-192 ... CC-205. Źródła faktów: `m5-plan.md` (pkt D, G), `m6-plan.md`, `pytania-eksploatacja.md` (A9), przegląd kodu `mcp-contracts` w HEAD (5.1.3-SNAPSHOT). Liczby oznaczone jako "propozycja" są wyborem ws-00, nie danymi z komponentu.
 
 Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość enum (`adapter` w `PendingTool.source`) i warunkowo wymagane `risk`/`action` we wpisie manifestu, a CC-203 zaostrza kod wyjścia `PolicyLintCli`; według tabeli to **major, czyli 6.0.0** (decyzja człowieka, 2026-11-03). Pozostałe pozycje są minor lub patch.
 
@@ -3786,7 +3785,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-195 | C8/C5 | Doprecyzowanie CC-191: klucz limitu kluczy, zamykanie okna, liczba pominiętych celów
 
-- **Kontrakt:** C8/C5, CC-191 (klucz ograniczania audytu), `scripts/lib/endpoint-aggregate.mjs` (`auditThrottle`), `audit-event.schema.json`. Źródło: `mcp-gateway/STATUS.md`, "Propozycje CC (M5)", punkt 0 (zaimplementowane tak w `EndpointAuditThrottle`).
+- **Kontrakt:** C8/C5, CC-191 (klucz ograniczania audytu), `scripts/lib/endpoint-aggregate.mjs` (`auditThrottle`), `audit-event.schema.json`. Zaimplementowane tak w `EndpointAuditThrottle`.
 - **Rozbieżność:** CC-191 liczy limit kluczy `MCP_AUDIT_THROTTLE_MAX_TARGETS_PER_USER` na `sub`; referencja robi to samo (`startsWith(sub)`), a gateway liczy per (`sub`, powód), żeby tanie `invalid_filter` nie wyczerpywały budżetu odmów narzędzi. Istniejące wektory (jeden powód na wektor) nie rozróżniają obu wersji.
 - **Zmiana (proponowana):**
   1. Limit kluczy jest liczony per (`sub`, powód) (z domyślnymi 50 na parę). Referencja `auditThrottle` jest dostosowana, a nowy wektor `audit-throttle-keys-limited-per-reason` (użytkownik z pełnym budżetem `invalid_filter` nadal dostaje zdarzenie `not_granted` dla nowego narzędzia) pokazuje różnicę.
@@ -3799,13 +3798,13 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-196 | C8 | Powody audytu brokera spoza opisu: `database_unavailable`, `refresh_token_lost`, `user_offboarding` i pozostałe
 
-- **Kontrakt:** `audit-event.schema.json`, opis pola `reason` ("Known values: ..."). Źródło: `mcp-credential-broker/STATUS.md`, Propozycje CC (status `open`): pole ma wzorzec, nie enum, więc to doprecyzowanie opisu.
+- **Kontrakt:** `audit-event.schema.json`, opis pola `reason` ("Known values: ..."). Pole ma wzorzec, nie enum, więc to doprecyzowanie opisu.
 - **Stan:** broker emituje wartości, których lista znanych powodów nie zawiera:
   - `database_unavailable`: baza nie odpowiedziała (`TransactionException` i wyjątki dostępu do danych -> `503`, zdarzenie z wynikiem `error`, `errorCode: upstream_unavailable`), także w Authenticatorze;
   - `refresh_token_lost`: dostawca zrotował refresh token, a broker go nie zapisał (po ponowieniu zapisu); nowe tokeny odwołane u dostawcy, połączenie przechodzi w `error` (nie `revoked`);
   - `user_offboarding`: zapis odmówiony, bo trwa albo przed chwilą był `purge` użytkownika (CC-155);
   - oraz, z tej samej propozycji brokera: `secret_store_unavailable`, `token_refreshed`, `oauth_grant_revoked`, `connection_changed_during_refresh`, `provider_unavailable`, `connection_busy`. (`jti_store_unavailable` jest w CC-197.)
-- **Zmiana (proponowana):** dopisać wszystkie do opisu `reason` z jednozdaniowym znaczeniem i zdarzeniem (`connection_change`/`credential_resolve`), wynikiem i `errorCode`, jak wyżej; bez zmiany reguł walidacji. Precyzyjne zdarzenia i wyniki każdego powodu potwierdza ws-06 (zestawienie powyżej pochodzi z jego STATUS, nie z kodu).
+- **Zmiana (proponowana):** dopisać wszystkie do opisu `reason` z jednozdaniowym znaczeniem i zdarzeniem (`connection_change`/`credential_resolve`), wynikiem i `errorCode`, jak wyżej; bez zmiany reguł walidacji. Precyzyjne zdarzenia i wyniki każdego powodu potwierdza ws-06 (zestawienie powyżej nie pochodzi z kodu).
 - **Zgodność wstecz:** poprawka opisu: **patch**. Nowe wektory `audit-events/broker-*` (po jednym na powód) byłyby minor; nie są wymagane.
 - **Kogo dotyka:** ws-06 (potwierdzenie listy i znaczeń), ws-01 (reguły SIEM), pozostali bez zmian.
 - **Decyzja człowieka (2026-11-03):** dopisujemy wszystkie dziewięć powodów (plus `secret_missing` z CC-205).
@@ -3816,7 +3815,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 - **Kontrakt:** `audit-event.schema.json` (zdarzenie `authentication`: `jwks_unavailable`, `replay_store_unavailable`, wynik `denied`, `errorCode: upstream_unavailable`), README (kolejność decyzji dla awarii IdP).
 - **Rozbieżność (odczyt kodu):** `CallerAuthenticationFilter` brokera zapisuje przy `KeySourceUnavailableException` powód `key_source_unavailable`, a przy `ReplayGuardUnavailableException` powód `jti_store_unavailable`, jako zdarzenie operacji (`operation.auditEvent()`) z wynikiem `error`. Kontrakt i starter (`mcp-starter-lib/README.md`) używają `jwks_unavailable` i `replay_store_unavailable` w zdarzeniu `authentication` z wynikiem `denied`. Oba rozjazdy (nazwa, zdarzenie i wynik) nie były sprawdzone na działającym brokerze; opis wyżej to odczyt filtra.
 - **Zmiana (proponowana, wariant A):** obowiązują nazwy kontraktu. Opis `reason` mówi, że `jwks_unavailable` i `replay_store_unavailable` dotyczą każdego odbiorcy JWT wewnętrznego (serwery i broker), zdarzenie to `authentication`, wynik `denied`. Broker zmienia nazwy i kształt zdarzenia. Kontrakt się nie zmienia poza opisem.
-- **Alternatywa (B):** kontrakt dodaje `key_source_unavailable` i `jti_store_unavailable` jako powody brokera, bo broker może czytać klucze także z pliku (tryb dev), a "JWKS" jest wtedy nieścisłe. Odradzane: dwa powody tego samego zjawiska rozbijają reguły SIEM, a w trybie pliku źródło nie bywa niedostępne (STATUS brokera: `fromFile` nie wygasa).
+- **Alternatywa (B):** kontrakt dodaje `key_source_unavailable` i `jti_store_unavailable` jako powody brokera, bo broker może czytać klucze także z pliku (tryb dev), a "JWKS" jest wtedy nieścisłe. Odradzane: dwa powody tego samego zjawiska rozbijają reguły SIEM, a w trybie pliku źródło nie bywa niedostępne (`fromFile` nie wygasa).
 - **Zgodność wstecz:** wariant A: opis (patch); zmiana nazw w brokerze to zmiana zdarzeń audytu u wdrożonego komponentu, nie kontraktu. Wariant B: nowe wartości w opisie, patch.
 - **Kogo dotyka:** ws-06 (zmiana nazw i kształtu zdarzenia), ws-01 (reguły SIEM), pozostali bez zmian. Wektory: istniejące `audit-events/*-jwks-unavailable-*` dotyczą zdarzenia `authentication`; broker powinien być sprawdzony na nich (zakres ws-06).
 - **Decyzja człowieka (2026-11-03):** wariant A, nazwy z kontraktu, broker się dostosowuje.
@@ -3824,7 +3823,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-198 | C8/C5 | Powód `policy_forbid` dla zakazu na poziomie narzędzia
 
-- **Kontrakt:** CC-178 (krok 1 `mayCall`: odmowa narzędzia to `not_found_or_denied`, powód `not_granted`), opis `reason` w `audit-event.schema.json` (`policy_forbid` jest na liście znanych powodów), mapowanie wyniku wiersza (`policy_forbid -> denied_policy`, `not_granted -> denied_not_granted`, `scripts/lib/activity-calls.mjs`). Źródło: `mcp-gateway/STATUS.md`, Propozycje CC (M5), punkt 1.
+- **Kontrakt:** CC-178 (krok 1 `mayCall`: odmowa narzędzia to `not_found_or_denied`, powód `not_granted`), opis `reason` w `audit-event.schema.json` (`policy_forbid` jest na liście znanych powodów), mapowanie wyniku wiersza (`policy_forbid -> denied_policy`, `not_granted -> denied_not_granted`, `scripts/lib/activity-calls.mjs`).
 - **Problem:** zakaz z paczki `overrides` (awaryjny `forbid`) daje dziś `not_granted` tak samo jak brak grupy. SIEM nie odróżnia incydentowego zakazu od braku uprawnienia. Poprzednio (M4) było `access_denied` z powodem `policy_forbid`.
 - **Zmiana (proponowana):** przy tym samym kodzie klienta (`not_found_or_denied`) zdarzenie audytu dostaje `reason: policy_forbid`, gdy odmowę dał `forbid` (na poziomie narzędzia), a `not_granted`, gdy nie było żadnego `permit`. **Wiersz aktywności użytkownika zostaje `denied_not_granted`**: mapowanie `policy_forbid -> denied_policy` dotyczy odmów z argumentami (`access_denied`), a użycie go tu odsłoniłoby użytkownikowi, że narzędzie istnieje i jest objęte zakazem (niezmiennik 8). Mapowanie rozróżnia więc po `errorCode` (`not_found_or_denied` kontra `access_denied`), nie po samym powodzie.
 - **Zgodność wstecz:** zmienia się zasada ustalania powodu przy `not_found_or_denied` (CC-178 mówiło `not_granted` także dla `forbid`) i mapowanie wiersza aktywności po `errorCode`: zmiana oczekiwanego zachowania gatewaya, w pakiecie major 6.0.0.
@@ -3834,7 +3833,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-199 | C5/C10/README | `Retry-After` przy `503` z ograniczenia współbieżności (shed) i z niedostępnego magazynu sesji
 
-- **Kontrakt:** README i opisy odpowiedzi C5 (`503` z `Retry-After` jest opisane dla niedostępnego JWKS, CC-124, i dla limitów przy niedostępnym Redisie, CC-167, `Retry-After: 10`). Źródło: `mcp-gateway/STATUS.md` ("Przeciążenie") i README gateway'a. Nie znalazłem w źródłach jawnej treści pozycji "`Retry-After`" z `m6-plan.md`; poniżej jedyny przypadek z lukami w kontrakcie, jaki znalazłem. Pytanie, czy o to chodziło, jest niżej.
+- **Kontrakt:** README i opisy odpowiedzi C5 (`503` z `Retry-After` jest opisane dla niedostępnego JWKS, CC-124, i dla limitów przy niedostępnym Redisie, CC-167, `Retry-After: 10`). Źródło: README gateway'a. Nie znalazłem w źródłach jawnej treści pozycji "`Retry-After`" z `m6-plan.md`; poniżej jedyny przypadek z lukami w kontrakcie, jaki znalazłem. Pytanie, czy o to chodziło, jest niżej.
 - **Stan:** `ConcurrencyLimitFilter` gateway'a (domyślnie 128 żądań `POST`/`DELETE` w toku) odmawia `503` z `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`, domyślnie 2 s) i ciałem `{"error":"upstream_unavailable"}` (kod C10), bez wywołania czegokolwiek za bramą, po uwierzytelnieniu. Kontrakt tego `503` nie opisuje (grep po README i CONTRACT_CHANGES: brak przeciążenia), więc klient i test nie mają wektora.
 - **Zmiana (proponowana):** README opisuje trzecie i czwarte źródło `503` z `Retry-After`: przeciążenie gateway'a i niedostępny magazyn sesji. `Retry-After` w sekundach (liczba całkowita, >= 1), bez `WWW-Authenticate`, ciało jak C10 `upstream_unavailable`, brak nagłówka ujawniającego limit lub ustawienie (jak CC-156). Wektor odpowiedzi w `gateway-authentication-decision/` nie pasuje (to nie uwierzytelnienie); proponuję `tool-errors/` albo krótki wektor `endpoint-aggregate/shed-503` z oczekiwanym kształtem. Audyt: zdarzenie `policy_decision` deny z `errorCode: upstream_unavailable`, ograniczane jak CC-125 (częstość zdarzeń z przeciążenia byłaby sama zalewem); powód do ustalenia z ws-05.
 - **Zgodność wstecz:** opis istniejącego zachowania i nowy wektor: **patch/minor**.
@@ -3844,7 +3843,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-200 | C5/README | `tools/list` z `cursor: ""`
 
-- **Kontrakt:** CC-181 (kursor; "kursor niebędący napisem to ten sam błąd", `-32602`, `invalid_cursor`). Źródło: `mcp-e2e/STATUS.md`, Propozycje CC: zestaw nie sprawdza, czy `cursor: ""` to brak kursora czy `-32602`.
+- **Kontrakt:** CC-181 (kursor; "kursor niebędący napisem to ten sam błąd", `-32602`, `invalid_cursor`). Zestaw e2e nie sprawdza, czy `cursor: ""` to brak kursora czy `-32602`.
 - **Luka:** pusty napis jest napisem, więc nie wpada w "niebędący napisem", ale nie ma pozycji ani podpisu. CC-181 nie rozstrzyga.
 - **Zmiana (proponowana):** `cursor: ""` jest kursorem niepoprawnym: `-32602`, `Invalid cursor`, ta sama odpowiedź i zdarzenie `invalid_cursor` co dla każdego innego złego kursora. Pierwsza strona to brak pola (albo `null`, jeśli klient go tak wysyła, do potwierdzenia przez ws-05, bo `null` też nie jest w CC-181). Wektor `endpoint-aggregate/cursor-empty-string`.
 - **Alternatywa:** `""` jak brak kursora (pierwsza strona). Łagodniejsze dla klientów, które wysyłają puste pole, ale tworzy drugą ścieżkę wejścia bez uwierzytelnienia kursora; odradzane.
@@ -3855,7 +3854,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-201 | C1/C2 | Token IdP z claimami `vs`/`vsc` na `/mcp`
 
-- **Kontrakt:** CC-173 (koniec `vs`, `vsc`; JWT wewnętrzny C2 z `vs` lub `vsc` to `401 invalid_claims` przez `unevaluatedProperties`), C1 (token klienta AI od IdP). Źródło: `mcp-e2e/STATUS.md`, Propozycje CC.
+- **Kontrakt:** CC-173 (koniec `vs`, `vsc`; JWT wewnętrzny C2 z `vs` lub `vsc` to `401 invalid_claims` przez `unevaluatedProperties`), C1 (token klienta AI od IdP).
 - **Luka:** `invalid_claims` dotyczy tokenu C2. Dla poprawnie podpisanego tokenu IdP z takimi claimami na `/mcp` kontrakt nic nie mówi; zestaw ws-10 sprawdza tylko odrzucenie tokenów podrobionych.
 - **Zmiana (proponowana):** weryfikacja tokenu C1 nie stosuje `unevaluatedProperties`: nieznane claimy są ignorowane, w tym `vs` i `vsc` (nic ich nie czyta od CC-173). Właściwością bezpieczeństwa jest druga strona: JWT wewnętrzny C2 buduje gateway wyłącznie ze znanych pól i nigdy nie kopiuje claimów tokenu IdP, więc `vs`/`vsc` z IdP nie trafiają do serwerów i brokera. Wektor `gateway-authentication/valid-token-with-removed-claims` (decyzja: przyjęty, brak `vs` w wygenerowanym C2) i test ws-10.
 - **Alternatywa:** odrzucać token IdP z `vs`/`vsc` (`401`). Daje twardszy sygnał, ale psuje logowanie, gdy IdP dopisze claim o tej nazwie z innego powodu; odradzane.
@@ -3866,16 +3865,16 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-202 | C12/wektory | Wektor `%zz` (niepoprawny escape w query)
 
-- **Kontrakt:** CC-182 (`getMcpEndpoint`; wartości po dekodowaniu przez warstwę HTTP), wektory `mcp-endpoint/`. Źródło: `mcp-portal/bff/STATUS.md` (kontrakt nie mówi, co z `%zz`; BFF traktuje to jako `invalid_filter`), `mcp-platform-plan/STATUS.md` (2026-10-31: "Proponowane CC: wektor %zz do CC-182").
+- **Kontrakt:** CC-182 (`getMcpEndpoint`; wartości po dekodowaniu przez warstwę HTTP), wektory `mcp-endpoint/`. Kontrakt nie mówi, co z `%zz`; BFF traktuje to jako `invalid_filter`.
 - **Stan:** wektor `invalid-percent-encoding` dotyczy wartości zdekodowanej, w której został `%`. Niepoprawny escape (`%zz`, `%`, `%4`) w query wysłanym przez klienta nie ma wektora; kontener (Tomcat) odrzuca taki parametr wyjątkiem, który BFF łapie i zamienia na `400 invalid_filter` (nie `500`). Mock MSW: zachowanie nie sprawdzone.
 - **Zmiana (proponowana):** opis CC-182 mówi, że niepoprawny escape to `400 invalid_request`, `reason: invalid_filter` (jak każde `%` po dekodowaniu). Nowy wektor `mcp-endpoint/http-broken-escape` (`httpQuery: "systems=%zz"`, `rawQuery` pominięte, oczekiwane `400 invalid_filter`) i, jeśli generator na to pozwala, wariant `systems=%` i `systems=%4`. Mock MSW zwraca to samo.
 - **Zgodność wstecz:** nowe wektory i opis: **minor**. Mock odrzucający `%zz`, jeśli dziś przepuszcza, to zaostrzenie walidacji mocka (wyjątek jak w CC-182).
-- **Kogo dotyka:** ws-07 (już zgodne według STATUS), ws-08 (mock), ws-05 (gateway odrzuca każde `%` w query: `endpoint-filter/parse-percent-encoded-*`; wariant surowy `%zz` do dopisania w tym samym wektorze).
+- **Kogo dotyka:** ws-07 (już zgodne), ws-08 (mock), ws-05 (gateway odrzuca każde `%` w query: `endpoint-filter/parse-percent-encoded-*`; wariant surowy `%zz` do dopisania w tym samym wektorze).
 - **Status:** accepted (decyzja: człowiek, 2026-11-03), wydanie 6.0.0
 
 ## CC-203 | Java | Kod wyjścia `PolicyLintCli` przy uszkodzonym schemacie lub błędzie walidacji
 
-- **Kontrakt:** CC-183 (lint niemożliwych polityk kończy się kodem `1`), Javadoc `PolicyLintCli`: "0 when clean, 1 on violations, 2 on usage or parse errors". Źródło: `mcp-platform-plan/STATUS.md` (2026-10-31, ws-09, LOW-3: `PolicyLintCli` daje `rc=0` przy uszkodzonym schemacie; "do następnego wydania kontraktów").
+- **Kontrakt:** CC-183 (lint niemożliwych polityk kończy się kodem `1`), Javadoc `PolicyLintCli`: "0 when clean, 1 on violations, 2 on usage or parse errors". `PolicyLintCli` daje `rc=0` przy uszkodzonym schemacie.
 - **Przyczyna (odczyt kodu, bez uruchomienia):** `PolicyLint.impossible` zwraca pustą listę, gdy `ValidationResponse.success` jest puste, czyli gdy Cedar nie zwrócił wyniku walidacji (schemat lub polityki nie przeszły walidacji). `PolicyLintCli` traktuje pustą listę jako "czysto" i kończy `0`.
 - **Zmiana (proponowana):** brak wyniku walidacji to błąd: `impossible` rzuca wyjątek z komunikatem walidatora (lub zwraca go jako naruszenie), a `PolicyLintCli` kończy kodem `2` ("cannot lint"), nie `0`. Test: uszkodzony `--schema` i polityka niezgodna ze schematem -> `2`. `BundleVerifier` bez zmian (jak w CC-183).
 - **Zgodność wstecz:** metoda i CLI kończą się błędem tam, gdzie wcześniej kończyły się sukcesem: według tabeli zaostrzenie walidacji, **major** (precedens: CC-183 w 5.1.0, wyjątek SemVer). Praktycznie to naprawa błędu; w potoku ws-09 uszkodzony schemat i tak łapie `policy-tool check`.
@@ -3897,7 +3896,7 @@ Numer wersji pakietu (ścisły SemVer, tabela w README): CC-193 dodaje wartość
 
 ## CC-205 | C4/C12/C8 | Połączenie bez sekretu przechodzi w `error` z powodem `secret_missing`
 
-- **Kontrakt:** C4 (`Connection`, zdarzenie `connection_change`), C8 (powód), C12 (lista połączeń). Źródło: `mcp-credential-broker/STATUS.md`, M6 etap 1 (`LostSecretSignal`) i przegląd ws-06 M6 (M4: wiersz `connected` bez sekretu zajmuje batch sweepu).
+- **Kontrakt:** C4 (`Connection`, zdarzenie `connection_change`), C8 (powód), C12 (lista połączeń). Sygnał `LostSecretSignal` (M6 etap 1); wiersz `connected` bez sekretu zajmuje batch sweepu.
 - **Stan:** gdy sekretu połączenia brakuje w OpenBao, wiersz zostaje `connected`; użytkownik nie widzi problemu, a wywołanie kończy się `credential_required`. Sygnał to metryka `broker.connection.secret_missing{system,place}` i log WARN.
 - **Decyzja człowieka (2026-11-03), opcja a):** po wykryciu braku sekretu (przy `resolve` albo w sweepie) broker ustawia stan wiersza `error` i zapisuje zdarzenie `connection_change` z powodem `secret_missing`, wynikiem `error` (zdarzenie niżej). Wiersz w stanie `error` wypada z zapytania sweepu, więc nie blokuje batcha. Portal pokazuje istniejący stan błędu z prośbą o ponowne połączenie (`connectUrl`); ponowne połączenie zapisuje nowy sekret i przywraca `connected`. Bez nowej wartości enum.
   - **Zdarzenie:** `connection_change`, `reason: secret_missing`, `outcome: error`, bez `errorCode`, jeśli kontrakt zdarzenia nie wymaga go dla tego powodu (do potwierdzenia przez ws-06 z wektorem); `place` (`resolve`, `refresh_sweep`) pozostaje w metryce, nie w zdarzeniu.
@@ -4094,7 +4093,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 
 ## CC-219 | C7/query-rendering | `type = page` w wyszukiwaniu CQL
 
-- **Źródło:** mcp-server-confluence STATUS (ws-04), "Do zebrania przez koordynatora". `content/search` bez `type = page` zwraca też komentarze, załączniki i blogi, które serwer odrzuca po odpowiedzi, więc okna wyników są częściej puste. `type` nie jest polem warunku `StructuredQuery`. Resolver serwera już używa `id in (...) AND type = page` (`Cql.contentIn`).
+- **Źródło:** mcp-server-confluence (ws-04). `content/search` bez `type = page` zwraca też komentarze, załączniki i blogi, które serwer odrzuca po odpowiedzi, więc okna wyników są częściej puste. `type` nie jest polem warunku `StructuredQuery`. Resolver serwera już używa `id in (...) AND type = page` (`Cql.contentIn`).
 - **Zmiana (proponowana), dwa warianty:** (a) pole `type` (operator `EQUALS`, wartość `page`) w liście normatywnej CQL; (b) stała klauzula `type = page` w rendererze CQL startera.
 - **Zgodność wstecz (SemVer):** (a) nowa wartość w liście: jak CC-218; (b) zmienia oczekiwane wyjście wszystkich istniejących wektorów CQL, czyli **major** (zmiana oczekiwania w istniejącym wektorze).
 - **Kogo dotyka:** ws-02 (starter), ws-04 (Confluence).
@@ -4135,7 +4134,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 
 ## CC-223 | C5/C10/README | Limit otwartych strumieni na instancję gatewaya i `503`
 
-- **Źródło:** mcp-gateway STATUS (ws-05), M6 etap 3, sekcja "Decyzje i granice tego etapu"; zebrane w `plan-wydanie.md`.
+- **Źródło:** mcp-gateway (ws-05), M6 etap 3; zebrane w `plan-wydanie.md`.
 - **Stan:** gateway wdrożył limit: `MCP_MAX_OPEN_STREAMS` (domyślnie 2000 na instancję, strumień `GET` sesji i `subscriptions/listen` razem, bez limitu na użytkownika). Powyżej limitu odpowiada `503` z `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`) i tym samym ciałem co przeciążenie z CC-199 (`upstream_unavailable`), metryka `mcp_gateway_streams_refused_total`. Otwarcie strumienia przechodzi przez limity użytkownika i klienta (CC-135). Testy: `StreamLimitTest`, `ToolStreamsTest`.
 - **Zmiana (proponowana):** README i C5/C10 opisują limit otwartych strumieni na instancję (konfigurowalny, domyślnie 2000, oba rodzaje razem), odpowiedź `503` jak shed z CC-199, otwarcie strumienia jako zwykłe żądanie dla limitów użytkownika i klienta; wektor w `gateway-authentication/` dla odmowy strumienia. Nazwa metryki do potwierdzenia.
 - **Zgodność wstecz (SemVer):** opis i nowy wektor, bez zmiany schematów i enum: minor.
@@ -4145,7 +4144,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 
 ## CC-224 | C5/C10 | `503 upstream_unavailable` z `Retry-After` dla katalogu przy nieczytelnych wyłącznikach
 
-- **Źródło:** mcp-gateway STATUS (ws-05), M6 etap 3: "to moja decyzja, do potwierdzenia".
+- **Źródło:** mcp-gateway (ws-05), M6 etap 3: decyzja do potwierdzenia.
 - **Stan:** kontrakt opisuje `503` dla operacji wyłączników (CC-194), ale nie dla odczytu katalogu. Gateway przy nieczytelnym stanie wyłączników odpowiada na katalog `503 upstream_unavailable` z `Retry-After`, zgodnie z regułą fail-closed.
 - **Zmiana (proponowana):** dopisać odpowiedź `503` (`upstream_unavailable`, `Retry-After`) do operacji katalogu w `gateway-admin` C5 i zdanie w README o stanie wyłączników; wektor `kill-switch/` dla katalogu.
 - **Zgodność wstecz (SemVer):** nowa odpowiedź w kontrakcie opisującym zachowanie, które już istnieje: minor.
@@ -4156,7 +4155,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 
 ## CC-225 | C5/README | `tools/list` z `cursor: null`
 
-- **Źródło:** mcp-gateway STATUS (ws-05), M6 etap 3; pokrewne CC-200 (`cursor: ""`).
+- **Źródło:** mcp-gateway (ws-05), M6 etap 3; pokrewne CC-200 (`cursor: ""`).
 - **Stan:** `cursor: null` jest odrzucany jak każdy kursor niebędący napisem (`-32602`); kontrakt tego nie rozstrzyga.
 - **Zmiana (proponowana):** dopisać do opisu `tools/list` w C5/README, że `cursor` niebędący napisem, w tym `null`, to `-32602`; wektor `mcp-endpoint/` dla `cursor: null`.
 - **Zgodność wstecz (SemVer):** doprecyzowanie opisu: patch; nowy wektor: minor.
@@ -4166,7 +4165,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 
 ## CC-226 | C2/Java | Klasyfikacja administratora w wewnętrznym JWT dla sidecara adaptera
 
-- **Źródło:** mcp-server-adapter STATUS i README, "Ryzyko lokalne a klasyfikacja administratora" (ws-13): "Docelowo lepiej, by gateway przekazywał klasyfikację z rejestru w JWT, a starter jej używał; to zmiana kontraktu, poza M6".
+- **Źródło:** mcp-server-adapter README, "Ryzyko lokalne a klasyfikacja administratora" (ws-13): "Docelowo lepiej, by gateway przekazywał klasyfikację z rejestru w JWT, a starter jej używał; to zmiana kontraktu, poza M6".
 - **Stan:** starter wymaga ryzyka każdego narzędzia, a adapter go nie zna, więc podstawia ryzyko zastępcze z podpowiedzi obcego serwera. Lokalna kontrola Cedar `call` w sidecarze może odmówić użytkownikom, których gateway przepuścił (klasyfikacja administratora niższa niż ryzyko zastępcze).
 - **Zmiana (proponowana):** opcjonalne claimy `risk` i `action` w wariancie użytkownika wewnętrznego JWT, ustawiane przez gateway z klasyfikacji w rejestrze tylko dla wpisów `source: adapter`; starter w sidecarze używa ich zamiast ryzyka zastępczego; claimy podpisane razem z tokenem, więc nie rozszerzają zaufania. Opis w `internal-jwt.schema.json` i wektory `jwt/`.
 - **Zgodność wstecz (SemVer):** nowe opcjonalne claimy: minor.

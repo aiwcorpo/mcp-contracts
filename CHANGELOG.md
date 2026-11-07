@@ -198,7 +198,7 @@ Wyjątek SemVer (wzór: 5.1.0; README, "Wersjonowanie"): CC-207, poprawki po prz
 - **Kanał adaptera:** kolejność `403`, `400` (`serverId` ciała różny od ścieżki), `422` (N11); odpowiedź bez `classifiedBy`/`classifiedAt` (N13); narzędzie nieobecne w manifeście jest usuwane wraz z klasyfikacją (decyzja człowieka); wektory `adapter-registry/` (13).
 - **`approve` adaptera:** `risk` i `action` muszą do siebie pasować, inaczej `classification_inconsistent` (N14); wektory `registry-approval/` (13). `action` w audycie klasyfikacji w tekstach i jako `$ref` (N10).
 - **Znane, odłożone do następnego majora (N1, N2):** schemat nie wymusza, że `RegistryTool.risk`/`action` są obecne poza oczekującym wpisem adaptera, ani że `KillSwitch.tool` występuje dokładnie przy `scope: tool`; obowiązuje opis. Egzekwowanie zaostrzyłoby walidację odpowiedzi.
-- **Do potwierdzenia przez człowieka (STATUS):** kolejność reguł `idpTokenClaimsDecision` i semantyka osieroconego przełącznika; bez zmian w tym wydaniu.
+- **Do potwierdzenia przez człowieka:** kolejność reguł `idpTokenClaimsDecision` i semantyka osieroconego przełącznika; bez zmian w tym wydaniu.
 
 ### Zmiany względem 6.1.0 dla strumieni
 
