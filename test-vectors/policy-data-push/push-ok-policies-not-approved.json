@@ -1,5 +1,5 @@
 {
-  "description": "The refresh returned data older than the token revision (a stale gateway instance): refuse.",
+  "description": "After the push the data is current but nothing is approved for the server: the second answer is a refusal, not policy_data_stale, so the client gets upstream_unavailable.",
   "input": {
     "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "held": {
@@ -7,16 +7,15 @@
       "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
     },
-    "prv": 42,
-    "refreshed": {
+    "gateway": {
       "revision": 41,
-      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
     }
   },
   "expected": {
-    "decision": "deny",
-    "errorCode": "upstream_unavailable",
-    "reason": "policy_data_unavailable"
+    "calls": 2,
+    "pushes": 1,
+    "result": "upstream_unavailable",
+    "reason": "policies_not_approved"
   }
 }

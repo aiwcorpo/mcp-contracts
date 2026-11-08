@@ -1,0 +1,15 @@
+{
+  "description": "The token carries an older revision than the data held (a gateway instance that is behind): the held data is newer, so the call is evaluated with it.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 42,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

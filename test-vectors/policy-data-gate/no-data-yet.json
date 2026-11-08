@@ -1,14 +1,15 @@
 {
-  "description": "A server that has no policy data refuses.",
+  "description": "A server that holds no policy data (it was restarted, or never received a push) answers policy_data_stale: the gateway pushes and repeats the call once.",
   "input": {
     "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "held": null,
-    "prv": null,
-    "refreshed": null
+    "prv": null
   },
   "expected": {
     "decision": "deny",
-    "errorCode": "upstream_unavailable",
-    "reason": "policy_data_unavailable"
+    "errorCode": "policy_data_stale",
+    "reason": "policy_data_stale",
+    "httpStatus": 409,
+    "gatewayAction": "push_and_retry_once"
   }
 }

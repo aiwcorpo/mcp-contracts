@@ -1,0 +1,17 @@
+{
+  "description": "A restarted server holds no data: the same sequence.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": null,
+    "gateway": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    }
+  },
+  "expected": {
+    "calls": 2,
+    "pushes": 1,
+    "result": "executed"
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "description": "An override that does not validate against the composed schema of the server: the server refuses every call.",
+  "description": "An override that does not validate against the composed schema of the server: the server refuses every call as upstream_unavailable.",
   "input": {
     "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "held": {
@@ -7,12 +7,12 @@
       "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": false
     },
-    "prv": 41,
-    "refreshed": null
+    "prv": 41
   },
   "expected": {
     "decision": "deny",
     "errorCode": "upstream_unavailable",
-    "reason": "overrides_invalid"
+    "reason": "overrides_invalid",
+    "gatewayAction": "none"
   }
 }

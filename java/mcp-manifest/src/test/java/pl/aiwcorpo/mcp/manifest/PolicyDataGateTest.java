@@ -35,7 +35,7 @@ class PolicyDataGateTest {
         JsonNode v = JSON.readTree(file.toFile());
         JsonNode in = v.get("input");
         PolicyDataGate.Decision d = PolicyDataGate.decide(in.get("ownHash").asText(), data(in.get("held")),
-                in.get("prv").isNull() ? OptionalLong.empty() : OptionalLong.of(in.get("prv").asLong()), data(in.get("refreshed")));
+                in.get("prv").isNull() ? OptionalLong.empty() : OptionalLong.of(in.get("prv").asLong()));
         assertEquals("continue".equals(v.get("expected").get("decision").asText()), d.allowed(), file::toString);
         if (!d.allowed()) {
             assertEquals(v.get("expected").get("reason").asText(), d.reason(), file::toString);

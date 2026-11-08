@@ -1,0 +1,15 @@
+{
+  "description": "The same with a revision in the token.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": null,
+    "prv": 41
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "policy_data_stale",
+    "reason": "policy_data_stale",
+    "httpStatus": 409,
+    "gatewayAction": "push_and_retry_once"
+  }
+}

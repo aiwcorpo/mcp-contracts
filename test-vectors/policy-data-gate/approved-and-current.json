@@ -7,8 +7,7 @@
       "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
     },
-    "prv": 41,
-    "refreshed": null
+    "prv": 41
   },
   "expected": {
     "decision": "continue"

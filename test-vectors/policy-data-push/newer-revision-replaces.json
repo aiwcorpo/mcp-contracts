@@ -1,0 +1,19 @@
+{
+  "description": "A strictly newer revision replaces the data held.",
+  "input": {
+    "held": {
+      "revision": 40,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "offered": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "revision": 41
+  }
+}

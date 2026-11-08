@@ -159,7 +159,7 @@
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "PolicyRevision": {
-      "description": "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.",
+      "description": "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; pushed to servers with POST /.well-known/mcp-policy-data, C14): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it.",
       "type": "integer",
       "minimum": 0,
       "maximum": 9007199254740991
@@ -172,6 +172,11 @@
     },
     "DefinitionHash": {
       "description": "sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "CertificateFingerprint": {
+      "description": "SHA-256 of the DER encoding of an X.509 certificate (never of its PEM text), as sha256:<64 lower-case hex digits>, without colons (CC-249; see test-vectors/certificate-fingerprint).",
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },

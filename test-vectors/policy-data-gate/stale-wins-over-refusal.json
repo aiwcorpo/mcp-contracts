@@ -1,0 +1,19 @@
+{
+  "description": "Data that is behind decides nothing, not even a refusal: the older data says the policies differ, but a push may change that, so the answer is policy_data_stale.",
+  "input": {
+    "ownHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "held": {
+      "revision": 40,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "policy_data_stale",
+    "reason": "policy_data_stale",
+    "httpStatus": 409,
+    "gatewayAction": "push_and_retry_once"
+  }
+}

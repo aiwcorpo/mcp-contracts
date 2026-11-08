@@ -7,7 +7,7 @@ import YAML from 'yaml';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const OPENAPI_FILES = ['credential-broker.v1.yaml', 'gateway-admin.v1.yaml', 'portal-bff.v1.yaml'];
+export const OPENAPI_FILES = ['credential-broker.v1.yaml', 'gateway-admin.v1.yaml', 'mcp-server.v1.yaml', 'portal-bff.v1.yaml'];
 
 export function path(...parts) {
   return join(ROOT, ...parts);

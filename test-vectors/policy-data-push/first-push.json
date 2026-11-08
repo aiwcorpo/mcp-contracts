@@ -1,0 +1,15 @@
+{
+  "description": "A server that holds nothing takes the first push.",
+  "input": {
+    "held": null,
+    "offered": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "revision": 41
+  }
+}

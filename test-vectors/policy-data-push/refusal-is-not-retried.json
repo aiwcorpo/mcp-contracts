@@ -1,0 +1,22 @@
+{
+  "description": "A current server that refuses because its policies differ from the approved ones: the gateway neither pushes nor repeats.",
+  "input": {
+    "ownHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "held": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "gateway": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    }
+  },
+  "expected": {
+    "calls": 1,
+    "pushes": 0,
+    "result": "upstream_unavailable",
+    "reason": "policies_differ"
+  }
+}

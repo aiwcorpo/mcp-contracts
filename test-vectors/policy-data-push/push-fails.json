@@ -1,5 +1,5 @@
 {
-  "description": "The token carries a newer revision: the server refreshes before evaluating, and the refreshed data decides.",
+  "description": "The push does not reach the server: the repeated call is refused again and the client gets upstream_unavailable; there is no third attempt.",
   "input": {
     "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "held": {
@@ -7,14 +7,17 @@
       "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
     },
-    "prv": 41,
-    "refreshed": {
+    "gateway": {
       "revision": 41,
       "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
-    }
+    },
+    "pushReachesServer": false
   },
   "expected": {
-    "decision": "continue"
+    "calls": 2,
+    "pushes": 1,
+    "result": "upstream_unavailable",
+    "reason": "policy_data_stale"
   }
 }

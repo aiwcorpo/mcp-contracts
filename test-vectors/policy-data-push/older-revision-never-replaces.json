@@ -1,0 +1,19 @@
+{
+  "description": "An older revision (a gateway instance that is behind) never moves a server back: accepted false, the revision held stays.",
+  "input": {
+    "held": {
+      "revision": 42,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "offered": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    }
+  },
+  "expected": {
+    "accepted": false,
+    "revision": 42
+  }
+}

@@ -31,6 +31,9 @@
     "./types/gateway-admin": {
       "types": "./dist/types/gateway-admin.v1.d.ts"
     },
+    "./types/mcp-server": {
+      "types": "./dist/types/mcp-server.v1.d.ts"
+    },
     "./types/portal-bff": {
       "types": "./dist/types/portal-bff.v1.d.ts"
     },

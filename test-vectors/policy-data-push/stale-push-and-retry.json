@@ -1,5 +1,5 @@
 {
-  "description": "After the refresh the policies are no longer approved: refuse.",
+  "description": "The server is behind: it answers policy_data_stale, the gateway pushes its data and repeats the call once, which goes through.",
   "input": {
     "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "held": {
@@ -7,15 +7,15 @@
       "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
     },
-    "prv": 41,
-    "refreshed": {
+    "gateway": {
       "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "overridesValid": true
     }
   },
   "expected": {
-    "decision": "deny",
-    "errorCode": "upstream_unavailable",
-    "reason": "policies_not_approved"
+    "calls": 2,
+    "pushes": 1,
+    "result": "executed"
   }
 }

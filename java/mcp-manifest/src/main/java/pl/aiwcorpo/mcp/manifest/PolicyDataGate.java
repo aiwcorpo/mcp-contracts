@@ -4,10 +4,12 @@ import java.util.Optional;
 import java.util.OptionalLong;
 
 /**
- * The rule that binds a server (7.0.0): it evaluates only policies that the gateway approved, with policy data at least as
- * new as the revision {@code prv} of the token. The twin is {@code scripts/lib/policy-data-gate.mjs}; the vectors in
- * {@code test-vectors/policy-data-gate} keep them equal. Every refusal is the unavailable error of the server (C10
- * {@code upstream_unavailable}), never an evaluation with older data.
+ * The rule that binds a server (7.0.0, push model of CC-249): it evaluates a {@code tools/call} only with policy data at least as new as
+ * the revision {@code prv} of the token, and only for policies that the gateway approved. The server never fetches data: the gateway pushes it
+ * ({@code POST /.well-known/mcp-policy-data}). A server that holds none, or holds an older revision than {@code prv}, answers
+ * {@code 409 policy_data_stale} before it does anything else with the request, so that the gateway pushes and repeats the call once. Every other
+ * refusal is the unavailable error of the server (C10 {@code upstream_unavailable}), never an evaluation with older data. The twin is
+ * {@code scripts/lib/policy-data-gate.mjs}; the vectors in {@code test-vectors/policy-data-gate} keep them equal.
  */
 public final class PolicyDataGate {
 
@@ -15,7 +17,7 @@ public final class PolicyDataGate {
     }
 
     /**
-     * Policy data as the server read it from the gateway.
+     * Policy data as the gateway pushed it.
      *
      * @param revision revision of the data (a counter that only increases)
      * @param approvedPoliciesHash {@code approvedPoliciesHash} of the data; empty while nothing is approved
@@ -26,36 +28,31 @@ public final class PolicyDataGate {
 
     /**
      * @param allowed whether the call may be evaluated
-     * @param reason {@code ok}, {@code policy_data_unavailable}, {@code policies_not_approved}, {@code policies_differ} or {@code overrides_invalid}
+     * @param reason {@code ok}, {@code policy_data_stale} (the gateway pushes and repeats the call once; answer 409), {@code policies_not_approved},
+     *     {@code policies_differ} or {@code overrides_invalid} (final; answer {@code upstream_unavailable})
      */
     public record Decision(boolean allowed, String reason) {
     }
 
     /**
      * @param ownHash policiesHash the server computes from its own policies and resourceTypes ({@link PoliciesHash})
-     * @param held the data the server holds, or null
+     * @param held the data the server holds (the last accepted push), or null
      * @param prv revision of the token, if it has one
-     * @param refreshed what a refresh made before this call returned, or null when it failed or was not made
      */
-    public static Decision decide(String ownHash, Data held, OptionalLong prv, Data refreshed) {
-        Data data = held;
-        if (prv.isPresent() && (held == null || prv.getAsLong() > held.revision())) {
-            data = refreshed != null && refreshed.revision() >= prv.getAsLong()
-                    && (held == null || refreshed.revision() >= held.revision()) ? refreshed : null;
+    public static Decision decide(String ownHash, Data held, OptionalLong prv) {
+        if (held == null || (prv.isPresent() && prv.getAsLong() > held.revision())) {
+            return new Decision(false, "policy_data_stale");
         }
-        if (data == null) {
-            return new Decision(false, "policy_data_unavailable");
-        }
-        if (data.approvedPoliciesHash().isEmpty()) {
+        if (held.approvedPoliciesHash().isEmpty()) {
             return new Decision(false, "policies_not_approved");
         }
-        if (!data.approvedPoliciesHash().get().equals(ownHash)) {
+        if (!held.approvedPoliciesHash().get().equals(ownHash)) {
             return new Decision(false, "policies_differ");
         }
-        return data.overridesValid() ? new Decision(true, "ok") : new Decision(false, "overrides_invalid");
+        return held.overridesValid() ? new Decision(true, "ok") : new Decision(false, "overrides_invalid");
     }
 
-    /** @return whether data just read replaces the data held: only a strictly newer revision does */
+    /** @return whether data just pushed replaces the data held: only a strictly newer revision does */
     public static boolean acceptRevision(OptionalLong held, long offered) {
         return held.isEmpty() || offered > held.getAsLong();
     }
