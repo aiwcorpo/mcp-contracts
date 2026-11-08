@@ -1,0 +1,12 @@
+{
+  "description": "A bracketed IPv4-mapped literal.",
+  "input": {
+    "url": "https://[::ffff:127.0.0.1]/mcp"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "::ffff:7f00:1",
+    "class": "loopback"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "Multicast 224.0.0.0/4.",
+  "input": {
+    "address": "224.0.0.251"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "multicast"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "plain is never accepted for an https address.",
+  "kind": "approve",
+  "input": {
+    "approve": {
+      "pending": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "validatesAsCa": false
+      },
+      "body": {
+        "tlsMode": "plain",
+        "fingerprint": null
+      }
+    }
+  },
+  "expected": {
+    "status": 409,
+    "error": "connection_changed"
+  }
+}

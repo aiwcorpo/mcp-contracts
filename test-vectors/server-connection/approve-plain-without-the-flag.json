@@ -1,0 +1,24 @@
+{
+  "description": "plain without allowPlainHttp is refused (it cannot even be added without the flag, so this guards a record that lost it).",
+  "kind": "approve",
+  "input": {
+    "approve": {
+      "pending": {
+        "tlsMode": "plain",
+        "fingerprint": null,
+        "validatesAsCa": false
+      },
+      "body": {
+        "tlsMode": "plain",
+        "fingerprint": null
+      },
+      "scheme": "http",
+      "addedWithAllowPlainHttp": false
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "server_rejected",
+    "reason": "tls_mode_not_allowed"
+  }
+}

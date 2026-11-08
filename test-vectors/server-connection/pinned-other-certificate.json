@@ -1,0 +1,23 @@
+{
+  "description": "A pinned server presents another certificate: the server is unreachable (certificate_changed) and the new certificate is recorded for approval. There is no chain or hostname check to fall back on.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "presented": {
+        "fingerprint": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "validatesAsCa": false
+      }
+    }
+  },
+  "expected": {
+    "status": "certificate_changed",
+    "pendingConnection": {
+      "tlsMode": "pinned",
+      "reason": "certificate_changed"
+    }
+  }
+}

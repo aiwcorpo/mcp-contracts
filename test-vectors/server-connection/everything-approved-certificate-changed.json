@@ -1,0 +1,16 @@
+{
+  "description": "A pinned server presents another certificate: the call is refused as upstream_unavailable until an administrator approves the new one.",
+  "kind": "availability",
+  "input": {
+    "availability": {
+      "connectionApproved": true,
+      "policiesApproved": true,
+      "toolStatus": "approved",
+      "serverStatus": "certificate_changed"
+    }
+  },
+  "expected": {
+    "listed": true,
+    "errorCode": "upstream_unavailable"
+  }
+}

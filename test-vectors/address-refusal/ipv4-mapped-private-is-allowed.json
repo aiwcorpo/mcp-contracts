@@ -1,0 +1,9 @@
+{
+  "description": "An IPv4-mapped form of a private address is judged as that address: allowed.",
+  "input": {
+    "address": "::ffff:10.0.0.5"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

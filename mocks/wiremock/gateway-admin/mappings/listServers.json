@@ -43,7 +43,8 @@
           {
             "serverId": "mcp-jira",
             "system": "jira",
-            "internalUrl": "https://mcp-jira.internal:8443/mcp/jira",
+            "internalUrl": "https://mcp-jira.corp.local:8443/mcp",
+            "allowPlainHttp": false,
             "credential": {
               "required": true,
               "acceptedTypes": [
@@ -53,12 +54,29 @@
               "type": "user-secret"
             },
             "enabled": true,
-            "adapter": false
+            "adapter": false,
+            "status": "connected",
+            "lastCheckedAt": "2026-11-08T09:30:00Z",
+            "lastError": null,
+            "connection": {
+              "tlsMode": "ca",
+              "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+              "subject": "CN=mcp-jira.corp.local",
+              "issuer": "CN=Corp Issuing CA 2",
+              "sans": [
+                "mcp-jira.corp.local"
+              ],
+              "notAfter": "2027-03-01T12:00:00Z",
+              "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+              "approvedAt": "2026-11-06T10:00:00Z"
+            },
+            "pendingConnection": null
           },
           {
             "serverId": "mcp-notes",
             "system": "notes",
-            "internalUrl": "https://mcp-notes.internal:8443/mcp",
+            "internalUrl": "https://10.20.0.15:9443/mcp",
+            "allowPlainHttp": false,
             "credential": {
               "required": true,
               "acceptedTypes": [
@@ -67,7 +85,37 @@
               "type": "user-oauth"
             },
             "enabled": true,
-            "adapter": false
+            "adapter": false,
+            "status": "certificate_changed",
+            "lastCheckedAt": "2026-11-08T09:30:00Z",
+            "lastError": "certificate_changed",
+            "connection": {
+              "tlsMode": "pinned",
+              "fingerprint": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
+              "subject": "CN=mcp-notes",
+              "issuer": "CN=mcp-notes",
+              "sans": [
+                "mcp-notes",
+                "10.20.0.15"
+              ],
+              "notAfter": "2026-12-01T00:00:00Z",
+              "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+              "approvedAt": "2026-11-03T08:00:00Z"
+            },
+            "pendingConnection": {
+              "tlsMode": "pinned",
+              "fingerprint": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
+              "subject": "CN=mcp-notes",
+              "issuer": "CN=mcp-notes",
+              "sans": [
+                "mcp-notes",
+                "10.20.0.15"
+              ],
+              "notAfter": "2027-11-08T00:00:00Z",
+              "validatesAsCa": false,
+              "reason": "certificate_changed",
+              "detectedAt": "2026-11-08T09:30:00Z"
+            }
           }
         ]
       }

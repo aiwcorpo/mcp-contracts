@@ -1,0 +1,12 @@
+{
+  "description": "A certificate renewed for the same name, even with the same subject and SANs, has another fingerprint: a pinned server that renews is unreachable until the new fingerprint is approved (a ca server needs nothing).",
+  "approved": "sha256:e463086ed9898da488b0e80400904d6671486a211b3f6e2c2c7f7cc3636a47e7",
+  "presented": {
+    "certificatePem": "-----BEGIN CERTIFICATE-----\nMIIBmjCCAT+gAwIBAgIUG+yeJi2McIgPxi8WsdlhCDHEsEQwCgYIKoZIzj0EAwIw\nFDESMBAGA1UEAwwJbWNwLW5vdGVzMB4XDTI2MTEwODEwNTcxMFoXDTI3MTEwODEw\nNTcxMFowFDESMBAGA1UEAwwJbWNwLW5vdGVzMFkwEwYHKoZIzj0CAQYIKoZIzj0D\nAQcDQgAEfqq+Stde/BeHo9icCpN+M+JKnKs1QRJeKxlxosjc30/07wlFBy6CjWtr\nomt5CavBKjCNPyNPpRtmCJ7Uli6AiqNvMG0wHQYDVR0OBBYEFCHYP+Pliqzir+nh\n9HYxUnfiPXvLMB8GA1UdIwQYMBaAFCHYP+Pliqzir+nh9HYxUnfiPXvLMA8GA1Ud\nEwEB/wQFMAMBAf8wGgYDVR0RBBMwEYIJbWNwLW5vdGVzhwQKFAAPMAoGCCqGSM49\nBAMCA0kAMEYCIQCDapOFa76RHT8O8BUjkOqMR2ai2SQ2H0HT3Sh2qx6uLQIhAK9F\nT4iJpSm0WrgAZ94mCKi1xNnWZiPD0nKd9XBRaas9\n-----END CERTIFICATE-----\n",
+    "derBase64": "MIIBmjCCAT+gAwIBAgIUG+yeJi2McIgPxi8WsdlhCDHEsEQwCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJbWNwLW5vdGVzMB4XDTI2MTEwODEwNTcxMFoXDTI3MTEwODEwNTcxMFowFDESMBAGA1UEAwwJbWNwLW5vdGVzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfqq+Stde/BeHo9icCpN+M+JKnKs1QRJeKxlxosjc30/07wlFBy6CjWtromt5CavBKjCNPyNPpRtmCJ7Uli6AiqNvMG0wHQYDVR0OBBYEFCHYP+Pliqzir+nh9HYxUnfiPXvLMB8GA1UdIwQYMBaAFCHYP+Pliqzir+nh9HYxUnfiPXvLMA8GA1UdEwEB/wQFMAMBAf8wGgYDVR0RBBMwEYIJbWNwLW5vdGVzhwQKFAAPMAoGCCqGSM49BAMCA0kAMEYCIQCDapOFa76RHT8O8BUjkOqMR2ai2SQ2H0HT3Sh2qx6uLQIhAK9FT4iJpSm0WrgAZ94mCKi1xNnWZiPD0nKd9XBRaas9",
+    "fingerprint": "sha256:eabdea61c7ea45570b21be06ff0ca7e9c33ede64c9ef8e960e2733bf0e16e9bd"
+  },
+  "expected": {
+    "matches": false
+  }
+}

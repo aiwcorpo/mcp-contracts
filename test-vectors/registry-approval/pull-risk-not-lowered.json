@@ -1,0 +1,19 @@
+{
+  "description": "The same risk as the floor: pending as a change, without riskLowered.",
+  "input": {
+    "approved": {
+      "risk": "UPDATE",
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "submitted": {
+      "risk": "UPDATE",
+      "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "riskFloor": "UPDATE"
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "changed",
+    "source": "manifest"
+  }
+}

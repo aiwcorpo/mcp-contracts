@@ -1,0 +1,12 @@
+{
+  "description": "Hexadecimal and shortened forms are normalised by the URL parser before the check.",
+  "input": {
+    "url": "http://0x7f.1/mcp"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "127.0.0.1",
+    "class": "loopback"
+  }
+}

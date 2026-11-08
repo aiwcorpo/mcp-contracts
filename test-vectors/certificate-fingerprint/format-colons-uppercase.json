@@ -1,0 +1,7 @@
+{
+  "description": "Format of CertificateFingerprint: The colon-separated upper-case form that openssl and browsers print is not the format of the contract.",
+  "fingerprint": "E4:63:08:6E:D9:89:8D:A4:88:B0:E8:04:00:90:4D:66:71:48:6A:21:1B:3F:6E:2C:2C:7F:7C:C3:63:6A:47:E7",
+  "expected": {
+    "valid": false
+  }
+}

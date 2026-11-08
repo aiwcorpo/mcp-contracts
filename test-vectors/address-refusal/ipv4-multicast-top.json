@@ -1,0 +1,10 @@
+{
+  "description": "The top of 224.0.0.0/4.",
+  "input": {
+    "address": "239.255.255.250"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "multicast"
+  }
+}

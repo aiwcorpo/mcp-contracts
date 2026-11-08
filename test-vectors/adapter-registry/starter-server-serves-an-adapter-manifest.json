@@ -1,0 +1,29 @@
+{
+  "description": "A server stored as a starter server later serves a manifest with source adapter: refused the same way.",
+  "input": {
+    "serverMode": "starter",
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "stored": false,
+    "lastError": "manifest_invalid",
+    "manifestReason": "adapter_source_mismatch"
+  }
+}

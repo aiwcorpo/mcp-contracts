@@ -1,0 +1,15 @@
+{
+  "description": "Every resolved address is checked: a host that resolves to a private and a loopback address is refused.",
+  "input": {
+    "resolved": [
+      "10.0.0.5",
+      "127.0.0.1"
+    ]
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "address": "127.0.0.1",
+    "class": "loopback"
+  }
+}

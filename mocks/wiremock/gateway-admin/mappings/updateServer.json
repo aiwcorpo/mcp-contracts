@@ -43,7 +43,8 @@
         "jsonBody": {
           "serverId": "mcp-notes",
           "system": "notes",
-          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -52,7 +53,23 @@
             "type": "user-oauth"
           },
           "enabled": false,
-          "adapter": false
+          "adapter": false,
+          "status": "connected",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "approvedAt": "2026-11-06T10:00:00Z"
+          },
+          "pendingConnection": null
         }
       }
     },
@@ -182,7 +199,7 @@
       }
     },
     {
-      "name": "updateServer 422 server_id_mismatch",
+      "name": "updateServer 422 address_refused",
       "priority": 2,
       "request": {
         "method": "PATCH",
@@ -192,7 +209,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=server_id_mismatch($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=address_refused($|[ ,;].*)"
           }
         }
       },
@@ -203,8 +220,198 @@
         },
         "jsonBody": {
           "error": "server_rejected",
-          "reason": "server_id_mismatch",
-          "message": "serverId must be mcp-<system>"
+          "reason": "address_refused",
+          "message": "169.254.169.254 is a link-local address"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 plain_http_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=plain_http_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "plain_http_not_allowed",
+          "message": "http needs allowPlainHttp"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 tls_handshake_failed",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=tls_handshake_failed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "tls_handshake_failed",
+          "message": "the server does not speak TLS on this port"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 manifest_unreachable",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=manifest_unreachable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "manifest_unreachable",
+          "message": "GET /.well-known/mcp-manifest answered 404"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 manifest_invalid",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=manifest_invalid($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "manifest_invalid",
+          "manifestReason": "environment_mismatch",
+          "message": "manifest of mcp-notes declares environment dev"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 system_reserved",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=system_reserved($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "system_reserved",
+          "message": "gateway is a reserved system id"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 namespace_conflict",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=namespace_conflict($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "namespace_conflict",
+          "message": "the namespace Notes belongs to mcp-wiki"
+        }
+      }
+    },
+    {
+      "name": "updateServer 422 tls_mode_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=tls_mode_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "tls_mode_not_allowed",
+          "message": "the certificate does not validate as ca for the host"
         }
       }
     },

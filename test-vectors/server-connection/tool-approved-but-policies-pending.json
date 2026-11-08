@@ -1,0 +1,16 @@
+{
+  "description": "An approved tool of a server whose policies wait is hidden and refused as tool_disabled.",
+  "kind": "availability",
+  "input": {
+    "availability": {
+      "connectionApproved": true,
+      "policiesApproved": false,
+      "toolStatus": "approved"
+    }
+  },
+  "expected": {
+    "listed": false,
+    "errorCode": "tool_disabled",
+    "disabledBy": "approval"
+  }
+}

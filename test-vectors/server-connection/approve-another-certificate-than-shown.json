@@ -1,0 +1,21 @@
+{
+  "description": "The certificate changed after the administrator looked: 409 connection_changed, nothing is approved.",
+  "kind": "approve",
+  "input": {
+    "approve": {
+      "pending": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "validatesAsCa": false
+      },
+      "body": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      }
+    }
+  },
+  "expected": {
+    "status": 409,
+    "error": "connection_changed"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "description": "Connection, policies and tool approved: the tool is listed and callable.",
+  "kind": "availability",
+  "input": {
+    "availability": {
+      "connectionApproved": true,
+      "policiesApproved": true,
+      "toolStatus": "approved"
+    }
+  },
+  "expected": {
+    "listed": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "description": "The gateway pulls the manifest of an adapter: every new or changed tool is pending, with source adapter, a tool that looks like a read included. Nothing is approved by a pull.",
+  "input": {
+    "serverMode": "adapter",
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "stored": true,
+    "adapter": true,
+    "approvedByPull": [],
+    "pending": [
+      "get_issue",
+      "update_issue"
+    ],
+    "pendingSource": "adapter",
+    "removed": [],
+    "classificationLost": []
+  }
+}

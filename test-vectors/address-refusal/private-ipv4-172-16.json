@@ -1,0 +1,9 @@
+{
+  "description": "Allowed.",
+  "input": {
+    "address": "172.16.5.4"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

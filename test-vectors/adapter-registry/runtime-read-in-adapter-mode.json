@@ -1,7 +1,6 @@
 {
   "description": "A difference found when the gateway reads tools/list of a running server in adapter mode makes a pending entry with source adapter, never server: a later approve needs the classification, and the earlier one is not applied silently.",
   "input": {
-    "serverId": "mcp-jira",
     "serverMode": "adapter",
     "runtimeRead": true,
     "tools": [
@@ -13,7 +12,7 @@
     ]
   },
   "expected": {
-    "approvedByCall": [],
+    "approvedByPull": [],
     "pending": [
       "update_issue"
     ],

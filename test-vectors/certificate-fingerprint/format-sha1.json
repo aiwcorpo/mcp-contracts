@@ -1,0 +1,7 @@
+{
+  "description": "Format of CertificateFingerprint: Only SHA-256.",
+  "fingerprint": "sha1:a691d10f8ceabd6ddb8e650c9f3b97e86fd4252f",
+  "expected": {
+    "valid": false
+  }
+}

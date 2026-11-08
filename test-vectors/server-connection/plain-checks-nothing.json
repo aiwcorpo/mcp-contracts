@@ -1,0 +1,19 @@
+{
+  "description": "A plain server has no certificate to check.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "plain",
+        "fingerprint": null
+      },
+      "presented": {
+        "fingerprint": null,
+        "validatesAsCa": false
+      }
+    }
+  },
+  "expected": {
+    "status": "connected"
+  }
+}

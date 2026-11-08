@@ -1,0 +1,20 @@
+{
+  "description": "A ca server renews its certificate: still connected, the displayed fingerprint is refreshed without approval.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "ca",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "presented": {
+        "fingerprint": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "validatesAsCa": true
+      }
+    }
+  },
+  "expected": {
+    "status": "connected",
+    "connectionRefreshed": true
+  }
+}

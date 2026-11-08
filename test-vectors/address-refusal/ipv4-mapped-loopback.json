@@ -1,0 +1,11 @@
+{
+  "description": "IPv4-mapped IPv6 is judged as the IPv4 address it carries: ::ffff:127.0.0.1.",
+  "input": {
+    "address": "::ffff:127.0.0.1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "loopback",
+    "judgedAs": "127.0.0.1"
+  }
+}

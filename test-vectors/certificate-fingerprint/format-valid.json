@@ -1,0 +1,7 @@
+{
+  "description": "Format of CertificateFingerprint: sha256: and 64 lower-case hex digits.",
+  "fingerprint": "sha256:e463086ed9898da488b0e80400904d6671486a211b3f6e2c2c7f7cc3636a47e7",
+  "expected": {
+    "valid": true
+  }
+}

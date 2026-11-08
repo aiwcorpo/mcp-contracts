@@ -1,0 +1,22 @@
+{
+  "description": "ca cannot be chosen for a certificate that does not validate: 422 tls_mode_not_allowed.",
+  "kind": "approve",
+  "input": {
+    "approve": {
+      "pending": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "validatesAsCa": false
+      },
+      "body": {
+        "tlsMode": "ca",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      }
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "server_rejected",
+    "reason": "tls_mode_not_allowed"
+  }
+}

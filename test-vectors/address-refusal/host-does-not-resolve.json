@@ -1,0 +1,10 @@
+{
+  "description": "A host that resolves to nothing is not accepted.",
+  "input": {
+    "resolved": []
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "host_not_resolved"
+  }
+}

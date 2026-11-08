@@ -1,0 +1,25 @@
+{
+  "description": "A server is added and its first manifest has source adapter: the registry stores adapter true (the flag is derived from the manifest at that moment and fixed afterwards), and every tool is pending.",
+  "input": {
+    "serverMode": null,
+    "manifestSource": "adapter",
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      }
+    ]
+  },
+  "expected": {
+    "stored": true,
+    "adapter": true,
+    "approvedByPull": [],
+    "pending": [
+      "get_issue"
+    ],
+    "pendingSource": "adapter",
+    "removed": [],
+    "classificationLost": []
+  }
+}

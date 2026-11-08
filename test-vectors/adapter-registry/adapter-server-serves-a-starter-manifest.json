@@ -1,0 +1,29 @@
+{
+  "description": "A server stored as an adapter later serves a manifest without source adapter: the manifest is refused (manifest_invalid, adapter_source_mismatch) and the registry keeps what it has.",
+  "input": {
+    "serverMode": "adapter",
+    "manifestSource": null,
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "stored": false,
+    "lastError": "manifest_invalid",
+    "manifestReason": "adapter_source_mismatch"
+  }
+}

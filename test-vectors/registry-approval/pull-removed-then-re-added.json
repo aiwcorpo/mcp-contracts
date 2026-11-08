@@ -1,0 +1,16 @@
+{
+  "description": "A tool that was removed and comes back is new and pending.",
+  "input": {
+    "approved": null,
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "additionalGroup": "mcp-opensearch-ops"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "new",
+    "source": "manifest"
+  }
+}

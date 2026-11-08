@@ -1,0 +1,10 @@
+{
+  "description": "A private literal is allowed.",
+  "input": {
+    "url": "https://10.20.0.15:9443/mcp"
+  },
+  "expected": {
+    "allowed": true,
+    "host": "10.20.0.15"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "An approved server that cannot be reached: the tool stays listed, the call is refused as upstream_unavailable.",
+  "kind": "availability",
+  "input": {
+    "availability": {
+      "connectionApproved": true,
+      "policiesApproved": true,
+      "toolStatus": "approved",
+      "serverStatus": "unreachable"
+    }
+  },
+  "expected": {
+    "listed": true,
+    "errorCode": "upstream_unavailable"
+  }
+}

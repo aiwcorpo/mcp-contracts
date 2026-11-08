@@ -1,0 +1,35 @@
+{
+  "description": "The usual pull: a new READ_ONLY tool and a changed UPDATE tool are both pending with source manifest, an unchanged tool stays.",
+  "input": {
+    "serverMode": "starter",
+    "manifestSource": null,
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      },
+      {
+        "name": "update_issue",
+        "risk": "UPDATE",
+        "state": "changed"
+      },
+      {
+        "name": "list_projects",
+        "risk": "READ_ONLY",
+        "state": "unchanged"
+      }
+    ]
+  },
+  "expected": {
+    "stored": true,
+    "adapter": false,
+    "approvedByPull": [],
+    "pending": [
+      "get_issue",
+      "update_issue"
+    ],
+    "pendingSource": "manifest",
+    "removed": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "The cloud metadata address is link-local.",
+  "input": {
+    "address": "169.254.169.254"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "link_local"
+  }
+}

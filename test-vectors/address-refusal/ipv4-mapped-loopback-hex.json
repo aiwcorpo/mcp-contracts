@@ -1,0 +1,11 @@
+{
+  "description": "The same address in hexadecimal groups, the form that a URL parser prints.",
+  "input": {
+    "address": "::ffff:7f00:1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "loopback",
+    "judgedAs": "127.0.0.1"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "Link-local 169.254.0.0/16.",
+  "input": {
+    "address": "169.254.10.20"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "link_local"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "Link-local fe80::/10.",
+  "input": {
+    "address": "fe80::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "link_local"
+  }
+}

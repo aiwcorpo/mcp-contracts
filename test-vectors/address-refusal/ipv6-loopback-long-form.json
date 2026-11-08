@@ -1,0 +1,10 @@
+{
+  "description": "The same address written in full.",
+  "input": {
+    "address": "0:0:0:0:0:0:0:1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "loopback"
+  }
+}

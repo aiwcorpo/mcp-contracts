@@ -1,0 +1,12 @@
+{
+  "description": "A bracketed IPv6 literal.",
+  "input": {
+    "url": "https://[::1]:8443/mcp"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "::1",
+    "class": "loopback"
+  }
+}

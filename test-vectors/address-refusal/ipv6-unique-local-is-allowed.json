@@ -1,0 +1,9 @@
+{
+  "description": "A unique local address fd00::/8 is allowed.",
+  "input": {
+    "address": "fd00::1"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

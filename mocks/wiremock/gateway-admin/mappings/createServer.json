@@ -44,7 +44,8 @@
         "jsonBody": {
           "serverId": "mcp-notes",
           "system": "notes",
-          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -53,7 +54,78 @@
             "type": "user-oauth"
           },
           "enabled": true,
-          "adapter": false
+          "adapter": false,
+          "status": "pending_approval",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": null,
+          "pendingConnection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "validatesAsCa": true,
+            "reason": "first_connection",
+            "detectedAt": "2026-11-08T09:30:00Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "createServer 201 plain",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=plain($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
+          "Location": "/admin/v1/servers/mcp-notes",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "http://mcp-notes:8080/mcp",
+          "allowPlainHttp": true,
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": true,
+          "adapter": false,
+          "status": "pending_approval",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": null,
+          "pendingConnection": {
+            "tlsMode": "plain",
+            "fingerprint": null,
+            "subject": null,
+            "issuer": null,
+            "sans": [],
+            "notAfter": null,
+            "validatesAsCa": false,
+            "reason": "first_connection",
+            "detectedAt": "2026-11-08T09:30:00Z"
+          }
         }
       }
     },
@@ -158,7 +230,7 @@
       }
     },
     {
-      "name": "createServer 422 server_id_mismatch",
+      "name": "createServer 422 address_refused",
       "priority": 2,
       "request": {
         "method": "POST",
@@ -168,7 +240,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=server_id_mismatch($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=address_refused($|[ ,;].*)"
           }
         }
       },
@@ -179,8 +251,198 @@
         },
         "jsonBody": {
           "error": "server_rejected",
-          "reason": "server_id_mismatch",
-          "message": "serverId must be mcp-<system>"
+          "reason": "address_refused",
+          "message": "169.254.169.254 is a link-local address"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 plain_http_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=plain_http_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "plain_http_not_allowed",
+          "message": "http needs allowPlainHttp"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 tls_handshake_failed",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=tls_handshake_failed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "tls_handshake_failed",
+          "message": "the server does not speak TLS on this port"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 manifest_unreachable",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=manifest_unreachable($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "manifest_unreachable",
+          "message": "GET /.well-known/mcp-manifest answered 404"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 manifest_invalid",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=manifest_invalid($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "manifest_invalid",
+          "manifestReason": "environment_mismatch",
+          "message": "manifest of mcp-notes declares environment dev"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 system_reserved",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=system_reserved($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "system_reserved",
+          "message": "gateway is a reserved system id"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 namespace_conflict",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=namespace_conflict($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "namespace_conflict",
+          "message": "the namespace Notes belongs to mcp-wiki"
+        }
+      }
+    },
+    {
+      "name": "createServer 422 tls_mode_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=tls_mode_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "tls_mode_not_allowed",
+          "message": "the certificate does not validate as ca for the host"
         }
       }
     }

@@ -1,0 +1,19 @@
+{
+  "description": "A pinned server presents the pinned certificate: connected.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "presented": {
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "validatesAsCa": false
+      }
+    }
+  },
+  "expected": {
+    "status": "connected"
+  }
+}

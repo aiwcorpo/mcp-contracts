@@ -1533,7 +1533,7 @@ paths:
                           definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
                           change: new
-                          source: ci
+                          source: manifest
                           approvedInVersion: null
                 opensearch_disabled:
                   value:
@@ -1606,7 +1606,7 @@ paths:
                     pendingHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                     approvedInVersion: null
                     pendingVersion: 1.4.0
-                    source: ci
+                    source: manifest
                 changed_on_server:
                   summary: A running server presented another definition than the approved one (source server)
                   value:
@@ -1803,7 +1803,8 @@ paths:
                   value:
                     - serverId: mcp-notes
                       system: notes
-                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      internalUrl: https://mcp-notes.corp.local:8443/mcp
+                      allowPlainHttp: false
                       credential:
                         required: true
                         acceptedTypes:
@@ -1811,6 +1812,30 @@ paths:
                         type: user-oauth
                       enabled: true
                       adapter: false
+                      status: certificate_changed
+                      lastCheckedAt: 2026-11-08T09:30:00Z
+                      lastError: certificate_changed
+                      connection:
+                        tlsMode: pinned
+                        fingerprint: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                        subject: CN=mcp-notes
+                        issuer: CN=mcp-notes
+                        sans:
+                          - mcp-notes
+                        notAfter: 2026-12-01T00:00:00Z
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: 2026-11-03T08:00:00Z
+                      pendingConnection:
+                        tlsMode: pinned
+                        fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                        subject: CN=mcp-notes
+                        issuer: CN=mcp-notes
+                        sans:
+                          - mcp-notes
+                        notAfter: 2027-11-08T00:00:00Z
+                        validatesAsCa: false
+                        reason: certificate_changed
+                        detectedAt: 2026-11-08T09:30:00Z
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1821,7 +1846,12 @@ paths:
       tags:
         - admin
       operationId: createAdminServer
-      summary: "Add a server to the registry (proxy to C5): no restart, no tools until its manifest is approved."
+      summary: "Add a server by its address (proxy to C5): the gateway probes it and pulls its manifest; no tools until connection, policies and tools are approved."
+      description: |
+        The body is the address (`internalUrl`) and, optionally, `allowPlainHttp` and `credential`; nothing else, because the gateway reads the rest from the server (CC-249). Needs a fresh MFA
+        (`step_up_required` otherwise); the gateway checks it too. The answer is the server in `status: pending_approval` with a `pendingConnection` that the portal shows on the card (tls mode proposed,
+        fingerprint, subject, issuer, SANs, expiry; a warning for `plain`). The refusals are `422` with the reasons `address_refused`, `plain_http_not_allowed`, `tls_handshake_failed`,
+        `manifest_unreachable`, `manifest_invalid`, `system_reserved` and `namespace_conflict`, and `409 server_exists`.
       security:
         - session: []
           csrf: []
@@ -1830,18 +1860,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ServerConfigCreate"
+              $ref: "#/components/schemas/ServerAddRequest"
             examples:
               notes:
                 value:
-                  serverId: mcp-notes
-                  system: notes
-                  internalUrl: https://mcp-notes.internal:8443/mcp
-                  credential:
-                    required: true
-                    acceptedTypes:
-                      - user-oauth
-                    type: user-oauth
+                  internalUrl: https://mcp-notes.corp.local:8443/mcp
       responses:
         "201":
           headers:
@@ -1849,7 +1872,7 @@ paths:
               $ref: "#/components/headers/RequestId"
             ETag:
               $ref: "#/components/headers/DocumentETag"
-          description: Added.
+          description: Added, waiting for the approval of the connection, policies and tools.
           content:
             application/json:
               schema:
@@ -1859,7 +1882,8 @@ paths:
                   value:
                     serverId: mcp-notes
                     system: notes
-                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
                     credential:
                       required: true
                       acceptedTypes:
@@ -1867,6 +1891,21 @@ paths:
                       type: user-oauth
                     enabled: true
                     adapter: false
+                    status: pending_approval
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection: null
+                    pendingConnection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      validatesAsCa: true
+                      reason: first_connection
+                      detectedAt: 2026-11-08T09:30:00Z
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1896,11 +1935,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServerRejected"
               examples:
-                server_id_mismatch:
+                address_refused:
                   value:
                     error: server_rejected
-                    reason: server_id_mismatch
-                    message: serverId must be mcp-<system>
+                    reason: address_refused
+                    message: 169.254.169.254 is a link-local address
+                plain_http_not_allowed:
+                  value:
+                    error: server_rejected
+                    reason: plain_http_not_allowed
+                    message: http needs allowPlainHttp
+                tls_handshake_failed:
+                  value:
+                    error: server_rejected
+                    reason: tls_handshake_failed
+                    message: the server does not speak TLS on this port
+                manifest_unreachable:
+                  value:
+                    error: server_rejected
+                    reason: manifest_unreachable
+                    message: GET /.well-known/mcp-manifest answered 404
+                manifest_invalid:
+                  value:
+                    error: server_rejected
+                    reason: manifest_invalid
+                    manifestReason: environment_mismatch
+                    message: manifest of mcp-notes declares environment dev
+                system_reserved:
+                  value:
+                    error: server_rejected
+                    reason: system_reserved
+                    message: gateway is a reserved system id
+                namespace_conflict:
+                  value:
+                    error: server_rejected
+                    reason: namespace_conflict
+                    message: the namespace Notes belongs to mcp-wiki
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/servers/{serverId}:
@@ -1930,7 +2000,8 @@ paths:
                   value:
                     serverId: mcp-notes
                     system: notes
-                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
                     credential:
                       required: true
                       acceptedTypes:
@@ -1938,6 +2009,20 @@ paths:
                       type: user-oauth
                     enabled: true
                     adapter: false
+                    status: connected
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-06T10:00:00Z
+                    pendingConnection: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1955,7 +2040,7 @@ paths:
       summary: Change the connection settings of a server (proxy to C5; enabled false takes it out of service).
       description: |
         Every change needs a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise) except a body that only sets `enabled: false`; the gateway checks it too.
-        `tlsName` and `adapter` cannot be changed.
+        `internalUrl`, `allowPlainHttp` and `adapter` cannot be changed; a new certificate at the same address is approved with `approveAdminServerConnection`.
       security:
         - session: []
           csrf: []
@@ -1988,7 +2073,8 @@ paths:
                   value:
                     serverId: mcp-notes
                     system: notes
-                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
                     credential:
                       required: true
                       acceptedTypes:
@@ -1996,6 +2082,20 @@ paths:
                       type: user-oauth
                     enabled: false
                     adapter: false
+                    status: connected
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-06T10:00:00Z
+                    pendingConnection: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2016,7 +2116,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ServerRejected"
               examples:
-                server_id_mismatch:
+                credential_type_not_accepted:
                   value:
                     error: server_rejected
                     reason: credential_type_not_accepted
@@ -2045,6 +2145,178 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers/{serverId}/connection/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    post:
+      tags:
+        - admin
+      operationId: approveAdminServerConnection
+      summary: "Approve how the gateway trusts a server (proxy to C5): the first connection or a changed certificate."
+      description: |
+        The portal sends the `fingerprint` of the pending connection that the administrator saw on the card and the `tlsMode` the administrator chose (the proposed one, or `pinned`
+        instead of a proposed `ca`). Needs a fresh MFA (`step_up_required` with `stepUpUrl` otherwise); the gateway checks it too. `409 connection_changed` means the pending
+        connection is no longer the one that was shown (reload the card); `409 no_pending_connection` means nothing waits. Approving the connection approves neither the policies nor the tools.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionApproveRequest"
+            examples:
+              pin_self_signed:
+                value:
+                  tlsMode: pinned
+                  fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          description: The server after the approval.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                pinned:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://10.20.0.15:9443/mcp
+                    allowPlainHttp: false
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+                    status: connected
+                    lastCheckedAt: 2026-11-08T09:35:00Z
+                    lastError: null
+                    connection:
+                      tlsMode: pinned
+                      fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                      subject: CN=mcp-notes
+                      issuer: CN=mcp-notes
+                      sans:
+                        - mcp-notes
+                        - 10.20.0.15
+                      notAfter: 2027-11-08T00:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-08T09:35:00Z
+                    pendingConnection: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: Nothing is pending, or the pending connection is not the one that was approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                no_pending_connection:
+                  value:
+                    error: no_pending_connection
+                connection_changed:
+                  value:
+                    error: connection_changed
+        "422":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          description: The mode asked for is not allowed for the pending connection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerRejected"
+              examples:
+                tls_mode_not_allowed:
+                  value:
+                    error: server_rejected
+                    reason: tls_mode_not_allowed
+                    message: the certificate does not validate as ca for the host
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers/{serverId}/refresh:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    post:
+      tags:
+        - admin
+      operationId: refreshAdminServer
+      summary: Probe a server again and pull its manifest now (proxy to C5).
+      description: |
+        The "Refresh" button of the card. A failure to reach the server is not an HTTP error: the answer is `200` with `status` `unreachable`, `certificate_changed` or `manifest_invalid` and
+        `lastError`. Needs no fresh MFA because it approves nothing.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        "200":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          description: The server after the check.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                unreachable:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+                    status: unreachable
+                    lastCheckedAt: 2026-11-08T09:40:00Z
+                    lastError: tls_handshake_failed
+                    connection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-06T10:00:00Z
+                    pendingConnection: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2439,7 +2711,7 @@ paths:
                         idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
                     pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                     pendingVersion: 1.4.0
-                    source: ci
+                    source: manifest
                     pendingPolicies:
                       namespace: Jira
                       schema: |
@@ -3835,7 +4107,7 @@ components:
       type: string
       pattern: ^sha256:[0-9a-f]{64}$
     PolicyRevision:
-      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
+      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; pushed to servers with POST /.well-known/mcp-policy-data, C14): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
       type: integer
       minimum: 0
       maximum: 9007199254740991
@@ -3858,6 +4130,10 @@ components:
         - step_up_required
         - upstream_unavailable
         - internal_error
+    CertificateFingerprint:
+      description: SHA-256 of the DER encoding of an X.509 certificate (never of its PEM text), as sha256:<64 lower-case hex digits>, without colons (CC-249; see test-vectors/certificate-fingerprint).
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
     ActivityCall:
       type: object
       required:
@@ -4006,7 +4282,7 @@ components:
         source:
           type: string
           enum:
-            - ci
+            - manifest
             - server
             - adapter
           description: Present exactly when status is pending_approval (CC-162, CC-193); same meaning as PendingTool.source.
@@ -4106,10 +4382,10 @@ components:
         source:
           type: string
           enum:
-            - ci
+            - manifest
             - server
             - adapter
-          description: Where the pending entry comes from (CC-162, CC-193). ci is an entry left by a PUT of the pipeline (the reviewed commit); server is a definition that the running server presented; adapter is an entry that an adapter (the sidecar of a foreign MCP server) presented at startup, never approved automatically and without risk and action until an administrator classifies it. A server entry never replaces a ci entry, see the README, "Rejestr i przypinanie definicji".
+          description: Where the pending entry comes from (CC-162, CC-193, CC-249). manifest is an entry from a manifest that the gateway pulled (add, refresh, runtime loop); server is a definition that the running server presented in tools/list; adapter is an entry from the manifest of an adapter (the sidecar of a foreign MCP server), never approved automatically and without risk and action until an administrator classifies it. A server entry never replaces a manifest entry, see the README, "Rejestr i przypinanie definicji".
         approvedEntry:
           description: Currently approved entry; null for a new tool. For an adapter tool it carries the classification of the administrator.
           oneOf:
@@ -4133,7 +4409,7 @@ components:
         acceptRiskLowering:
           type: boolean
           default: false
-          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
+          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; a pulled manifest never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
         risk:
           $ref: "#/components/schemas/Risk"
           description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk, and for such an entry only READ_ONLY is accepted (an adapter is read only, CC-227, any other value is 422 manifest_rejected, reason classification_not_allowed); forbidden for any other entry (the same 422). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
@@ -4143,7 +4419,7 @@ components:
       additionalProperties: false
     ManifestRejected:
       type: object
-      description: 422 of a registration or an approval (CC-133). reason is a known value or absent for the older rejections (a hash that does not match, a rule of the manifest).
+      description: 422 of an approval of a tool or of policies (CC-133). reason is a known value or absent.
       required:
         - error
       properties:
@@ -4152,11 +4428,16 @@ components:
         reason:
           type: string
           pattern: ^[a-z][a-z0-9_]*$
-          description: Known values are policies_invalid, resource_types_invalid and namespace_conflict (7.0.0, see registerServer), risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
+          description: Known values are risk_lowered, classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500
       additionalProperties: false
+    ServerUrl:
+      type: string
+      format: uri
+      pattern: ^https?://
+      maxLength: 255
     ServerCredentialConfig:
       type: object
       description: How the gateway gets the credential for the server (C3). `type` is the default type of the system that goes into `context.credentialType` (CC-136) and must be one of `acceptedTypes`; `acceptedTypes` never mixes service-account with user types (CC-168).
@@ -4176,69 +4457,226 @@ components:
         type:
           $ref: "#/components/schemas/CredentialType"
       additionalProperties: false
+    ServerStatus:
+      type: string
+      enum:
+        - pending_approval
+        - connected
+        - unreachable
+        - certificate_changed
+        - manifest_invalid
+      description: |
+        pending_approval: the connection was never approved (`connection` is null); the tools are hidden whatever else is approved.
+        connected: the connection is approved and the last check succeeded.
+        unreachable: the connection is approved and the last check failed to connect (`lastError` says why); the tools are refused as `upstream_unavailable`.
+        certificate_changed: the server presents another certificate than the approved one; calls are refused as `upstream_unavailable` and the new certificate is `pendingConnection`.
+        manifest_invalid: connected, but the last manifest pull failed the checks; the registry keeps what it had.
+    TlsMode:
+      type: string
+      enum:
+        - ca
+        - pinned
+        - plain
+      description: ca (chain to a trusted CA and hostname check), pinned (exactly one certificate by the SHA-256 of its DER, no chain and no hostname check) or plain (http, only with allowPlainHttp).
+    CertificateName:
+      description: Distinguished name of a certificate as text (RFC 4514 form), for display.
+      type: string
+      minLength: 1
+      maxLength: 1024
+    ServerConnection:
+      type: object
+      description: |
+        The trust the gateway applies to a server, as an administrator approved it (CC-249). `fingerprint` is the SHA-256 of the DER encoding of the
+        leaf certificate (format `sha256:<64 lower-case hex>`, never of the PEM text). For `ca` the certificate fields describe the last certificate seen and are refreshed
+        without approval (a renewal needs nothing); for `pinned` they are the pinned certificate; for `plain` there is no certificate: `fingerprint`, `subject`, `issuer` and `notAfter` are
+        null and `sans` is empty.
+      required:
+        - tlsMode
+        - fingerprint
+        - subject
+        - issuer
+        - sans
+        - notAfter
+        - approvedBy
+        - approvedAt
+      properties:
+        tlsMode:
+          $ref: "#/components/schemas/TlsMode"
+        fingerprint:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateFingerprint"
+            - type: "null"
+        subject:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        issuer:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        sans:
+          description: Subject alternative names (DNS names and IP addresses as text), in the order of the certificate.
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+        notAfter:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        approvedBy:
+          description: sub of the administrator who approved the connection.
+          type: string
+          minLength: 1
+          maxLength: 255
+        approvedAt:
+          $ref: "#/components/schemas/Timestamp"
+      additionalProperties: false
+    PendingConnection:
+      type: object
+      description: |
+        A connection that waits for `approveServerConnection` (CC-249): what the gateway saw at the first connection, or a certificate that a pinned (or `ca`) server presented instead of the approved one.
+        `tlsMode` is the proposal: `ca` when the certificate validates for the host of `internalUrl` (`validatesAsCa`), `pinned` otherwise, `plain` for `http`. The fields of the certificate are as in `ServerConnection`.
+      required:
+        - tlsMode
+        - fingerprint
+        - subject
+        - issuer
+        - sans
+        - notAfter
+        - validatesAsCa
+        - reason
+        - detectedAt
+      properties:
+        tlsMode:
+          $ref: "#/components/schemas/TlsMode"
+        fingerprint:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateFingerprint"
+            - type: "null"
+        subject:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        issuer:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        sans:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+        notAfter:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        validatesAsCa:
+          description: Whether the certificate chains to a CA in the server trust of the gateway and matches the host of `internalUrl`. Always false for `plain`.
+          type: boolean
+        reason:
+          description: first_connection (nothing was approved yet), certificate_changed (a pinned or `ca` server presents another certificate than the approved one) or ca_validation_failed (a `ca` server whose certificate no longer validates).
+          type: string
+          enum:
+            - first_connection
+            - certificate_changed
+            - ca_validation_failed
+        detectedAt:
+          $ref: "#/components/schemas/Timestamp"
+      additionalProperties: false
     ServerConfig:
       type: object
-      description: A server in the registry of the gateway (7.0.0).
+      description: A server in the registry of the gateway (7.0.0) with the state of its connection (CC-249).
       required:
         - serverId
         - system
         - internalUrl
+        - allowPlainHttp
         - credential
         - enabled
         - adapter
+        - status
+        - lastCheckedAt
+        - lastError
+        - connection
+        - pendingConnection
       properties:
         serverId:
           $ref: "#/components/schemas/ServerId"
         system:
           $ref: "#/components/schemas/SystemId"
         internalUrl:
-          type: string
-          format: uri
-          pattern: ^https://
-          maxLength: 255
+          description: The address of the MCP endpoint that the administrator gave; the well-known paths of C14 are at the origin of this address.
+          $ref: "#/components/schemas/ServerUrl"
+        allowPlainHttp:
+          description: True when an administrator allowed `http` for this server when adding it.
+          type: boolean
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
           type: boolean
         adapter:
-          description: True when the server is served through an adapter (CC-206) and takes its manifest on the adapter channel.
+          description: True when the server is served through an adapter (CC-206). It is the `source` of the first manifest and never changes.
           type: boolean
+        status:
+          $ref: "#/components/schemas/ServerStatus"
+        lastCheckedAt:
+          description: When the gateway last probed the server (add, refresh or runtime loop); null only if it never did.
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        lastError:
+          description: Reason of the last failed check, null after a successful one. Known values are address_refused, tls_handshake_failed, certificate_changed, manifest_unreachable and manifest_invalid; show an unknown value as a generic message.
+          oneOf:
+            - type: string
+              pattern: ^[a-z][a-z0-9_]*$
+              maxLength: 64
+            - type: "null"
+        connection:
+          description: The approved connection; null until the first approval.
+          oneOf:
+            - $ref: "#/components/schemas/ServerConnection"
+            - type: "null"
+        pendingConnection:
+          description: The connection that waits for approval; null when nothing waits.
+          oneOf:
+            - $ref: "#/components/schemas/PendingConnection"
+            - type: "null"
       additionalProperties: false
-    ServerConfigCreate:
+    ServerAddRequest:
       type: object
       required:
-        - serverId
-        - system
         - internalUrl
-        - credential
       properties:
-        serverId:
-          $ref: "#/components/schemas/ServerId"
-        system:
-          $ref: "#/components/schemas/SystemId"
         internalUrl:
-          type: string
-          format: uri
-          pattern: ^https://
-          maxLength: 255
-        credential:
-          $ref: "#/components/schemas/ServerCredentialConfig"
-        enabled:
-          type: boolean
-          default: true
-        adapter:
+          description: Address of the MCP endpoint of the server, `https://host[:port]/path` (or `http://` with allowPlainHttp). No user info and no fragment. A host that resolves to a loopback, link-local, unspecified or multicast address is refused.
+          $ref: "#/components/schemas/ServerUrl"
+        allowPlainHttp:
+          description: Allows an `http://` address (no TLS on this leg; for a server in the same Docker network as the gateway). Without it an `http://` address is refused.
           type: boolean
           default: false
+        credential:
+          description: Optional. When absent it is derived from the manifest.
+          $ref: "#/components/schemas/ServerCredentialConfig"
       additionalProperties: false
     ServerRejected:
       type: object
-      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), system_reserved (the system id is one of the reserved ids), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
+      description: |
+        422 of adding or changing a server, or of approving its connection. Known reasons: address_refused (the host resolves to a loopback, link-local, unspecified or multicast address), plain_http_not_allowed (`http` without allowPlainHttp), tls_handshake_failed (no TLS handshake could be completed with the address), manifest_unreachable (no `200` from `/.well-known/mcp-manifest`), manifest_invalid (the manifest fails the checks of Manifest intake; `manifestReason` is the cause), system_reserved (the system of the manifest is one of the reserved ids), namespace_conflict (another server owns the namespace of its policies), tls_mode_not_allowed (`approveServerConnection` chose a mode the pending connection does not allow), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes). A client must show an unknown value as a generic message.
       required:
         - error
       properties:
         error:
           const: server_rejected
         reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        manifestReason:
+          description: With reason manifest_invalid, why the manifest failed. Known values are environment_mismatch (CC-138), credential_type_mismatch (CC-159, CC-168), policies_invalid, resource_types_invalid, adapter_source_mismatch (a later manifest whose `source` differs from the first one) and hash_mismatch or absent for the other rules of the manifest.
           type: string
           pattern: ^[a-z][a-z0-9_]*$
         message:
@@ -4249,15 +4687,24 @@ components:
       type: object
       minProperties: 1
       properties:
-        internalUrl:
-          type: string
-          format: uri
-          pattern: ^https://
-          maxLength: 255
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
           type: boolean
+      additionalProperties: false
+    ConnectionApproveRequest:
+      type: object
+      required:
+        - tlsMode
+        - fingerprint
+      properties:
+        tlsMode:
+          $ref: "#/components/schemas/TlsMode"
+        fingerprint:
+          description: The fingerprint of the pending connection that the administrator saw; null for plain.
+          oneOf:
+            - $ref: "#/components/schemas/CertificateFingerprint"
+            - type: "null"
       additionalProperties: false
     ResourceScopeId:
       description: "Id of a ResourceScope (C7): <Type>/<local part>, where the type is declared by a registered server and the local part matches its scopePattern (checked by the gateway against the registry, not by this pattern). ASCII only."
@@ -4529,10 +4976,10 @@ components:
           description: Version of the manifest in which the pending policies appeared.
           $ref: "#/components/schemas/SemVer"
         source:
-          description: Where the pending policies come from, as for a pending tool (ci or server).
+          description: Where the pending policies come from, as for a pending tool (manifest or server).
           type: string
           enum:
-            - ci
+            - manifest
             - server
       additionalProperties: false
     ApprovePoliciesRequest:
@@ -4975,7 +5422,7 @@ components:
           description: sha256 of the text before a replacement (override_set that replaces an override); absent for a create.
           $ref: "#/components/schemas/DefinitionHash"
         changedFields:
-          description: Names of the fields a PATCH of a server changed, on admin_change with reason server_updated (internalUrl, credential, enabled); never their values.
+          description: Names of the fields a PATCH of a server changed, on admin_change with reason server_updated (credential, enabled); never their values.
           type: array
           minItems: 1
           maxItems: 8
@@ -4983,7 +5430,6 @@ components:
           items:
             type: string
             enum:
-              - internalUrl
               - credential
               - enabled
         decision:
@@ -4993,7 +5439,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, secret_stored_unverified, server_created, server_updated, server_deleted, scope_mapping_changed, scope_mapping_entry_removed, scope_mapping_entry_ignored, override_set, override_removed, override_invalid, override_rejected, policies_submitted, policies_approved, policies_changed, policy_data_invalid, system_created, system_updated, system_deleted, system_imported, connections_invalidated, not_admin, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, subject_token_invalid, credential_type_mismatch, risk_lowered_by_admin, user_purged, unused_cleanup, definition_changed, tool_not_served, definition_submitted, filter_scope, invalid_filter, filter_mismatch, invalid_cursor, policy_unavailable, policy_error, kill_switch, kill_switch_set, kill_switch_cleared, secret_missing, database_unavailable, refresh_token_lost, user_offboarding, secret_store_unavailable, token_refreshed, oauth_grant_revoked, connection_changed_during_refresh, provider_unavailable, connection_busy. credential_type_mismatch: on the gateway (event credential_resolve, outcome error, errorCode internal_error; credentialType is the type the broker returned) the broker returned a type that is not in the set of types the gateway configuration allows for the system; on a server (event policy_decision or tool_call) the type in X-MCP-Credential-Type, sent by the gateway with X-MCP-Credential, is not in the set of the server's accepted credential types, is missing or is not one of the four types, or the server has none configured, and the check comes before Cedar, the grant probe and the resolvers: decision deny, outcome error, errorCode internal_error, the client learns nothing more (CC-166). For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied; the gateway records it on the tool_call event of the call it had allowed, decision allow, outcome denied, errorCode access_denied, which is the normative shape for the activity row, CC-165) and system_not_configured (the system is not configured in the broker, CC-158, outcome error) and subject_token_invalid (the subject token of a token exchange has the wrong audience, has expired or belongs to another sub than the internal JWT, CC-157, outcome denied). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). Both offboarding purges (broker and gateway) emit one admin_change with reason user_purged and outcome ok for every call, also when nothing was removed and for an unknown sub, so that a call of mcp-offboarding always leaves a trace (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool and client from the internal JWT). For events of the broker (CC-196, CC-205), reasons that were not listed before 6.0.0 (the outcomes and error codes below are the ones the broker reports; ws-06 confirms them, and only database_unavailable, refresh_token_lost and secret_missing have vectors): database_unavailable (the database did not answer: the operation is refused with 503, outcome error, errorCode upstream_unavailable; also for the authenticator), secret_store_unavailable (the secret store did not answer, outcome error, errorCode upstream_unavailable), refresh_token_lost (the provider rotated the refresh token and the broker could not store the new one even after retries; the new tokens are revoked at the provider and the connection goes to error, not revoked; connection_change, outcome error), user_offboarding (a write was refused because a purge of the user is running or has just run, CC-155; outcome denied), token_refreshed (the access token was renewed, outcome ok), oauth_grant_revoked (the provider answered invalid_grant, the connection is revoked), connection_changed_during_refresh (the connection was replaced or deleted while it was being refreshed, so the refresh result was dropped), provider_unavailable (the provider did not answer, outcome error, errorCode upstream_unavailable), connection_busy (another refresh of the same connection holds the lock) and secret_missing (the secret of a connection is gone from the secret store: the broker sets the state of the connection to error so that the user connects again, connection_change, outcome error, CC-205). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: filter_scope (the tool exists and the user may call it, but the endpoint filter of the request leaves it out, decision deny, outcome denied, errorCode not_found_or_denied, CC-170, CC-178: checked before tool_disabled, upstream_unavailable and credential_required and before the confirmation gate), invalid_filter (the query of the request does not parse or exceeds a limit, policy_decision, decision deny, outcome error, without errorCode, CC-170), filter_mismatch (the route or the filter of the request differs from the ones bound to the MCP session, policy_decision, decision deny, outcome denied, CC-172, CC-184; a session of another user or an unknown one is a 404 without this reason), invalid_cursor (the cursor of tools/list is malformed, was changed or was issued to another user or for another filter, policy_decision, decision deny, outcome error, without errorCode, CC-181), These four refusals that a client can repeat at will (invalid_filter, filter_mismatch, invalid_cursor and a tools/call answered not_found_or_denied with not_granted or filter_scope) are written at most once per user and reason in an interval (10 s by default); the rest is only counted in mcp_audit_endpoint_suppressed_total{reason}, and the request is refused either way (CC-190, CC-191: the key of the interval is user, reason and target, and a summary event with suppressedCount follows each window), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133) upstream_unavailable (on tool_call or policy_decision: a store behind the check, such as the counter of the limits, the session store or the store of the emergency switches, did not answer and the request was refused, CC-167, CC-194, CC-199; also a request that the gateway shed because too many were in progress, CC-199, which the gateway may aggregate as in CC-125) and tool_not_served (the approved tool is missing from the tools the server serves, so it is hidden and refused with errorCode tool_disabled, CC-161). definition_changed and tool_not_served are recorded on every refused call (not once per read) and when a read finds the difference there is no separate event. A failed read of the server's tools/list is not evidence of either: the gateway keeps its last successful read, and a call that needs a fresh read that fails is refused as upstream_unavailable without a call to the server. kill_switch (tool_call, decision deny, outcome denied, errorCode tool_disabled: the tool or its server was switched off by an administrator, CC-194; tool_disabled alone is a definition waiting for approval or classification). At the tool level of the gateway policy_forbid is a refusal by a forbid rule (for example from the overrides bundle) answered not_found_or_denied, and not_granted means that no permit allowed the tool (CC-198); the activity row of the user for both stays denied_not_granted. On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway and of the broker. For the registry, with reasons definition_registered (the pipeline registered a manifest and the definition was approved by that call: a READ_ONLY tool, CC-133), definition_submitted (the registration left a new or changed UPDATE or DESTRUCTIVE tool pending approval, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and risk_lowered_by_admin (an administrator approved a risk lower than the floor with acceptRiskLowering; one event instead of definition_approved, with risk set to the new risk, CC-167), tool_removed (a tool left the registered manifest), kill_switch_set and kill_switch_cleared (an administrator switched a server or a tool off or on again, CC-194; sub is the administrator, the tool is in tool and the system in server; the free text of the administrator is not part of the event). For definition_approved the sub is the administrator; for a tool of an adapter the same event carries the risk and the action the administrator gave (CC-193, CC-207), which is how a classification differs from any other approval; for user_purged it is the purged user, and the calling identity (the certificate CN mcp-offboarding) is not a field of this schema. Other reasons are not defined. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed; for the sidecar of an adapter also classification_missing, a tools/call without mcp_risk and mcp_action, CC-226); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The broker uses these two names (jwks_unavailable, replay_store_unavailable) in an event authentication with outcome denied like the servers do; key_source_unavailable and jti_store_unavailable are not defined (CC-197). The broker also records the rejection of the token itself (bad_signature, expired, replayed_jti and the other codes of the internal JWT above) as an event authentication with outcome denied and without server, sub or tool, not as the event of the operation it was about to authorize; for a rejected token it writes no credential_resolve or connection_change (CC-211). decision is optional on authentication (deny when present); the broker writes none (CC-212). The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, secret_stored_unverified, server_created, server_updated, server_deleted, server_connection_approved, server_connection_changed, scope_mapping_changed, scope_mapping_entry_removed, scope_mapping_entry_ignored, override_set, override_removed, override_invalid, override_rejected, policies_submitted, policies_approved, policies_changed, policy_data_invalid, system_created, system_updated, system_deleted, system_imported, connections_invalidated, not_admin, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, subject_token_invalid, credential_type_mismatch, risk_lowered_by_admin, user_purged, unused_cleanup, definition_changed, tool_not_served, definition_submitted, wrong_purpose, filter_scope, invalid_filter, filter_mismatch, invalid_cursor, policy_unavailable, policy_error, kill_switch, kill_switch_set, kill_switch_cleared, secret_missing, database_unavailable, refresh_token_lost, user_offboarding, secret_store_unavailable, token_refreshed, oauth_grant_revoked, connection_changed_during_refresh, provider_unavailable, connection_busy. credential_type_mismatch: on the gateway (event credential_resolve, outcome error, errorCode internal_error; credentialType is the type the broker returned) the broker returned a type that is not in the set of types the gateway configuration allows for the system; on a server (event policy_decision or tool_call) the type in X-MCP-Credential-Type, sent by the gateway with X-MCP-Credential, is not in the set of the server's accepted credential types, is missing or is not one of the four types, or the server has none configured, and the check comes before Cedar, the grant probe and the resolvers: decision deny, outcome error, errorCode internal_error, the client learns nothing more (CC-166). For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied; the gateway records it on the tool_call event of the call it had allowed, decision allow, outcome denied, errorCode access_denied, which is the normative shape for the activity row, CC-165) and system_not_configured (the system is not configured in the broker, CC-158, outcome error) and subject_token_invalid (the subject token of a token exchange has the wrong audience, has expired or belongs to another sub than the internal JWT, CC-157, outcome denied). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). Both offboarding purges (broker and gateway) emit one admin_change with reason user_purged and outcome ok for every call, also when nothing was removed and for an unknown sub, so that a call of mcp-offboarding always leaves a trace (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool and client from the internal JWT). For events of the broker (CC-196, CC-205), reasons that were not listed before 6.0.0 (the outcomes and error codes below are the ones the broker reports; ws-06 confirms them, and only database_unavailable, refresh_token_lost and secret_missing have vectors): database_unavailable (the database did not answer: the operation is refused with 503, outcome error, errorCode upstream_unavailable; also for the authenticator), secret_store_unavailable (the secret store did not answer, outcome error, errorCode upstream_unavailable), refresh_token_lost (the provider rotated the refresh token and the broker could not store the new one even after retries; the new tokens are revoked at the provider and the connection goes to error, not revoked; connection_change, outcome error), user_offboarding (a write was refused because a purge of the user is running or has just run, CC-155; outcome denied), token_refreshed (the access token was renewed, outcome ok), oauth_grant_revoked (the provider answered invalid_grant, the connection is revoked), connection_changed_during_refresh (the connection was replaced or deleted while it was being refreshed, so the refresh result was dropped), provider_unavailable (the provider did not answer, outcome error, errorCode upstream_unavailable), connection_busy (another refresh of the same connection holds the lock) and secret_missing (the secret of a connection is gone from the secret store: the broker sets the state of the connection to error so that the user connects again, connection_change, outcome error, CC-205). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: filter_scope (the tool exists and the user may call it, but the endpoint filter of the request leaves it out, decision deny, outcome denied, errorCode not_found_or_denied, CC-170, CC-178: checked before tool_disabled, upstream_unavailable and credential_required and before the confirmation gate), invalid_filter (the query of the request does not parse or exceeds a limit, policy_decision, decision deny, outcome error, without errorCode, CC-170), filter_mismatch (the route or the filter of the request differs from the ones bound to the MCP session, policy_decision, decision deny, outcome denied, CC-172, CC-184; a session of another user or an unknown one is a 404 without this reason), invalid_cursor (the cursor of tools/list is malformed, was changed or was issued to another user or for another filter, policy_decision, decision deny, outcome error, without errorCode, CC-181), These four refusals that a client can repeat at will (invalid_filter, filter_mismatch, invalid_cursor and a tools/call answered not_found_or_denied with not_granted or filter_scope) are written at most once per user and reason in an interval (10 s by default); the rest is only counted in mcp_audit_endpoint_suppressed_total{reason}, and the request is refused either way (CC-190, CC-191: the key of the interval is user, reason and target, and a summary event with suppressedCount follows each window), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133) upstream_unavailable (on tool_call or policy_decision: a store behind the check, such as the counter of the limits, the session store or the store of the emergency switches, did not answer and the request was refused, CC-167, CC-194, CC-199; also a request that the gateway shed because too many were in progress, CC-199, which the gateway may aggregate as in CC-125) and tool_not_served (the approved tool is missing from the tools the server serves, so it is hidden and refused with errorCode tool_disabled, CC-161). definition_changed and tool_not_served are recorded on every refused call (not once per read) and when a read finds the difference there is no separate event. A failed read of the server's tools/list is not evidence of either: the gateway keeps its last successful read, and a call that needs a fresh read that fails is refused as upstream_unavailable without a call to the server. kill_switch (tool_call, decision deny, outcome denied, errorCode tool_disabled: the tool or its server was switched off by an administrator, CC-194; tool_disabled alone is a definition waiting for approval or classification). At the tool level of the gateway policy_forbid is a refusal by a forbid rule (for example from the overrides bundle) answered not_found_or_denied, and not_granted means that no permit allowed the tool (CC-198); the activity row of the user for both stays denied_not_granted. On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway and of the broker. For the registry, with reasons definition_registered (the pipeline registered a manifest and the definition was approved by that call: a READ_ONLY tool, CC-133), definition_submitted (the registration left a new or changed UPDATE or DESTRUCTIVE tool pending approval, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and risk_lowered_by_admin (an administrator approved a risk lower than the floor with acceptRiskLowering; one event instead of definition_approved, with risk set to the new risk, CC-167), tool_removed (a tool left the registered manifest), kill_switch_set and kill_switch_cleared (an administrator switched a server or a tool off or on again, CC-194; sub is the administrator, the tool is in tool and the system in server; the free text of the administrator is not part of the event). For definition_approved the sub is the administrator; for a tool of an adapter the same event carries the risk and the action the administrator gave (CC-193, CC-207), which is how a classification differs from any other approval; for user_purged it is the purged user, and the calling identity (the certificate CN mcp-offboarding) is not a field of this schema. Other reasons are not defined. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed; for the sidecar of an adapter also classification_missing, a tools/call without mcp_risk and mcp_action, CC-226); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The broker uses these two names (jwks_unavailable, replay_store_unavailable) in an event authentication with outcome denied like the servers do; key_source_unavailable and jti_store_unavailable are not defined (CC-197). The broker also records the rejection of the token itself (bad_signature, expired, replayed_jti and the other codes of the internal JWT above) as an event authentication with outcome denied and without server, sub or tool, not as the event of the operation it was about to authorize; for a rejected token it writes no credential_resolve or connection_change (CC-211). decision is optional on authentication (deny when present); the broker writes none (CC-212). The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
@@ -5027,8 +5473,18 @@ components:
           type: integer
           minimum: 0
         definitionHash:
-          description: "Hash of the tool definition an admin_change concerns (CC-133): for definition_approved the approved hash, for definition_registered the hash of each registered definition (one event per tool), for tool_removed the hash of the removed entry. Together with sub (the administrator) and tool it tells afterwards who approved which definition. Not a secret."
+          description: "Hash of the tool definition an admin_change concerns (CC-133): for definition_approved the approved hash, for definition_submitted the hash of each pulled definition that waits (one event per tool), for tool_removed the hash of the removed entry. Together with sub (the administrator) and tool it tells afterwards who approved which definition. Not a secret."
           $ref: "#/components/schemas/DefinitionHash"
+        tlsMode:
+          description: "On admin_change with reason server_connection_approved or server_connection_changed (CC-249): the trust mode approved or proposed."
+          type: string
+          enum:
+            - ca
+            - pinned
+            - plain
+        fingerprint:
+          description: "On admin_change with reason server_connection_approved or server_connection_changed (CC-249): SHA-256 of the DER of the leaf certificate approved or newly seen; absent for plain. Never the certificate."
+          $ref: "#/components/schemas/CertificateFingerprint"
       allOf:
         - description: "The filter field (CC-174, CC-186) belongs to the gateway and to four events only, and a rejected filter has none (nothing valid was normalized): authentication is covered by its closed field list, broker and server events by component."
           if:

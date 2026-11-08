@@ -1,0 +1,17 @@
+{
+  "description": "409 no_pending_connection.",
+  "kind": "approve",
+  "input": {
+    "approve": {
+      "pending": null,
+      "body": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      }
+    }
+  },
+  "expected": {
+    "status": 409,
+    "error": "no_pending_connection"
+  }
+}

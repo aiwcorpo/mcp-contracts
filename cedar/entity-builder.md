@@ -25,7 +25,7 @@ CC-037, CC-038, CC-056, CC-061, CC-062, CC-065, CC-136, CC-146, CC-147, CC-149, 
 | `arguments` | `params.arguments` z `tools/call` | bez `confirmation_code` (C11) |
 | `credentialType?` | gateway: typ domyślny systemu z konfiguracji serwera (`credential.type`, Cedar jest oceniany przed pytaniem brokera, więc typ faktycznie użyty nie jest jeszcze znany; system nie miesza `service-account` z typami użytkownika), podawane zawsze przed decyzją Cedar; serwer: typ domyślny to pierwszy z jego `accepted-credential-types`; nagłówek `X-MCP-Credential-Type` od gateway'a musi należeć do zbioru jego dozwolonych typów (brak, nieznana wartość albo wartość spoza zbioru przy żądaniu z `X-MCP-Credential` = odmowa `internal_error` przed Cedar, sondą grantu i resolverami, CC-166) | `user-oauth`, `user-secret`, `token-exchange` albo `service-account`; opcjonalne, `EntityBuilder.withCredentialType`, CC-136 |
 | deklaracje typów | `resourceTypes` zarejestrowanych manifestów | `ResourceTypes`; gateway składa je ze wszystkich serwerów (`ResourceTypes.union`), serwer buduje je z własnego manifestu |
-| mapowanie zakresów | dane polityki gatewaya (`scopeMapping`, sekcja 3) | `ScopeMapping`; serwer dostaje je z `GET /internal/v1/policy-data` |
+| mapowanie zakresów | dane polityki gatewaya (`scopeMapping`, sekcja 3) | `ScopeMapping`; gateway wysyła je serwerowi (`POST /.well-known/mcp-policy-data`, C14) |
 | `resource` | resolver serwera (`@ResourceRef`) albo element wyniku wyszukiwania | tylko ocena na serwerze |
 
 Gateway buduje `caller` z tokenu C1 tak samo, jak buduje claimy C2: `usr` = `preferred_username`,
@@ -76,7 +76,7 @@ Wiedza o dawnych systemach wbudowanych (wzorce id, klasyfikacje) jest teraz dany
 ## 3. Mapowanie zakresów (dane administratora)
 
 Mapowanie grupa -> zakresy to dane administratora zapisane w gatewayu (`PUT /admin/v1/policy/scope-mapping`) i serwowane
-serwerom w `GET /internal/v1/policy-data`: `[{group, scopes: ["<Typ>/<id>"]}]`. Nie ma plików ani paczek.
+serwerom przez `POST /.well-known/mcp-policy-data` (C14): `[{group, scopes: ["<Typ>/<id>"]}]`. Nie ma plików ani paczek.
 Id zakresu: `<Typ>/<część lokalna>`; typ to wszystko przed pierwszym `/`.
 
 | Przykładowe id zakresu | Co obejmuje (według polityk i wyprowadzenia `scopes` serwera) |
@@ -272,14 +272,14 @@ nadpisanie o id polityki platformy zastąpiłoby ją.
 - **Własność przestrzeni:** przestrzeń należy do pierwszego `serverId`, którego polityki są ZATWIERDZONE z tą przestrzenią; rejestracja
   sprawdza tylko względem zatwierdzonych właścicieli i niczego nie zajmuje. Gdy zatwierdzenie zmienia albo zwalnia przestrzeń serwera,
   wpisy mapowania zwolnionej przestrzeni są usuwane i audytowane (`scope_mapping_entry_removed`), tak jak przy `deleteServer`.
-- **Certyfikat serwera MCP:** `serverAuth` i `clientAuth` w EKU (polityki danych wymagają `clientAuth`), CN = `serverId`, SAN
-  `<serverId>.internal`; gateway przypina certyfikat do SAN i do CN, nazwa nie jest konfigurowalna.
+- **Certyfikat serwera MCP (CC-249):** dowolny certyfikat HTTPS (od zaufanego CA, samopodpisany albo wygenerowany przez starter); gateway łączy się bez
+  certyfikatu klienta i ufa mu według trybu zatwierdzonego przez administratora (`ca`, `pinned`, `plain`, C5), a nie według nazwy w certyfikacie.
 - **Rewizja danych polityki:** `max(poprzednia + 1, bieżący czas w milisekundach epoki)`, żeby odtworzenie bazy nie obniżyło jej poniżej
   wartości, które serwery już trzymają. Podpisane paczki dawały kontrolę dwóch stron; ich brak zastępują świeże MFA, audyt każdej zmiany i
   zatwierdzenie `policiesHash`, a operacyjnie zalecany jest przegląd dwóch osób dla zmian mapowania zakresów i zatwierdzeń polityk.
 - **Starter (serwer):** oblicza `policiesHash` własnych polityk i `resourceTypes` i odmawia każdego wywołania
   (`upstream_unavailable`), gdy różni się od `approvedPoliciesHash` albo tego brak; nigdy nie przyjmuje rewizji niższej ani równej
-  trzymanej jako nowych danych; gdy `prv` w tokenie jest nowsze niż dane, odświeża przed oceną albo odmawia; nadpisanie, które nie
+  trzymanej jako nowych danych; gdy nie ma danych albo `prv` w tokenie jest nowsze niż dane, odpowiada `409 policy_data_stale` przed wykonaniem (sam niczego nie pobiera: gateway wypycha dane i ponawia wywołanie raz, C14); nadpisanie, które nie
   waliduje się względem złożonego schematu, oznacza odmowę wszystkich wywołań. Wzorzec i wektory: `scripts/lib/policy-data-gate.mjs`,
   `PolicyDataGate` (mcp-manifest), `test-vectors/policy-data-gate/`. Rewizja danych jest licznikiem, który tylko rośnie.
 

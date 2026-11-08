@@ -1,0 +1,13 @@
+{
+  "description": "All resolved addresses are allowed.",
+  "input": {
+    "resolved": [
+      "10.0.0.5",
+      "10.0.0.6",
+      "2001:db8::1"
+    ]
+  },
+  "expected": {
+    "allowed": true
+  }
+}

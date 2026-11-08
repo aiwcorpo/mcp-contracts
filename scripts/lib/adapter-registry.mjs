@@ -1,39 +1,26 @@
-// Reference of the registry rules for servers served by an adapter (CC-193, CC-206). Used by the vectors in test-vectors/adapter-registry.
+// Reference of what a pulled manifest leaves in the registry (CC-193, CC-206, CC-249). Used by the vectors in test-vectors/adapter-registry.
 
 /**
- * Which channel may submit a manifest and what it leaves in the registry.
- * `serverMode` is gateway configuration for the serverId: adapter or starter. `channel` is the operation: registerServer (ci) or
- * submitAdapterManifest (adapter). `cn` is the CN of the client certificate. `manifestSource` is the `source` of the manifest.
+ * `serverMode` is what the registry holds for the server: adapter or starter; null when the server is being added, then it is derived from the
+ * `source` of the first manifest (`manifestSource`: adapter, or null for a starter manifest). A later manifest whose source disagrees with
+ * the stored mode is refused like any invalid manifest and changes nothing (manifest_invalid, adapter_source_mismatch).
  * `tools` is [{ name, risk (the risk the entry would have as a starter entry), state: new | changed | unchanged | removed }].
- * `bodyServerId` is the serverId inside the manifest (the path one by default).
- * `runtimeRead` true is the difference the gateway finds when it reads tools/list of a running server (not a submission).
+ * `runtimeRead` true is the difference the gateway finds when it reads tools/list of a running server (not a manifest pull).
+ * Nothing is approved by a pull or by a read: every new or changed tool is pending, a READ_ONLY one included (CC-249).
  */
-export function submissionDecision({ serverId, bodyServerId = serverId, serverMode, channel, cn, manifestSource = null, tools = [], runtimeRead = false }) {
+export function manifestPullDecision({ serverMode = null, manifestSource = null, tools = [], runtimeRead = false }) {
   if (runtimeRead) return pending(tools, serverMode === 'adapter' ? 'adapter' : 'server');
-  const expectedCn = channel === 'adapter' ? `mcp-adapter-${serverId}` : `mcp-registry-ci-${serverId}`;
-  // Order of the answers (CC-207): the certificate first (403), so that a caller without the right CN learns nothing about the mode of the
-  // server; then the body against the path (400); then the mode and the source (422).
-  if (cn !== expectedCn) return { status: 403, audit: 'client_certificate_rejected', stored: false };
-  if (bodyServerId !== serverId) return { status: 400, stored: false };
-  const adapterChannel = channel === 'adapter';
-  if ((serverMode === 'adapter') !== adapterChannel || (manifestSource === 'adapter') !== adapterChannel) {
-    return { status: 422, reason: 'adapter_mode_mismatch', stored: false };
+  const sourceMode = manifestSource === 'adapter' ? 'adapter' : 'starter';
+  if (serverMode !== null && serverMode !== sourceMode) {
+    return { stored: false, lastError: 'manifest_invalid', manifestReason: 'adapter_source_mismatch' };
   }
   // A tool missing from the manifest of an adapter is removed with its classification (CC-207): when it returns it is new and unclassified.
-  if (adapterChannel) return { status: 200, stored: true, ...pending(tools, 'adapter'), removed: removed(tools), classificationLost: removed(tools) };
-  return {
-    status: 200,
-    stored: true,
-    approvedByCall: tools.filter((t) => (t.state === 'new' || t.state === 'changed') && t.risk === 'READ_ONLY').map((t) => t.name),
-    pending: tools.filter((t) => (t.state === 'new' || t.state === 'changed') && t.risk !== 'READ_ONLY').map((t) => t.name),
-    pendingSource: 'ci',
-    removed: removed(tools),
-  };
+  if (sourceMode === 'adapter') return { stored: true, adapter: true, ...pending(tools, 'adapter'), removed: removed(tools), classificationLost: removed(tools) };
+  return { stored: true, adapter: false, ...pending(tools, 'manifest'), removed: removed(tools) };
 }
 
 const removed = (tools) => tools.filter((t) => t.state === 'removed').map((t) => t.name);
 
-// Nothing of an adapter is approved by a call or by a read: every new or changed tool waits for the administrator, whatever it looks like.
 function pending(tools, source) {
-  return { approvedByCall: [], pending: tools.filter((t) => t.state === 'new' || t.state === 'changed').map((t) => t.name), pendingSource: source };
+  return { approvedByPull: [], pending: tools.filter((t) => t.state === 'new' || t.state === 'changed').map((t) => t.name), pendingSource: source };
 }

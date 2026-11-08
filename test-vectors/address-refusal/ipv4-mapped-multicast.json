@@ -1,0 +1,11 @@
+{
+  "description": "A multicast address behind an IPv4-mapped form.",
+  "input": {
+    "address": "::ffff:224.0.0.1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "multicast",
+    "judgedAs": "224.0.0.1"
+  }
+}

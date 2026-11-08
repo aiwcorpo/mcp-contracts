@@ -74,7 +74,8 @@ If you built 7.0.0 locally or installed it from another source before it reached
 | The `/mcp` address and its filter (C1, C5) | section "One address for the whole platform", `scripts/lib/endpoint-filter.mjs`, `java/mcp-manifest` (`EndpointFilter`), `test-vectors/endpoint-filter/`, `test-vectors/endpoint-aggregate/` |
 | C6 server manifest | `schemas/server-manifest.schema.json`, vectors in `test-vectors/manifests/` and `test-vectors/definition-hash/` |
 | C7 Cedar model | `cedar/mcp.cedarschema` (base schema), `cedar/platform/*.cedar` (policies of the gateway), `cedar/examples/` (server fragments and overrides as models), `cedar/entity-builder.md` |
-| C7 policy data and servers | `openapi/gateway-admin.v1.yaml` (`/internal/v1/policy-data`, `/admin/v1/servers`, `/admin/v1/policy/*`), `openapi/credential-broker.v1.yaml` (`/v1/admin/systems`) |
+| C7 policy data and servers | `openapi/gateway-admin.v1.yaml` (`/admin/v1/servers`, `/admin/v1/policy/*`), `openapi/mcp-server.v1.yaml` (`PolicyData`, `POST /.well-known/mcp-policy-data`), `openapi/credential-broker.v1.yaml` (`/v1/admin/systems`) |
+| C14 server interface | `openapi/mcp-server.v1.yaml`: what every MCP server serves to the gateway (`GET /.well-known/mcp-manifest`, `POST /.well-known/mcp-policy-data`) and the public JWKS of the gateway (`GET /.well-known/mcp-jwks.json`), section "Connecting a server" |
 | C8 audit | `schemas/audit-event.schema.json`, vectors in `test-vectors/audit-events/` |
 | C9 groups | `cedar/entity-builder.md` (parsing), `java/mcp-cedar-entities` (implementation), `schemas/common.schema.json#/$defs/GroupName` |
 | C10 tool errors | `schemas/tool-error.schema.json`, vectors in `test-vectors/tool-errors/` |
@@ -86,12 +87,13 @@ single-file versions for code generators (generated, do not edit).
 
 ```
 mcp-contracts/
-├── openapi/                 # C4, C5, C12 + bundled/ for generators
+├── openapi/                 # C4, C5, C12, C14 + bundled/ for generators
 ├── schemas/                 # JSON Schema 2020-12 (no $id: relative references between files)
 ├── cedar/                   # base schema, platform policies, example fragments, entity builder specification
 ├── test-vectors/
 │   ├── keys/                # TEST KEYS, NOT FOR PRODUCTION
 │   ├── jwt/  manifests/  definition-hash/  policies-hash/  audit-events/  tool-errors/
+│   ├── policy-data-gate/  policy-data-push/  address-refusal/  server-connection/  certificate-fingerprint/  # CC-237, CC-249
 │   ├── fixtures/            # the neutral Notes fragment and the scope mapping that the Cedar vectors run on
 │   ├── untrusted-text/      # shape of UntrustedText (CC-072)
 │   ├── confirmation-binding/  # pending call and code verification result (C11, CC-091)
@@ -346,7 +348,9 @@ Rules for the JWT variants (CC-030, CC-033, CC-038, CC-069, CC-070):
 | Request | Variant | `tool` |
 | --- | --- | --- |
 | `tools/call` (also a retry with `inputResponses` after an `InputRequiredResult`, MRTR) | user | required, `== params.name`, a new JWT for every retry |
-| `initialize`, `server/discover`, `tools/list`, `ping`, `GET /mcp-manifest` | user or service | forbidden |
+| `initialize`, `server/discover`, `tools/list`, `ping` | user or service | forbidden |
+| server `GET /.well-known/mcp-manifest` (the gateway pulls the manifest, C14) | service only, `use: manifest` | forbidden |
+| server `POST /.well-known/mcp-policy-data` (the gateway pushes policy data, C14) | service only, `use: policy-data` | forbidden |
 | `subscriptions/listen`, `notifications/*`, JSON-RPC responses, `GET`/`DELETE` on the MCP endpoint | user only | forbidden |
 | broker `POST /v1/credentials/resolve` | user only | required |
 | broker `GET /v1/authenticator`, `POST /v1/authenticator/verify`, `POST /v1/authenticator/invalidate-codes` (from the gateway, CC-092, CC-128) | user only | required (the tool being confirmed; for `invalidate-codes`, the tool of the operation that causes the burn) |
@@ -355,9 +359,24 @@ Rules for the JWT variants (CC-030, CC-033, CC-038, CC-069, CC-070):
 The service variant is used only without a session (statelessly): all requests within a session, including
 `notifications/initialized` and `notifications/cancelled`, use the user variant (CC-070).
 
+**Purpose of a token, `use` (CC-249).** Every internal JWT carries `use`: `call`, `manifest` or `policy-data`, and a receiver refuses a token whose
+purpose is not the one of the endpoint, with `401` and the reason `wrong_purpose`, whatever else is valid (signature, `aud`, `exp`, `jti`):
+
+| Endpoint | `use` required |
+| --- | --- |
+| `GET /.well-known/mcp-manifest` of a server | `manifest` |
+| `POST /.well-known/mcp-policy-data` of a server | `policy-data` |
+| everything else: the MCP endpoint of a server (`initialize`, `server/discover`, `tools/list`, `ping`, `tools/call`, streams, notifications) and every endpoint of the credential broker | `call` |
+
+The user variant has `use: call` only. The two well-known endpoints accept the service variant only (no user, no tool). The check of the purpose
+comes before the checks of the variant and of `tool`, so a policy-data token used for `tools/call` is `wrong_purpose`. `jti` is one-time for every
+purpose, `aud` is the `serverId` of the receiver, `exp - iat` is at most 60 s. A token without `use`, or with another value, is `invalid_claims`
+(the schema is closed). Vectors: `test-vectors/jwt/purpose-*`.
+
 A `prv` of `00000000000000-0000000` means a gateway without policy data. It is not the revision of any data, and a receiver draws no
-conclusion about policy from it. Since 7.0.0 `prv` is the revision of the policy data of the gateway (`GET /internal/v1/policy-data`,
-CC-234): a server that sees a newer one than it holds refreshes at once.
+conclusion about policy from it. Since 7.0.0 `prv` is the revision of the policy data of the gateway (CC-234): a server that sees a newer one
+than it holds does not evaluate the call and answers `409 policy_data_stale`; the gateway pushes its data and repeats the call once
+(CC-249, "Policy data gate").
 
 C11: in the MCP 2026-07-28 era, the "elicitation URL" confirmation channel is an `InputRequiredResult` with an elicitation
 request in URL mode, and the retried `tools/call` carries `inputResponses`. Elicitation may only open `previewUrl`; the human
@@ -848,27 +867,72 @@ the decision vectors `policy-decisions/srv-notes-*`. The grants come only from t
 configuration (CC-163). Until 6.3.2 this was a fixed rule for the service desk with its own vectors
 (`servicedesk-service-account/`); a server author now writes it in the fragment.
 
-## Registry and definition pinning (CC-097, CC-133)
+## Connecting a server (CC-249)
+
+An MCP server author builds the server from the template and runs it anywhere, with any HTTPS certificate, a self-signed one, or `http` inside the
+Docker network of the platform. The platform operator enters the address in the portal and approves. The gateway does the rest: it connects to the server (the server
+connects to nothing of the platform except the public key set of the gateway), and there is no certificate of the internal CA for a server, no client certificate on
+either side, no token to create, and no CI certificate. The server-facing interface is C14, `openapi/mcp-server.v1.yaml`; the admin side is C5 (`createServer`,
+`approveServerConnection`, `refreshServer`) and C12.
+
+1. **Add.** `POST /admin/v1/servers` with `{internalUrl, allowPlainHttp?, credential?}` (fresh MFA). In this order: the URL is checked (`400`); the host is resolved and every
+   resolved address is checked, refusing loopback, link-local (`169.254.0.0/16` with `169.254.169.254`, `fe80::/10`), unspecified and multicast addresses, an IPv6 address that carries an
+   IPv4 address (IPv4-mapped, IPv4-compatible, NAT64) being judged as that IPv4 address, and a literal such as `127.1` or `2130706433` as the address it denotes (`422 address_refused`); `http`
+   needs `allowPlainHttp` (`422 plain_http_not_allowed`); a TLS handshake is made without a client certificate, reading the leaf certificate (`422 tls_handshake_failed`); the
+   manifest is pulled (`422 manifest_unreachable`, `422 manifest_invalid`); `serverId` is `mcp-<system>` of the manifest (`422 system_reserved`, `409 server_exists`,
+   `422 namespace_conflict`). Private addresses are allowed. The same address check runs again at every connection on the address actually connected to (DNS rebinding), and a refused address
+   makes the server unreachable (`lastError: address_refused`). Vectors `address-refusal/`.
+2. **Trust, chosen per server at approval.** `ca`: the chain leads to a CA in the server trust of the gateway (the default truststore of the JVM plus an optional PEM bundle in its
+   configuration) AND the host of `internalUrl` matches (standard hostname verification); renewals need nothing. `pinned`: exactly one leaf certificate, by the SHA-256 of its DER encoding
+   (`sha256:<64 lower-case hex>`, never the hash of the PEM text; vectors `certificate-fingerprint/`), no chain and no hostname check; another certificate makes the server unreachable
+   (`certificate_changed`) and is recorded as `pendingConnection` for approval. `plain`: `http` only, with `allowPlainHttp`, shown with a warning. The proposal is `ca` when the certificate
+   validates for the host, `pinned` otherwise, `plain` for `http`; the administrator may choose `pinned` instead of a proposed `ca`. `POST /admin/v1/servers/{serverId}/connection/approve`
+   (fresh MFA) takes the `tlsMode` and the `fingerprint` that the administrator saw; another pending fingerprint is `409 connection_changed`. Vectors `server-connection/`.
+3. **Everything is pending at first.** The server is created `pending_approval` with a pending connection, pending policies and pending tools, `READ_ONLY` ones included. A tool is listed and
+   callable only when the connection AND the policies AND the tool are approved; until then `tool_disabled` (vector `server-connection/first-connection-all-tools-pending`).
+4. **Refresh and the runtime loop.** `POST /admin/v1/servers/{serverId}/refresh` probes and pulls at once; the gateway does the same in a loop (at most every 60 s). A changed hash makes the
+   entry pending, exactly like the pinning of a definition that changed outside a deployment (next section); an unreachable server is `status: unreachable` and its calls are
+   `upstream_unavailable`.
+5. **The server side (starter).** No client certificate is required on its port. Every path except a minimal health check needs a valid internal JWT of the right purpose (`use`, section "MCP methods and
+   JWT"); keys come from `MCP_GATEWAY_JWKS_URI` (`https://<domain>/.well-known/mcp-jwks.json`, public, served by the gateway through the public listener, `GET /.well-known/mcp-jwks.json` of C14).
+   TLS: its own keystore or PEM, else a self-signed certificate generated once into a state directory and reused, or `MCP_PLAIN_HTTP=true`. The one-time `jti` store is in memory (bounded, TTL = the
+   token `exp`); Redis only when several instances sit behind a balancer. These are settings of the starter, not part of the contract text of C14.
+
+### Policy data gate (CC-237, CC-249)
+
+The gateway pushes the policy data of a server to it (`POST /.well-known/mcp-policy-data`, body `PolicyData`: `revision`, `scopeMapping` reduced to the namespace of the server, `allowedClients`,
+`overrides` for this server or all servers, `approvedPoliciesHash`) after every change of the revision and periodically (at most every 60 s). The server never fetches anything. It replaces its data
+only with a strictly newer `revision` (equal or older: `200`, `accepted: false`); the data lives in memory, so a restarted server holds none. A `tools/call` is evaluated only through this gate
+(`scripts/lib/policy-data-gate.mjs`, Java twin `PolicyDataGate` in `mcp-manifest`):
+
+1. The server holds no data, or the `prv` of the token is greater than its `revision`: `409 {"error":"policy_data_stale","heldRevision":...,"requiredRevision":...}` before anything is executed.
+   This wins over every other refusal: data that is behind decides nothing.
+2. The data is current but nothing is approved for the server (`policies_not_approved`), its own `policiesHash` differs from `approvedPoliciesHash` (`policies_differ`), or an override does not validate against
+   its composed schema (`overrides_invalid`): the answer is `upstream_unavailable` (C10), final.
+3. Otherwise the call is evaluated.
+
+On `409 policy_data_stale` the gateway pushes its current data and repeats the `tools/call` **once** with a new token (new `jti`; the first token is spent). If the second answer is again `409`, or the push
+fails, the client gets `upstream_unavailable`; any other refusal is not retried and triggers no push. Vectors: `policy-data-gate/` (the rule), `policy-data-push/` (the replacement rule and the gateway sequence).
+
+## Registry and definition pinning (CC-097, CC-133, CC-249)
 
 For every tool the gateway keeps an approved definition (its fingerprint is `definitionHash`) and neither shows nor runs a tool
 whose current definition differs. Rules:
 
-1. **Where the manifest comes from and who sends it.** The body of `PUT /admin/v1/registry/servers/{serverId}` is a manifest built
-   from the reviewed commit (a build-stage artifact, `target/mcp-manifest.json`), never a manifest fetched from a running server,
-   and the pipeline job runs only on a protected branch. The pipeline identity is bound to the server (CC-161): the certificate has
-   the CN `mcp-registry-ci-<serverId>` (for example `mcp-registry-ci-mcp-jira`), and the gateway accepts it only for a `PUT` whose
-   path has the same `serverId`; any other CN, including the former `mcp-registry-ci`, is `403`, nothing is stored, and the audit
-   is `authentication` with the reason `client_certificate_rejected`. The CN is per server rather than a SAN carrying the
-   `serverId`, because the contract already authorizes by CN (`x-allowed-client-cn`) and no second place in the certificate needs
-   checking. The pipeline of one repository therefore cannot change the entry of another server. Outside dev mode the gateway does
-   not fetch a manifest from a server and never approves one; bootstrap (fetching the manifest from a server) exists only in dev
-   mode (section "Production mode and dev mode") and also checks `environment`.
-2. **What a deployment approves.** The commit review approves tools that do not change data: a new or changed `READ_ONLY` tool is
-   `approved` (`approvedInVersion` = the manifest version), and an entry with an unchanged `definitionHash` stays. A new or changed
-   `UPDATE` or `DESTRUCTIVE` tool is `pending_approval` (`change` `new` or `changed`, `pendingVersion` = the manifest version) and
-   waits for an administrator's `approve` (group `mcp-platform-admin`, hash equal to `pendingHash`). **Exception for access groups (CC-245, CC-246):** the gateway keeps a group floor per tool next to the risk floors (CC-167): the last `additionalGroup` the tool was approved with, kept after the tool is removed and after `deleteServer`. A registration whose tool (new or existing, also one removed earlier and registered again) has no `additionalGroup` or another one than the floor is `pending_approval` (`change` `new` or `changed`) whatever the risk, because it widens access (a `READ_ONLY` tool would otherwise be approved by the commit review alone), and approving it sets the floor to what was approved. Adding an `additionalGroup` where the floor has none is a narrowing and follows the rule above. Vectors `registry-approval/registration-*`. A tool that the manifest no
-   longer has is removed. The `admin_change` audit with `definitionHash`: `definition_registered` (approved), `definition_submitted`
-   (waiting), `tool_removed`; an approval is `definition_approved` with the administrator's `sub`.
+1. **Where the manifest comes from and who pulls it (CC-249).** The gateway pulls the manifest from the server itself (`GET /.well-known/mcp-manifest`, C14)
+   when an administrator adds the server, on a refresh and in a runtime loop (at most every 60 s); nothing is written to the registry by a
+   pipeline, and there is no certificate of a pipeline (`PUT /admin/v1/registry/servers/{serverId}` and its certificate are gone). The body is
+   the C6 manifest that the starter builds from the code of the running server; the gateway recomputes every hash and applies the rules of
+   "Manifest semantic rules" and `environment` (section "Production mode and dev mode") before it stores anything. A manifest that fails
+   changes nothing. See "Connecting a server" for the connection (TLS trust, address rules) and its approval.
+2. **What a pulled manifest approves: nothing.** A new or changed tool, a `READ_ONLY` one included, is `pending_approval` (`change` `new` or
+   `changed`, `pendingVersion` = the manifest version, `source: manifest`) and waits for an administrator's `approve` (group
+   `mcp-platform-admin`, hash equal to `pendingHash`); an entry with an unchanged `definitionHash` stays. The first connection of a server is
+   therefore all pending: before CC-249 the review of a commit approved `READ_ONLY` tools, and no reviewed commit stands behind a pulled manifest.
+   The group floor (CC-245, CC-246) is kept and set by approval, but it decides nothing on a pull, because everything that changes is pending.
+   A tool that the manifest no longer has is removed. The `admin_change` audit with `definitionHash`: `definition_submitted` (waiting),
+   `tool_removed`; an approval is `definition_approved` with the administrator's `sub` (`definition_registered` is no longer written). Vectors
+   `registry-approval/pull-*`, `adapter-registry/*`, `server-connection/first-connection-*`.
 3. **A change outside a deployment blocks the tool.** The gateway always builds the `tools/list` answer to a client from approved
    entries and does not pass on the server's. It keeps the last seen definition of every tool from the server's `tools/list` (the
    read is refreshed every TTL, configurable, **at most 60 s**) and compares it with the approved one on every client `tools/list`
@@ -884,22 +948,22 @@ whose current definition differs. Rules:
    (unavailable) is evidence neither of a change nor of absence: the gateway keeps the last successful read, does not hide all
    tools and does not emit these reasons, and a call that needs a fresh read but gets an error is rejected as
    `upstream_unavailable` without calling the server (fail-closed). A tool that the server shows and that is not in the registry is
-   ignored (it has no `risk` or `action`); `change: new` arises only from a `PUT`.
-   **Precedence (CC-162):** a `pending_approval` entry with `source: ci` (left by a `PUT`) is never replaced by a read from the
+   ignored (it has no `risk` or `action`); `change: new` arises only from a pulled manifest.
+   **Precedence (CC-162):** a `pending_approval` entry with `source: manifest` (left by a pull) is never replaced by a read from the
    server: a difference between the server and such an entry only blocks the tool and is logged, and the administrator approves
-   the same entry from the commit. An entry with `source: server` arises only where there is no `source: ci` entry; a newer read
+   the same entry from the manifest. An entry with `source: server` arises only where there is no `source: manifest` entry; a newer read
    with a different definition replaces the previous `server` entry (a new `pendingHash`, so an `approve` with the old hash is
-   `409`); it disappears when the server again serves the approved definition; a `PUT` replaces it: when it carries a different
-   definition, a `ci` entry arises, and when it carries a definition equal to the approved one, the `server` entry is removed (a
+   `409`); it disappears when the server again serves the approved definition; a pulled manifest replaces it: when it carries a different
+   definition, a `manifest` entry arises, and when it carries a definition equal to the approved one, the `server` entry is removed (a
    server that keeps serving a different definition creates it again at the next read). The entry version is `pendingVersion` (for
-   `ci` the manifest version, for `server` the version the server reported).
+   `manifest` the manifest version, for `server` the version the server reported).
 4. **The risk floor (CC-167).** The floor is the highest risk ever reported for a tool (also in a pending entry and in removed
-   entries); it does not drop when a tool is removed or added again. A `PUT` with a tool of a risk lower than the floor **does not
-   reject the manifest**: that one tool becomes `pending_approval` (`source: ci`, `change` as in rule 2: `changed`, and `new` with
+   entries); it does not drop when a tool is removed or added again. A pulled manifest with a tool of a risk lower than the floor **does not
+   reject the manifest**: that one tool becomes `pending_approval` (`source: manifest`, `change` as in rule 2: `changed`, and `new` with
    `approvedInVersion: null` for a tool that was removed and added again; `riskLowered: true`), stays hidden and is refused as
-   `tool_disabled`, and the rest of the manifest goes through under the usual rules. `422` on `PUT` stays for the other rejections
+   `tool_disabled`, and the rest of the manifest goes through under the usual rules. a manifest that fails is refused as a whole for the other rejections
    (a hash mismatch, the semantic manifest rules, `environment_mismatch`, `credential_type_mismatch`, a mismatch with the gateway
-   configuration). An entry with `riskLowered` is approved only by an administrator (`mcp-platform-admin`, never the pipeline):
+   configuration). An entry with `riskLowered` is approved only by an administrator (`mcp-platform-admin`, never a pulled manifest):
    `approve` with `acceptRiskLowering: true` (the BFF then requires fresh MFA, like registering the Authenticator: `401
    step_up_required` with `stepUpUrl`, the same window; a plain `approve` is unchanged and the BFF sends the field only when it is
    `true`); the floor drops to the approved risk, and the audit is one `admin_change` event with the reason `risk_lowered_by_admin`
@@ -910,26 +974,23 @@ whose current definition differs. Rules:
    waits for an administrator; the tool is hidden until the decision. The gateway trusts the BFF about fresh MFA for
    `acceptRiskLowering` (as the broker does for the Authenticator, CC-093): it accepts `approve` only from the CN `mcp-portal-bff`
    with an administrator token.
-5. **Residual risk accepted by the maintainers (2026-10-29).** A rename with a risk reduction in a single `PUT` (a removed write
+5. **Residual risk accepted by the maintainers (2026-10-29).** A rename with a risk reduction in a single pulled manifest (a removed write
    tool and a new `READ_ONLY` tool in the same manifest) passes without `approve`: the gateway does not link them. Protection comes
-   from commit review and from the starter's rules for `risk` and `action`.
+   from the administrator who reads the pending entries (a removed tool and a new `READ_ONLY` one are both pending since CC-249, so the rename is seen) and from the starter's rules for `risk` and `action`.
 6. `RegistryTool.change`, `approvedInVersion` and `PendingTool.pendingVersion` are informational (an administration view); a decision
    always binds `definitionHash`. There is no "reject" operation: a missing approval is a hidden tool (fail-closed).
 
 ### Foreign servers through an adapter (CC-193)
 
-The adapter (`mcp-server-adapter`, the sidecar of a foreign MCP server) sends the registry at startup a manifest with `source:
-adapter` using the operation `PUT /admin/v1/registry/adapters/{serverId}` (`submitAdapterManifest`, CC-206). The adapter
-certificate has the CN `mcp-adapter-<serverId>` (the whole CN is compared, as for the pipeline, CC-161), different from
-`mcp-registry-ci-<serverId>`: the pipeline cannot use this operation, and the adapter cannot use `registerServer`. Which
-`serverId` values an adapter serves is decided by the flag `adapter` given when the server is created (`createServer`), never by the manifest: for such a `serverId`,
-`registerServer` answers `422` (`adapter_mode_mismatch`), for any other `serverId` `submitAdapterManifest` answers the same, and a
-manifest without `source: adapter` on the adapter channel, or with it on the pipeline channel, is also `422`. Order of answers
-(CC-207): first the certificate (`403`), so a caller without the right CN does not learn which mode the server is in; then the
-`serverId` in the body against the path (`400`); then the mode and `source` (`422`). The adapter's `200` response
-(`AdapterRegistryServer`) carries neither `classifiedBy` nor `classifiedAt`: the adapter does not know the administrators'
-identities. A tool absent from the adapter manifest is removed together with the admin's classification; when it returns it is new
-and needs a new classification (decision of 2026-11-03). The call approves nothing: every new or changed tool is
+The adapter (`mcp-server-adapter`, the sidecar of a foreign MCP server) is a server like any other for the gateway (CC-249): it serves its manifest with
+`source: adapter` at `GET /.well-known/mcp-manifest` and the gateway pulls it; there is no adapter channel, no `PUT /admin/v1/registry/adapters/{serverId}`
+and no certificate of an adapter any more. Whether a server is served by an adapter is the `source` of its first manifest: the gateway stores it as the
+flag `adapter` of the server when it is added, and the flag never changes. A later manifest whose `source` disagrees with the stored mode is refused like any
+invalid manifest (`manifest_invalid`, `manifestReason: adapter_source_mismatch`) and changes nothing. (Before CC-249 the flag was given by the administrator and
+a manifest could not set it; now the manifest sets it once, and the administrator sees `adapter: true` on the card, while the gateway still asks for the classification of
+every tool, so a server that claims to be an adapter gains nothing.) The adapter has no business with the identity of administrators, so the pull carries neither `classifiedBy` nor
+`classifiedAt` to it. A tool absent from the adapter manifest is removed together with the admin's classification; when it returns it is new
+and needs a new classification (decision of 2026-11-03). A pull approves nothing: every new or changed tool is
 `pending_approval` with `source: adapter`, also one that looks like a read, and an entry whose hash is unchanged keeps its
 classification (vectors `adapter-registry/`). A difference found when reading the `tools/list` of a running server in adapter mode
 gives a pending entry with `source: adapter` (never `server`), so `approve` requires a classification, and the previous one is not
@@ -977,8 +1038,8 @@ list of active ones is `GET /admin/v1/kill-switches`. In the portal: `PUT`/`DELE
   `endpoint-filter/call-state-kill-switch-*`.
 - **Persistence:** the switch is stored in the registry database and survives a restart. It belongs to the address (server, tool),
   not to the manifest: a tool that disappears from the manifest keeps its switch (it is on the list and takes effect when the tool
-  returns), and its `DELETE` is `204`; a `PUT` for a tool unknown to the registry is `404`. `approve`, a repeated manifest `PUT` and
-  registration do not lift it; only a `DELETE` of the same scope does (lifting a tool switch does not lift the server switch). No
+  returns), and its `DELETE` is `204`; a `PUT` for a tool unknown to the registry is `404`. `approve`, a pulled manifest and
+  a refresh do not lift it; only a `DELETE` of the same scope does (lifting a tool switch does not lift the server switch). No
   expiry.
 - **Fail-closed:** a gateway that cannot read the switch state refuses the call (`upstream_unavailable`) and lists nothing; a write
   that failed is `503`, never `204`.
@@ -1084,7 +1145,7 @@ Descriptions in `resolveCredential` (C4):
   `credential-type.cedar` rules tell a service account from a user credential by this default type, and a system's set never
   combines both kinds. Vectors `credential-type-header/` (including GitLab with two types). The header has been in C3 from the
   start; the server rule is new.
-- **A threat model assumption (maintainer decision of 2026-10-29).** Gateway -> server traffic is protected by mTLS and a signed JWT
+- **A threat model assumption (maintainer decision of 2026-10-29).** Gateway -> server traffic is protected by TLS (the trust chosen by an administrator per server, CC-249) and a signed JWT
   (C2), and the gateway removes incoming `X-MCP-*`, so this is considered sufficient: the type header is not signed and there is no
   type claim in the JWT. The check protects against a configuration mismatch, not against an attacker on the path between the
   gateway and the server; that would need a separate decision (a type claim and a credential hash in the JWT).
@@ -1114,8 +1175,7 @@ Descriptions in `resolveCredential` (C4):
   `jwt/valid-dev-kid-in-dev-mode`, `jwt/dev-kid-rejected-without-devstack-profile`.
 - **The manifest marker.** The optional `environment` (`production` | `dev`; missing means `production`, and the field does not enter
   `definitionHash`). A gateway in production mode rejects a manifest with `dev` (`422 manifest_rejected`, reason
-  `environment_mismatch`). The check covers `PUT`, gateway startup and dev-mode bootstrap; in production mode there is no
-  bootstrap.
+  `environment_mismatch`). The check covers every manifest the gateway pulls and the manifests it holds at startup.
 
 ## Audit: requests without a valid token (CC-143, CC-152)
 
@@ -1128,8 +1188,8 @@ as not to multiply reasons.
 ## Clarifications in 4.0.0
 
 - **The manifest is created at startup or at build time** (CC-140): the starter generates it at build time
-  (`target/mcp-manifest.json`, an artifact of the reviewed commit) or builds it at startup from the server's `tools/list` (`GET
-  /mcp-manifest`, for comparison and for dev bootstrap). Only the build artifact goes to the registry `PUT` (CC-133).
+  (`target/mcp-manifest.json`) or builds it at startup from the server's `tools/list`, and serves it at `GET /.well-known/mcp-manifest`
+  (C14, CC-249), where the gateway pulls it. No pipeline sends it to the registry any more (CC-133 is replaced by CC-249).
 - **`gateway-authentication/` vectors** (CC-144): `resourcePath` is the route (`/s/mcp-jira`), and the resource metadata (RFC 9728)
   points at the endpoint address (`/s/mcp-jira/mcp`).
 - **The confirmation state epoch marker** (CC-145): a write in the same store as the confirmation state, valid for 210 s after a
@@ -1236,13 +1296,17 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 
 | Directory | Count | What it checks |
 | --- | --- | --- |
-| `jwt/` | 66 | the C2 receiver: 23 valid, 43 rejections (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
+| `jwt/` | 83 | the C2 receiver: 23 valid, 60 rejections, 17 of them about the purpose `use` (`purpose-*`: a call token at the manifest or policy-data endpoint and the reverse, a manifest or policy-data token at the MCP endpoint or the broker, the user variant with another purpose, a missing or unknown `use`, `jti` replay for each purpose) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
 | `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 128 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
+| `audit-events/` | 139 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
-| `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data (CC-237) |
+| `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
+| `policy-data-push/` | 11 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
+| `address-refusal/` | 42 | loopback, link-local, `169.254.169.254`, unspecified and multicast in IPv4 and IPv6 and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, connect-time check (CC-249) |
+| `server-connection/` | 24 | first connection with every tool pending (`READ_ONLY` too), tool availability, `ca` renewal versus `pinned` change, approval of a connection (CC-249) |
+| `certificate-fingerprint/` | 12 | SHA-256 over the DER of real certificates (`sha256:<lower-case hex>`), PEM re-wrapping, wrong inputs, the format (CC-249); random keys, `scripts/generate-certificate-vectors.mjs` is not part of `generate:vectors` |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |
 | `return-paths/` | 35 | `returnPath` of C4/C12 (CC-032); since 3.0.0 without the prefixes `/api`, `/s`, `/v`, `/.well-known`, since 5.0.0 also `/mcp` (CC-169; `/f/` is free) and without `.`/`..` segments and the semicolon, which servers read as a path parameter (CC-099) |
 | `entity-builder/` | 54 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
@@ -1266,8 +1330,8 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `mcp-endpoint/` | 18 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182) |
 | `kill-switch/` | 18 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
 | `balancer-errors/` | 3 | the balancer's `502` after an instance dies mid-request, the constant text about an unknown result (CC-204) |
-| `adapter-registry/` | 13 | the adapter channel: CN, adapter mode, pending with `source: adapter`, a read at runtime (CC-206) |
-| `registry-approval/` | 32 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206) |
+| `adapter-registry/` | 9 | what a pulled manifest leaves in the registry: adapter mode derived from `source`, pending with `source: manifest` or `adapter`, a source that disagrees, a read at runtime (CC-206, CC-249) |
+| `registry-approval/` | 28 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206); `pull-*`: what a pulled manifest does with one tool, nothing approved, a `READ_ONLY` one included (CC-249) |
 | `idp-token-claims/` | 8 | IdP token claims: `vs` and `vsc` ignored, not copied into the internal JWT (CC-201) |
 | `oauth-metadata/` | 6 | the protected resource metadata document: `resource` without a query, a query ignored, `/v/` as `404` (CC-171, CC-187) |
 

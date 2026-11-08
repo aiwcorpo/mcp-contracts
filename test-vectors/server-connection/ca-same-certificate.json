@@ -1,0 +1,20 @@
+{
+  "description": "A ca server, same certificate.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "ca",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "presented": {
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "validatesAsCa": true
+      }
+    }
+  },
+  "expected": {
+    "status": "connected",
+    "connectionRefreshed": false
+  }
+}

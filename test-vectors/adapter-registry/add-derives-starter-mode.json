@@ -1,0 +1,24 @@
+{
+  "description": "A server is added and its first manifest has no source: a server on the starter. A READ_ONLY tool is pending too (CC-249).",
+  "input": {
+    "serverMode": null,
+    "manifestSource": null,
+    "tools": [
+      {
+        "name": "get_issue",
+        "risk": "READ_ONLY",
+        "state": "new"
+      }
+    ]
+  },
+  "expected": {
+    "stored": true,
+    "adapter": false,
+    "approvedByPull": [],
+    "pending": [
+      "get_issue"
+    ],
+    "pendingSource": "manifest",
+    "removed": []
+  }
+}

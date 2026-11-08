@@ -1,0 +1,10 @@
+{
+  "description": "Loopback 127.0.0.1.",
+  "input": {
+    "address": "127.0.0.1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "loopback"
+  }
+}

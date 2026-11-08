@@ -1,0 +1,9 @@
+{
+  "description": "A public address is not refused by this rule either.",
+  "input": {
+    "address": "93.184.216.34"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

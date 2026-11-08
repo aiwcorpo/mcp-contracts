@@ -1,0 +1,10 @@
+{
+  "description": "A zone id does not change the class.",
+  "input": {
+    "address": "fe80::1%eth0"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "link_local"
+  }
+}

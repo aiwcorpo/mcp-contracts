@@ -1,0 +1,27 @@
+{
+  "description": "plain for an http address of a server that was added with allowPlainHttp.",
+  "kind": "approve",
+  "input": {
+    "approve": {
+      "pending": {
+        "tlsMode": "plain",
+        "fingerprint": null,
+        "validatesAsCa": false
+      },
+      "body": {
+        "tlsMode": "plain",
+        "fingerprint": null
+      },
+      "scheme": "http",
+      "addedWithAllowPlainHttp": true
+    }
+  },
+  "expected": {
+    "status": 200,
+    "connection": {
+      "tlsMode": "plain",
+      "fingerprint": null
+    },
+    "pendingConnection": null
+  }
+}

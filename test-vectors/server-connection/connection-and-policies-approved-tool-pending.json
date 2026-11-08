@@ -1,0 +1,16 @@
+{
+  "description": "The tool itself waits.",
+  "kind": "availability",
+  "input": {
+    "availability": {
+      "connectionApproved": true,
+      "policiesApproved": true,
+      "toolStatus": "pending_approval"
+    }
+  },
+  "expected": {
+    "listed": false,
+    "errorCode": "tool_disabled",
+    "disabledBy": "approval"
+  }
+}

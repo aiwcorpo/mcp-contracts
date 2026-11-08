@@ -124,7 +124,7 @@
                 "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
                 "status": "pending_approval",
                 "change": "changed",
-                "source": "ci",
+                "source": "manifest",
                 "approvedInVersion": "1.3.0"
               },
               {
@@ -169,7 +169,7 @@
                 "definitionHash": "sha256:a6d16c1679d3b58d585deb6090032a8b085d4b78a6d9b6cbf6ad7229796524c4",
                 "status": "pending_approval",
                 "change": "new",
-                "source": "ci",
+                "source": "manifest",
                 "approvedInVersion": null
               }
             ]

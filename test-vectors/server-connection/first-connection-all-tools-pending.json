@@ -1,0 +1,42 @@
+{
+  "description": "The first connection: every tool is pending_approval, the READ_ONLY ones included, and nothing is listed to anyone until the connection, the policies and the tool are approved.",
+  "kind": "firstConnection",
+  "input": {
+    "firstConnection": {
+      "tlsMode": "ca",
+      "tools": [
+        {
+          "name": "get_issue",
+          "risk": "READ_ONLY"
+        },
+        {
+          "name": "search_issues",
+          "risk": "READ_ONLY"
+        },
+        {
+          "name": "update_issue",
+          "risk": "UPDATE"
+        },
+        {
+          "name": "delete_issue",
+          "risk": "DESTRUCTIVE"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "status": "pending_approval",
+    "connection": null,
+    "pendingConnection": {
+      "tlsMode": "ca"
+    },
+    "policies": "pending_approval",
+    "tools": {
+      "get_issue": "pending_approval",
+      "search_issues": "pending_approval",
+      "update_issue": "pending_approval",
+      "delete_issue": "pending_approval"
+    },
+    "listed": []
+  }
+}

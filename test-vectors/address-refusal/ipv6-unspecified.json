@@ -1,0 +1,10 @@
+{
+  "description": "Unspecified ::.",
+  "input": {
+    "address": "::"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "unspecified"
+  }
+}

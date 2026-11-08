@@ -1,0 +1,27 @@
+{
+  "description": "The same for a server reached over http (plain).",
+  "kind": "firstConnection",
+  "input": {
+    "firstConnection": {
+      "tlsMode": "plain",
+      "tools": [
+        {
+          "name": "get_issue",
+          "risk": "READ_ONLY"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "status": "pending_approval",
+    "connection": null,
+    "pendingConnection": {
+      "tlsMode": "plain"
+    },
+    "policies": "pending_approval",
+    "tools": {
+      "get_issue": "pending_approval"
+    },
+    "listed": []
+  }
+}

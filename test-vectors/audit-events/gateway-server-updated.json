@@ -14,7 +14,7 @@
     "server": "mcp-notes",
     "reason": "server_updated",
     "changedFields": [
-      "internalUrl",
+      "credential",
       "enabled"
     ],
     "outcome": "ok"

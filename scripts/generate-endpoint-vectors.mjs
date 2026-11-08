@@ -8,8 +8,10 @@ import { auditThrottle, issueCursor, listChangedNotification, listChangedSequenc
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
 import { idpTokenClaimsDecision, protectedResourceMetadata } from './lib/gateway-authentication.mjs';
 import { killSwitchDecision } from './lib/kill-switch.mjs';
-import { submissionDecision } from './lib/adapter-registry.mjs';
-import { adapterToolState, approveDecision } from './lib/registry-approval.mjs';
+import { manifestPullDecision } from './lib/adapter-registry.mjs';
+import { adapterToolState, approveDecision, pullDecision } from './lib/registry-approval.mjs';
+import { addressDecision, hostDecision, urlDecision } from './lib/address-policy.mjs';
+import { approveConnectionDecision, connectionCheck, firstConnection, toolAvailability } from './lib/server-connection.mjs';
 
 const writer = (dir) => {
   rmSync(path('test-vectors', dir), { recursive: true, force: true });
@@ -557,37 +559,29 @@ switchVectorFull('call-outside-filter', 'A switched tool the filter of the addre
 switchVectorFull('lift-switch-of-removed-tool', 'A switch belongs to the address, not to the manifest: the switch of a tool that left the manifest can be lifted (204) like any other (CC-206).', { switches: [{ scope: 'tool', serverId: 'mcp-jira', tool: 'removed_tool' }], tool: 'jira__removed_tool', event: 'lift-tool' });
 switchVector('lift-server', 'Lifting the switch of a server leaves the switches of single tools.', { switches: [jiraTool, { scope: 'server', serverId: 'mcp-jira' }], tool: 'jira__update_issue', event: 'lift-server' });
 
-// ---------- servers behind an adapter (CC-193, CC-206) ----------
+// ---------- manifests pulled from servers, also behind an adapter (CC-193, CC-206, CC-249) ----------
 
 const adapterOut = writer('adapter-registry');
-const adapterVector = (name, description, input) => adapterOut(name, { description, input, expected: submissionDecision(input) });
+const adapterVector = (name, description, input) => adapterOut(name, { description, input, expected: manifestPullDecision(input) });
 const toolsAfter = [{ name: 'get_issue', risk: 'READ_ONLY', state: 'new' }, { name: 'update_issue', risk: 'UPDATE', state: 'changed' }, { name: 'list_projects', risk: 'READ_ONLY', state: 'unchanged' }];
-adapterVector('adapter-submits', 'The adapter submits its manifest on its own channel: every new or changed tool is pending, with source adapter, a tool that looks like a read included. Nothing is approved by the call.',
-  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('adapter-pull', 'The gateway pulls the manifest of an adapter: every new or changed tool is pending, with source adapter, a tool that looks like a read included. Nothing is approved by a pull.',
+  { serverMode: 'adapter', manifestSource: 'adapter', tools: toolsAfter });
 adapterVector('adapter-removed-tool-loses-classification', 'A tool missing from the manifest of an adapter is removed together with its classification; if it returns it is new and unclassified (CC-207).',
-  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: [{ name: 'get_issue', risk: 'READ_ONLY', state: 'unchanged' }, { name: 'update_issue', risk: 'UPDATE', state: 'removed' }] });
-adapterVector('adapter-body-server-id-differs-from-path', 'serverId in the manifest differs from the path: 400, nothing stored, after the certificate and before the mode (CC-207).',
-  { serverId: 'mcp-jira', bodyServerId: 'mcp-gitlab', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
-adapterVector('adapter-wrong-cn-before-mode-mismatch', 'A certificate that is not the adapter of this server gets 403 even when the server is not in adapter mode: the answer never tells the mode to a caller without the right CN (CC-207).',
-  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'adapter', cn: 'mcp-adapter-mcp-gitlab', manifestSource: 'adapter', tools: toolsAfter });
-adapterVector('adapter-wrong-cn', 'The certificate of another server (or of the pipeline) on the adapter channel: 403, nothing stored.',
-  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-registry-ci-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
-adapterVector('adapter-cn-of-another-server', 'The adapter of mcp-gitlab cannot submit for mcp-jira: the CN is compared as a whole.',
-  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-gitlab', manifestSource: 'adapter', tools: toolsAfter });
-adapterVector('adapter-channel-server-not-in-adapter-mode', 'A server that gateway configuration does not serve through an adapter: 422 adapter_mode_mismatch.',
-  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
-adapterVector('adapter-channel-manifest-without-source', 'A manifest without source adapter on the adapter channel: 422 adapter_mode_mismatch.',
-  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'adapter', cn: 'mcp-adapter-mcp-jira', manifestSource: null, tools: toolsAfter });
-adapterVector('ci-channel-for-adapter-server', 'The pipeline cannot register the manifest of a server that is in adapter mode: 422 adapter_mode_mismatch.',
-  { serverId: 'mcp-jira', serverMode: 'adapter', channel: 'ci', cn: 'mcp-registry-ci-mcp-jira', manifestSource: null, tools: toolsAfter });
-adapterVector('ci-channel-adapter-manifest', 'A manifest with source adapter sent by the pipeline: 422 adapter_mode_mismatch.',
-  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'ci', cn: 'mcp-registry-ci-mcp-jira', manifestSource: 'adapter', tools: toolsAfter });
-adapterVector('ci-channel-starter-server', 'The usual registration is unchanged: a new READ_ONLY tool is approved by the call, a changed UPDATE tool is pending with source ci.',
-  { serverId: 'mcp-jira', serverMode: 'starter', channel: 'ci', cn: 'mcp-registry-ci-mcp-jira', manifestSource: null, tools: toolsAfter });
+  { serverMode: 'adapter', manifestSource: 'adapter', tools: [{ name: 'get_issue', risk: 'READ_ONLY', state: 'unchanged' }, { name: 'update_issue', risk: 'UPDATE', state: 'removed' }] });
+adapterVector('add-derives-adapter-mode', 'A server is added and its first manifest has source adapter: the registry stores adapter true (the flag is derived from the manifest at that moment and fixed afterwards), and every tool is pending.',
+  { serverMode: null, manifestSource: 'adapter', tools: [{ name: 'get_issue', risk: 'READ_ONLY', state: 'new' }] });
+adapterVector('add-derives-starter-mode', 'A server is added and its first manifest has no source: a server on the starter. A READ_ONLY tool is pending too (CC-249).',
+  { serverMode: null, manifestSource: null, tools: [{ name: 'get_issue', risk: 'READ_ONLY', state: 'new' }] });
+adapterVector('adapter-server-serves-a-starter-manifest', 'A server stored as an adapter later serves a manifest without source adapter: the manifest is refused (manifest_invalid, adapter_source_mismatch) and the registry keeps what it has.',
+  { serverMode: 'adapter', manifestSource: null, tools: toolsAfter });
+adapterVector('starter-server-serves-an-adapter-manifest', 'A server stored as a starter server later serves a manifest with source adapter: refused the same way.',
+  { serverMode: 'starter', manifestSource: 'adapter', tools: toolsAfter });
+adapterVector('starter-pull', 'The usual pull: a new READ_ONLY tool and a changed UPDATE tool are both pending with source manifest, an unchanged tool stays.',
+  { serverMode: 'starter', manifestSource: null, tools: toolsAfter });
 adapterVector('runtime-read-in-adapter-mode', 'A difference found when the gateway reads tools/list of a running server in adapter mode makes a pending entry with source adapter, never server: a later approve needs the classification, and the earlier one is not applied silently.',
-  { serverId: 'mcp-jira', serverMode: 'adapter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
+  { serverMode: 'adapter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
 adapterVector('runtime-read-in-starter-mode', 'The same read for a server on the starter makes a pending entry with source server (CC-162).',
-  { serverId: 'mcp-jira', serverMode: 'starter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
+  { serverMode: 'starter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
 
 const approvalOut = writer('registry-approval');
 const approvalVector = (name, description, input) => approvalOut(name, { description, input, expected: approveDecision(input) });
@@ -605,12 +599,110 @@ for (const risk of ['UPDATE', 'DESTRUCTIVE']) {
   approvalVector(`adapter-invalidated-${risk.toLowerCase()}-without-accept`, `An entry of an adapter whose stored ${risk} classification was voided (CC-227) is pending_approval again; the voided classification stays the floor, so approving it as READ_ONLY without acceptRiskLowering is 422 risk_lowered.`, { entry: { source: 'adapter', invalidated: true }, body: { risk: 'READ_ONLY', action: 'read' }, floor: risk });
   approvalVector(`adapter-invalidated-${risk.toLowerCase()}-accepted`, `With acceptRiskLowering (the portal asks the administrator for a fresh MFA, as for every lowering, CC-167) the entry is approved as READ_ONLY, audit risk_lowered_by_admin.`, { entry: { source: 'adapter', invalidated: true }, body: { risk: 'READ_ONLY', action: 'read', acceptRiskLowering: true }, floor: risk });
 }
-approvalVector('ci-entry-with-classification', 'risk or action for an entry that is not from an adapter: 422 classification_not_allowed.', { entry: { source: 'ci' }, body: { risk: 'UPDATE', action: 'update' } });
+approvalVector('manifest-entry-with-classification', 'risk or action for an entry that is not from an adapter: 422 classification_not_allowed.', { entry: { source: 'manifest' }, body: { risk: 'UPDATE', action: 'update' } });
 approvalVector('server-entry-plain', 'A plain approval of an entry the running server presented is unchanged.', { entry: { source: 'server' }, body: {} });
-approvalVector('ci-entry-risk-lowered', 'The floor of CC-167 for an entry that is not from an adapter is unchanged.', { entry: { source: 'ci', riskLowered: true }, body: {} });
+approvalVector('manifest-entry-risk-lowered', 'The floor of CC-167 for an entry that is not from an adapter is unchanged.', { entry: { source: 'manifest', riskLowered: true }, body: {} });
+const H = (c) => 'sha256:' + c.repeat(64);
+const pullOut = (name, description, input) => approvalOut(name, { description, input, expected: pullDecision(input) });
+const pulled = (risk, hash, additionalGroup) => ({ risk, definitionHash: H(hash), ...(additionalGroup !== undefined && { additionalGroup }) });
+const OPS = 'mcp-opensearch-ops';
+pullOut('pull-first-connection-read-only', 'A READ_ONLY tool of the first manifest is pending, not approved: no reviewed commit stands behind a pulled manifest (CC-249).', { approved: null, submitted: pulled('READ_ONLY', 'a') });
+pullOut('pull-first-connection-update', 'A new UPDATE tool is pending as before.', { approved: null, submitted: pulled('UPDATE', 'a') });
+pullOut('pull-unchanged', 'An entry with the same hash stays approved.', { approved: pulled('READ_ONLY', 'a'), submitted: pulled('READ_ONLY', 'a', undefined) });
+pullOut('pull-changed-read-only', 'A changed READ_ONLY tool is pending: the tools are blocked until an administrator approves, exactly like a definition that changed outside a deployment (CC-133).', { approved: pulled('READ_ONLY', 'a'), submitted: pulled('READ_ONLY', 'b') });
+pullOut('pull-read-only-group-removed', 'A READ_ONLY tool loses its additionalGroup: pending, as every change (CC-245, CC-246 still hold, only through the general rule now).', { approved: pulled('READ_ONLY', 'a', OPS), submitted: pulled('READ_ONLY', 'b') });
+pullOut('pull-removed-then-re-added', 'A tool that was removed and comes back is new and pending.', { approved: null, submitted: pulled('READ_ONLY', 'c', OPS) });
+pullOut('pull-risk-lowered', 'A tool reported below the risk floor is pending with riskLowered: only acceptRiskLowering on approval lifts it (CC-167).', { approved: pulled('UPDATE', 'a'), submitted: pulled('READ_ONLY', 'b'), riskFloor: 'UPDATE' });
+pullOut('pull-risk-not-lowered', 'The same risk as the floor: pending as a change, without riskLowered.', { approved: pulled('UPDATE', 'a'), submitted: pulled('UPDATE', 'b'), riskFloor: 'UPDATE' });
 approvalOut('unclassified-adapter-tool-is-hidden', { description: 'A tool of an adapter that is not classified and approved is hidden and refused as tool_disabled (fail-closed).', input: { classified: false }, expected: adapterToolState({ classified: false }) });
 approvalOut('stored-update-classification-is-hidden', { description: 'A classification UPDATE or DESTRUCTIVE of an adapter entry, stored before 6.3.0 (CC-227), is not valid: the tool is hidden and refused as tool_disabled until an administrator approves it again as READ_ONLY.', input: { classified: true, risk: 'UPDATE' }, expected: adapterToolState({ classified: true, risk: 'UPDATE' }) });
 approvalOut('classified-adapter-tool-is-listed', { description: 'Once classified and approved the tool follows the usual rules.', input: { classified: true }, expected: adapterToolState({ classified: true }) });
+
+// ---------- address refusal (CC-249) ----------
+
+const addressOut = writer('address-refusal');
+const addressVector = (name, description, input) => {
+  const kind = Object.keys(input)[0];
+  const expected = kind === 'address' ? addressDecision(input.address) : kind === 'resolved' ? hostDecision(input.resolved) : kind === 'connectedTo' ? hostDecision([input.connectedTo]) : urlDecision(input.url);
+  addressOut(name, { description, input, expected });
+};
+addressVector('ipv4-loopback', 'Loopback 127.0.0.1.', { address: '127.0.0.1' });
+addressVector('ipv4-loopback-whole-block', 'The whole 127.0.0.0/8 is loopback, not only 127.0.0.1.', { address: '127.200.3.4' });
+addressVector('ipv6-loopback', 'Loopback ::1.', { address: '::1' });
+addressVector('ipv6-loopback-long-form', 'The same address written in full.', { address: '0:0:0:0:0:0:0:1' });
+addressVector('ipv4-link-local', 'Link-local 169.254.0.0/16.', { address: '169.254.10.20' });
+addressVector('cloud-metadata', 'The cloud metadata address is link-local.', { address: '169.254.169.254' });
+addressVector('ipv6-link-local', 'Link-local fe80::/10.', { address: 'fe80::1' });
+addressVector('ipv6-link-local-with-zone', 'A zone id does not change the class.', { address: 'fe80::1%eth0' });
+addressVector('ipv6-link-local-top-of-range', 'febf::1 is still inside fe80::/10.', { address: 'febf::1' });
+addressVector('ipv4-mapped-loopback', 'IPv4-mapped IPv6 is judged as the IPv4 address it carries: ::ffff:127.0.0.1.', { address: '::ffff:127.0.0.1' });
+addressVector('ipv4-mapped-loopback-hex', 'The same address in hexadecimal groups, the form that a URL parser prints.', { address: '::ffff:7f00:1' });
+addressVector('ipv4-mapped-metadata', 'The metadata address behind an IPv4-mapped form.', { address: '::ffff:a9fe:a9fe' });
+addressVector('ipv4-mapped-unspecified', '::ffff:0:0 carries 0.0.0.0.', { address: '::ffff:0:0' });
+addressVector('ipv4-mapped-multicast', 'A multicast address behind an IPv4-mapped form.', { address: '::ffff:224.0.0.1' });
+addressVector('ipv4-compatible-loopback', 'The deprecated IPv4-compatible form ::127.0.0.1 is judged as 127.0.0.1.', { address: '::127.0.0.1' });
+addressVector('nat64-metadata', 'A NAT64 address (64:ff9b::/96) that embeds the metadata address.', { address: '64:ff9b::a9fe:a9fe' });
+addressVector('ipv4-unspecified', 'Unspecified 0.0.0.0.', { address: '0.0.0.0' });
+addressVector('ipv4-this-network', 'The whole 0.0.0.0/8 counts as unspecified.', { address: '0.1.2.3' });
+addressVector('ipv6-unspecified', 'Unspecified ::.', { address: '::' });
+addressVector('ipv4-multicast', 'Multicast 224.0.0.0/4.', { address: '224.0.0.251' });
+addressVector('ipv4-multicast-top', 'The top of 224.0.0.0/4.', { address: '239.255.255.250' });
+addressVector('ipv6-multicast', 'Multicast ff00::/8.', { address: 'ff02::1' });
+addressVector('private-ipv4-is-allowed', 'A private address is where servers live: 10.20.0.15 is allowed.', { address: '10.20.0.15' });
+addressVector('private-ipv4-192-168', 'Allowed.', { address: '192.168.1.10' });
+addressVector('private-ipv4-172-16', 'Allowed.', { address: '172.16.5.4' });
+addressVector('public-ipv4-is-allowed', 'A public address is not refused by this rule either.', { address: '93.184.216.34' });
+addressVector('ipv6-unique-local-is-allowed', 'A unique local address fd00::/8 is allowed.', { address: 'fd00::1' });
+addressVector('ipv6-documentation-is-allowed', 'A global IPv6 address.', { address: '2001:db8::1' });
+addressVector('ipv4-mapped-private-is-allowed', 'An IPv4-mapped form of a private address is judged as that address: allowed.', { address: '::ffff:10.0.0.5' });
+addressVector('not-an-address', 'Text that is not an address is refused (a resolver never returns it).', { address: '127.0.0.1.nip.io' });
+addressVector('host-with-one-bad-address', 'Every resolved address is checked: a host that resolves to a private and a loopback address is refused.', { resolved: ['10.0.0.5', '127.0.0.1'] });
+addressVector('host-with-only-good-addresses', 'All resolved addresses are allowed.', { resolved: ['10.0.0.5', '10.0.0.6', '2001:db8::1'] });
+addressVector('host-with-a-metadata-aaaa', 'The AAAA record hides the metadata address behind an IPv4-mapped form.', { resolved: ['10.0.0.5', '::ffff:a9fe:a9fe'] });
+addressVector('host-does-not-resolve', 'A host that resolves to nothing is not accepted.', { resolved: [] });
+addressVector('rebinding-at-connect-time', 'The host resolved to 10.0.0.5 when it was added; the connection later resolves to 169.254.169.254 (DNS rebinding): the address actually connected to is checked again and refused, the server is unreachable with lastError address_refused.', { connectedTo: '169.254.169.254' });
+addressVector('url-decimal-ipv4', 'A decimal host in the URL is the address it denotes: http://2130706433/ is 127.0.0.1.', { url: 'http://2130706433/mcp' });
+addressVector('url-hex-ipv4', 'Hexadecimal and shortened forms are normalised by the URL parser before the check.', { url: 'http://0x7f.1/mcp' });
+addressVector('url-shortened-ipv4', 'http://127.1/ is 127.0.0.1.', { url: 'http://127.1:8080/mcp' });
+addressVector('url-bracketed-ipv6-loopback', 'A bracketed IPv6 literal.', { url: 'https://[::1]:8443/mcp' });
+addressVector('url-bracketed-ipv4-mapped', 'A bracketed IPv4-mapped literal.', { url: 'https://[::ffff:127.0.0.1]/mcp' });
+addressVector('url-private-literal-is-allowed', 'A private literal is allowed.', { url: 'https://10.20.0.15:9443/mcp' });
+addressVector('url-name-needs-resolution', 'A name is resolved, and every resolved address is checked (host-with-one-bad-address).', { url: 'https://mcp-notes.corp.local:8443/mcp' });
+
+// ---------- connection of a server: first connection, trust modes, approval (CC-249) ----------
+
+const connectionOut = writer('server-connection');
+const connectionVector = (name, description, input, expected) => connectionOut(name, { description, kind: Object.keys(input)[0], input, expected });
+const FP_A = 'sha256:' + 'a1'.repeat(32);
+const FP_B = 'sha256:' + 'b2'.repeat(32);
+const firstTools = [{ name: 'get_issue', risk: 'READ_ONLY' }, { name: 'search_issues', risk: 'READ_ONLY' }, { name: 'update_issue', risk: 'UPDATE' }, { name: 'delete_issue', risk: 'DESTRUCTIVE' }];
+connectionVector('first-connection-all-tools-pending', 'The first connection: every tool is pending_approval, the READ_ONLY ones included, and nothing is listed to anyone until the connection, the policies and the tool are approved.', { firstConnection: { tlsMode: 'ca', tools: firstTools } }, firstConnection({ tlsMode: 'ca', tools: firstTools }));
+connectionVector('first-connection-plain', 'The same for a server reached over http (plain).', { firstConnection: { tlsMode: 'plain', tools: firstTools.slice(0, 1) } }, firstConnection({ tlsMode: 'plain', tools: firstTools.slice(0, 1) }));
+const availability = (name, description, input) => connectionVector(name, description, { availability: input }, toolAvailability(input));
+availability('tool-approved-but-connection-pending', 'An approved tool of a server whose connection waits is hidden and refused as tool_disabled.', { connectionApproved: false, policiesApproved: true, toolStatus: 'approved' });
+availability('tool-approved-but-policies-pending', 'An approved tool of a server whose policies wait is hidden and refused as tool_disabled.', { connectionApproved: true, policiesApproved: false, toolStatus: 'approved' });
+availability('connection-and-policies-approved-tool-pending', 'The tool itself waits.', { connectionApproved: true, policiesApproved: true, toolStatus: 'pending_approval' });
+availability('everything-approved', 'Connection, policies and tool approved: the tool is listed and callable.', { connectionApproved: true, policiesApproved: true, toolStatus: 'approved' });
+availability('everything-approved-server-unreachable', 'An approved server that cannot be reached: the tool stays listed, the call is refused as upstream_unavailable.', { connectionApproved: true, policiesApproved: true, toolStatus: 'approved', serverStatus: 'unreachable' });
+availability('everything-approved-certificate-changed', 'A pinned server presents another certificate: the call is refused as upstream_unavailable until an administrator approves the new one.', { connectionApproved: true, policiesApproved: true, toolStatus: 'approved', serverStatus: 'certificate_changed' });
+const check = (name, description, input) => connectionVector(name, description, { check: input }, connectionCheck(input));
+check('pinned-same-certificate', 'A pinned server presents the pinned certificate: connected.', { approved: { tlsMode: 'pinned', fingerprint: FP_A }, presented: { fingerprint: FP_A, validatesAsCa: false } });
+check('pinned-other-certificate', 'A pinned server presents another certificate: the server is unreachable (certificate_changed) and the new certificate is recorded for approval. There is no chain or hostname check to fall back on.', { approved: { tlsMode: 'pinned', fingerprint: FP_A }, presented: { fingerprint: FP_B, validatesAsCa: false } });
+check('pinned-other-certificate-now-valid-as-ca', 'The new certificate of a pinned server validates as ca: the proposal becomes ca, but it is still not accepted without approval.', { approved: { tlsMode: 'pinned', fingerprint: FP_A }, presented: { fingerprint: FP_B, validatesAsCa: true } });
+check('ca-renewal-needs-nothing', 'A ca server renews its certificate: still connected, the displayed fingerprint is refreshed without approval.', { approved: { tlsMode: 'ca', fingerprint: FP_A }, presented: { fingerprint: FP_B, validatesAsCa: true } });
+check('ca-same-certificate', 'A ca server, same certificate.', { approved: { tlsMode: 'ca', fingerprint: FP_A }, presented: { fingerprint: FP_A, validatesAsCa: true } });
+check('ca-no-longer-validates', 'A ca server whose certificate no longer validates (expired, or the CA left the trust, or the name does not match): certificate_changed with the proposal pinned.', { approved: { tlsMode: 'ca', fingerprint: FP_A }, presented: { fingerprint: FP_B, validatesAsCa: false } });
+check('plain-checks-nothing', 'A plain server has no certificate to check.', { approved: { tlsMode: 'plain', fingerprint: null }, presented: { fingerprint: null, validatesAsCa: false } });
+const approve = (name, description, input) => connectionVector(name, description, { approve: input }, approveConnectionDecision(input));
+approve('approve-pin-self-signed', 'The administrator pins a self-signed certificate that was proposed as pinned.', { pending: { tlsMode: 'pinned', fingerprint: FP_A, validatesAsCa: false }, body: { tlsMode: 'pinned', fingerprint: FP_A } });
+approve('approve-ca-as-proposed', 'The proposed mode ca, accepted.', { pending: { tlsMode: 'ca', fingerprint: FP_A, validatesAsCa: true }, body: { tlsMode: 'ca', fingerprint: FP_A } });
+approve('approve-pinned-instead-of-ca', 'A stricter choice than the proposal is allowed: pinned although the certificate validates as ca.', { pending: { tlsMode: 'ca', fingerprint: FP_A, validatesAsCa: true }, body: { tlsMode: 'pinned', fingerprint: FP_A } });
+approve('approve-ca-that-does-not-validate', 'ca cannot be chosen for a certificate that does not validate: 422 tls_mode_not_allowed.', { pending: { tlsMode: 'pinned', fingerprint: FP_A, validatesAsCa: false }, body: { tlsMode: 'ca', fingerprint: FP_A } });
+approve('approve-another-certificate-than-shown', 'The certificate changed after the administrator looked: 409 connection_changed, nothing is approved.', { pending: { tlsMode: 'pinned', fingerprint: FP_B, validatesAsCa: false }, body: { tlsMode: 'pinned', fingerprint: FP_A } });
+approve('approve-nothing-pending', '409 no_pending_connection.', { pending: null, body: { tlsMode: 'pinned', fingerprint: FP_A } });
+approve('approve-plain', 'plain for an http address of a server that was added with allowPlainHttp.', { pending: { tlsMode: 'plain', fingerprint: null, validatesAsCa: false }, body: { tlsMode: 'plain', fingerprint: null }, scheme: 'http', addedWithAllowPlainHttp: true });
+approve('approve-plain-without-the-flag', 'plain without allowPlainHttp is refused (it cannot even be added without the flag, so this guards a record that lost it).', { pending: { tlsMode: 'plain', fingerprint: null, validatesAsCa: false }, body: { tlsMode: 'plain', fingerprint: null }, scheme: 'http', addedWithAllowPlainHttp: false });
+approve('approve-plain-for-https', 'plain is never accepted for an https address.', { pending: { tlsMode: 'pinned', fingerprint: FP_A, validatesAsCa: false }, body: { tlsMode: 'plain', fingerprint: null } });
 
 // ---------- failure of an instance behind the balancer (CC-204) ----------
 

@@ -1,0 +1,10 @@
+{
+  "description": "A name is resolved, and every resolved address is checked (host-with-one-bad-address).",
+  "input": {
+    "url": "https://mcp-notes.corp.local:8443/mcp"
+  },
+  "expected": {
+    "needsResolution": true,
+    "host": "mcp-notes.corp.local"
+  }
+}

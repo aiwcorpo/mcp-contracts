@@ -1,0 +1,23 @@
+{
+  "description": "The new certificate of a pinned server validates as ca: the proposal becomes ca, but it is still not accepted without approval.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "pinned",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "presented": {
+        "fingerprint": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "validatesAsCa": true
+      }
+    }
+  },
+  "expected": {
+    "status": "certificate_changed",
+    "pendingConnection": {
+      "tlsMode": "ca",
+      "reason": "certificate_changed"
+    }
+  }
+}

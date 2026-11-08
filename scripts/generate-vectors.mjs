@@ -4,8 +4,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { definitionHash, manifestEntryHash, policiesHash } from './lib/definition-hash.mjs';
-import { policyDataGate } from './lib/policy-data-gate.mjs';
-import { registrationDecision } from './lib/registry-approval.mjs';
+import { gatewayCall, policyDataGate, pushDecision } from './lib/policy-data-gate.mjs';
 import { path } from './lib/contracts.mjs';
 import { credentialTypeCheck } from './lib/credential-type-check.mjs';
 import { openSearchPattern, QueryError, renderCql, renderJql, resolveIndexArgument, resolveIndexNames } from './lib/query-rendering.mjs';
@@ -587,9 +586,21 @@ audit('gateway-policy-deny', 'Gateway policy decision: deny by forbid.', {
   outcome: 'denied', errorCode: 'access_denied', argsLength: 64,
 }, true);
 const adminSub = '3b0d6f2e-91c4-4d7a-8a52-6c1e4f7a9d10';
-audit('gateway-registry-definition-registered', 'The pipeline registered a manifest; every definition it carried is approved by that registration, one event per tool (CC-133).', {
-  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'create_issue',
-  reason: 'definition_registered', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
+const FPA = 'sha256:' + 'e5'.repeat(32);
+audit('gateway-server-connection-approved', 'An administrator approved the connection of a server: the mode and the fingerprint of the certificate, never the certificate (CC-249).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
+  reason: 'server_connection_approved', tlsMode: 'pinned', fingerprint: FPA, outcome: 'ok',
+}, true);
+audit('gateway-server-connection-changed', 'A pinned server presented another certificate: the new one is recorded for approval (CC-249).', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-notes',
+  reason: 'server_connection_changed', tlsMode: 'pinned', fingerprint: FPA, outcome: 'ok',
+}, true);
+audit('gateway-server-connection-bad-fingerprint', 'fingerprint is sha256 of the DER in lower-case hex without colons.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-notes',
+  reason: 'server_connection_changed', tlsMode: 'pinned', fingerprint: 'AA:BB:CC', outcome: 'ok',
+}, false);
+audit('server-authentication-denied-wrong-purpose', 'A server refused a token whose purpose is not the one of the endpoint, for example a call token presented to POST /.well-known/mcp-policy-data (CC-249).', {
+  ...auditBase, component: 'server', componentId: 'mcp-jira', event: 'authentication', decision: 'deny', reason: 'wrong_purpose', outcome: 'denied', errorCode: 'unauthenticated',
 }, true);
 audit('gateway-registry-definition-approved', 'An administrator approved a pending definition; sub is the administrator, definitionHash the approved hash (CC-133).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'create_issue',
@@ -619,7 +630,7 @@ audit('gateway-override-removed', 'An override was removed: the hash of the remo
 }, true);
 audit('gateway-server-updated', 'A PATCH of a server: the names of the changed fields, not their values.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
-  reason: 'server_updated', changedFields: ['internalUrl', 'enabled'], outcome: 'ok',
+  reason: 'server_updated', changedFields: ['credential', 'enabled'], outcome: 'ok',
 }, true);
 audit('gateway-server-updated-unknown-field', 'changedFields names only fields that a PATCH can change.', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-notes',
@@ -633,7 +644,7 @@ audit('gateway-registry-tool-removed', 'A tool left the registered manifest (CC-
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'delete_issue',
   reason: 'tool_removed', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
 }, true);
-audit('gateway-registry-definition-submitted', 'The pipeline registered an UPDATE tool: it waits for an administrator (CC-133).', {
+audit('gateway-registry-definition-submitted', 'A pulled manifest left an UPDATE tool pending: it waits for an administrator (CC-133, CC-249).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', server: 'mcp-jira', tool: 'update_issue',
   reason: 'definition_submitted', definitionHash: 'sha256:'+'c3'.repeat(32), outcome: 'ok',
 }, true);
@@ -1764,42 +1775,43 @@ toolError('invalid-field-of-other-code', 'connectUrl belongs to credential_requi
 toolError('invalid-unknown-code', 'Code outside C10.', { error: 'forbidden', ...safe('Forbidden.') }, false);
 toolError('invalid-missing-message', 'message is required.', { error: 'not_found_or_denied' }, false);
 
-// ---------- policy data gate (7.0.0) ----------
+// ---------- policy data gate (7.0.0, push model CC-249) ----------
 {
   mkdirSync(path('test-vectors', 'policy-data-gate'), { recursive: true });
   const OWN = 'sha256:' + 'a'.repeat(64);
   const OTHER = 'sha256:' + 'b'.repeat(64);
   const data = (revision, approvedPoliciesHash, overridesValid = true) => ({ revision, ...(approvedPoliciesHash !== undefined && { approvedPoliciesHash }), overridesValid });
   const gate = (name, description, input) => write('policy-data-gate', `${name}.json`, { description, input, expected: policyDataGate(input) });
-  gate('approved-and-current', 'The hash of the server own policies and resource types is the approved one and the data is as new as the token: the call is evaluated.', { ownHash: OWN, held: data(41, OWN), prv: 41, refreshed: null });
-  gate('no-prv-in-token', 'A token without prv leaves the held data in use.', { ownHash: OWN, held: data(41, OWN), prv: null, refreshed: null });
-  gate('nothing-approved', 'The gateway has approved nothing for this server (no approvedPoliciesHash): every call is refused.', { ownHash: OWN, held: data(41), prv: 41, refreshed: null });
-  gate('own-policies-differ', 'The server was deployed with other policies than the approved ones: every call is refused until an administrator approves them.', { ownHash: OTHER, held: data(41, OWN), prv: 41, refreshed: null });
-  gate('no-data-yet', 'A server that has no policy data refuses.', { ownHash: OWN, held: null, prv: null, refreshed: null });
-  gate('prv-newer-refresh-ok', 'The token carries a newer revision: the server refreshes before evaluating, and the refreshed data decides.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: data(41, OWN) });
-  gate('prv-newer-refresh-failed', 'The token carries a newer revision and the refresh failed: refuse, do not evaluate with the older data.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: null });
-  gate('prv-newer-refresh-returns-older', 'The refresh returned data older than the token revision (a stale gateway instance): refuse.', { ownHash: OWN, held: data(40, OWN), prv: 42, refreshed: data(41, OWN) });
-  gate('prv-newer-refresh-unapproves', 'After the refresh the policies are no longer approved: refuse.', { ownHash: OWN, held: data(40, OWN), prv: 41, refreshed: data(41) });
-  gate('override-fails-validation', 'An override that does not validate against the composed schema of the server: the server refuses every call.', { ownHash: OWN, held: data(41, OWN, false), prv: 41, refreshed: null });
+  gate('approved-and-current', 'The hash of the server own policies and resource types is the approved one and the data is as new as the token: the call is evaluated.', { ownHash: OWN, held: data(41, OWN), prv: 41 });
+  gate('no-prv-in-token', 'A token without prv leaves the held data in use.', { ownHash: OWN, held: data(41, OWN), prv: null });
+  gate('token-older-than-data', 'The token carries an older revision than the data held (a gateway instance that is behind): the held data is newer, so the call is evaluated with it.', { ownHash: OWN, held: data(42, OWN), prv: 41 });
+  gate('nothing-approved', 'The gateway has approved nothing for this server (no approvedPoliciesHash): every call is refused as upstream_unavailable and the gateway does not push.', { ownHash: OWN, held: data(41), prv: 41 });
+  gate('own-policies-differ', 'The server was deployed with other policies than the approved ones: every call is refused as upstream_unavailable until an administrator approves them.', { ownHash: OTHER, held: data(41, OWN), prv: 41 });
+  gate('override-fails-validation', 'An override that does not validate against the composed schema of the server: the server refuses every call as upstream_unavailable.', { ownHash: OWN, held: data(41, OWN, false), prv: 41 });
+  gate('no-data-yet', 'A server that holds no policy data (it was restarted, or never received a push) answers policy_data_stale: the gateway pushes and repeats the call once.', { ownHash: OWN, held: null, prv: null });
+  gate('no-data-yet-with-prv', 'The same with a revision in the token.', { ownHash: OWN, held: null, prv: 41 });
+  gate('prv-newer-than-held', 'The token carries a newer revision than the data held: the server does not evaluate with the older data and answers policy_data_stale.', { ownHash: OWN, held: data(40, OWN), prv: 41 });
+  gate('stale-wins-over-refusal', 'Data that is behind decides nothing, not even a refusal: the older data says the policies differ, but a push may change that, so the answer is policy_data_stale.', { ownHash: OTHER, held: data(40, OWN), prv: 41 });
 }
 
-// ---------- registration and additionalGroup (CC-245) ----------
+// ---------- policy data push and the retry of the gateway (CC-249) ----------
 {
-  mkdirSync(path('test-vectors', 'registry-approval'), { recursive: true });
-  const H = (c) => 'sha256:' + c.repeat(64);
-  const reg = (name, description, input) => write('registry-approval', `${name}.json`, { description, input, expected: registrationDecision(input) });
-  const entry = (risk, hash, additionalGroup) => ({ risk, definitionHash: H(hash), ...(additionalGroup !== undefined && { additionalGroup }) });
-  const OPS = 'mcp-opensearch-ops';
-  reg('registration-read-only-group-removed', 'A READ_ONLY tool loses its additionalGroup: the commit review alone would widen access, so it waits for an administrator.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'b') });
-  reg('registration-read-only-group-changed', 'A READ_ONLY tool changes its additionalGroup: pending as well.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'b', 'mcp-opensearch-support') });
-  reg('registration-read-only-group-added', 'Adding an additionalGroup where there was none narrows access and follows the normal rule: a READ_ONLY change is approved.', { approved: entry('READ_ONLY', 'a'), groupFloor: null, submitted: entry('READ_ONLY', 'b', OPS) });
-  reg('registration-new-read-only-with-group', 'A new READ_ONLY tool with an additionalGroup is approved by the registration.', { approved: null, groupFloor: null, submitted: entry('READ_ONLY', 'a', OPS) });
-  reg('registration-read-only-group-kept-other-change', 'The group stays and something else changes: the normal rule, approved.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'b', OPS) });
-  reg('registration-unchanged', 'An entry with the same hash stays approved.', { approved: entry('READ_ONLY', 'a'), groupFloor: OPS, submitted: entry('READ_ONLY', 'a', OPS) });
-  reg('registration-update-group-removed', 'An UPDATE tool that loses its group waits, for the group (and it would wait for the change anyway).', { approved: entry('UPDATE', 'a'), groupFloor: OPS, submitted: entry('UPDATE', 'b') });
-  reg('registration-update-new', 'A new UPDATE tool waits for an administrator (CC-097).', { approved: null, groupFloor: null, submitted: entry('UPDATE', 'a') });
-  reg('registration-removed-then-re-added-without-group', 'The tool was removed in one registration and comes back without its group in the next: it is new, but the group floor survives the removal, so it waits for an administrator (CC-246).', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'c') });
-  reg('registration-re-added-with-the-same-group', 'The tool comes back with the group it was approved with: the normal rule, a READ_ONLY tool is approved.', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'c', OPS) });
-  reg('registration-re-added-with-another-group', 'The tool comes back with another group than the floor: it waits for an administrator.', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'c', 'mcp-opensearch-support') });
-  reg('registration-server-recreated-without-group', 'The floor survives deleteServer, like the risk floors: a server created again registers the tool without its group and waits.', { approved: null, groupFloor: OPS, submitted: entry('READ_ONLY', 'd') });
+  const OWN = 'sha256:' + 'a'.repeat(64);
+  const OTHER = 'sha256:' + 'b'.repeat(64);
+  const data = (revision, approvedPoliciesHash, overridesValid = true) => ({ revision, ...(approvedPoliciesHash !== undefined && { approvedPoliciesHash }), overridesValid });
+  mkdirSync(path('test-vectors', 'policy-data-push'), { recursive: true });
+  const push = (name, description, input) => write('policy-data-push', `${name}.json`, { description, input, expected: pushDecision(input) });
+  push('newer-revision-replaces', 'A strictly newer revision replaces the data held.', { held: data(40, OWN), offered: data(41, OWN) });
+  push('first-push', 'A server that holds nothing takes the first push.', { held: null, offered: data(41, OWN) });
+  push('equal-revision-is-not-new', 'The same revision again (a periodic push): 200 with accepted false, the revision held stays.', { held: data(41, OWN), offered: data(41, OWN) });
+  push('older-revision-never-replaces', 'An older revision (a gateway instance that is behind) never moves a server back: accepted false, the revision held stays.', { held: data(42, OWN), offered: data(41, OWN) });
+  const call = (name, description, input) => write('policy-data-push', `${name}.json`, { description, input, expected: gatewayCall(input) });
+  call('call-without-push', 'The server is current: the call goes through at the first attempt and the gateway pushes nothing for it.', { ownHash: OWN, held: data(41, OWN), gateway: data(41, OWN) });
+  call('stale-push-and-retry', 'The server is behind: it answers policy_data_stale, the gateway pushes its data and repeats the call once, which goes through.', { ownHash: OWN, held: data(40, OWN), gateway: data(41, OWN) });
+  call('restarted-server-push-and-retry', 'A restarted server holds no data: the same sequence.', { ownHash: OWN, held: null, gateway: data(41, OWN) });
+  call('push-fails', 'The push does not reach the server: the repeated call is refused again and the client gets upstream_unavailable; there is no third attempt.', { ownHash: OWN, held: data(40, OWN), gateway: data(41, OWN), pushReachesServer: false });
+  call('push-ok-policies-not-approved', 'After the push the data is current but nothing is approved for the server: the second answer is a refusal, not policy_data_stale, so the client gets upstream_unavailable.', { ownHash: OWN, held: data(40, OWN), gateway: data(41) });
+  call('refusal-is-not-retried', 'A current server that refuses because its policies differ from the approved ones: the gateway neither pushes nor repeats.', { ownHash: OTHER, held: data(41, OWN), gateway: data(41, OWN) });
+  call('gateway-behind-the-server', 'The gateway instance that sends the call has an older revision than the server holds (prv is lower): the server evaluates with its newer data, no push.', { ownHash: OWN, held: data(42, OWN), gateway: data(41, OWN) });
 }
+

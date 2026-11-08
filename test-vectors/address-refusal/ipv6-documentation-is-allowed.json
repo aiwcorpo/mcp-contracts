@@ -1,0 +1,9 @@
+{
+  "description": "A global IPv6 address.",
+  "input": {
+    "address": "2001:db8::1"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

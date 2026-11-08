@@ -1727,7 +1727,7 @@ export const portalBffExamples: OperationExamples[] = [
                 "definitionHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
                 "status": "pending_approval",
                 "change": "new",
-                "source": "ci",
+                "source": "manifest",
                 "approvedInVersion": null
               }
             ]
@@ -1840,7 +1840,7 @@ export const portalBffExamples: OperationExamples[] = [
           "pendingHash": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
           "approvedInVersion": null,
           "pendingVersion": "1.4.0",
-          "source": "ci"
+          "source": "manifest"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2096,7 +2096,8 @@ export const portalBffExamples: OperationExamples[] = [
           {
             "serverId": "mcp-notes",
             "system": "notes",
-            "internalUrl": "https://mcp-notes.internal:8443/mcp",
+            "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+            "allowPlainHttp": false,
             "credential": {
               "required": true,
               "acceptedTypes": [
@@ -2105,7 +2106,35 @@ export const portalBffExamples: OperationExamples[] = [
               "type": "user-oauth"
             },
             "enabled": true,
-            "adapter": false
+            "adapter": false,
+            "status": "certificate_changed",
+            "lastCheckedAt": "2026-11-08T09:30:00Z",
+            "lastError": "certificate_changed",
+            "connection": {
+              "tlsMode": "pinned",
+              "fingerprint": "sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb",
+              "subject": "CN=mcp-notes",
+              "issuer": "CN=mcp-notes",
+              "sans": [
+                "mcp-notes"
+              ],
+              "notAfter": "2026-12-01T00:00:00Z",
+              "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+              "approvedAt": "2026-11-03T08:00:00Z"
+            },
+            "pendingConnection": {
+              "tlsMode": "pinned",
+              "fingerprint": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
+              "subject": "CN=mcp-notes",
+              "issuer": "CN=mcp-notes",
+              "sans": [
+                "mcp-notes"
+              ],
+              "notAfter": "2027-11-08T00:00:00Z",
+              "validatesAsCa": false,
+              "reason": "certificate_changed",
+              "detectedAt": "2026-11-08T09:30:00Z"
+            }
           }
         ],
         "headers": {
@@ -2156,7 +2185,8 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "serverId": "mcp-notes",
           "system": "notes",
-          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -2165,7 +2195,24 @@ export const portalBffExamples: OperationExamples[] = [
             "type": "user-oauth"
           },
           "enabled": true,
-          "adapter": false
+          "adapter": false,
+          "status": "pending_approval",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": null,
+          "pendingConnection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "validatesAsCa": true,
+            "reason": "first_connection",
+            "detectedAt": "2026-11-08T09:30:00Z"
+          }
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
@@ -2215,11 +2262,84 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 422,
-        "name": "server_id_mismatch",
+        "name": "address_refused",
         "body": {
           "error": "server_rejected",
-          "reason": "server_id_mismatch",
-          "message": "serverId must be mcp-<system>"
+          "reason": "address_refused",
+          "message": "169.254.169.254 is a link-local address"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "plain_http_not_allowed",
+        "body": {
+          "error": "server_rejected",
+          "reason": "plain_http_not_allowed",
+          "message": "http needs allowPlainHttp"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "tls_handshake_failed",
+        "body": {
+          "error": "server_rejected",
+          "reason": "tls_handshake_failed",
+          "message": "the server does not speak TLS on this port"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "manifest_unreachable",
+        "body": {
+          "error": "server_rejected",
+          "reason": "manifest_unreachable",
+          "message": "GET /.well-known/mcp-manifest answered 404"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "manifest_invalid",
+        "body": {
+          "error": "server_rejected",
+          "reason": "manifest_invalid",
+          "manifestReason": "environment_mismatch",
+          "message": "manifest of mcp-notes declares environment dev"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "system_reserved",
+        "body": {
+          "error": "server_rejected",
+          "reason": "system_reserved",
+          "message": "gateway is a reserved system id"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "namespace_conflict",
+        "body": {
+          "error": "server_rejected",
+          "reason": "namespace_conflict",
+          "message": "the namespace Notes belongs to mcp-wiki"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -2249,7 +2369,8 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "serverId": "mcp-notes",
           "system": "notes",
-          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -2258,7 +2379,23 @@ export const portalBffExamples: OperationExamples[] = [
             "type": "user-oauth"
           },
           "enabled": true,
-          "adapter": false
+          "adapter": false,
+          "status": "connected",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "approvedAt": "2026-11-06T10:00:00Z"
+          },
+          "pendingConnection": null
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
@@ -2395,7 +2532,8 @@ export const portalBffExamples: OperationExamples[] = [
         "body": {
           "serverId": "mcp-notes",
           "system": "notes",
-          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -2404,7 +2542,23 @@ export const portalBffExamples: OperationExamples[] = [
             "type": "user-oauth"
           },
           "enabled": false,
-          "adapter": false
+          "adapter": false,
+          "status": "connected",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "approvedAt": "2026-11-06T10:00:00Z"
+          },
+          "pendingConnection": null
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
@@ -2464,7 +2618,7 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 422,
-        "name": "server_id_mismatch",
+        "name": "credential_type_not_accepted",
         "body": {
           "error": "server_rejected",
           "reason": "credential_type_not_accepted",
@@ -2479,6 +2633,234 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "required",
         "body": {
           "error": "precondition_required"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "approveAdminServerConnection",
+    "method": "POST",
+    "route": "/api/v1/admin/servers/{serverId}/connection/approve",
+    "defaultExample": "pinned",
+    "responses": [
+      {
+        "status": 200,
+        "name": "pinned",
+        "body": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "https://10.20.0.15:9443/mcp",
+          "allowPlainHttp": false,
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": true,
+          "adapter": false,
+          "status": "connected",
+          "lastCheckedAt": "2026-11-08T09:35:00Z",
+          "lastError": null,
+          "connection": {
+            "tlsMode": "pinned",
+            "fingerprint": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
+            "subject": "CN=mcp-notes",
+            "issuer": "CN=mcp-notes",
+            "sans": [
+              "mcp-notes",
+              "10.20.0.15"
+            ],
+            "notAfter": "2027-11-08T00:00:00Z",
+            "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "approvedAt": "2026-11-08T09:35:00Z"
+          },
+          "pendingConnection": null
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 409,
+        "name": "no_pending_connection",
+        "body": {
+          "error": "no_pending_connection"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 409,
+        "name": "connection_changed",
+        "body": {
+          "error": "connection_changed"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "tls_mode_not_allowed",
+        "body": {
+          "error": "server_rejected",
+          "reason": "tls_mode_not_allowed",
+          "message": "the certificate does not validate as ca for the host"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "refreshAdminServer",
+    "method": "POST",
+    "route": "/api/v1/admin/servers/{serverId}/refresh",
+    "defaultExample": "unreachable",
+    "responses": [
+      {
+        "status": 200,
+        "name": "unreachable",
+        "body": {
+          "serverId": "mcp-notes",
+          "system": "notes",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
+          "credential": {
+            "required": true,
+            "acceptedTypes": [
+              "user-oauth"
+            ],
+            "type": "user-oauth"
+          },
+          "enabled": true,
+          "adapter": false,
+          "status": "unreachable",
+          "lastCheckedAt": "2026-11-08T09:40:00Z",
+          "lastError": "tls_handshake_failed",
+          "connection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "approvedAt": "2026-11-06T10:00:00Z"
+          },
+          "pendingConnection": null
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "ETag": "\"Zx8Tq2LmWk93vNpA\""
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
@@ -3078,7 +3460,7 @@ export const portalBffExamples: OperationExamples[] = [
           ],
           "pendingHash": "sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8",
           "pendingVersion": "1.4.0",
-          "source": "ci",
+          "source": "manifest",
           "pendingPolicies": {
             "namespace": "Jira",
             "schema": "namespace Jira {\n  entity Project { key: String, category: String, scopes: Set<ResourceScope> };\n  entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };\n  action \"read\", \"update\" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };\n}\n",

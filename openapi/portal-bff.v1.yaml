@@ -1456,7 +1456,7 @@ paths:
                           definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
                           change: new
-                          source: ci
+                          source: manifest
                           approvedInVersion: null
                 opensearch_disabled:
                   value:
@@ -1528,7 +1528,7 @@ paths:
                     pendingHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                     approvedInVersion: null
                     pendingVersion: 1.4.0
-                    source: ci
+                    source: manifest
                 changed_on_server:
                   summary: A running server presented another definition than the approved one (source server)
                   value:
@@ -1723,13 +1723,36 @@ paths:
                   value:
                       - serverId: mcp-notes
                         system: notes
-                        internalUrl: https://mcp-notes.internal:8443/mcp
+                        internalUrl: https://mcp-notes.corp.local:8443/mcp
+                        allowPlainHttp: false
                         credential:
                           required: true
                           acceptedTypes: [user-oauth]
                           type: user-oauth
                         enabled: true
                         adapter: false
+                        status: certificate_changed
+                        lastCheckedAt: '2026-11-08T09:30:00Z'
+                        lastError: certificate_changed
+                        connection:
+                          tlsMode: pinned
+                          fingerprint: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                          subject: CN=mcp-notes
+                          issuer: CN=mcp-notes
+                          sans: [mcp-notes]
+                          notAfter: '2026-12-01T00:00:00Z'
+                          approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                          approvedAt: '2026-11-03T08:00:00Z'
+                        pendingConnection:
+                          tlsMode: pinned
+                          fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                          subject: CN=mcp-notes
+                          issuer: CN=mcp-notes
+                          sans: [mcp-notes]
+                          notAfter: '2027-11-08T00:00:00Z'
+                          validatesAsCa: false
+                          reason: certificate_changed
+                          detectedAt: '2026-11-08T09:30:00Z'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1739,7 +1762,12 @@ paths:
     post:
       tags: [admin]
       operationId: createAdminServer
-      summary: "Add a server to the registry (proxy to C5): no restart, no tools until its manifest is approved."
+      summary: "Add a server by its address (proxy to C5): the gateway probes it and pulls its manifest; no tools until connection, policies and tools are approved."
+      description: |
+        The body is the address (`internalUrl`) and, optionally, `allowPlainHttp` and `credential`; nothing else, because the gateway reads the rest from the server (CC-249). Needs a fresh MFA
+        (`step_up_required` otherwise); the gateway checks it too. The answer is the server in `status: pending_approval` with a `pendingConnection` that the portal shows on the card (tls mode proposed,
+        fingerprint, subject, issuer, SANs, expiry; a warning for `plain`). The refusals are `422` with the reasons `address_refused`, `plain_http_not_allowed`, `tls_handshake_failed`,
+        `manifest_unreachable`, `manifest_invalid`, `system_reserved` and `namespace_conflict`, and `409 server_exists`.
       security:
         - session: []
           csrf: []
@@ -1748,17 +1776,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfigCreate'
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerAddRequest'
             examples:
                 notes:
                   value:
-                      serverId: mcp-notes
-                      system: notes
-                      internalUrl: https://mcp-notes.internal:8443/mcp
-                      credential:
-                        required: true
-                        acceptedTypes: [user-oauth]
-                        type: user-oauth
+                      internalUrl: https://mcp-notes.corp.local:8443/mcp
       responses:
         '201':
           headers:
@@ -1766,7 +1788,7 @@ paths:
               $ref: '#/components/headers/RequestId'
             ETag:
               $ref: '#/components/headers/DocumentETag'
-          description: Added.
+          description: Added, waiting for the approval of the connection, policies and tools.
           content:
             application/json:
               schema:
@@ -1776,13 +1798,28 @@ paths:
                   value:
                       serverId: mcp-notes
                       system: notes
-                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      internalUrl: https://mcp-notes.corp.local:8443/mcp
+                      allowPlainHttp: false
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]
                         type: user-oauth
                       enabled: true
                       adapter: false
+                      status: pending_approval
+                      lastCheckedAt: '2026-11-08T09:30:00Z'
+                      lastError: null
+                      connection: null
+                      pendingConnection:
+                        tlsMode: ca
+                        fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                        subject: CN=mcp-notes.corp.local
+                        issuer: CN=Corp Issuing CA 2
+                        sans: [mcp-notes.corp.local]
+                        notAfter: '2027-03-01T12:00:00Z'
+                        validatesAsCa: true
+                        reason: first_connection
+                        detectedAt: '2026-11-08T09:30:00Z'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1812,11 +1849,42 @@ paths:
               schema:
                 $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerRejected'
               examples:
-                server_id_mismatch:
+                address_refused:
                   value:
                       error: server_rejected
-                      reason: server_id_mismatch
-                      message: serverId must be mcp-<system>
+                      reason: address_refused
+                      message: 169.254.169.254 is a link-local address
+                plain_http_not_allowed:
+                  value:
+                      error: server_rejected
+                      reason: plain_http_not_allowed
+                      message: http needs allowPlainHttp
+                tls_handshake_failed:
+                  value:
+                      error: server_rejected
+                      reason: tls_handshake_failed
+                      message: the server does not speak TLS on this port
+                manifest_unreachable:
+                  value:
+                      error: server_rejected
+                      reason: manifest_unreachable
+                      message: GET /.well-known/mcp-manifest answered 404
+                manifest_invalid:
+                  value:
+                      error: server_rejected
+                      reason: manifest_invalid
+                      manifestReason: environment_mismatch
+                      message: manifest of mcp-notes declares environment dev
+                system_reserved:
+                  value:
+                      error: server_rejected
+                      reason: system_reserved
+                      message: gateway is a reserved system id
+                namespace_conflict:
+                  value:
+                      error: server_rejected
+                      reason: namespace_conflict
+                      message: the namespace Notes belongs to mcp-wiki
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/servers/{serverId}:
@@ -1845,13 +1913,27 @@ paths:
                   value:
                       serverId: mcp-notes
                       system: notes
-                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      internalUrl: https://mcp-notes.corp.local:8443/mcp
+                      allowPlainHttp: false
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]
                         type: user-oauth
                       enabled: true
                       adapter: false
+                      status: connected
+                      lastCheckedAt: '2026-11-08T09:30:00Z'
+                      lastError: null
+                      connection:
+                        tlsMode: ca
+                        fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                        subject: CN=mcp-notes.corp.local
+                        issuer: CN=Corp Issuing CA 2
+                        sans: [mcp-notes.corp.local]
+                        notAfter: '2027-03-01T12:00:00Z'
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: '2026-11-06T10:00:00Z'
+                      pendingConnection: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1868,7 +1950,7 @@ paths:
       summary: "Change the connection settings of a server (proxy to C5; enabled false takes it out of service)."
       description: |
         Every change needs a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise) except a body that only sets `enabled: false`; the gateway checks it too.
-        `tlsName` and `adapter` cannot be changed.
+        `internalUrl`, `allowPlainHttp` and `adapter` cannot be changed; a new certificate at the same address is approved with `approveAdminServerConnection`.
       security:
         - session: []
           csrf: []
@@ -1901,13 +1983,27 @@ paths:
                   value:
                       serverId: mcp-notes
                       system: notes
-                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      internalUrl: https://mcp-notes.corp.local:8443/mcp
+                      allowPlainHttp: false
                       credential:
                         required: true
                         acceptedTypes: [user-oauth]
                         type: user-oauth
                       enabled: false
                       adapter: false
+                      status: connected
+                      lastCheckedAt: '2026-11-08T09:30:00Z'
+                      lastError: null
+                      connection:
+                        tlsMode: ca
+                        fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                        subject: CN=mcp-notes.corp.local
+                        issuer: CN=Corp Issuing CA 2
+                        sans: [mcp-notes.corp.local]
+                        notAfter: '2027-03-01T12:00:00Z'
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: '2026-11-06T10:00:00Z'
+                      pendingConnection: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1926,7 +2022,7 @@ paths:
               schema:
                 $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerRejected'
               examples:
-                server_id_mismatch:
+                credential_type_not_accepted:
                   value:
                       error: server_rejected
                       reason: credential_type_not_accepted
@@ -1956,6 +2052,171 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers/{serverId}/connection/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    post:
+      tags: [admin]
+      operationId: approveAdminServerConnection
+      summary: "Approve how the gateway trusts a server (proxy to C5): the first connection or a changed certificate."
+      description: |
+        The portal sends the `fingerprint` of the pending connection that the administrator saw on the card and the `tlsMode` the administrator chose (the proposed one, or `pinned`
+        instead of a proposed `ca`). Needs a fresh MFA (`step_up_required` with `stepUpUrl` otherwise); the gateway checks it too. `409 connection_changed` means the pending
+        connection is no longer the one that was shown (reload the card); `409 no_pending_connection` means nothing waits. Approving the connection approves neither the policies nor the tools.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ConnectionApproveRequest'
+            examples:
+                pin_self_signed:
+                  value:
+                      tlsMode: pinned
+                      fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: The server after the approval.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfig'
+              examples:
+                pinned:
+                  value:
+                      serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://10.20.0.15:9443/mcp
+                      allowPlainHttp: false
+                      credential:
+                        required: true
+                        acceptedTypes: [user-oauth]
+                        type: user-oauth
+                      enabled: true
+                      adapter: false
+                      status: connected
+                      lastCheckedAt: '2026-11-08T09:35:00Z'
+                      lastError: null
+                      connection:
+                        tlsMode: pinned
+                        fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                        subject: CN=mcp-notes
+                        issuer: CN=mcp-notes
+                        sans: [mcp-notes, 10.20.0.15]
+                        notAfter: '2027-11-08T00:00:00Z'
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: '2026-11-08T09:35:00Z'
+                      pendingConnection: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Nothing is pending, or the pending connection is not the one that was approved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                no_pending_connection:
+                  value:
+                      error: no_pending_connection
+                connection_changed:
+                  value:
+                      error: connection_changed
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The mode asked for is not allowed for the pending connection.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerRejected'
+              examples:
+                tls_mode_not_allowed:
+                  value:
+                      error: server_rejected
+                      reason: tls_mode_not_allowed
+                      message: the certificate does not validate as ca for the host
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/servers/{serverId}/refresh:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+    post:
+      tags: [admin]
+      operationId: refreshAdminServer
+      summary: "Probe a server again and pull its manifest now (proxy to C5)."
+      description: |
+        The "Refresh" button of the card. A failure to reach the server is not an HTTP error: the answer is `200` with `status` `unreachable`, `certificate_changed` or `manifest_invalid` and
+        `lastError`. Needs no fresh MFA because it approves nothing.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: The server after the check.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ServerConfig'
+              examples:
+                unreachable:
+                  value:
+                      serverId: mcp-notes
+                      system: notes
+                      internalUrl: https://mcp-notes.corp.local:8443/mcp
+                      allowPlainHttp: false
+                      credential:
+                        required: true
+                        acceptedTypes: [user-oauth]
+                        type: user-oauth
+                      enabled: true
+                      adapter: false
+                      status: unreachable
+                      lastCheckedAt: '2026-11-08T09:40:00Z'
+                      lastError: tls_handshake_failed
+                      connection:
+                        tlsMode: ca
+                        fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                        subject: CN=mcp-notes.corp.local
+                        issuer: CN=Corp Issuing CA 2
+                        sans: [mcp-notes.corp.local]
+                        notAfter: '2027-03-01T12:00:00Z'
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: '2026-11-06T10:00:00Z'
+                      pendingConnection: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2334,7 +2595,7 @@ paths:
                           idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
                       pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                       pendingVersion: 1.4.0
-                      source: ci
+                      source: manifest
                       pendingPolicies:
                         namespace: Jira
                         schema: |

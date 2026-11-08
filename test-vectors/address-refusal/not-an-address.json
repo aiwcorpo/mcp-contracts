@@ -1,0 +1,10 @@
+{
+  "description": "Text that is not an address is refused (a resolver never returns it).",
+  "input": {
+    "address": "127.0.0.1.nip.io"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "not_an_address"
+  }
+}

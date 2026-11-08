@@ -1,0 +1,20 @@
+{
+  "description": "A tool reported below the risk floor is pending with riskLowered: only acceptRiskLowering on approval lifts it (CC-167).",
+  "input": {
+    "approved": {
+      "risk": "UPDATE",
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "riskFloor": "UPDATE"
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "changed",
+    "source": "manifest",
+    "riskLowered": true
+  }
+}

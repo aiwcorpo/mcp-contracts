@@ -1,0 +1,9 @@
+{
+  "description": "A private address is where servers live: 10.20.0.15 is allowed.",
+  "input": {
+    "address": "10.20.0.15"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

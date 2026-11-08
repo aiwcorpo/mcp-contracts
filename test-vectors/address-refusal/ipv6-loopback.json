@@ -1,0 +1,10 @@
+{
+  "description": "Loopback ::1.",
+  "input": {
+    "address": "::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "loopback"
+  }
+}

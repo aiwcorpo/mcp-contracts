@@ -1,0 +1,15 @@
+{
+  "description": "A READ_ONLY tool of the first manifest is pending, not approved: no reviewed commit stands behind a pulled manifest (CC-249).",
+  "input": {
+    "approved": null,
+    "submitted": {
+      "risk": "READ_ONLY",
+      "definitionHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  "expected": {
+    "state": "pending_approval",
+    "change": "new",
+    "source": "manifest"
+  }
+}

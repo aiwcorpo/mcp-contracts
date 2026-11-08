@@ -1,0 +1,11 @@
+{
+  "description": "::ffff:0:0 carries 0.0.0.0.",
+  "input": {
+    "address": "::ffff:0:0"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "unspecified",
+    "judgedAs": "0.0.0.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "description": "The floor of CC-167 for an entry that is not from an adapter is unchanged.",
+  "input": {
+    "entry": {
+      "source": "manifest",
+      "riskLowered": true
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 422,
+    "reason": "risk_lowered"
+  }
+}

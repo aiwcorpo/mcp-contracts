@@ -1,0 +1,11 @@
+{
+  "description": "The deprecated IPv4-compatible form ::127.0.0.1 is judged as 127.0.0.1.",
+  "input": {
+    "address": "::127.0.0.1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "loopback",
+    "judgedAs": "127.0.0.1"
+  }
+}

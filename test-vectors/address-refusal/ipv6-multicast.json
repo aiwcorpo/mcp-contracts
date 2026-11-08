@@ -1,0 +1,10 @@
+{
+  "description": "Multicast ff00::/8.",
+  "input": {
+    "address": "ff02::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "multicast"
+  }
+}

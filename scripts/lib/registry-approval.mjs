@@ -3,7 +3,7 @@
 const RISK_ORDER = { READ_ONLY: 0, UPDATE: 1, DESTRUCTIVE: 2 };
 
 /**
- * `entry` is the pending entry: { source: ci | server | adapter, riskLowered? }. `body` is the ApproveRequest without definitionHash:
+ * `entry` is the pending entry: { source: manifest | server | adapter, riskLowered? }. `body` is the ApproveRequest without definitionHash:
  * { risk?, action?, acceptRiskLowering? }. `floor` is the highest classification given earlier to the tool (null when none).
  * Returns the answer and, on success, the classification stored and the audit reason.
  */
@@ -24,23 +24,18 @@ export function approveDecision({ entry, body = {}, floor = null }) {
 }
 
 /**
- * What a registration (PUT of the manifest of the pipeline) does with one tool (CC-097, CC-133, CC-245, CC-246). `approved` is the approved
- * entry { risk, definitionHash } or null for a new tool (also a tool that was removed earlier); `submitted` is the entry of the manifest
- * { risk, definitionHash, additionalGroup? }; `groupFloor` is the last additionalGroup the tool was approved with, or null/absent when it
- * never had one. The floor is kept after the tool is removed and after deleteServer, like the risk floors (CC-167), so removing a tool and
- * registering it again cannot drop the group. A new or changed READ_ONLY tool is approved by the commit review; UPDATE and DESTRUCTIVE wait
- * for an administrator. CC-245/CC-246: a tool (new or existing) whose additionalGroup is missing or differs from a floor widens access, so
- * it waits for an administrator whatever the risk, and approving it sets the floor to what was approved; adding a group where there was none
- * is a narrowing and follows the normal rule.
+ * What a pulled manifest does with one tool (CC-097, CC-133, CC-249). `approved` is the approved entry { risk, definitionHash } or null for a
+ * new tool (also a tool that was removed earlier); `submitted` is the entry of the manifest { risk, definitionHash, additionalGroup? };
+ * `riskFloor` is the highest risk ever reported for the tool, or null (CC-167). Nothing is approved by a pull: a new or changed tool is
+ * pending_approval whatever its risk, a READ_ONLY tool included, because no reviewed commit stands behind the manifest any more; an entry with the
+ * same hash stays. A tool below the risk floor is pending with riskLowered, which only acceptRiskLowering on approval lifts (CC-167). The group
+ * floor of CC-245 and CC-246 is still kept and set by approval; it decides nothing here because everything that changes is pending.
  */
-export function registrationDecision({ approved, submitted, groupFloor = null }) {
+export function pullDecision({ approved, submitted, riskFloor = null }) {
   if (approved !== null && approved.definitionHash === submitted.definitionHash) return { state: 'approved', change: 'unchanged' };
   const change = approved === null ? 'new' : 'changed';
-  if (groupFloor !== null && submitted.additionalGroup !== groupFloor) {
-    return { state: 'pending_approval', change, pendingReason: 'additional_group_changed' };
-  }
-  if (submitted.risk === 'READ_ONLY') return { state: 'approved', change };
-  return { state: 'pending_approval', change, pendingReason: 'risk' };
+  const riskLowered = riskFloor !== null && RISK_ORDER[submitted.risk] < RISK_ORDER[riskFloor];
+  return { state: 'pending_approval', change, source: 'manifest', ...(riskLowered && { riskLowered: true }) };
 }
 
 // CC-207: risk and action of a classification must fit each other. read is for READ_ONLY only, update for UPDATE, delete for

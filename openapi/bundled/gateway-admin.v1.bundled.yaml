@@ -3,13 +3,12 @@ openapi: 3.1.0
 info:
   title: MCP Gateway Admin API
   version: 7.0.0
-  summary: Contract C5 of the MCP platform (catalog, registry, servers, policy data, activity, read-only confirmation preview).
+  summary: Contract C5 of the MCP platform (catalog, registry, servers and their connection, policy data, activity, read-only confirmation preview).
   description: |
     Callers and their authentication:
 
     - portal BFF: mTLS (CN=mcp-portal-bff) and the user's token exchanged in the IdP for aud=mcp-gateway-admin.
       All "current user" semantics use `sub` of that token.
-    - CI: mTLS with client certificate CN=mcp-registry-ci-<serverId>, one certificate per server pipeline (registry writes, CC-161).
     - offboarding (IGA/HR webhook, helpdesk): mTLS with CN=mcp-offboarding, no token (user purge, CC-155).
     - admin operations additionally require group mcp-platform-admin in the user's token.
 
@@ -30,10 +29,73 @@ info:
     changed with `/admin/v1/servers`; no component has a built-in list of systems, servers or resource types. The policies of a
     server are its own (its manifest carries them, `policiesHash` is approved by an administrator like a tool definition);
     the gateway decides `call` with the platform policies of the contracts (`cedar/platform`) and the overrides of
-    `/admin/v1/policy/overrides`; the mapping of groups to resource scopes is `/admin/v1/policy/scope-mapping`. Servers read
-    all of it from `GET /internal/v1/policy-data`.
+    `/admin/v1/policy/overrides`; the mapping of groups to resource scopes is `/admin/v1/policy/scope-mapping`. The gateway
+    pushes the part that concerns a server to it with `POST /.well-known/mcp-policy-data` (contract C14,
+    `openapi/mcp-server.v1.yaml`); servers never call this API and hold no certificate of the platform.
 
-    **Policy distribution without signatures (7.0.0).** Signed bundles had two-party control (the pipeline signed, the gateway verified); policy data
+    **The gateway connects to servers (CC-249).** An administrator gives only the address of a server (`createServer`:
+    `internalUrl`, optionally `allowPlainHttp` and `credential`). The gateway resolves the host and refuses loopback,
+    link-local (`169.254.0.0/16`, so also `169.254.169.254`, and `fe80::/10`), unspecified and multicast addresses, IPv4-mapped
+    IPv6 forms judged as the IPv4 address they carry; it checks every resolved address, and checks again at connect time
+    against the address it actually connects to (DNS rebinding). It then probes TLS (a handshake without a client certificate,
+    capturing the leaf certificate) and pulls the manifest (`GET /.well-known/mcp-manifest`, C14) with an internal JWT whose
+    purpose is `manifest` (C2). The `serverId` is `mcp-<system>` of that manifest: reserved system ids, a `serverId` that
+    exists and a namespace that another server owns (approved policies) are refused as described on `createServer`. The server
+    is created with `status: pending_approval`, no approved `connection` and a `pendingConnection` that proposes how to trust it.
+    There is no client certificate on either side of this connection and no certificate of the internal CA for a server.
+    Trust is set per server by an administrator with `approveServerConnection` (fresh MFA):
+
+    - `ca`: the chain leads to a CA in the server trust of the gateway (the default truststore of the JVM plus an optional PEM
+      bundle in its configuration) AND the certificate matches the host of `internalUrl` (standard hostname verification).
+      A renewal of the certificate needs nothing. The fields of `connection` describe the last certificate seen and are
+      refreshed without approval.
+    - `pinned`: exactly one leaf certificate, identified by the SHA-256 of its DER encoding (`fingerprint`, format
+      `sha256:<64 lower-case hex>`); no chain and no hostname check. A different certificate makes the server unreachable
+      (`status: certificate_changed`) and records it as `pendingConnection` for approval; the old pin stays in `connection`
+      until then.
+    - `plain`: `http://` only, and only when the server was added with `allowPlainHttp: true`; no TLS to check. The portal shows
+      a warning.
+
+    Tools stay hidden and refused (`tool_disabled`) until the connection AND the policies AND the tool are approved. The gateway
+    pulls the manifest again on `refreshServer` and in its runtime loop (at most every 60 s, the interval of the definition
+    pinning of the README); a changed hash makes the entry `pending_approval` as described below. No pipeline writes to the
+    registry any more: the operations `registerServer` and `submitAdapterManifest` and the client certificates of pipelines and
+    adapters do not exist.
+
+    **Manifest intake (CC-249).** What a pulled manifest does, at add time, on refresh and in the runtime loop. The manifest is the C6 document
+    (`schemas/server-manifest.schema.json`). The gateway recomputes every `definitionHash` (CC-004, CC-005) and `policiesHash`
+    and checks the semantic rules of the README; a manifest with `environment` dev on a gateway in production mode (the
+    default) fails (`environment_mismatch`, CC-138), and so does one whose `credential.acceptedTypes` lacks a credential type
+    that the system allows (`credential_type_mismatch`, CC-159) or mixes service-account with user types (CC-168). The
+    `system` and `serverId` come from the manifest and must be `mcp-<system>`; the address is the one the administrator gave
+    (`internalUrl` of the manifest is informational and ignored). A manifest that fails is never stored: at add time the answer is `422 server_rejected`
+    (`reason: manifest_invalid`, `manifestReason` the cause); on refresh and in the loop the registry keeps what it has and
+    the server shows `lastError: manifest_invalid`.
+
+    Every new or changed tool is `pending_approval` (`change` new or changed, `pendingVersion` the version of the manifest,
+    `source` manifest), a `READ_ONLY` tool included: no tool is approved by being pulled (the review of a commit that
+    used to approve read tools is gone, CC-249), and an entry whose `definitionHash` did not change stays as it is. A tool
+    that the manifest no longer has is removed. A tool whose risk is lower than the risk floor, the highest risk ever reported for it,
+    a pending entry included (CC-167), is pending with `riskLowered: true` and needs `acceptRiskLowering` on approval. The group floor (CC-245,
+    CC-246) is kept and still set by approval. Audit as `admin_change`: `definition_submitted` for every pending entry and
+    `tool_removed`; an approval is `definition_approved` (the reason `definition_registered` is no longer written). The manifest
+    also carries the policy fragment (`policies`, `policiesHash`) and `resourceTypes`: the gateway validates them (the base
+    schema `cedar/mcp.cedarschema` and the fragment compose and validate in strict mode, the fragment declares nothing outside
+    its one namespace, every entity type has `scopes`, no policy mentions `Action::"call"` or `Tool`, the declarations match
+    the schema), reason `policies_invalid` or `resource_types_invalid`. A namespace belongs to the first `serverId` whose
+    policies are approved with it; intake only checks against approved owners (`namespace_conflict`) and claims nothing, so a manifest
+    that arrives first cannot take a namespace before an approval does. When an approval changes or frees the namespace of a
+    server, the mapping entries of the freed namespace are removed and audited (`scope_mapping_entry_removed`), as `deleteServer`
+    does. The union of resource types is built only from approved declarations; an exception while building the union or the
+    scope mapping is a deny with an audit event, never a partial result. A server whose `policiesHash` differs from the
+    approved one is `pending_approval` for its policies: its tools are blocked until an administrator approves them with
+    `approveServerPolicies`; the first manifest of a server needs the same approval. The first manifest of a server also
+    needs `approveServerConnection`. Adapter mode (CC-193, CC-206) is the `source` of the first manifest (`source: adapter`):
+    it is stored as the read-only flag `adapter` of the server and cannot change; a later manifest whose `source` disagrees is
+    refused like any invalid manifest. The tools of an adapter are never approved without the classification of
+    an administrator (`approveTool` with `risk` and `action`).
+
+    **Policy distribution without signatures (7.0.0).** Signed bundles had two-party control (one party signed, the gateway verified); policy data
     served by the gateway does not. The compensating controls are fresh MFA on the widening operations (below), the audit events of every
     change and the approval of `policiesHash`. As an operational practice, a change of the scope mapping and an approval of policies should
     be reviewed by a second person. The revision of the policy data is `max(previous + 1, current epoch milliseconds)`, so a restore of
@@ -41,7 +103,7 @@ info:
 
     **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds AND proof of MFA in the token: `acr` in a list of MFA levels or `amr` containing one of `mfa`, `otp`, `hwk`, `totp` (both lists are configuration of the receiver); `auth_time` alone is not enough, because a fresh password-only login passes it. A token without either proof is not fresh, and the answer is `401 step_up_required`
     (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
-    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `deleteServer` and
+    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `approveServerConnection`, `deleteServer` and
     `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check).
 
     **Malformed input (7.0.0).** Malformed input is `400 invalid_request`: an `If-Match` or `If-None-Match` that is not a well-formed value, and a path id that does not match its pattern (never `404`). A well-formed id that names nothing is `404` (a delete of a system that has none is `204`), and a well-formed `If-Match` that is stale is `412`.
@@ -217,7 +279,7 @@ paths:
                           definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
                           status: pending_approval
                           change: changed
-                          source: ci
+                          source: manifest
                           approvedInVersion: 1.3.0
                         - name: add_comment
                           risk: UPDATE
@@ -250,7 +312,7 @@ paths:
                           definitionHash: sha256:a6d16c1679d3b58d585deb6090032a8b085d4b78a6d9b6cbf6ad7229796524c4
                           status: pending_approval
                           change: new
-                          source: ci
+                          source: manifest
                           approvedInVersion: null
                 opensearch_disabled:
                   value:
@@ -263,452 +325,6 @@ paths:
           $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
-  /admin/v1/registry/servers/{serverId}:
-    parameters:
-      - $ref: "#/components/parameters/ServerId"
-    put:
-      tags:
-        - registry
-      operationId: registerServer
-      x-allowed-client-cn:
-        - mcp-registry-ci-{serverId}
-      summary: Register or update a server manifest (CI).
-      description: |
-        Body is the C6 manifest (schemas/server-manifest.schema.json); `serverId` in the body must equal the path.
-
-        **Identity of the pipeline (CC-161).** The certificate is bound to one server: its CN is `mcp-registry-ci-<serverId>`
-        (for example `mcp-registry-ci-mcp-jira`) and the gateway accepts it only for a `PUT` whose path `serverId` makes the
-        CN exactly `mcp-registry-ci-` followed by that `serverId`: a full, case-sensitive comparison of the whole CN (never a
-        prefix or substring match), on a certificate that has one CN. Any other CN, including the former `mcp-registry-ci`, is `403` and nothing is stored; the
-        gateway audits it as authentication with reason client_certificate_rejected (CC-125). A pipeline of one repository
-        therefore cannot change the registry entry of another server. A per-server CN was chosen over a SAN carrying the
-        serverId because the contract already authorizes by CN (`x-allowed-client-cn`), which needs no second place in
-        the certificate to parse and check.
-
-        **Origin of the body (CC-133).** The body is the manifest built from the reviewed commit (the artifact of the
-        build stage, `target/mcp-manifest.json`), never one fetched from a running server, and the job that calls this
-        operation runs only for the protected branch. Outside dev mode the gateway does not take a manifest from a
-        server by itself and never approves one: a manifest fetched from a server (the bootstrap of the dev stack) exists
-        only in dev mode (README, "Tryb produkcyjny i tryb dev").
-
-        **What the call approves.** The review of the commit is the approval of the tools that cannot change data: a new or
-        changed READ_ONLY tool is approved by this call (status approved, approvedInVersion set to the version of the
-        manifest), and an entry whose definitionHash did not change stays as it is. A new or changed UPDATE or
-        DESTRUCTIVE tool becomes pending_approval (change new or changed, pendingVersion = the version of the manifest, source ci) and
-        is approved only by the approve operation below, by an administrator. A tool missing from the manifest is
-        removed. Audit as admin_change with definitionHash: definition_registered (approved by this call),
-        definition_submitted (left pending) and tool_removed. A definition that differs from the approved one without a
-        deployment is handled by the gateway as described in the README ("Rejestr i przypinanie definicji") and is also
-        pending_approval.
-
-        **Rejections (422 manifest_rejected, with reason).** The gateway recomputes every definitionHash from the entry's
-        definition (CC-004, CC-005) and rejects the manifest when one differs or when a semantic manifest rule of the README
-        fails; a manifest with environment dev on a gateway in production mode (the default) is rejected
-        (environment_mismatch, CC-138); so is a manifest whose `credential.acceptedTypes` does not contain a credential
-        type that the system allows (credential_type_mismatch, CC-159: every type the broker may return for the system
-        must be accepted by the server), or one that mixes service-account with user types (credential_type_mismatch, CC-168). A tool whose risk is lower than the risk floor, the highest risk ever reported
-        for it, a pending entry included (CC-167), does not reject the manifest: that one tool becomes pending_approval
-        (source ci, change as for any entry: new for a tool that was removed and added again, changed otherwise; riskLowered true) and stays hidden and refused as tool_disabled, and the rest of the
-        manifest follows the rules above. Only an administrator can approve it, with acceptRiskLowering true on the approve
-        operation (with a fresh MFA in the portal); the floor then falls to the approved risk. The 422 of this call stays
-        for the other rejections listed here and for a hash that does not match. At
-        start the gateway makes the same checks for the manifests it holds; a held manifest that fails them is not
-        replaced: the server is reported with enabled false and its tools are refused as tool_disabled until a manifest
-        that passes is registered. The binding serverId -> system/internalUrl comes only from the registry of servers (`/admin/v1/servers`), never from
-        the manifest; a manifest that disagrees is rejected with 422 and nothing is stored.
-
-        **Access groups (CC-245).** The gateway keeps a group floor per tool (the last `additionalGroup` it was approved with, kept after the tool is removed and after `deleteServer`). A manifest whose tool, new or existing, has no `additionalGroup` or another one than the floor leaves that tool `pending_approval` whatever its risk, because it widens access, and approval sets the floor; adding a group where there was none is a narrowing and follows the normal rule.
-
-        **Policies (7.0.0).** The manifest carries the policy fragment of the server (`policies`, `policiesHash`) and the
-        declarations of its resource types (`resourceTypes`: id and scope patterns, parent, classification). The gateway
-        validates them (the base schema `cedar/mcp.cedarschema` and the fragment compose and validate in strict mode, the
-        fragment declares nothing outside its one namespace, every entity type has `scopes`, no policy mentions `Action::"call"`
-        or `Tool`, the declarations match the schema) and rejects the manifest with 422 and reason `policies_invalid` or
-        `resource_types_invalid`; a namespace that another `serverId` already owns is `namespace_conflict`. A namespace belongs to the first `serverId` whose policies
-        are approved with it; registration only checks against approved owners and claims nothing, so a manifest that arrives first
-        cannot take a namespace before an approval does. When an approval changes or frees the namespace of a server, the mapping
-        entries of the freed namespace are removed and audited (`scope_mapping_entry_removed`), as `deleteServer` does. The gateway builds the union of resource types only from
-        approved declarations; an exception while building the union or the scope mapping is a deny with an audit event, never a
-        partial result. A server
-        whose `policiesHash` differs from the approved one is `pending_approval` for its policies: its tools are blocked until
-        an administrator approves them with `approveServerPolicies`; the first registration of a server needs the same
-        approval. Policies are never taken from a server that is not in the registry.
-
-        **Adapter mode (CC-206).** For a `serverId` that was created with `adapter: true` (`createServer`) this operation answers `422` (`adapter_mode_mismatch`), and so does a manifest with `source: adapter`: the manifests of an adapter come only through `submitAdapterManifest`. The certificate is checked before the mode, so this `422` is seen only by the holder of the CN of that `serverId`.
-      security:
-        - mtls: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ServerManifest"
-            examples:
-              jira:
-                value:
-                  serverId: mcp-jira
-                  version: 1.4.0
-                  system: jira
-                  internalUrl: https://mcp-jira.internal:8443/mcp/jira
-                  credential:
-                    required: true
-                    acceptedTypes:
-                      - user-oauth
-                      - user-secret
-                  resourceTypes:
-                    - type: Jira::Project
-                      attributes:
-                        - key
-                        - category
-                      idPattern: ^[A-Z][A-Z0-9_]{1,9}$
-                      scopePattern: ^[A-Z][A-Z0-9_]{1,9}$
-                      earlyScopeCheck: true
-                      classification:
-                        attribute: category
-                        kind: string
-                        required: true
-                    - type: Jira::Issue
-                      attributes:
-                        - key
-                      parent: Jira::Project
-                      parentAttribute: project
-                      idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
-                  policies:
-                    namespace: Jira
-                    schema: |
-                      namespace Jira {
-                        entity Project { key: String, category: String, scopes: Set<ResourceScope> };
-                        entity Issue in [Project] { key: String, project: Project, scopes: Set<ResourceScope> };
-                        action "read", "update" appliesTo { principal: [User], resource: [Project, Issue], context: RequestContext };
-                      }
-                    files:
-                      - name: read.cedar
-                        text: |
-                          @id("jira-read")
-                          permit (principal in UserGroup::"mcp-jira-read", action == Jira::Action::"read", resource);
-                  policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
-                  tools:
-                    - name: get_issue
-                      risk: READ_ONLY
-                      action: read
-                      resourceRefs:
-                        - argument: issueKey
-                          type: Jira::Issue
-                      definition:
-                        name: get_issue
-                        title: Get issue
-                        description: Returns one Jira issue by key.
-                        inputSchema:
-                          type: object
-                          properties:
-                            issueKey:
-                              type: string
-                              description: Issue key, e.g. ABC-123
-                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                              maxLength: 32
-                          required:
-                            - issueKey
-                          additionalProperties: false
-                        annotations:
-                          readOnlyHint: true
-                      definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
-                    - name: update_issue
-                      risk: UPDATE
-                      action: update
-                      resourceRefs:
-                        - argument: issueKey
-                          type: Jira::Issue
-                      definition:
-                        name: update_issue
-                        title: Update issue
-                        description: Updates the summary of an issue.
-                        inputSchema:
-                          type: object
-                          properties:
-                            issueKey:
-                              type: string
-                              description: Issue key, e.g. ABC-123
-                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                              maxLength: 32
-                            summary:
-                              type: string
-                              maxLength: 255
-                          required:
-                            - issueKey
-                            - summary
-                          additionalProperties: false
-                        annotations:
-                          readOnlyHint: false
-                          destructiveHint: false
-                      definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
-      responses:
-        "200":
-          description: Stored; the body shows the resulting status of every tool.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RegistryServer"
-              examples:
-                registered:
-                  value:
-                    serverId: mcp-jira
-                    system: jira
-                    version: 1.4.0
-                    tools:
-                      - name: get_issue
-                        risk: READ_ONLY
-                        action: read
-                        resourceRefs:
-                          - argument: issueKey
-                            type: Jira::Issue
-                        definition:
-                          name: get_issue
-                          title: Get issue
-                          description: Returns one Jira issue by key.
-                          inputSchema:
-                            type: object
-                            properties:
-                              issueKey:
-                                type: string
-                                description: Issue key, e.g. ABC-123
-                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                                maxLength: 32
-                            required:
-                              - issueKey
-                            additionalProperties: false
-                          annotations:
-                            readOnlyHint: true
-                        definitionHash: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
-                        status: approved
-                        approvedInVersion: 1.4.0
-                      - name: update_issue
-                        risk: UPDATE
-                        action: update
-                        resourceRefs:
-                          - argument: issueKey
-                            type: Jira::Issue
-                        definition:
-                          name: update_issue
-                          title: Update issue
-                          description: Updates the summary of an issue.
-                          inputSchema:
-                            type: object
-                            properties:
-                              issueKey:
-                                type: string
-                                description: Issue key, e.g. ABC-123
-                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                                maxLength: 32
-                              summary:
-                                type: string
-                                maxLength: 255
-                            required:
-                              - issueKey
-                              - summary
-                            additionalProperties: false
-                          annotations:
-                            readOnlyHint: false
-                            destructiveHint: false
-                        definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
-                        status: pending_approval
-                        change: new
-                        source: ci
-                        approvedInVersion: null
-                registered_with_lowered_risk:
-                  summary: The pipeline reported a risk below the floor for update_issue; the rest of the manifest went through
-                  value:
-                    serverId: mcp-jira
-                    system: jira
-                    version: 1.5.0
-                    tools:
-                      - name: update_issue
-                        risk: READ_ONLY
-                        action: update
-                        resourceRefs:
-                          - argument: issueKey
-                            type: Jira::Issue
-                        definition:
-                          name: update_issue
-                          title: Update issue
-                          description: Updates the summary of an issue.
-                          inputSchema:
-                            type: object
-                            properties:
-                              issueKey:
-                                type: string
-                                description: Issue key, e.g. ABC-123
-                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                                maxLength: 32
-                              summary:
-                                type: string
-                                maxLength: 255
-                            required:
-                              - issueKey
-                              - summary
-                            additionalProperties: false
-                          annotations:
-                            readOnlyHint: false
-                            destructiveHint: false
-                        definitionHash: sha256:a54246cd697847b72aebc9c8bb91e44e3f13b6ef84b5f0f868fe1eaa78d5045c
-                        status: pending_approval
-                        change: changed
-                        source: ci
-                        approvedInVersion: 1.4.0
-                        riskLowered: true
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "422":
-          description: Manifest conflicts with the server in the registry (system, serverId or credential type), fails a rule, or declares environment dev on a gateway in production mode.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ManifestRejected"
-              examples:
-                manifest_rejected:
-                  value:
-                    error: manifest_rejected
-                    message: system does not match the registry entry of mcp-jira
-                environment_mismatch:
-                  value:
-                    error: manifest_rejected
-                    reason: environment_mismatch
-                    message: manifest of mcp-jira declares environment dev
-                credential_type_mismatch:
-                  value:
-                    error: manifest_rejected
-                    reason: credential_type_mismatch
-                    message: the gateway asks the broker for token-exchange for opensearch, the manifest accepts user-secret
-  /admin/v1/registry/adapters/{serverId}:
-    parameters:
-      - $ref: "#/components/parameters/ServerId"
-    put:
-      tags:
-        - registry
-      operationId: submitAdapterManifest
-      x-allowed-client-cn:
-        - mcp-adapter-{serverId}
-      summary: An adapter submits the manifest of its foreign server at startup (CC-206).
-      description: |
-        The channel of `mcp-server-adapter` (the sidecar of a foreign MCP server, CC-193). The body is the C6 manifest with `source: adapter`;
-        `serverId` in the body must equal the path.
-
-        **Identity of the adapter.** The certificate is bound to one server: its CN is `mcp-adapter-<serverId>` (for example
-        `mcp-adapter-mcp-jira`), compared as a whole and case-sensitively like the CN of the pipeline (CC-161). It is a different CN from
-        `mcp-registry-ci-<serverId>`, so a pipeline cannot use this operation and an adapter cannot use `registerServer`. Another CN is `403` and
-        `client_certificate_rejected` in the audit. The answers come in this order (CC-207): the certificate (`403`) first, so that a caller without the right CN learns nothing about the mode of any server; then `serverId` in the body against the path (`400`); then the mode and the `source` (`422`).
-
-        **Adapter mode is a flag of the server.** Whether a `serverId` is served by an adapter is the flag `adapter` given when the server is created (`createServer`, `ServerConfigCreate`), and it cannot be changed later; it is never set by a
-        manifest. For a `serverId` in adapter mode this operation is the only way to submit a manifest and `registerServer` answers `422`,
-        `manifest_rejected`, reason `adapter_mode_mismatch`; for any other `serverId` this operation answers `422` with the same reason, and so does
-        a manifest without `source: adapter` sent here or with it sent to `registerServer`. Nothing is stored in these cases.
-
-        **What the call stores.** Every new or changed tool becomes `pending_approval` (`change` new or changed, `source` adapter, `pendingVersion` the
-        version of the manifest) without classification, a READ_ONLY-looking tool included: nothing of an adapter is approved by this call, and an
-        unclassified tool is hidden and refused as `tool_disabled`. An entry whose `definitionHash` did not change stays as it is, with its
-        classification. A tool missing from the manifest is removed (`tool_removed`) together with its classification: if it returns it is a new, unclassified tool and the administrator classifies it again (CC-207). Audit as `admin_change`: `definition_submitted` for every pending
-        entry and `tool_removed`. The administrator classifies and approves with `approveTool` (`risk`, `action`).
-
-        **Rejections.** The same checks as for `registerServer` (hash recomputed without risk and action, semantic rules, binding of serverId to
-        system and internalUrl from configuration, credential types) with `422 manifest_rejected`. The environment check applies too.
-      security:
-        - mtls: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ServerManifest"
-            examples:
-              adapter:
-                value:
-                  serverId: mcp-jira
-                  version: 0.3.0
-                  system: jira
-                  source: adapter
-                  internalUrl: https://mcp-jira.internal:8443/mcp
-                  credential:
-                    required: true
-                    acceptedTypes:
-                      - user-oauth
-                      - user-secret
-                  resourceTypes: []
-                  tools:
-                    - name: get_issue
-                      resourceRefs: []
-                      definition:
-                        name: get_issue
-                        title: Get issue
-                        description: Returns one Jira issue by key.
-                        inputSchema:
-                          type: object
-                          properties:
-                            issueKey:
-                              type: string
-                              description: Issue key, e.g. ABC-123
-                              pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                              maxLength: 32
-                          required:
-                            - issueKey
-                          additionalProperties: false
-                        annotations:
-                          readOnlyHint: true
-                      definitionHash: sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7
-      responses:
-        "200":
-          description: Stored; the body shows the resulting status of every tool.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AdapterRegistryServer"
-              examples:
-                submitted:
-                  value:
-                    serverId: mcp-jira
-                    system: jira
-                    version: 0.3.0
-                    tools:
-                      - name: get_issue
-                        resourceRefs: []
-                        definition:
-                          name: get_issue
-                          title: Get issue
-                          description: Returns one Jira issue by key.
-                          inputSchema:
-                            type: object
-                            properties:
-                              issueKey:
-                                type: string
-                                description: Issue key, e.g. ABC-123
-                                pattern: ^[A-Z][A-Z0-9]+-[0-9]+$
-                                maxLength: 32
-                            required:
-                              - issueKey
-                            additionalProperties: false
-                          annotations:
-                            readOnlyHint: true
-                        definitionHash: sha256:382c689a44ccadf3874aeea0671fe8266929ddbcf22ac8691dbdcfb13cfc46c7
-                        status: pending_approval
-                        change: new
-                        source: adapter
-                        approvedInVersion: null
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "422":
-          description: The manifest fails a check, or the server is not in adapter mode, or the manifest has no source adapter (reason adapter_mode_mismatch).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ManifestRejected"
-              examples:
-                adapter_mode_mismatch:
-                  value:
-                    error: manifest_rejected
-                    reason: adapter_mode_mismatch
-                    message: mcp-jira is not served by an adapter
   /admin/v1/registry/servers/{serverId}/tools/{tool}/pending:
     parameters:
       - $ref: "#/components/parameters/ServerId"
@@ -799,7 +415,7 @@ paths:
                     pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
                     approvedInVersion: 1.3.0
                     pendingVersion: 1.4.0
-                    source: ci
+                    source: manifest
                     riskLowered: true
                 changed_on_server:
                   summary: A running server presented another definition than the approved one (source server)
@@ -887,9 +503,9 @@ paths:
       summary: Approve the pending definition of a tool (group mcp-platform-admin).
       description: |
         definitionHash must equal the current pendingHash, otherwise 409 and nothing changes. Approval is the way to accept
-        what a deployment through PUT left pending (a new or changed UPDATE or DESTRUCTIVE tool) and a definition that changed
-        outside a deployment (CC-133). An entry whose risk is lower than the risk floor (riskLowered true) cannot be approved: 422
-        manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; the pipeline never can, CC-167). The approval is audited as admin_change with reason definition_approved, or, when a lowering was accepted, with one event risk_lowered_by_admin in its place (risk = the new risk), the administrator
+        what a pulled manifest left pending (every new or changed tool, CC-249) and a definition that changed
+        outside a manifest (CC-133). An entry whose risk is lower than the risk floor (riskLowered true) cannot be approved: 422
+        manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; a pulled manifest never can, CC-167). The approval is audited as admin_change with reason definition_approved, or, when a lowering was accepted, with one event risk_lowered_by_admin in its place (risk = the new risk), the administrator
         as sub and the approved hash as definitionHash.
 
         **Entries of an adapter (CC-193).** An entry with source adapter has no risk and no action; the body must carry both (`risk`, `action`), otherwise 422
@@ -1414,7 +1030,7 @@ paths:
         tool is refused as `tool_disabled` (C10), after authorization and the filter of the address like every other state of a tool (CC-178): a user who may not call the tool, or whose filter leaves it out, still gets `not_found_or_denied` and learns nothing (invariant 8) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
         `disabledBy` `kill_switch`. A call that was already accepted is not interrupted; a pending confirmation of a switched tool fails at
         the confirmation with `tool_disabled`. The switch is stored durably (it survives a restart) and is lifted only by `DELETE` on the
-        same address: a new `PUT` of a manifest, an approval and a registration never lift it. System and server are the same thing here
+        same address: a pulled manifest, an approval and a refresh never lift it. System and server are the same thing here
         (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. A switch belongs to the (server, tool) address, not to the manifest: a tool that leaves the manifest keeps its switch (listed by `listKillSwitches`, in force again if the tool returns) and `DELETE` of such a switch is `204`. `PUT` for a tool the registry does not know is `404`. No fresh MFA is needed (an incident must
         not wait for a second factor); the portal asks for one when the switch is lifted. If the gateway cannot store the switch the answer is
         `503` and the switch is not on. Audited as `admin_change` with reason `kill_switch_set` (the text of `reason` stays in the registry and
@@ -1486,7 +1102,7 @@ paths:
         tool is refused as `tool_disabled` (C10), after authorization and the filter of the address like every other state of a tool (CC-178): a user who may not call the tool, or whose filter leaves it out, still gets `not_found_or_denied` and learns nothing (invariant 8) and the tool is absent from `tools/list` and shown in the catalog with `disabled` true and
         `disabledBy` `kill_switch`. A call that was already accepted is not interrupted; a pending confirmation of a switched tool fails at
         the confirmation with `tool_disabled`. The switch is stored durably (it survives a restart) and is lifted only by `DELETE` on the
-        same address: a new `PUT` of a manifest, an approval and a registration never lift it. System and server are the same thing here
+        same address: a pulled manifest, an approval and a refresh never lift it. System and server are the same thing here
         (`mcp-<system>`). Putting a switch that is already on succeeds and changes only the reason. A switch belongs to the (server, tool) address, not to the manifest: a tool that leaves the manifest keeps its switch (listed by `listKillSwitches`, in force again if the tool returns) and `DELETE` of such a switch is `204`. `PUT` for a tool the registry does not know is `404`. No fresh MFA is needed (an incident must
         not wait for a second factor); the portal asks for one when the switch is lifted. If the gateway cannot store the switch the answer is
         `503` and the switch is not on. Audited as `admin_change` with reason `kill_switch_set` (the text of `reason` stays in the registry and
@@ -1548,7 +1164,7 @@ paths:
       operationId: listServers
       x-allowed-client-cn:
         - mcp-portal-bff
-      summary: Servers in the registry with their connection settings (admin).
+      summary: Servers in the registry with their connection and its state (admin).
       description: |
         The registry of servers is the only list of servers (7.0.0). It is a table of the gateway, visible to every instance
         within seconds. `GET /admin/v1/registry/servers` shows the same servers with their manifests and tools.
@@ -1569,7 +1185,8 @@ paths:
                   value:
                     - serverId: mcp-jira
                       system: jira
-                      internalUrl: https://mcp-jira.internal:8443/mcp/jira
+                      internalUrl: https://mcp-jira.corp.local:8443/mcp
+                      allowPlainHttp: false
                       credential:
                         required: true
                         acceptedTypes:
@@ -1578,9 +1195,24 @@ paths:
                         type: user-secret
                       enabled: true
                       adapter: false
+                      status: connected
+                      lastCheckedAt: 2026-11-08T09:30:00Z
+                      lastError: null
+                      connection:
+                        tlsMode: ca
+                        fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                        subject: CN=mcp-jira.corp.local
+                        issuer: CN=Corp Issuing CA 2
+                        sans:
+                          - mcp-jira.corp.local
+                        notAfter: 2027-03-01T12:00:00Z
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: 2026-11-06T10:00:00Z
+                      pendingConnection: null
                     - serverId: mcp-notes
                       system: notes
-                      internalUrl: https://mcp-notes.internal:8443/mcp
+                      internalUrl: https://10.20.0.15:9443/mcp
+                      allowPlainHttp: false
                       credential:
                         required: true
                         acceptedTypes:
@@ -1588,6 +1220,32 @@ paths:
                         type: user-oauth
                       enabled: true
                       adapter: false
+                      status: certificate_changed
+                      lastCheckedAt: 2026-11-08T09:30:00Z
+                      lastError: certificate_changed
+                      connection:
+                        tlsMode: pinned
+                        fingerprint: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+                        subject: CN=mcp-notes
+                        issuer: CN=mcp-notes
+                        sans:
+                          - mcp-notes
+                          - 10.20.0.15
+                        notAfter: 2026-12-01T00:00:00Z
+                        approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        approvedAt: 2026-11-03T08:00:00Z
+                      pendingConnection:
+                        tlsMode: pinned
+                        fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                        subject: CN=mcp-notes
+                        issuer: CN=mcp-notes
+                        sans:
+                          - mcp-notes
+                          - 10.20.0.15
+                        notAfter: 2027-11-08T00:00:00Z
+                        validatesAsCa: false
+                        reason: certificate_changed
+                        detectedAt: 2026-11-08T09:30:00Z
         "401":
           $ref: "#/components/responses/Unauthenticated"
         "403":
@@ -1598,17 +1256,31 @@ paths:
       operationId: createServer
       x-allowed-client-cn:
         - mcp-portal-bff
-      summary: Add a server to the registry (group mcp-platform-admin).
+      summary: Add a server by its address (group mcp-platform-admin).
       description: |
-        Adds a server without restarting any component. The server has no tools until it registers its manifest
-        (`registerServer`, or the manifest the gateway fetches at start) and an administrator approves them.
-        **Certificate of the server.** The name to expect is not configurable: the gateway pins the certificate of the server to the
-        SAN `<serverId>.internal` and to a leaf CN equal to the `serverId`. The certificate comes from the internal CA and carries both
-        the `serverAuth` and the `clientAuth` extended key usage (the server uses `clientAuth` for `GET /internal/v1/policy-data`).
-        The `system` must not be a reserved id (`gateway`, `offboarding`, `portal`, `broker`, `prometheus`, `platform`, `admin`,
-        `registry`, `adapter`, `internal`, `ci`): `mcp-<system>` is a certificate CN, and a server named like a component would inherit the
-        authorization of that component (`422 server_rejected`, reason `system_reserved`). A namespace that another `serverId` holds cannot
-        be declared by this one (`namespace_conflict`, see `registerServer`). The audit event is `admin_change`.
+        Adds a server without restarting any component; the body is the address and nothing else that the server can tell
+        the gateway itself (CC-249, "The gateway connects to servers" above). Steps, in this order, and the first failure answers (nothing is stored):
+
+        1. `internalUrl` is parsed: `http` or `https`, a host, no user info, no fragment, at most 255 characters, otherwise `400 invalid_request`.
+        2. The host is resolved and every resolved address is checked: loopback, link-local (including `169.254.169.254`), unspecified and
+           multicast addresses are refused (`422 server_rejected`, reason `address_refused`); the gateway then connects only to an address it checked.
+        3. `http` without `allowPlainHttp: true` is `422`, reason `plain_http_not_allowed`.
+        4. TLS probe (for `https`): a handshake without a client certificate that accepts any certificate in order to read it; a failure
+           to complete a handshake (no TLS, protocol or timeout error) is `422`, reason `tls_handshake_failed`. The leaf certificate is captured: subject, issuer,
+           SANs, `notAfter` and the SHA-256 of its DER encoding, and the gateway notes whether it validates as `ca` for that host.
+        5. Manifest: `GET /.well-known/mcp-manifest` (C14) with an internal JWT of purpose `manifest`. No answer or a status other than `200` is `422`, reason `manifest_unreachable`; a body that fails
+           the checks of "Manifest intake" is `422`, reason `manifest_invalid` with `manifestReason` (for example `environment_mismatch`, `policies_invalid`).
+        6. `serverId` is `mcp-<system>` of the manifest. A `system` that is a reserved id (`gateway`, `offboarding`, `portal`, `broker`, `prometheus`, `platform`, `admin`,
+           `registry`, `adapter`, `internal`, `ci`; the list is kept so that no server is named like a component) is `422`, reason `system_reserved`; a `serverId` that exists is `409 server_exists`; a namespace
+           that another `serverId` owns by approved policies is `422`, reason `namespace_conflict`.
+
+        The server is created `enabled: true` with `status: pending_approval`, `connection: null` and a `pendingConnection` (`tlsMode`
+        proposed: `ca` when the certificate validates for the host, `pinned` otherwise, `plain` for `http`), plus the usual pending
+        policies and tools (every tool pending, a `READ_ONLY` one included). The address is checked again at every later connection,
+        against the address actually connected to. `credential` is optional: when absent the gateway derives it from the manifest
+        (`required`, `acceptedTypes`, `type` the first accepted type); when present it must pass the same checks as `updateServer`
+        (`422`, reasons `credential_types_mixed`, `credential_type_not_accepted`) and the manifest must accept its types.
+        The audit event is `admin_change` with reason `server_created`.
       security:
         - mtls: []
           bffUserToken: []
@@ -1617,13 +1289,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ServerConfigCreate"
+              $ref: "#/components/schemas/ServerAddRequest"
             examples:
-              notes:
+              https:
                 value:
-                  serverId: mcp-notes
-                  system: notes
-                  internalUrl: https://mcp-notes.internal:8443/mcp
+                  internalUrl: https://mcp-notes.corp.local:8443/mcp
+              plain_inside_docker:
+                value:
+                  internalUrl: http://mcp-notes:8080/mcp
+                  allowPlainHttp: true
                   credential:
                     required: true
                     acceptedTypes:
@@ -1631,7 +1305,7 @@ paths:
                     type: user-oauth
       responses:
         "201":
-          description: Added.
+          description: Added, waiting for the approval of the connection, policies and tools.
           headers:
             ETag:
               $ref: "#/components/headers/DocumentETag"
@@ -1649,7 +1323,8 @@ paths:
                   value:
                     serverId: mcp-notes
                     system: notes
-                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
                     credential:
                       required: true
                       acceptedTypes:
@@ -1657,6 +1332,48 @@ paths:
                       type: user-oauth
                     enabled: true
                     adapter: false
+                    status: pending_approval
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection: null
+                    pendingConnection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      validatesAsCa: true
+                      reason: first_connection
+                      detectedAt: 2026-11-08T09:30:00Z
+                plain:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: http://mcp-notes:8080/mcp
+                    allowPlainHttp: true
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+                    status: pending_approval
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection: null
+                    pendingConnection:
+                      tlsMode: plain
+                      fingerprint: null
+                      subject: null
+                      issuer: null
+                      sans: []
+                      notAfter: null
+                      validatesAsCa: false
+                      reason: first_connection
+                      detectedAt: 2026-11-08T09:30:00Z
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1703,7 +1420,8 @@ paths:
                   value:
                     serverId: mcp-notes
                     system: notes
-                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
                     credential:
                       required: true
                       acceptedTypes:
@@ -1711,6 +1429,20 @@ paths:
                       type: user-oauth
                     enabled: true
                     adapter: false
+                    status: connected
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-06T10:00:00Z
+                    pendingConnection: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1727,12 +1459,12 @@ paths:
         - mcp-portal-bff
       summary: Change the connection settings of a server (group mcp-platform-admin).
       description: |
-        Only the fields in the body change. `serverId`, `system` and `adapter` never change (remove the server and add it again), and
-        the certificate name is not configurable (see `createServer`). Switching `enabled` to false hides all tools of the server
+        Only the fields in the body change. `serverId`, `system`, `adapter`, `internalUrl` and `allowPlainHttp` never change (remove the
+        server and add it again; a new certificate at the same address is handled by `approveServerConnection`). Switching `enabled` to false hides all tools of the server
         and refuses its calls as `tool_disabled`, which is the way to take a server out of service without losing its approvals;
         it is the one change that needs no fresh MFA. Every other change needs it (`auth_time` within 300 s, checked by the gateway).
         A change of `credential` applies to the next call, and the manifest of the server must accept the new types (otherwise its
-        tools are refused until it registers a matching manifest). `If-Match` is the `ETag` of the server that was edited.
+        tools are refused until it serves a matching manifest). `If-Match` is the `ETag` of the server that was edited.
       security:
         - mtls: []
           bffUserToken: []
@@ -1763,7 +1495,8 @@ paths:
                   value:
                     serverId: mcp-notes
                     system: notes
-                    internalUrl: https://mcp-notes.internal:8443/mcp
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
                     credential:
                       required: true
                       acceptedTypes:
@@ -1771,6 +1504,20 @@ paths:
                       type: user-oauth
                     enabled: false
                     adapter: false
+                    status: connected
+                    lastCheckedAt: 2026-11-08T09:30:00Z
+                    lastError: null
+                    connection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-06T10:00:00Z
+                    pendingConnection: null
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1793,9 +1540,9 @@ paths:
         - mcp-portal-bff
       summary: Remove a server from the registry (group mcp-platform-admin).
       description: |
-        Removes the server and what the gateway holds about it: its manifests, approvals, emergency switches and its
-        policy fragment. Its tools disappear from `tools/list` and a call is refused as for an unknown tool; its certificate
-        no longer gets policy data. The entries of the scope mapping for the types of its namespace are removed with it, so that a server added later under the
+        Removes the server and what the gateway holds about it: its manifests, approvals, its approved and pending connection, emergency switches and its
+        policy fragment. Its tools disappear from `tools/list` and a call is refused as for an unknown tool; the gateway no longer
+        pulls from it or pushes policy data to it. The entries of the scope mapping for the types of its namespace are removed with it, so that a server added later under the
         same namespace does not inherit grants given to the old one; the audit event lists the removed entries. The risk floors of
         its tools (CC-167) and their group floors (CC-246, the last `additionalGroup` approved) are kept, keyed by serverId and tool: a server created again under the same serverId cannot bring a
         former DESTRUCTIVE tool back as READ_ONLY without `acceptRiskLowering` by an administrator. The system in the credential broker is
@@ -1810,6 +1557,178 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/servers/{serverId}/connection/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    post:
+      tags:
+        - servers
+      operationId: approveServerConnection
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approve how the gateway trusts a server (group mcp-platform-admin, fresh MFA).
+      description: |
+        Approves the `pendingConnection` of the server (CC-249): the first connection after `createServer`, or a certificate that
+        replaced a pinned one. The body repeats what the administrator saw, so that an approval never applies to a certificate
+        the administrator did not see: `fingerprint` must equal the `fingerprint` of the current `pendingConnection` (null for
+        `plain`), otherwise `409 connection_changed` and nothing changes. `tlsMode` is the trust the administrator chooses:
+        the proposed one, or `pinned` instead of a proposed `ca` (a stricter choice); `ca` is refused when `validatesAsCa` is
+        false and `plain` is accepted only for an `http` address of a server that was added with `allowPlainHttp: true`
+        (`422 server_rejected`, reason `tls_mode_not_allowed`). On success `pendingConnection` becomes `connection` (with
+        `approvedBy` = `sub` of the administrator and `approvedAt`), `pendingConnection` is null, and the gateway connects under
+        the approved trust, which makes the status `connected` (or `unreachable` or `certificate_changed` when the server
+        has changed again meanwhile; in the second case the new certificate is the new `pendingConnection`). Approving the
+        connection does not approve policies or tools. With nothing pending the answer is `409 no_pending_connection`.
+        Needs a fresh MFA (`401 step_up_required`, see Fresh MFA). The audit event is `admin_change` with reason
+        `server_connection_approved`, the `tlsMode` and the `fingerprint` (never the certificate).
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionApproveRequest"
+            examples:
+              pin_self_signed:
+                value:
+                  tlsMode: pinned
+                  fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+              plain:
+                value:
+                  tlsMode: plain
+                  fingerprint: null
+      responses:
+        "200":
+          description: The server after the approval.
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                pinned:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://10.20.0.15:9443/mcp
+                    allowPlainHttp: false
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+                    status: connected
+                    lastCheckedAt: 2026-11-08T09:35:00Z
+                    lastError: null
+                    connection:
+                      tlsMode: pinned
+                      fingerprint: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                      subject: CN=mcp-notes
+                      issuer: CN=mcp-notes
+                      sans:
+                        - mcp-notes
+                        - 10.20.0.15
+                      notAfter: 2027-11-08T00:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-08T09:35:00Z
+                    pendingConnection: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Nothing is pending (`no_pending_connection`), or the pending connection is not the one that was approved (`connection_changed`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                no_pending_connection:
+                  value:
+                    error: no_pending_connection
+                connection_changed:
+                  value:
+                    error: connection_changed
+        "422":
+          $ref: "#/components/responses/ServerRejected"
+  /admin/v1/servers/{serverId}/refresh:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+    post:
+      tags:
+        - servers
+      operationId: refreshServer
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Probe a server again and pull its manifest now (group mcp-platform-admin).
+      description: |
+        Does what the gateway does at add time and in its runtime loop (CC-249): checks the address (also against DNS rebinding), connects
+        under the approved trust (or probes the address when the connection is not approved yet), and pulls
+        `GET /.well-known/mcp-manifest`. A manifest that passes "Manifest intake" is applied (new or changed tools and policies become
+        pending, nothing is approved); a manifest that fails changes nothing. A certificate that the approved trust does not accept
+        becomes the `pendingConnection` (reason `certificate_changed`, or `ca_validation_failed` for a server in `ca` mode) and the status is
+        `certificate_changed`. Every other failure is reported in the answer, not as an HTTP error: `status` `unreachable` or `manifest_invalid`
+        and `lastError` (`address_refused`, `tls_handshake_failed`, `manifest_unreachable`, `manifest_invalid`); the registry keeps what it has. It needs no fresh MFA because it approves
+        nothing; the administrator group is checked as for the other operations. A `serverId` that names no server is `404`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: The server after the check.
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+              examples:
+                unreachable:
+                  value:
+                    serverId: mcp-notes
+                    system: notes
+                    internalUrl: https://mcp-notes.corp.local:8443/mcp
+                    allowPlainHttp: false
+                    credential:
+                      required: true
+                      acceptedTypes:
+                        - user-oauth
+                      type: user-oauth
+                    enabled: true
+                    adapter: false
+                    status: unreachable
+                    lastCheckedAt: 2026-11-08T09:40:00Z
+                    lastError: tls_handshake_failed
+                    connection:
+                      tlsMode: ca
+                      fingerprint: sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14
+                      subject: CN=mcp-notes.corp.local
+                      issuer: CN=Corp Issuing CA 2
+                      sans:
+                        - mcp-notes.corp.local
+                      notAfter: 2027-03-01T12:00:00Z
+                      approvedBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      approvedAt: 2026-11-06T10:00:00Z
+                    pendingConnection: null
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2222,7 +2141,7 @@ paths:
                         idPattern: ^[A-Z][A-Z0-9_]{1,9}-[1-9][0-9]{0,9}$
                     pendingHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
                     pendingVersion: 1.4.0
-                    source: ci
+                    source: manifest
                     pendingPolicies:
                       namespace: Jira
                       schema: |
@@ -2312,74 +2231,6 @@ paths:
                 hash_mismatch:
                   value:
                     error: hash_mismatch
-  /internal/v1/policy-data:
-    get:
-      tags:
-        - policy
-      operationId: getPolicyData
-      x-allowed-client-cn:
-        - "{registeredServerId}"
-      summary: Policy data for a server (internal TLS port).
-      description: |
-        For servers, not for people. The certificate must come from the internal CA, carry the `clientAuth` extended key usage (next to `serverAuth`), have the CN
-        `<serverId>` and the SAN `<serverId>.internal`, and the `serverId` must be a server in the registry; any other certificate is `403`. The answer is the administrator data a server needs to evaluate its
-        own policies: the scope mapping reduced to the scopes of the namespace of this server (it never learns the grants of
-        another system), `approvedPoliciesHash` (the hash the administrator approved for this server; absent while nothing is
-        approved), the allowed AI clients (`azp`, from the configuration of the gateway) and the
-        overrides that target this server or all servers (overrides for the gateway are not sent). The data is served with
-        an `ETag` (the revision, quoted); a client repeats the call with `If-None-Match` and gets `304` while nothing changed.
-        The internal JWT carries the revision as `prv`: a server that sees a newer one than it holds refreshes at once and
-        keeps polling at an interval it configures. **Rules that bind the server.** It computes the hash of its own policies and
-        resourceTypes and refuses every call (`upstream_unavailable`) when it differs from `approvedPoliciesHash` or when that is
-        absent. It never accepts a revision lower than or equal to the one it holds as new data. When `prv` of a token is newer
-        than its data it refreshes before evaluating, or refuses. When an override does not validate against its composed
-        schema it refuses every call. The reference rule and vectors: `scripts/lib/policy-data-gate.mjs`,
-        `test-vectors/policy-data-gate`. The revision is a counter that only rises.
-      security:
-        - mtls: []
-      parameters:
-        - name: If-None-Match
-          in: header
-          required: false
-          description: The ETag of the data the server holds.
-          schema:
-            type: string
-            maxLength: 64
-          example: '"42"'
-      responses:
-        "200":
-          description: The policy data.
-          headers:
-            ETag:
-              description: The revision of the data, quoted.
-              required: true
-              schema:
-                type: string
-                pattern: ^"[0-9]{1,16}"$
-              example: '"42"'
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PolicyData"
-              examples:
-                for_a_server:
-                  value:
-                    revision: 42
-                    approvedPoliciesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
-                    scopeMapping:
-                      - group: mcp-jira-proj-ABC
-                        scopes:
-                          - Jira::Project/ABC
-                    allowedClients:
-                      - claude-code
-                      - claude-ai
-                    overrides:
-                      - id: override-no-claude-ai
-                        text: forbid (principal, action, resource) when { context.client == "claude-ai" };
-        "304":
-          description: The server already holds this revision.
-        "403":
-          $ref: "#/components/responses/Forbidden"
   /admin/v1/policy/status:
     get:
       tags:
@@ -2436,7 +2287,7 @@ components:
   securitySchemes:
     mtls:
       type: mutualTLS
-      description: Client certificate from the internal CA; CN=mcp-portal-bff for BFF calls, CN=mcp-registry-ci-<serverId> for registry writes (one certificate per server pipeline).
+      description: Client certificate from the internal CA; CN=mcp-portal-bff for BFF calls.
     bffUserToken:
       type: http
       scheme: bearer
@@ -2539,17 +2390,53 @@ components:
               value:
                 error: precondition_required
     ServerRejected:
-      description: The settings are inconsistent (7.0.0).
+      description: The server cannot be added or changed, or the connection cannot be approved as asked (7.0.0, CC-249).
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ServerRejected"
           examples:
-            server_id_mismatch:
+            address_refused:
               value:
                 error: server_rejected
-                reason: server_id_mismatch
-                message: serverId must be mcp-<system>
+                reason: address_refused
+                message: 169.254.169.254 is a link-local address
+            plain_http_not_allowed:
+              value:
+                error: server_rejected
+                reason: plain_http_not_allowed
+                message: http needs allowPlainHttp
+            tls_handshake_failed:
+              value:
+                error: server_rejected
+                reason: tls_handshake_failed
+                message: the server does not speak TLS on this port
+            manifest_unreachable:
+              value:
+                error: server_rejected
+                reason: manifest_unreachable
+                message: GET /.well-known/mcp-manifest answered 404
+            manifest_invalid:
+              value:
+                error: server_rejected
+                reason: manifest_invalid
+                manifestReason: environment_mismatch
+                message: manifest of mcp-notes declares environment dev
+            system_reserved:
+              value:
+                error: server_rejected
+                reason: system_reserved
+                message: gateway is a reserved system id
+            namespace_conflict:
+              value:
+                error: server_rejected
+                reason: namespace_conflict
+                message: the namespace Notes belongs to mcp-wiki
+            tls_mode_not_allowed:
+              value:
+                error: server_rejected
+                reason: tls_mode_not_allowed
+                message: the certificate does not validate as ca for the host
     KillSwitchStoreUnavailable:
       description: The gateway cannot read or store the emergency switches (fail-closed). A switch is never reported as on when it could not be stored; a call that needs the state of the switches is refused as upstream_unavailable.
       headers:
@@ -2682,7 +2569,7 @@ components:
       description: Why a tool or server is disabled, present only when disabled is true (CC-194). kill_switch is an emergency switch of an administrator, approval a definition waiting for approval or classification, configuration the server in the registry or an overrides policy. When more than one applies the first of the list is shown.
     ManifestRejected:
       type: object
-      description: 422 of a registration or an approval (CC-133). reason is a known value or absent for the older rejections (a hash that does not match, a rule of the manifest).
+      description: 422 of an approval of a tool or of policies (CC-133). reason is a known value or absent.
       required:
         - error
       properties:
@@ -2691,7 +2578,7 @@ components:
         reason:
           type: string
           pattern: ^[a-z][a-z0-9_]*$
-          description: Known values are policies_invalid, resource_types_invalid and namespace_conflict (7.0.0, see registerServer), risk_lowered, environment_mismatch (CC-138), credential_type_mismatch (CC-159), adapter_mode_mismatch (CC-206; adapter manifest on the channel of the pipeline, or the reverse, or a server not in adapter mode), classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
+          description: Known values are risk_lowered, classification_required (CC-193; an entry with source adapter is approved without risk and action) and classification_not_allowed (CC-193; risk or action sent for an entry that is not from an adapter; CC-227, a risk other than READ_ONLY for an entry from an adapter) and classification_inconsistent (CC-207; risk and action that do not fit each other). A client must show an unknown value as a generic message.
         message:
           type: string
           maxLength: 500
@@ -2804,7 +2691,7 @@ components:
         source:
           type: string
           enum:
-            - ci
+            - manifest
             - server
             - adapter
           description: Present exactly when status is pending_approval (CC-162, CC-193); same meaning as PendingTool.source.
@@ -2852,51 +2739,6 @@ components:
           items:
             $ref: "#/components/schemas/RegistryTool"
       additionalProperties: false
-    AdapterRegistryTool:
-      allOf:
-        - $ref: "#/components/schemas/ToolEntryFields"
-      type: object
-      required:
-        - status
-      description: A tool in the answer to the adapter (CC-207). The same as RegistryTool without classifiedBy and classifiedAt - an adapter is the sidecar of a foreign server and has no business with the identity of administrators. risk and action are present only for a tool that was classified earlier.
-      properties:
-        status:
-          $ref: "#/components/schemas/RegistryToolStatus"
-        change:
-          type: string
-          enum:
-            - new
-            - changed
-        source:
-          type: string
-          enum:
-            - adapter
-        riskLowered:
-          type: boolean
-        approvedInVersion:
-          oneOf:
-            - $ref: "#/components/schemas/SemVer"
-            - type: "null"
-      unevaluatedProperties: false
-    AdapterRegistryServer:
-      type: object
-      required:
-        - serverId
-        - system
-        - version
-        - tools
-      properties:
-        serverId:
-          $ref: "#/components/schemas/ServerId"
-        system:
-          $ref: "#/components/schemas/SystemId"
-        version:
-          $ref: "#/components/schemas/SemVer"
-        tools:
-          type: array
-          items:
-            $ref: "#/components/schemas/AdapterRegistryTool"
-      additionalProperties: false
     PendingTool:
       type: object
       required:
@@ -2920,10 +2762,10 @@ components:
         source:
           type: string
           enum:
-            - ci
+            - manifest
             - server
             - adapter
-          description: Where the pending entry comes from (CC-162, CC-193). ci is an entry left by a PUT of the pipeline (the reviewed commit); server is a definition that the running server presented; adapter is an entry that an adapter (the sidecar of a foreign MCP server) presented at startup, never approved automatically and without risk and action until an administrator classifies it. A server entry never replaces a ci entry, see the README, "Rejestr i przypinanie definicji".
+          description: Where the pending entry comes from (CC-162, CC-193, CC-249). manifest is an entry from a manifest that the gateway pulled (add, refresh, runtime loop); server is a definition that the running server presented in tools/list; adapter is an entry from the manifest of an adapter (the sidecar of a foreign MCP server), never approved automatically and without risk and action until an administrator classifies it. A server entry never replaces a manifest entry, see the README, "Rejestr i przypinanie definicji".
         approvedEntry:
           description: Currently approved entry; null for a new tool. For an adapter tool it carries the classification of the administrator.
           oneOf:
@@ -2947,7 +2789,7 @@ components:
         acceptRiskLowering:
           type: boolean
           default: false
-          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; the pipeline (PUT) never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
+          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; a pulled manifest never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
         risk:
           $ref: "#/components/schemas/Risk"
           description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk, and for such an entry only READ_ONLY is accepted (an adapter is read only, CC-227, any other value is 422 manifest_rejected, reason classification_not_allowed); forbidden for any other entry (the same 422). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).
@@ -3082,69 +2924,235 @@ components:
         type:
           $ref: "#/components/schemas/CredentialType"
       additionalProperties: false
+    ServerConnection:
+      type: object
+      description: |
+        The trust the gateway applies to a server, as an administrator approved it (CC-249). `fingerprint` is the SHA-256 of the DER encoding of the
+        leaf certificate (format `sha256:<64 lower-case hex>`, never of the PEM text). For `ca` the certificate fields describe the last certificate seen and are refreshed
+        without approval (a renewal needs nothing); for `pinned` they are the pinned certificate; for `plain` there is no certificate: `fingerprint`, `subject`, `issuer` and `notAfter` are
+        null and `sans` is empty.
+      required:
+        - tlsMode
+        - fingerprint
+        - subject
+        - issuer
+        - sans
+        - notAfter
+        - approvedBy
+        - approvedAt
+      properties:
+        tlsMode:
+          $ref: "#/components/schemas/TlsMode"
+        fingerprint:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateFingerprint"
+            - type: "null"
+        subject:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        issuer:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        sans:
+          description: Subject alternative names (DNS names and IP addresses as text), in the order of the certificate.
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+        notAfter:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        approvedBy:
+          description: sub of the administrator who approved the connection.
+          type: string
+          minLength: 1
+          maxLength: 255
+        approvedAt:
+          $ref: "#/components/schemas/Timestamp"
+      additionalProperties: false
+    PendingConnection:
+      type: object
+      description: |
+        A connection that waits for `approveServerConnection` (CC-249): what the gateway saw at the first connection, or a certificate that a pinned (or `ca`) server presented instead of the approved one.
+        `tlsMode` is the proposal: `ca` when the certificate validates for the host of `internalUrl` (`validatesAsCa`), `pinned` otherwise, `plain` for `http`. The fields of the certificate are as in `ServerConnection`.
+      required:
+        - tlsMode
+        - fingerprint
+        - subject
+        - issuer
+        - sans
+        - notAfter
+        - validatesAsCa
+        - reason
+        - detectedAt
+      properties:
+        tlsMode:
+          $ref: "#/components/schemas/TlsMode"
+        fingerprint:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateFingerprint"
+            - type: "null"
+        subject:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        issuer:
+          oneOf:
+            - $ref: "#/components/schemas/CertificateName"
+            - type: "null"
+        sans:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+        notAfter:
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        validatesAsCa:
+          description: Whether the certificate chains to a CA in the server trust of the gateway and matches the host of `internalUrl`. Always false for `plain`.
+          type: boolean
+        reason:
+          description: first_connection (nothing was approved yet), certificate_changed (a pinned or `ca` server presents another certificate than the approved one) or ca_validation_failed (a `ca` server whose certificate no longer validates).
+          type: string
+          enum:
+            - first_connection
+            - certificate_changed
+            - ca_validation_failed
+        detectedAt:
+          $ref: "#/components/schemas/Timestamp"
+      additionalProperties: false
+    TlsMode:
+      type: string
+      enum:
+        - ca
+        - pinned
+        - plain
+      description: ca (chain to a trusted CA and hostname check), pinned (exactly one certificate by the SHA-256 of its DER, no chain and no hostname check) or plain (http, only with allowPlainHttp).
+    CertificateName:
+      description: Distinguished name of a certificate as text (RFC 4514 form), for display.
+      type: string
+      minLength: 1
+      maxLength: 1024
+    ServerStatus:
+      type: string
+      enum:
+        - pending_approval
+        - connected
+        - unreachable
+        - certificate_changed
+        - manifest_invalid
+      description: |
+        pending_approval: the connection was never approved (`connection` is null); the tools are hidden whatever else is approved.
+        connected: the connection is approved and the last check succeeded.
+        unreachable: the connection is approved and the last check failed to connect (`lastError` says why); the tools are refused as `upstream_unavailable`.
+        certificate_changed: the server presents another certificate than the approved one; calls are refused as `upstream_unavailable` and the new certificate is `pendingConnection`.
+        manifest_invalid: connected, but the last manifest pull failed the checks; the registry keeps what it had.
     ServerConfig:
       type: object
-      description: A server in the registry of the gateway (7.0.0).
+      description: A server in the registry of the gateway (7.0.0) with the state of its connection (CC-249).
       required:
         - serverId
         - system
         - internalUrl
+        - allowPlainHttp
         - credential
         - enabled
         - adapter
+        - status
+        - lastCheckedAt
+        - lastError
+        - connection
+        - pendingConnection
       properties:
         serverId:
           $ref: "#/components/schemas/ServerId"
         system:
           $ref: "#/components/schemas/SystemId"
         internalUrl:
-          type: string
-          format: uri
-          pattern: ^https://
-          maxLength: 255
+          description: The address of the MCP endpoint that the administrator gave; the well-known paths of C14 are at the origin of this address.
+          $ref: "#/components/schemas/ServerUrl"
+        allowPlainHttp:
+          description: True when an administrator allowed `http` for this server when adding it.
+          type: boolean
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
           type: boolean
         adapter:
-          description: True when the server is served through an adapter (CC-206) and takes its manifest on the adapter channel.
+          description: True when the server is served through an adapter (CC-206). It is the `source` of the first manifest and never changes.
           type: boolean
+        status:
+          $ref: "#/components/schemas/ServerStatus"
+        lastCheckedAt:
+          description: When the gateway last probed the server (add, refresh or runtime loop); null only if it never did.
+          oneOf:
+            - $ref: "#/components/schemas/Timestamp"
+            - type: "null"
+        lastError:
+          description: Reason of the last failed check, null after a successful one. Known values are address_refused, tls_handshake_failed, certificate_changed, manifest_unreachable and manifest_invalid; show an unknown value as a generic message.
+          oneOf:
+            - type: string
+              pattern: ^[a-z][a-z0-9_]*$
+              maxLength: 64
+            - type: "null"
+        connection:
+          description: The approved connection; null until the first approval.
+          oneOf:
+            - $ref: "#/components/schemas/ServerConnection"
+            - type: "null"
+        pendingConnection:
+          description: The connection that waits for approval; null when nothing waits.
+          oneOf:
+            - $ref: "#/components/schemas/PendingConnection"
+            - type: "null"
       additionalProperties: false
-    ServerConfigCreate:
+    ServerUrl:
+      type: string
+      format: uri
+      pattern: ^https?://
+      maxLength: 255
+    ServerAddRequest:
       type: object
       required:
-        - serverId
-        - system
         - internalUrl
-        - credential
       properties:
-        serverId:
-          $ref: "#/components/schemas/ServerId"
-        system:
-          $ref: "#/components/schemas/SystemId"
         internalUrl:
-          type: string
-          format: uri
-          pattern: ^https://
-          maxLength: 255
-        credential:
-          $ref: "#/components/schemas/ServerCredentialConfig"
-        enabled:
-          type: boolean
-          default: true
-        adapter:
+          description: Address of the MCP endpoint of the server, `https://host[:port]/path` (or `http://` with allowPlainHttp). No user info and no fragment. A host that resolves to a loopback, link-local, unspecified or multicast address is refused.
+          $ref: "#/components/schemas/ServerUrl"
+        allowPlainHttp:
+          description: Allows an `http://` address (no TLS on this leg; for a server in the same Docker network as the gateway). Without it an `http://` address is refused.
           type: boolean
           default: false
+        credential:
+          description: Optional. When absent it is derived from the manifest.
+          $ref: "#/components/schemas/ServerCredentialConfig"
+      additionalProperties: false
+    ConnectionApproveRequest:
+      type: object
+      required:
+        - tlsMode
+        - fingerprint
+      properties:
+        tlsMode:
+          $ref: "#/components/schemas/TlsMode"
+        fingerprint:
+          description: The fingerprint of the pending connection that the administrator saw; null for plain.
+          oneOf:
+            - $ref: "#/components/schemas/CertificateFingerprint"
+            - type: "null"
       additionalProperties: false
     ServerConfigPatch:
       type: object
       minProperties: 1
       properties:
-        internalUrl:
-          type: string
-          format: uri
-          pattern: ^https://
-          maxLength: 255
         credential:
           $ref: "#/components/schemas/ServerCredentialConfig"
         enabled:
@@ -3152,13 +3160,18 @@ components:
       additionalProperties: false
     ServerRejected:
       type: object
-      description: 422 of a change of a server. Known reasons are server_id_mismatch (serverId is not mcp-<system>), system_reserved (the system id is one of the reserved ids), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes).
+      description: |
+        422 of adding or changing a server, or of approving its connection. Known reasons: address_refused (the host resolves to a loopback, link-local, unspecified or multicast address), plain_http_not_allowed (`http` without allowPlainHttp), tls_handshake_failed (no TLS handshake could be completed with the address), manifest_unreachable (no `200` from `/.well-known/mcp-manifest`), manifest_invalid (the manifest fails the checks of Manifest intake; `manifestReason` is the cause), system_reserved (the system of the manifest is one of the reserved ids), namespace_conflict (another server owns the namespace of its policies), tls_mode_not_allowed (`approveServerConnection` chose a mode the pending connection does not allow), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes). A client must show an unknown value as a generic message.
       required:
         - error
       properties:
         error:
           const: server_rejected
         reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        manifestReason:
+          description: With reason manifest_invalid, why the manifest failed. Known values are environment_mismatch (CC-138), credential_type_mismatch (CC-159, CC-168), policies_invalid, resource_types_invalid, adapter_source_mismatch (a later manifest whose `source` differs from the first one) and hash_mismatch or absent for the other rules of the manifest.
           type: string
           pattern: ^[a-z][a-z0-9_]*$
         message:
@@ -3310,10 +3323,10 @@ components:
           description: Version of the manifest in which the pending policies appeared.
           $ref: "#/components/schemas/SemVer"
         source:
-          description: Where the pending policies come from, as for a pending tool (ci or server).
+          description: Where the pending policies come from, as for a pending tool (manifest or server).
           type: string
           enum:
-            - ci
+            - manifest
             - server
       additionalProperties: false
     ApprovedPolicies:
@@ -3370,50 +3383,6 @@ components:
       properties:
         policiesHash:
           $ref: "#/components/schemas/DefinitionHash"
-      additionalProperties: false
-    PolicyData:
-      type: object
-      description: The administrator data a server needs to evaluate its own policies (7.0.0).
-      required:
-        - revision
-        - scopeMapping
-        - allowedClients
-        - overrides
-      properties:
-        revision:
-          $ref: "#/components/schemas/PolicyRevision"
-        approvedPoliciesHash:
-          description: policiesHash (policies and resourceTypes) that the administrator approved for the requesting server; absent while nothing is approved. The server evaluates only when its own hash equals it.
-          $ref: "#/components/schemas/DefinitionHash"
-        scopeMapping:
-          description: Only the scopes of types in the namespace of the requesting server; groups without one are left out.
-          type: array
-          items:
-            $ref: "#/components/schemas/ScopeMappingEntry"
-        allowedClients:
-          description: Values of `azp` that may call (MCP_ALLOWED_CLIENTS of the gateway); checked in code before Cedar.
-          type: array
-          minItems: 1
-          uniqueItems: true
-          items:
-            type: string
-            pattern: ^[A-Za-z0-9._-]{1,128}$
-        overrides:
-          description: Overrides that target this server or all servers.
-          type: array
-          items:
-            type: object
-            required:
-              - id
-              - text
-            properties:
-              id:
-                $ref: "#/components/schemas/OverrideId"
-              text:
-                type: string
-                minLength: 1
-                maxLength: 8000
-            additionalProperties: false
       additionalProperties: false
     ServerId:
       description: MCP server id; always mcp-<system>, one server per system (C5).
@@ -3538,6 +3507,15 @@ components:
       type: string
       format: date-time
       pattern: Z$
+    ToolEntry:
+      description: Manifest entry of one tool. Every tool that accepts a resource identifier MUST declare resourceRefs (C6).
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/ToolEntryFields"
+        - required:
+            - risk
+            - action
+      unevaluatedProperties: false
     AdapterToolEntry:
       description: "Manifest entry of a tool of an adapter (CC-193). The adapter does not classify: risk and action are absent (the administrator gives them at approval), resourceRefs is empty (policies are per tool), and definitionHash covers the definition, resourceRefs, system and credential without risk and action."
       type: object
@@ -3558,84 +3536,6 @@ components:
               items:
                 $ref: "#/components/schemas/ResourceRef"
       unevaluatedProperties: false
-    ResourceTypeDeclaration:
-      description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
-      type: object
-      required:
-        - type
-        - attributes
-        - idPattern
-      properties:
-        type:
-          $ref: "#/components/schemas/ResourceType"
-        attributes:
-          description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
-          type: array
-          items:
-            type: string
-            pattern: ^[a-z][A-Za-z0-9]*$
-          uniqueItems: true
-        parent:
-          description: Type of the containing resource, declared in this manifest, same namespace.
-          $ref: "#/components/schemas/ResourceType"
-        parentAttribute:
-          description: Cedar attribute that holds the parent entity; required with parent and only then.
-          type: string
-          pattern: ^[a-z][A-Za-z0-9]*$
-        idPattern:
-          description: "Anchored regular expression (^...$, no top-level alternation) of the ids of this type: tool arguments, resolved resources. Written in the subset that Java and ECMAScript share; matched against the whole id."
-          type: string
-          pattern: ^\^.+\$$
-          maxLength: 2048
-        scopePattern:
-          description: "Anchored regular expression of the local part of a grantable scope id (<Type>/<local part>). Absent: the type cannot be granted in the scope mapping."
-          type: string
-          pattern: ^\^.+\$$
-          maxLength: 2048
-        earlyScopeCheck:
-          description: Whether the gateway checks tool arguments of this type against the scopes of the user before the call (context.refs). Only for types whose scope is the exact id; requires scopePattern.
-          type: boolean
-          default: false
-        classification:
-          description: The attribute the builder normalizes (trim, ASCII lower case, sets without duplicates); a resource missing a required one is refused (internal_error).
-          type: object
-          required:
-            - attribute
-            - kind
-            - required
-          properties:
-            attribute:
-              type: string
-              pattern: ^[a-z][A-Za-z0-9]*$
-            kind:
-              enum:
-                - string
-                - set
-            required:
-              type: boolean
-          additionalProperties: false
-      dependentRequired:
-        parent:
-          - parentAttribute
-        parentAttribute:
-          - parent
-      additionalProperties: false
-    ToolEntry:
-      description: Manifest entry of one tool. Every tool that accepts a resource identifier MUST declare resourceRefs (C6).
-      type: object
-      allOf:
-        - $ref: "#/components/schemas/ToolEntryFields"
-        - required:
-            - risk
-            - action
-      unevaluatedProperties: false
-    CredentialType:
-      type: string
-      enum:
-        - user-oauth
-        - user-secret
-        - token-exchange
-        - service-account
     RequestId:
       description: UUIDv7 request id (C2 rid, X-Request-Id).
       type: string
@@ -3652,10 +3552,17 @@ components:
       minLength: 1
       maxLength: 512
     PolicyRevision:
-      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; GET /internal/v1/policy-data): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
+      description: "Revision of the policy data of the gateway (scope mapping, allowed clients, overrides, approved policy hashes; pushed to servers with POST /.well-known/mcp-policy-data, C14): a counter that the gateway raises on every change and never lowers (C7): max(previous + 1, current epoch milliseconds), so that a restore of the database cannot take it below what servers already hold. A receiver never accepts a revision lower than or equal to the one it holds, as new data. 0 means 'gateway without policy data' and is not the revision of any data; a receiver must not infer anything about policy from it."
       type: integer
       minimum: 0
       maximum: 9007199254740991
+    CredentialType:
+      type: string
+      enum:
+        - user-oauth
+        - user-secret
+        - token-exchange
+        - service-account
     ErrorCode:
       description: Client-visible error codes (C10).
       type: string
@@ -3675,6 +3582,10 @@ components:
         - step_up_required
         - upstream_unavailable
         - internal_error
+    CertificateFingerprint:
+      description: SHA-256 of the DER encoding of an X.509 certificate (never of its PEM text), as sha256:<64 lower-case hex digits>, without colons (CC-249; see test-vectors/certificate-fingerprint).
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
     resource:
       type: object
       required:
@@ -3737,312 +3648,68 @@ components:
                 maxLength: 200000
             additionalProperties: false
       additionalProperties: false
-    ServerManifest:
-      title: MCP server manifest (C6)
-      description: "Generated by the starter at build time (target/mcp-manifest.json, the artifact of the reviewed commit) or built at startup from the server's tools/list (CC-140), served at GET /mcp-manifest (requires C2) and registered with PUT /admin/v1/registry/servers/{serverId} (C5). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique, all in one Cedar namespace that equals policies.namespace; each declaration consistent (parent and parentAttribute together, parent in the same namespace, earlyScopeCheck only with a scopePattern, the classification attribute among attributes, idPattern and scopePattern anchored with ^ and $ without a top-level alternation); policies.files names unique; policiesHash recomputed from policies and resourceTypes equals the declared one; definition.name == name; definition.inputSchema has no confirmation_code and is closed and bounded (CC-078, CC-123: type object and additionalProperties false at every object level, no open maps, every string with maxLength unless an enum or const, every array with maxItems and items, every number with minimum and maximum, patterns anchored with ^ and $, every node typed, no allOf/anyOf/oneOf/not/if/then/else); definitionHash recomputed from definition and the entry equals the declared one (CC-005)."
+    ResourceTypeDeclaration:
+      description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
       type: object
       required:
-        - serverId
-        - version
-        - system
-        - internalUrl
-        - credential
-        - resourceTypes
-        - tools
+        - type
+        - attributes
+        - idPattern
       properties:
-        serverId:
-          $ref: "#/components/schemas/ServerId"
-        version:
-          $ref: "#/components/schemas/SemVer"
-        system:
-          $ref: "#/components/schemas/SystemId"
-        environment:
-          description: Environment the server was built for (CC-138). Absent means production. A gateway in production mode rejects a manifest with dev (422 manifest_rejected, reason environment_mismatch). Not part of any definitionHash.
+        type:
+          $ref: "#/components/schemas/ResourceType"
+        attributes:
+          description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
+          type: array
+          items:
+            type: string
+            pattern: ^[a-z][A-Za-z0-9]*$
+          uniqueItems: true
+        parent:
+          description: Type of the containing resource, declared in this manifest, same namespace.
+          $ref: "#/components/schemas/ResourceType"
+        parentAttribute:
+          description: Cedar attribute that holds the parent entity; required with parent and only then.
           type: string
-          enum:
-            - production
-            - dev
-        internalUrl:
-          description: Informational. The gateway takes serverId -> system/internalUrl only from its own configuration and rejects a manifest that disagrees (C5).
+          pattern: ^[a-z][A-Za-z0-9]*$
+        idPattern:
+          description: "Anchored regular expression (^...$, no top-level alternation) of the ids of this type: tool arguments, resolved resources. Written in the subset that Java and ECMAScript share; matched against the whole id."
           type: string
-          format: uri
-          pattern: ^https://
-        credential:
+          pattern: ^\^.+\$$
+          maxLength: 2048
+        scopePattern:
+          description: "Anchored regular expression of the local part of a grantable scope id (<Type>/<local part>). Absent: the type cannot be granted in the scope mapping."
+          type: string
+          pattern: ^\^.+\$$
+          maxLength: 2048
+        earlyScopeCheck:
+          description: Whether the gateway checks tool arguments of this type against the scopes of the user before the call (context.refs). Only for types whose scope is the exact id; requires scopePattern.
+          type: boolean
+          default: false
+        classification:
+          description: The attribute the builder normalizes (trim, ASCII lower case, sets without duplicates); a resource missing a required one is refused (internal_error).
           type: object
           required:
+            - attribute
+            - kind
             - required
-            - acceptedTypes
           properties:
-            required:
-              type: boolean
-            acceptedTypes:
-              type: array
-              items:
-                $ref: "#/components/schemas/CredentialType"
-              uniqueItems: true
-          if:
-            properties:
-              required:
-                const: true
-          then:
-            properties:
-              acceptedTypes:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CredentialType"
-                minItems: 1
-          additionalProperties: false
-        resourceTypes:
-          type: array
-          items:
-            $ref: "#/components/schemas/ResourceTypeDeclaration"
-        tools:
-          type: array
-          minItems: 1
-          items:
-            oneOf:
-              - $ref: "#/components/schemas/ToolEntry"
-              - $ref: "#/components/schemas/AdapterToolEntry"
-          description: "Which of the two entry forms applies depends on source: AdapterToolEntry when source is adapter, ToolEntry otherwise (CC-193)."
-        source:
-          description: "Absent for a server built on the starter. adapter marks the manifest of an adapter, the sidecar of a foreign MCP server (CC-193): its tool entries carry no risk and no action (an administrator classifies them at approval, outside definitionHash) and no resourceRefs, no resourceTypes and no policies (its policies are its own, outside the platform)."
-          const: adapter
-        policies:
-          description: "The policy fragment of the server (C7), from src/main/resources/mcp/policies/ of its repository: the Cedar schema of its one namespace and its resource policies. Present for a server built on the starter, absent for an adapter. It is validated at registration (base schema plus fragment compose and validate in strict mode, see cedar/entity-builder.md) and is part of what an administrator approves (policiesHash)."
-          type: object
-          required:
-            - namespace
-            - schema
-            - files
-          properties:
-            namespace:
-              description: The Cedar namespace of the server; every resourceTypes[].type starts with it.
-              type: string
-              pattern: ^[A-Z][A-Za-z0-9]{0,30}$
-            schema:
-              description: "Text of schema.cedarschema: exactly one namespace, the server's own."
-              type: string
-              minLength: 1
-              maxLength: 200000
-            files:
-              description: The *.cedar files of the server, in file name order.
-              type: array
-              maxItems: 100
-              items:
-                type: object
-                required:
-                  - name
-                  - text
-                properties:
-                  name:
-                    type: string
-                    pattern: ^[a-z0-9][a-z0-9._-]{0,63}\.cedar$
-                  text:
-                    type: string
-                    maxLength: 200000
-                additionalProperties: false
-          additionalProperties: false
-        policiesHash:
-          description: 'sha256 over the RFC 8785 canonical JSON of {"policies": <policies>, "resourceTypes": <resourceTypes>} (see test-vectors/policies-hash): a change of a declaration (earlyScopeCheck, idPattern, scopePattern, classification) needs approval like a change of a policy. The gateway recomputes it; a changed hash of a deployed server puts the server in pending_approval until an administrator approves it. Present exactly when policies is.'
-          $ref: "#/components/schemas/DefinitionHash"
-      additionalProperties: false
-      $defs:
-        ResourceTypeDeclaration:
-          description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
-          type: object
-          required:
-            - type
-            - attributes
-            - idPattern
-          properties:
-            type:
-              $ref: "#/components/schemas/ResourceType"
-            attributes:
-              description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
-              type: array
-              items:
-                type: string
-                pattern: ^[a-z][A-Za-z0-9]*$
-              uniqueItems: true
-            parent:
-              description: Type of the containing resource, declared in this manifest, same namespace.
-              $ref: "#/components/schemas/ResourceType"
-            parentAttribute:
-              description: Cedar attribute that holds the parent entity; required with parent and only then.
+            attribute:
               type: string
               pattern: ^[a-z][A-Za-z0-9]*$
-            idPattern:
-              description: "Anchored regular expression (^...$, no top-level alternation) of the ids of this type: tool arguments, resolved resources. Written in the subset that Java and ECMAScript share; matched against the whole id."
-              type: string
-              pattern: ^\^.+\$$
-              maxLength: 2048
-            scopePattern:
-              description: "Anchored regular expression of the local part of a grantable scope id (<Type>/<local part>). Absent: the type cannot be granted in the scope mapping."
-              type: string
-              pattern: ^\^.+\$$
-              maxLength: 2048
-            earlyScopeCheck:
-              description: Whether the gateway checks tool arguments of this type against the scopes of the user before the call (context.refs). Only for types whose scope is the exact id; requires scopePattern.
+            kind:
+              enum:
+                - string
+                - set
+            required:
               type: boolean
-              default: false
-            classification:
-              description: The attribute the builder normalizes (trim, ASCII lower case, sets without duplicates); a resource missing a required one is refused (internal_error).
-              type: object
-              required:
-                - attribute
-                - kind
-                - required
-              properties:
-                attribute:
-                  type: string
-                  pattern: ^[a-z][A-Za-z0-9]*$
-                kind:
-                  enum:
-                    - string
-                    - set
-                required:
-                  type: boolean
-              additionalProperties: false
-          dependentRequired:
-            parent:
-              - parentAttribute
-            parentAttribute:
-              - parent
           additionalProperties: false
-        ResourceRef:
-          type: object
-          required:
-            - argument
-            - type
-          properties:
-            argument:
-              description: Name of a top-level argument of the tool's inputSchema whose value is a resource id (string or array of strings).
-              type: string
-              pattern: ^[A-Za-z_][A-Za-z0-9_]*$
-              maxLength: 64
-            type:
-              $ref: "#/components/schemas/ResourceType"
-          additionalProperties: false
-        ToolEntry:
-          description: Manifest entry of one tool. Every tool that accepts a resource identifier MUST declare resourceRefs (C6).
-          type: object
-          allOf:
-            - $ref: "#/components/schemas/ToolEntryFields"
-            - required:
-                - risk
-                - action
-          unevaluatedProperties: false
-        ToolEntryFields:
-          description: Fields of a manifest tool entry, open for composition (used by the gateway registry API). risk and action are required by ToolEntry and forbidden by AdapterToolEntry.
-          type: object
-          required:
-            - name
-            - resourceRefs
-            - definition
-            - definitionHash
-          properties:
-            name:
-              $ref: "#/components/schemas/ToolName"
-            risk:
-              $ref: "#/components/schemas/Risk"
-            action:
-              $ref: "#/components/schemas/ToolAction"
-            additionalGroup:
-              description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
-              type: string
-              pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
-              maxLength: 70
-            resourceRefs:
-              description: Always present; an empty array when the tool takes no resource identifier (one canonical form for definitionHash).
-              type: array
-              items:
-                $ref: "#/components/schemas/ResourceRef"
-            definition:
-              $ref: "#/components/schemas/McpToolDefinition"
-            definitionHash:
-              description: sha256 over the canonical JSON of definition + risk, action, resourceRefs + system, credential (CC-004, CC-005). Receivers recompute it.
-              $ref: "#/components/schemas/DefinitionHash"
-        McpToolDefinition:
-          description: Full MCP tool definition as returned by tools/list (CC-005). Input of definitionHash together with risk, action, resourceRefs and the server fields system and credential. title is required (CC-115) and hashed like description (CC-042); icons and _meta are not allowed in v1, because they would reach the client without being pinned.
-          type: object
-          required:
-            - name
-            - title
-            - description
-            - inputSchema
-          properties:
-            name:
-              $ref: "#/components/schemas/ToolName"
-            title:
-              type: string
-              minLength: 1
-              description: Display name shown by MCP clients; required since 3.0.0 (CC-115) and part of definitionHash (CC-042).
-            description:
-              type: string
-              minLength: 1
-            inputSchema:
-              type: object
-              description: JSON Schema of the arguments. Must not declare confirmation_code (reserved for the gateway, C11). Closed and bounded (CC-078, CC-123); checked by the semantic rules, because JSON Schema cannot express them for arbitrary nesting.
-            outputSchema:
-              type: object
-            annotations:
-              type: object
-          additionalProperties: false
-        AdapterToolEntry:
-          description: "Manifest entry of a tool of an adapter (CC-193). The adapter does not classify: risk and action are absent (the administrator gives them at approval), resourceRefs is empty (policies are per tool), and definitionHash covers the definition, resourceRefs, system and credential without risk and action."
-          type: object
-          allOf:
-            - $ref: "#/components/schemas/ToolEntryFields"
-            - not:
-                anyOf:
-                  - required:
-                      - risk
-                  - required:
-                      - action
-                  - required:
-                      - additionalGroup
-              properties:
-                resourceRefs:
-                  type: array
-                  maxItems: 0
-                  items:
-                    $ref: "#/components/schemas/ResourceRef"
-          unevaluatedProperties: false
-      allOf:
-        - if:
-            required:
-              - source
-          then:
-            properties:
-              tools:
-                items:
-                  $ref: "#/components/schemas/AdapterToolEntry"
-                type: array
-              resourceTypes:
-                type: array
-                maxItems: 0
-                items:
-                  $ref: "#/components/schemas/ResourceTypeDeclaration"
-            not:
-              anyOf:
-                - required:
-                    - policies
-                - required:
-                    - policiesHash
-          else:
-            properties:
-              tools:
-                items:
-                  $ref: "#/components/schemas/ToolEntry"
-                type: array
-            required:
-              - policies
-              - policiesHash
       dependentRequired:
-        policies:
-          - policiesHash
-        policiesHash:
-          - policies
+        parent:
+          - parentAttribute
+        parentAttribute:
+          - parent
+      additionalProperties: false
     AuditEvent:
       title: Audit event (C8)
       description: One JSON object per line on a dedicated logger/appender shipped to the SIEM. Never contains argument values, tool results, secrets, confirmation codes, TOTP codes, authenticator seeds or otpauth URIs; additionalProperties is false so such fields cannot be added by accident. Target system of broker events is carried in 'server' (mcp-<system>). The serializer must escape control characters, U+2028 and U+2029 in every string value.
@@ -4144,7 +3811,7 @@ components:
           description: sha256 of the text before a replacement (override_set that replaces an override); absent for a create.
           $ref: "#/components/schemas/DefinitionHash"
         changedFields:
-          description: Names of the fields a PATCH of a server changed, on admin_change with reason server_updated (internalUrl, credential, enabled); never their values.
+          description: Names of the fields a PATCH of a server changed, on admin_change with reason server_updated (credential, enabled); never their values.
           type: array
           minItems: 1
           maxItems: 8
@@ -4152,7 +3819,6 @@ components:
           items:
             type: string
             enum:
-              - internalUrl
               - credential
               - enabled
         decision:
@@ -4162,7 +3828,7 @@ components:
             - deny
             - confirmation_pending
         reason:
-          description: "Machine-readable reason, snake case. Known values: policy_forbid, secret_stored_unverified, server_created, server_updated, server_deleted, scope_mapping_changed, scope_mapping_entry_removed, scope_mapping_entry_ignored, override_set, override_removed, override_invalid, override_rejected, policies_submitted, policies_approved, policies_changed, policy_data_invalid, system_created, system_updated, system_deleted, system_imported, connections_invalidated, not_admin, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, subject_token_invalid, credential_type_mismatch, risk_lowered_by_admin, user_purged, unused_cleanup, definition_changed, tool_not_served, definition_submitted, filter_scope, invalid_filter, filter_mismatch, invalid_cursor, policy_unavailable, policy_error, kill_switch, kill_switch_set, kill_switch_cleared, secret_missing, database_unavailable, refresh_token_lost, user_offboarding, secret_store_unavailable, token_refreshed, oauth_grant_revoked, connection_changed_during_refresh, provider_unavailable, connection_busy. credential_type_mismatch: on the gateway (event credential_resolve, outcome error, errorCode internal_error; credentialType is the type the broker returned) the broker returned a type that is not in the set of types the gateway configuration allows for the system; on a server (event policy_decision or tool_call) the type in X-MCP-Credential-Type, sent by the gateway with X-MCP-Credential, is not in the set of the server's accepted credential types, is missing or is not one of the four types, or the server has none configured, and the check comes before Cedar, the grant probe and the resolvers: decision deny, outcome error, errorCode internal_error, the client learns nothing more (CC-166). For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied; the gateway records it on the tool_call event of the call it had allowed, decision allow, outcome denied, errorCode access_denied, which is the normative shape for the activity row, CC-165) and system_not_configured (the system is not configured in the broker, CC-158, outcome error) and subject_token_invalid (the subject token of a token exchange has the wrong audience, has expired or belongs to another sub than the internal JWT, CC-157, outcome denied). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). Both offboarding purges (broker and gateway) emit one admin_change with reason user_purged and outcome ok for every call, also when nothing was removed and for an unknown sub, so that a call of mcp-offboarding always leaves a trace (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool and client from the internal JWT). For events of the broker (CC-196, CC-205), reasons that were not listed before 6.0.0 (the outcomes and error codes below are the ones the broker reports; ws-06 confirms them, and only database_unavailable, refresh_token_lost and secret_missing have vectors): database_unavailable (the database did not answer: the operation is refused with 503, outcome error, errorCode upstream_unavailable; also for the authenticator), secret_store_unavailable (the secret store did not answer, outcome error, errorCode upstream_unavailable), refresh_token_lost (the provider rotated the refresh token and the broker could not store the new one even after retries; the new tokens are revoked at the provider and the connection goes to error, not revoked; connection_change, outcome error), user_offboarding (a write was refused because a purge of the user is running or has just run, CC-155; outcome denied), token_refreshed (the access token was renewed, outcome ok), oauth_grant_revoked (the provider answered invalid_grant, the connection is revoked), connection_changed_during_refresh (the connection was replaced or deleted while it was being refreshed, so the refresh result was dropped), provider_unavailable (the provider did not answer, outcome error, errorCode upstream_unavailable), connection_busy (another refresh of the same connection holds the lock) and secret_missing (the secret of a connection is gone from the secret store: the broker sets the state of the connection to error so that the user connects again, connection_change, outcome error, CC-205). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: filter_scope (the tool exists and the user may call it, but the endpoint filter of the request leaves it out, decision deny, outcome denied, errorCode not_found_or_denied, CC-170, CC-178: checked before tool_disabled, upstream_unavailable and credential_required and before the confirmation gate), invalid_filter (the query of the request does not parse or exceeds a limit, policy_decision, decision deny, outcome error, without errorCode, CC-170), filter_mismatch (the route or the filter of the request differs from the ones bound to the MCP session, policy_decision, decision deny, outcome denied, CC-172, CC-184; a session of another user or an unknown one is a 404 without this reason), invalid_cursor (the cursor of tools/list is malformed, was changed or was issued to another user or for another filter, policy_decision, decision deny, outcome error, without errorCode, CC-181), These four refusals that a client can repeat at will (invalid_filter, filter_mismatch, invalid_cursor and a tools/call answered not_found_or_denied with not_granted or filter_scope) are written at most once per user and reason in an interval (10 s by default); the rest is only counted in mcp_audit_endpoint_suppressed_total{reason}, and the request is refused either way (CC-190, CC-191: the key of the interval is user, reason and target, and a summary event with suppressedCount follows each window), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133) upstream_unavailable (on tool_call or policy_decision: a store behind the check, such as the counter of the limits, the session store or the store of the emergency switches, did not answer and the request was refused, CC-167, CC-194, CC-199; also a request that the gateway shed because too many were in progress, CC-199, which the gateway may aggregate as in CC-125) and tool_not_served (the approved tool is missing from the tools the server serves, so it is hidden and refused with errorCode tool_disabled, CC-161). definition_changed and tool_not_served are recorded on every refused call (not once per read) and when a read finds the difference there is no separate event. A failed read of the server's tools/list is not evidence of either: the gateway keeps its last successful read, and a call that needs a fresh read that fails is refused as upstream_unavailable without a call to the server. kill_switch (tool_call, decision deny, outcome denied, errorCode tool_disabled: the tool or its server was switched off by an administrator, CC-194; tool_disabled alone is a definition waiting for approval or classification). At the tool level of the gateway policy_forbid is a refusal by a forbid rule (for example from the overrides bundle) answered not_found_or_denied, and not_granted means that no permit allowed the tool (CC-198); the activity row of the user for both stays denied_not_granted. On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway and of the broker. For the registry, with reasons definition_registered (the pipeline registered a manifest and the definition was approved by that call: a READ_ONLY tool, CC-133), definition_submitted (the registration left a new or changed UPDATE or DESTRUCTIVE tool pending approval, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and risk_lowered_by_admin (an administrator approved a risk lower than the floor with acceptRiskLowering; one event instead of definition_approved, with risk set to the new risk, CC-167), tool_removed (a tool left the registered manifest), kill_switch_set and kill_switch_cleared (an administrator switched a server or a tool off or on again, CC-194; sub is the administrator, the tool is in tool and the system in server; the free text of the administrator is not part of the event). For definition_approved the sub is the administrator; for a tool of an adapter the same event carries the risk and the action the administrator gave (CC-193, CC-207), which is how a classification differs from any other approval; for user_purged it is the purged user, and the calling identity (the certificate CN mcp-offboarding) is not a field of this schema. Other reasons are not defined. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed; for the sidecar of an adapter also classification_missing, a tools/call without mcp_risk and mcp_action, CC-226); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The broker uses these two names (jwks_unavailable, replay_store_unavailable) in an event authentication with outcome denied like the servers do; key_source_unavailable and jti_store_unavailable are not defined (CC-197). The broker also records the rejection of the token itself (bad_signature, expired, replayed_jti and the other codes of the internal JWT above) as an event authentication with outcome denied and without server, sub or tool, not as the event of the operation it was about to authorize; for a rejected token it writes no credential_resolve or connection_change (CC-211). decision is optional on authentication (deny when present); the broker writes none (CC-212). The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
+          description: "Machine-readable reason, snake case. Known values: policy_forbid, secret_stored_unverified, server_created, server_updated, server_deleted, server_connection_approved, server_connection_changed, scope_mapping_changed, scope_mapping_entry_removed, scope_mapping_entry_ignored, override_set, override_removed, override_invalid, override_rejected, policies_submitted, policies_approved, policies_changed, policy_data_invalid, system_created, system_updated, system_deleted, system_imported, connections_invalidated, not_admin, not_granted, tool_disabled, user_confirmed, user_confirmed_no_preview, confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, superseded, pending_exists, cancelled_by_owner, credential_required, step_up_required, rate_limited, rate_limited_user, rate_limited_client, rate_limited_tool, exchange_denied, system_not_configured, subject_token_invalid, credential_type_mismatch, risk_lowered_by_admin, user_purged, unused_cleanup, definition_changed, tool_not_served, definition_submitted, wrong_purpose, filter_scope, invalid_filter, filter_mismatch, invalid_cursor, policy_unavailable, policy_error, kill_switch, kill_switch_set, kill_switch_cleared, secret_missing, database_unavailable, refresh_token_lost, user_offboarding, secret_store_unavailable, token_refreshed, oauth_grant_revoked, connection_changed_during_refresh, provider_unavailable, connection_busy. credential_type_mismatch: on the gateway (event credential_resolve, outcome error, errorCode internal_error; credentialType is the type the broker returned) the broker returned a type that is not in the set of types the gateway configuration allows for the system; on a server (event policy_decision or tool_call) the type in X-MCP-Credential-Type, sent by the gateway with X-MCP-Credential, is not in the set of the server's accepted credential types, is missing or is not one of the four types, or the server has none configured, and the check comes before Cedar, the grant probe and the resolvers: decision deny, outcome error, errorCode internal_error, the client learns nothing more (CC-166). For rate limits (gateway, CC-156) a refused call or request is recorded as tool_call (a tools/call) or policy_decision (any other MCP request) with decision deny, outcome denied, errorCode rate_limited and reason rate_limited_user, rate_limited_client (the pair user and AI client) or rate_limited_tool (the pair user and tool); the client is not told which limit applied, the administrator is. The gateway may aggregate excess events as for CC-125. For event credential_resolve (broker, gateway): exchange_denied (the IdP refused the token exchange, CC-157, outcome denied; the gateway records it on the tool_call event of the call it had allowed, decision allow, outcome denied, errorCode access_denied, which is the normative shape for the activity row, CC-165) and system_not_configured (the system is not configured in the broker, CC-158, outcome error) and subject_token_invalid (the subject token of a token exchange has the wrong audience, has expired or belongs to another sub than the internal JWT, CC-157, outcome denied). For event connection_change (broker): user_purged (the connection was removed by the offboarding purge, CC-155) and unused_cleanup (the connection was removed because it had not been used for the configured number of days, 180 by default, CC-155). Both offboarding purges (broker and gateway) emit one admin_change with reason user_purged and outcome ok for every call, also when nothing was removed and for an unknown sub, so that a call of mcp-offboarding always leaves a trace (CC-155). For event confirmation (gateway, CC-094): confirmation_pending is the decision when the pending call is created, and the outcome is one of user_confirmed (code accepted), user_confirmed_no_preview (accepted although the owner did not open the portal preview), confirmation_expired, attempts_exhausted, authenticator_not_registered, authenticator_disabled, code_burned (the retry carried a code of a burned step: confirmation_failed outwards, no attempt spent, not a wrong code, CC-128), cancelled_by_owner (the owner cancelled the pending call in the portal, CC-128; decision deny, errorCode confirmation_cancelled, emitted when the cancel is accepted and again when the cancelled call is retried), pending_exists (a new DESTRUCTIVE call was refused because another one is pending and its preview was opened; errorCode confirmation_blocked, CC-127), superseded (the pending DESTRUCTIVE call was replaced by a newer one of the same user, CC-127; emitted for the older call when the newer is created, and again when the older call is retried); user_declined and preview_not_viewed are not emitted since 3.0.0 (there is no decline, and the preview is optional). For event authenticator (broker, portal, CC-094): authenticator_enrollment_started, authenticator_registered, authenticator_enrollment_failed, authenticator_removed, authenticator_reset_by_admin (outcome ok or denied; the target user is sub), authenticator_seed_missing (the seed of a registered authenticator is gone from the secret store: the registration is reset to none, outcome error, errorCode upstream_unavailable, CC-142), authenticator_disabled (the daily limit of 20 wrong codes in 24 hours switched the authenticator off, CC-126; outcome denied) and, for the check of a code with decision allow or deny, totp_verified, totp_invalid, totp_replayed, totp_locked, totp_disabled, totp_burned (a code of a burned step: replayed for the broker but not a failure and not counted, CC-128), totp_steps_burned (the current codes were invalidated because the owner cancelled a pending operation or a new DESTRUCTIVE operation followed a viewed one, CC-128; outcome ok), totp_not_registered (these carry tool and client from the internal JWT). For events of the broker (CC-196, CC-205), reasons that were not listed before 6.0.0 (the outcomes and error codes below are the ones the broker reports; ws-06 confirms them, and only database_unavailable, refresh_token_lost and secret_missing have vectors): database_unavailable (the database did not answer: the operation is refused with 503, outcome error, errorCode upstream_unavailable; also for the authenticator), secret_store_unavailable (the secret store did not answer, outcome error, errorCode upstream_unavailable), refresh_token_lost (the provider rotated the refresh token and the broker could not store the new one even after retries; the new tokens are revoked at the provider and the connection goes to error, not revoked; connection_change, outcome error), user_offboarding (a write was refused because a purge of the user is running or has just run, CC-155; outcome denied), token_refreshed (the access token was renewed, outcome ok), oauth_grant_revoked (the provider answered invalid_grant, the connection is revoked), connection_changed_during_refresh (the connection was replaced or deleted while it was being refreshed, so the refresh result was dropped), provider_unavailable (the provider did not answer, outcome error, errorCode upstream_unavailable), connection_busy (another refresh of the same connection holds the lock) and secret_missing (the secret of a connection is gone from the secret store: the broker sets the state of the connection to error so that the user connects again, connection_change, outcome error, CC-205). For event connection_change (broker) a failed revocation at the provider is recorded with reason provider_revoke_failed (the connection is deleted anyway, outcome error; CC-142). For tool_call and policy_decision: filter_scope (the tool exists and the user may call it, but the endpoint filter of the request leaves it out, decision deny, outcome denied, errorCode not_found_or_denied, CC-170, CC-178: checked before tool_disabled, upstream_unavailable and credential_required and before the confirmation gate), invalid_filter (the query of the request does not parse or exceeds a limit, policy_decision, decision deny, outcome error, without errorCode, CC-170), filter_mismatch (the route or the filter of the request differs from the ones bound to the MCP session, policy_decision, decision deny, outcome denied, CC-172, CC-184; a session of another user or an unknown one is a 404 without this reason), invalid_cursor (the cursor of tools/list is malformed, was changed or was issued to another user or for another filter, policy_decision, decision deny, outcome error, without errorCode, CC-181), These four refusals that a client can repeat at will (invalid_filter, filter_mismatch, invalid_cursor and a tools/call answered not_found_or_denied with not_granted or filter_scope) are written at most once per user and reason in an interval (10 s by default); the rest is only counted in mcp_audit_endpoint_suppressed_total{reason}, and the request is refused either way (CC-190, CC-191: the key of the interval is user, reason and target, and a summary event with suppressedCount follows each window), policy_unavailable (no policy bundle is loaded, so nothing can be decided and the request is refused), policy_error (the policy engine failed on this request) definition_changed (the definition the server presents differs from the approved one, so the tool is hidden and refused with errorCode tool_disabled, CC-133) upstream_unavailable (on tool_call or policy_decision: a store behind the check, such as the counter of the limits, the session store or the store of the emergency switches, did not answer and the request was refused, CC-167, CC-194, CC-199; also a request that the gateway shed because too many were in progress, CC-199, which the gateway may aggregate as in CC-125) and tool_not_served (the approved tool is missing from the tools the server serves, so it is hidden and refused with errorCode tool_disabled, CC-161). definition_changed and tool_not_served are recorded on every refused call (not once per read) and when a read finds the difference there is no separate event. A failed read of the server's tools/list is not evidence of either: the gateway keeps its last successful read, and a call that needs a fresh read that fails is refused as upstream_unavailable without a call to the server. kill_switch (tool_call, decision deny, outcome denied, errorCode tool_disabled: the tool or its server was switched off by an administrator, CC-194; tool_disabled alone is a definition waiting for approval or classification). At the tool level of the gateway policy_forbid is a refusal by a forbid rule (for example from the overrides bundle) answered not_found_or_denied, and not_granted means that no permit allowed the tool (CC-198); the activity row of the user for both stays denied_not_granted. On a server policy_forbid is a refusal by policy (a forbid rule or no permit) and not_granted a resource that could not be resolved or has no grant (CC-141). Event admin_change records the administrative changes of the gateway and of the broker. For the registry, with reasons definition_registered (the pipeline registered a manifest and the definition was approved by that call: a READ_ONLY tool, CC-133), definition_submitted (the registration left a new or changed UPDATE or DESTRUCTIVE tool pending approval, CC-133), definition_approved (an administrator approved a pending definition; sub is the administrator and definitionHash the approved hash) and risk_lowered_by_admin (an administrator approved a risk lower than the floor with acceptRiskLowering; one event instead of definition_approved, with risk set to the new risk, CC-167), tool_removed (a tool left the registered manifest), kill_switch_set and kill_switch_cleared (an administrator switched a server or a tool off or on again, CC-194; sub is the administrator, the tool is in tool and the system in server; the free text of the administrator is not part of the event). For definition_approved the sub is the administrator; for a tool of an adapter the same event carries the risk and the action the administrator gave (CC-193, CC-207), which is how a classification differs from any other approval; for user_purged it is the purged user, and the calling identity (the certificate CN mcp-offboarding) is not a field of this schema. Other reasons are not defined. For event authentication it is the rejection code: for the internal JWT (receiver: server, broker) one of the vectors (missing_token, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, replayed_jti, service_token_not_allowed, tool_mismatch, invalid_claims, lifetime_too_long, not_yet_valid, request_id_mismatch, tool_missing, tool_not_allowed, test_key_not_allowed, malformed; for the sidecar of an adapter also classification_missing, a tools/call without mcp_risk and mcp_action, CC-226); for the token of the AI client at the gateway (C1, CC-120): missing_token, malformed, bad_signature, unknown_kid, alg_not_allowed, wrong_issuer, wrong_audience, expired, not_yet_valid, invalid_claims, and for infrastructure failures client_certificate_rejected, jwks_unavailable, replay_store_unavailable (the last two with errorCode upstream_unavailable). The gateway also emits authentication for its own admin port (C5 /admin/v1 and /actuator/prometheus, CC-125): client_certificate_rejected for a client certificate that is missing, not from the internal CA, lacks the clientAuth purpose or has a CN that the operation does not allow, and the token reasons above for a BFF token that fails validation (aud mcp-gateway-admin). replay_store_unavailable is emitted only by receivers of the internal JWT (servers through the starter, the broker), never by the gateway. The broker uses these two names (jwks_unavailable, replay_store_unavailable) in an event authentication with outcome denied like the servers do; key_source_unavailable and jti_store_unavailable are not defined (CC-197). The broker also records the rejection of the token itself (bad_signature, expired, replayed_jti and the other codes of the internal JWT above) as an event authentication with outcome denied and without server, sub or tool, not as the event of the operation it was about to authorize; for a rejected token it writes no credential_resolve or connection_change (CC-211). decision is optional on authentication (deny when present); the broker writes none (CC-212). The gateway may aggregate or sample client_certificate_rejected on its admin port (for example one event per source address per minute, or a counter in its metrics) so that a scanner cannot flood the SIEM (CC-125)."
           type: string
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
@@ -4196,8 +3862,18 @@ components:
           type: integer
           minimum: 0
         definitionHash:
-          description: "Hash of the tool definition an admin_change concerns (CC-133): for definition_approved the approved hash, for definition_registered the hash of each registered definition (one event per tool), for tool_removed the hash of the removed entry. Together with sub (the administrator) and tool it tells afterwards who approved which definition. Not a secret."
+          description: "Hash of the tool definition an admin_change concerns (CC-133): for definition_approved the approved hash, for definition_submitted the hash of each pulled definition that waits (one event per tool), for tool_removed the hash of the removed entry. Together with sub (the administrator) and tool it tells afterwards who approved which definition. Not a secret."
           $ref: "#/components/schemas/DefinitionHash"
+        tlsMode:
+          description: "On admin_change with reason server_connection_approved or server_connection_changed (CC-249): the trust mode approved or proposed."
+          type: string
+          enum:
+            - ca
+            - pinned
+            - plain
+        fingerprint:
+          description: "On admin_change with reason server_connection_approved or server_connection_changed (CC-249): SHA-256 of the DER of the leaf certificate approved or newly seen; absent for plain. Never the certificate."
+          $ref: "#/components/schemas/CertificateFingerprint"
       allOf:
         - description: "The filter field (CC-174, CC-186) belongs to the gateway and to four events only, and a rejected filter has none (nothing valid was normalized): authentication is covered by its closed field list, broker and server events by component."
           if:

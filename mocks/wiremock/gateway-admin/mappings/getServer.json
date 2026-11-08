@@ -43,7 +43,8 @@
         "jsonBody": {
           "serverId": "mcp-notes",
           "system": "notes",
-          "internalUrl": "https://mcp-notes.internal:8443/mcp",
+          "internalUrl": "https://mcp-notes.corp.local:8443/mcp",
+          "allowPlainHttp": false,
           "credential": {
             "required": true,
             "acceptedTypes": [
@@ -52,7 +53,23 @@
             "type": "user-oauth"
           },
           "enabled": true,
-          "adapter": false
+          "adapter": false,
+          "status": "connected",
+          "lastCheckedAt": "2026-11-08T09:30:00Z",
+          "lastError": null,
+          "connection": {
+            "tlsMode": "ca",
+            "fingerprint": "sha256:3b556e5421d66b7508742a96b309dc4c404075d02797d8fe5b38d76d1c870d14",
+            "subject": "CN=mcp-notes.corp.local",
+            "issuer": "CN=Corp Issuing CA 2",
+            "sans": [
+              "mcp-notes.corp.local"
+            ],
+            "notAfter": "2027-03-01T12:00:00Z",
+            "approvedBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+            "approvedAt": "2026-11-06T10:00:00Z"
+          },
+          "pendingConnection": null
         }
       }
     },

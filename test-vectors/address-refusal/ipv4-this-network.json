@@ -1,0 +1,10 @@
+{
+  "description": "The whole 0.0.0.0/8 counts as unspecified.",
+  "input": {
+    "address": "0.1.2.3"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "unspecified"
+  }
+}

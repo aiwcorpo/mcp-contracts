@@ -1,0 +1,12 @@
+{
+  "description": "A decimal host in the URL is the address it denotes: http://2130706433/ is 127.0.0.1.",
+  "input": {
+    "url": "http://2130706433/mcp"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "127.0.0.1",
+    "class": "loopback"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "febf::1 is still inside fe80::/10.",
+  "input": {
+    "address": "febf::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "link_local"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "A ca server whose certificate no longer validates (expired, or the CA left the trust, or the name does not match): certificate_changed with the proposal pinned.",
+  "kind": "check",
+  "input": {
+    "check": {
+      "approved": {
+        "tlsMode": "ca",
+        "fingerprint": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+      },
+      "presented": {
+        "fingerprint": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "validatesAsCa": false
+      }
+    }
+  },
+  "expected": {
+    "status": "certificate_changed",
+    "pendingConnection": {
+      "tlsMode": "pinned",
+      "reason": "ca_validation_failed"
+    }
+  }
+}

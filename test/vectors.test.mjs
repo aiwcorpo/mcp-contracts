@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, X509Certificate } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
 import { manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
-import { acceptRevision, policyDataGate } from '../scripts/lib/policy-data-gate.mjs';
+import { acceptRevision, gatewayCall, policyDataGate, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
@@ -16,8 +16,10 @@ import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sess
 import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
 import { killSwitchDecision } from '../scripts/lib/kill-switch.mjs';
-import { submissionDecision } from '../scripts/lib/adapter-registry.mjs';
-import { adapterToolState, approveDecision, registrationDecision } from '../scripts/lib/registry-approval.mjs';
+import { manifestPullDecision } from '../scripts/lib/adapter-registry.mjs';
+import { adapterToolState, approveDecision, pullDecision } from '../scripts/lib/registry-approval.mjs';
+import { addressDecision, hostDecision, urlDecision } from '../scripts/lib/address-policy.mjs';
+import { approveConnectionDecision, connectionCheck, firstConnection, toolAvailability } from '../scripts/lib/server-connection.mjs';
 
 const ajv = createAjv();
 
@@ -91,14 +93,85 @@ test('resource id vectors match the declarations of the example systems (CC-056)
   }
 });
 
-test('policy data gate vectors: a server evaluates only approved policies with data as new as the token (7.0.0)', () => {
+test('policy data gate vectors: a server evaluates only approved policies with data as new as the token (7.0.0, CC-249)', () => {
   const vectors = listJson('test-vectors', 'policy-data-gate');
   assert.ok(vectors.some((v) => v.data.expected.decision === 'continue') && vectors.some((v) => v.data.expected.decision === 'deny'));
   for (const { name, data } of vectors) {
     assert.deepEqual(policyDataGate(data.input), data.expected, name);
-    if (data.expected.decision === 'deny') assert.equal(data.expected.errorCode, 'upstream_unavailable', name);
+    if (data.expected.decision === 'deny') {
+      // Only a server that is behind asks the gateway to push; every other refusal is final.
+      const stale = data.expected.reason === 'policy_data_stale';
+      assert.equal(data.expected.errorCode, stale ? 'policy_data_stale' : 'upstream_unavailable', name);
+      assert.equal(data.expected.gatewayAction, stale ? 'push_and_retry_once' : 'none', name);
+    }
   }
   assert.ok(acceptRevision(null, 1) && acceptRevision(5, 6) && !acceptRevision(5, 5) && !acceptRevision(5, 4));
+});
+
+test('policy data push vectors: replacement rule and the push-and-retry of the gateway (CC-249)', () => {
+  const vectors = listJson('test-vectors', 'policy-data-push');
+  assert.ok(vectors.length >= 9);
+  for (const { name, data } of vectors) {
+    const actual = 'offered' in data.input ? pushDecision(data.input) : gatewayCall(data.input);
+    assert.deepEqual(actual, data.expected, name);
+    // One push and one repeat at most: there is no third attempt.
+    if ('gateway' in data.input) assert.ok(data.expected.calls <= 2 && data.expected.pushes <= 1, name);
+  }
+});
+
+test('address refusal vectors: loopback, link-local, unspecified and multicast are refused, also behind IPv4-mapped forms (CC-249)', () => {
+  const vectors = listJson('test-vectors', 'address-refusal');
+  assert.ok(vectors.length >= 30);
+  const classes = new Set();
+  for (const { name, data } of vectors) {
+    const kind = Object.keys(data.input)[0];
+    const actual = kind === 'address' ? addressDecision(data.input.address)
+      : kind === 'resolved' ? hostDecision(data.input.resolved)
+        : kind === 'connectedTo' ? hostDecision([data.input.connectedTo]) : urlDecision(data.input.url);
+    assert.deepEqual(actual, data.expected, name);
+    if (data.expected.class) classes.add(data.expected.class);
+  }
+  assert.deepEqual([...classes].sort(), ['link_local', 'loopback', 'multicast', 'not_an_address', 'unspecified']);
+  for (const address of ['127.0.0.1', '::1', '169.254.169.254', '::ffff:127.0.0.1', '::ffff:a9fe:a9fe', '0.0.0.0', '::', '224.0.0.251', 'ff02::1']) {
+    assert.ok(vectors.some((v) => v.data.input.address === address && !v.data.expected.allowed), `no refusal vector for ${address}`);
+  }
+});
+
+test('connection vectors: first connection, trust modes, approval (CC-249)', () => {
+  const vectors = listJson('test-vectors', 'server-connection');
+  assert.ok(vectors.length >= 20);
+  for (const { name, data } of vectors) {
+    const input = data.input[data.kind];
+    const actual = { firstConnection, availability: toolAvailability, check: connectionCheck, approve: approveConnectionDecision }[data.kind](input);
+    assert.deepEqual(actual, data.expected, name);
+    if (data.kind === 'firstConnection') {
+      assert.ok(Object.values(actual.tools).every((status) => status === 'pending_approval'), `${name}: every tool is pending, a READ_ONLY one too`);
+      assert.deepEqual(actual.listed, [], name);
+    }
+  }
+});
+
+test('certificate fingerprint vectors: SHA-256 of the DER, sha256:<lower-case hex> (CC-249)', () => {
+  const validate = schemaValidator(ajv, 'common.schema.json#/$defs/CertificateFingerprint');
+  const vectors = listJson('test-vectors', 'certificate-fingerprint');
+  assert.ok(vectors.length >= 10);
+  for (const { name, data } of vectors) {
+    if (name.startsWith('format-')) {
+      assert.equal(validate(data.fingerprint), data.expected.valid, name);
+    } else if (name === 'renewal-changes-the-fingerprint.json') {
+      const presented = createHash('sha256').update(new X509Certificate(data.presented.certificatePem).raw).digest('hex');
+      assert.equal(`sha256:${presented}`, data.presented.fingerprint, name);
+      assert.equal(data.approved === data.presented.fingerprint, data.expected.matches, name);
+    } else {
+      const der = new X509Certificate(data.certificatePem).raw;
+      assert.equal(der.toString('base64'), data.derBase64, name);
+      const computed = `sha256:${createHash('sha256').update(der).digest('hex')}`;
+      assert.equal(computed, data.expected.fingerprint, name);
+      assert.ok(validate(computed), name);
+      assert.equal(computed === (data.claimedFingerprint ?? computed), data.expected.matches, name);
+    }
+  }
+  assert.deepEqual(new X509Certificate(vectors.find((v) => v.name === 'self-signed-ec.json').data.certificatePem).subjectAltName.split(', '), ['DNS:mcp-notes', 'IP Address:10.20.0.15']);
 });
 
 test('policiesHash vectors: canonical form and sha256 of policies and resourceTypes (C6, 7.0.0)', () => {
@@ -552,12 +625,12 @@ test('an adapter manifest has no risk and no action, and its hash does not cover
   }
 });
 
-test('adapter registry: channel, certificate, mode and what stays pending (CC-193, CC-206)', () => {
+test('pulled manifests: mode, source and what stays pending, nothing approved by a pull (CC-193, CC-206, CC-249)', () => {
   const vectors = listJson('test-vectors', 'adapter-registry');
-  assert.ok(vectors.length >= 10);
-  for (const { name, data } of vectors) assert.deepEqual(submissionDecision(data.input), data.expected, name);
-  for (const { name, data } of vectors.filter((v) => v.data.input.channel === 'adapter' && v.data.expected.status === 200)) {
-    assert.deepEqual(data.expected.approvedByCall, [], `${name}: nothing of an adapter is approved by a call`);
+  assert.ok(vectors.length >= 8);
+  for (const { name, data } of vectors) {
+    assert.deepEqual(manifestPullDecision(data.input), data.expected, name);
+    if (data.expected.stored !== false) assert.deepEqual(data.expected.approvedByPull, [], `${name}: nothing is approved by a pull`);
   }
 });
 
@@ -566,7 +639,7 @@ test('approval with a classification of an adapter tool (CC-193, CC-206)', () =>
   const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
   assert.deepEqual([...reasons].sort(), ['classification_inconsistent', 'classification_not_allowed', 'classification_required', 'risk_lowered']);
   for (const { name, data } of vectors) {
-    assert.deepEqual('entry' in data.input ? approveDecision(data.input) : 'submitted' in data.input ? registrationDecision(data.input) : adapterToolState(data.input), data.expected, name);
+    assert.deepEqual('entry' in data.input ? approveDecision(data.input) : 'submitted' in data.input ? pullDecision(data.input) : adapterToolState(data.input), data.expected, name);
   }
 });
 

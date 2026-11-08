@@ -1,5 +1,5 @@
 {
-  "description": "The pipeline registered an UPDATE tool: it waits for an administrator (CC-133).",
+  "description": "A pulled manifest left an UPDATE tool pending: it waits for an administrator (CC-133, CC-249).",
   "expected": {
     "valid": true
   },

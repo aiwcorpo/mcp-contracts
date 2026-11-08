@@ -1,0 +1,15 @@
+{
+  "description": "The AAAA record hides the metadata address behind an IPv4-mapped form.",
+  "input": {
+    "resolved": [
+      "10.0.0.5",
+      "::ffff:a9fe:a9fe"
+    ]
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "address": "::ffff:a9fe:a9fe",
+    "class": "link_local"
+  }
+}

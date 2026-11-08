@@ -1,0 +1,7 @@
+{
+  "description": "Format of CertificateFingerprint: Hex digits are lower case.",
+  "fingerprint": "sha256:E463086ED9898DA488B0E80400904D6671486A211B3F6E2C2C7F7CC3636A47E7",
+  "expected": {
+    "valid": false
+  }
+}
