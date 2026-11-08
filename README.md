@@ -349,7 +349,7 @@ Rules for the JWT variants (CC-030, CC-033, CC-038, CC-069, CC-070):
 | --- | --- | --- |
 | `tools/call` (also a retry with `inputResponses` after an `InputRequiredResult`, MRTR) | user | required, `== params.name`, a new JWT for every retry |
 | `initialize`, `server/discover`, `tools/list`, `ping` | user or service | forbidden |
-| server `GET /.well-known/mcp-manifest` (the gateway pulls the manifest, C14) | service only, `use: manifest` | forbidden |
+| server `GET /.well-known/mcp-manifest` (the gateway pulls the manifest, C14) | none: served without a token | none |
 | server `POST /.well-known/mcp-policy-data` (the gateway pushes policy data, C14) | service only, `use: policy-data` | forbidden |
 | `subscriptions/listen`, `notifications/*`, JSON-RPC responses, `GET`/`DELETE` on the MCP endpoint | user only | forbidden |
 | broker `POST /v1/credentials/resolve` | user only | required |
@@ -359,26 +359,22 @@ Rules for the JWT variants (CC-030, CC-033, CC-038, CC-069, CC-070):
 The service variant is used only without a session (statelessly): all requests within a session, including
 `notifications/initialized` and `notifications/cancelled`, use the user variant (CC-070).
 
-**Purpose of a token, `use` (CC-249).** Every internal JWT carries `use`: `call`, `manifest` or `policy-data`, and a receiver refuses a token whose
+**Purpose of a token, `use` (CC-249).** Every internal JWT carries `use`: `call` or `policy-data`, and a receiver refuses a token whose
 purpose is not the one of the endpoint, with `401` and the reason `wrong_purpose`, whatever else is valid (signature, `aud`, `exp`, `jti`):
 
 | Endpoint | `use` required |
 | --- | --- |
-| `GET /.well-known/mcp-manifest` of a server | `manifest` |
 | `POST /.well-known/mcp-policy-data` of a server | `policy-data` |
 | everything else: the MCP endpoint of a server (`initialize`, `server/discover`, `tools/list`, `ping`, `tools/call`, streams, notifications) and every endpoint of the credential broker | `call` |
 
-The user variant has `use: call` only. The two well-known endpoints accept the service variant only (no user, no tool). The check of the purpose
+The user variant has `use: call` only. `GET /.well-known/mcp-manifest` is outside this table: a server serves it without authentication (no token required, none sent, a header that arrives is ignored). The policy-data endpoint accepts the service variant only (no user, no tool). The check of the purpose
 comes before the checks of the variant and of `tool`, so a policy-data token used for `tools/call` is `wrong_purpose`. `jti` is one-time for every
 purpose, `aud` is the `serverId` of the receiver, `exp - iat` is at most 60 s. A token without `use`, or with another value, is `invalid_claims`
 (the schema is closed). Vectors: `test-vectors/jwt/purpose-*`.
 
-One exception to `aud`: when the gateway adds a server, the `serverId` is not known before the first manifest is read, so the token of that probe carries `aud: "mcp-pending"`.
-A server accepts `mcp-pending` ONLY for `use: manifest`, ONLY on `GET /.well-known/mcp-manifest` and ONLY while it holds no policy data (it has never accepted a push, so it was
-never connected). The audience is shared by every server, so once the server holds policy data it requires `aud` equal to its own `serverId` for every purpose, the manifest included; the server keeps that fact in its state directory (a marker file after the first accepted push), so a restart does not accept `mcp-pending` again.
-Every other purpose and path requires `aud` equal to its own `serverId` from the start (`wrong_audience`): a `call` or `policy-data` token with `mcp-pending` is refused.
-Vectors: `jwt/valid-service-manifest-pending-audience`, `jwt/pending-audience-*` (`pending-audience-manifest-after-policy-data-push` is the refusal after the first push),
-`jwt/valid-service-manifest-own-audience-after-policy-data-push`.
+There is no purpose `manifest` and no exception to `aud`: a token with `use: manifest` is `invalid_claims`, and every token that is checked needs `aud` equal to the `serverId` of the receiver.
+The manifest holds nothing secret (tool descriptions and policies, which are in the source of the server) and the port of a server is reachable only from the platform host.
+Vector: `jwt/valid-manifest-without-token`.
 
 A `prv` of `00000000000000-0000000` means a gateway without policy data. It is not the revision of any data, and a receiver draws no
 conclusion about policy from it. Since 7.0.0 `prv` is the revision of the policy data of the gateway (CC-234): a server that sees a newer one
@@ -887,7 +883,7 @@ either side, no token to create, and no CI certificate. The server-facing interf
    `192.0.0.192` (class `metadata`, also `fd00:ec2::254`), an IPv6 address that carries an IPv4 address (IPv4-mapped, IPv4-compatible, NAT64) being judged as that IPv4 address (a 6to4 address
    only when it embeds a metadata address), and a literal such as `127.1`, `2130706433` or `0xc00000c0` as the address it denotes (`422 address_refused`). The operator can refuse more with the
    gateway setting `MCP_SERVER_REFUSED_ADDRESSES`: a comma-separated list of IPs and CIDRs, for example `10.20.0.0/16,172.31.5.9`; a range also matches the IPv4 address inside an IPv4-mapped,
-   IPv4-compatible or NAT64 address, and the refusal class is `refused_by_configuration`. The probe token of this step carries `aud: mcp-pending` (section "MCP methods and JWT"); `http`
+   IPv4-compatible or NAT64 address, and the refusal class is `refused_by_configuration`. `http`
    needs `allowPlainHttp` (`422 plain_http_not_allowed`); a TLS handshake is made without a client certificate, reading the leaf certificate (`422 tls_handshake_failed`); the
    manifest is pulled (`422 manifest_unreachable`, `422 manifest_invalid`); `serverId` is `mcp-<system>` of the manifest (`422 system_reserved`, `409 server_exists`,
    `422 namespace_conflict`). Private addresses are allowed. **Check before each connection.** The gateway applies the address rule to every resolved address at add time and again before each connection it makes (probe, manifest pull, policy-data push, tool call), then connects with a standard HTTP client, which may try the resolved addresses in order; a refused address makes the server unreachable (`lastError: address_refused`). The rule alone does not stop DNS rebinding, TLS does: for `ca` the host name must match a certificate from a trusted CA, for `pinned` the certificate must be the pinned one, so a name that is moved to another address cannot present an acceptable certificate. `plain` exists only with the administrator's flag, for servers in the Docker network of the gateway, whose names Docker's internal DNS resolves; the short window between the check and the connection is accepted there. The `Host` header carries the name of `internalUrl`, and the self-signed certificate of a server needs no `Host` match on the server side. Vectors `address-refusal/`.
@@ -902,7 +898,7 @@ either side, no token to create, and no CI certificate. The server-facing interf
 4. **Refresh and the runtime loop.** `POST /admin/v1/servers/{serverId}/refresh` probes and pulls at once; the gateway does the same in a loop. "At most every 60 s" is an upper bound on how stale the manifest can be, not a fixed schedule: an unreachable server may be retried sooner (the gateway uses 5 s). A changed hash makes the
    entry pending, exactly like the pinning of a definition that changed outside a deployment (next section); an unreachable server is `status: unreachable` and its calls are
    `upstream_unavailable`.
-5. **The server side (starter).** No client certificate is required on its port. Every path except a minimal health check needs a valid internal JWT of the right purpose (`use`, section "MCP methods and
+5. **The server side (starter).** No client certificate is required on its port. `GET /.well-known/mcp-manifest` needs no token (it is open). Every other path except a minimal health check needs a valid internal JWT of the right purpose (`use`, section "MCP methods and
    JWT"); keys come from `MCP_GATEWAY_JWKS_URI` (`https://<domain>/.well-known/mcp-jwks.json`, public, served by the gateway through the public listener, `GET /.well-known/mcp-jwks.json` of C14).
    TLS: its own keystore or PEM, else a self-signed certificate generated once into a state directory and reused, or `MCP_PLAIN_HTTP=true`. The one-time `jti` store is in memory (bounded, TTL = the
    token `exp`); Redis only when several instances sit behind a balancer. These are settings of the starter, not part of the contract text of C14.
@@ -1305,7 +1301,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 
 | Directory | Count | What it checks |
 | --- | --- | --- |
-| `jwt/` | 90 | the C2 receiver: 25 valid, 65 rejections, 17 of them about the purpose `use` (`purpose-*`: a call token at the manifest or policy-data endpoint and the reverse, a manifest or policy-data token at the MCP endpoint or the broker, the user variant with another purpose, a missing or unknown `use`, `jti` replay for each purpose; `pending-audience-*`: the audience `mcp-pending` accepted only for a manifest token at the manifest path) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
+| `jwt/` | 75 | the C2 receiver: 23 valid (one of them the manifest without a token), 52 rejections, 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
 | `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 139 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |

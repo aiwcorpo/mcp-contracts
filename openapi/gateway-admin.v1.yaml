@@ -44,8 +44,8 @@ info:
     `pinned` the certificate must be the pinned one. `plain` is allowed only with the administrator's flag, for servers in the gateway's
     own Docker network whose names Docker's internal DNS resolves; the window between the check and the connection is accepted there.
     The `Host` header carries the name of `internalUrl`. It then probes TLS (a handshake without a client certificate,
-    capturing the leaf certificate) and pulls the manifest (`GET /.well-known/mcp-manifest`, C14) with an internal JWT whose
-    purpose is `manifest` (C2). The `serverId` is `mcp-<system>` of that manifest: reserved system ids, a `serverId` that
+    capturing the leaf certificate) and pulls the manifest (`GET /.well-known/mcp-manifest`, C14, which a server serves
+    without authentication and the gateway requests without a token). The `serverId` is `mcp-<system>` of that manifest: reserved system ids, a `serverId` that
     exists and a namespace that another server owns (approved policies) are refused as described on `createServer`. The server
     is created with `status: pending_approval`, no approved `connection` and a `pendingConnection` that proposes how to trust it.
     There is no client certificate on either side of this connection and no certificate of the internal CA for a server.
@@ -1221,12 +1221,11 @@ paths:
         2. The host is resolved and every resolved address is checked: loopback, link-local (including `169.254.169.254`), unspecified,
            multicast and metadata addresses (`100.100.100.200`, `192.0.0.192`) and every range of `MCP_SERVER_REFUSED_ADDRESSES` are refused
            (`422 server_rejected`, reason `address_refused`); the address rule is applied again before every later connection.
-           The manifest token of this step carries `aud: mcp-pending`, because the `serverId` is not known before the manifest is read; a server accepts it only until it holds policy data (C2, C14).
         3. `http` without `allowPlainHttp: true` is `422`, reason `plain_http_not_allowed`.
         4. TLS probe (for `https`): a handshake without a client certificate that accepts any certificate in order to read it; a failure
            to complete a handshake (no TLS, protocol or timeout error) is `422`, reason `tls_handshake_failed`. The leaf certificate is captured: subject, issuer,
            SANs, `notAfter` and the SHA-256 of its DER encoding, and the gateway notes whether it validates as `ca` for that host.
-        5. Manifest: `GET /.well-known/mcp-manifest` (C14) with an internal JWT of purpose `manifest`. No answer or a status other than `200` is `422`, reason `manifest_unreachable`; a body that fails
+        5. Manifest: `GET /.well-known/mcp-manifest` (C14) without a token (the manifest is open, C14). No answer or a status other than `200` is `422`, reason `manifest_unreachable`; a body that fails
            the checks of "Manifest intake" is `422`, reason `manifest_invalid` with `manifestReason` (for example `environment_mismatch`, `policies_invalid`).
         6. `serverId` is `mcp-<system>` of the manifest. A `system` that is a reserved id (`gateway`, `offboarding`, `portal`, `broker`, `prometheus`, `platform`, `admin`,
            `registry`, `adapter`, `internal`, `ci`; the list is kept so that no server is named like a component) is `422`, reason `system_reserved`; a `serverId` that exists is `409 server_exists`; a namespace

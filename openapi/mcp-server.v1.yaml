@@ -19,29 +19,21 @@ info:
     (`allowPlainHttp`, C5). How the gateway decides to trust the certificate (`ca`, `pinned`, `plain`) is described in C5, "The gateway connects to
     servers". The server asks for no client certificate.
 
-    **Authentication.** Every path of the server except a minimal health check (not part of this contract) needs `Authorization: Bearer <internal JWT>` of
-    the right purpose (C2, `schemas/internal-jwt.schema.json`): ES256 signature against the JWKS of the gateway, `iss`, `aud` equal to the
-    `serverId` of the receiver (one exception, below), `exp` within 30 s of the clock and `exp - iat` at most 60 s, a `jti` not seen within its validity window
+    **Authentication.** `GET /.well-known/mcp-manifest` is served WITHOUT authentication: a server must not require an `Authorization` header there, the
+    gateway sends none, and a header that arrives is ignored. The manifest holds nothing secret (tool descriptions and policies, which are in the source of the
+    server) and the port of a server is reachable only from the platform host. Every other path of the server except a minimal health check (not part of this
+    contract) needs `Authorization: Bearer <internal JWT>` of the right purpose (C2, `schemas/internal-jwt.schema.json`): ES256 signature against the JWKS of the
+    gateway, `iss`, `aud` equal to the `serverId` of the receiver, `exp` within 30 s of the clock and `exp - iat` at most 60 s, a `jti` not seen within its validity window
     (each request has a new token), and `rid` equal to the `X-Request-Id` header. **The purpose is the claim `use`**, and the receiver refuses a token
     whose purpose is not the one of the endpoint (`401`, reason `wrong_purpose`), whatever else is valid:
 
     | Endpoint | `use` | JWT variant |
     | --- | --- | --- |
-    | `GET /.well-known/mcp-manifest` | `manifest` | service (no user, no tool) |
     | `POST /.well-known/mcp-policy-data` | `policy-data` | service |
     | the MCP endpoint (`initialize`, `server/discover`, `tools/list`, `ping`, `tools/call`, streams, notifications) | `call` | as in C2 |
 
-    A token of one purpose is never accepted for another: a `call` token cannot read the manifest or replace policy data, and a `manifest`
-    or `policy-data` token cannot call a tool. Test vectors: `test-vectors/jwt/purpose-*`.
-
-    **Audience at add time.** The `serverId` is derived from the manifest, so it is unknown when the gateway reads the manifest for the first time
-    (the add operation of C5). The token of that probe carries `aud: mcp-pending`. A server accepts `mcp-pending` ONLY for `use: manifest`, ONLY on
-    `GET /.well-known/mcp-manifest` and ONLY while it holds no policy data, that is while it has never accepted a policy-data push and so was never connected.
-    `mcp-pending` is a shared audience, so it must not outlive the first connection: once the server holds policy data it requires `aud` equal to its own
-    `serverId` for every purpose, the manifest included (refresh and the runtime loop use the real `serverId`). The server keeps that fact in its state directory (a marker file written after the first accepted push and read at start), so a restart does not accept `mcp-pending` again. Every other purpose and path (`policy-data`, every
-    `call`) requires `aud` equal to its own `serverId` from the start, and a token with `aud: mcp-pending` presented there, or after the first push, is `401` `wrong_audience`.
-    Test vectors: `test-vectors/jwt/valid-service-manifest-pending-audience`, `pending-audience-manifest-after-policy-data-push` and
-    `test-vectors/jwt/pending-audience-*` (the verifier field `holdsPolicyData` says which state the server is in).
+    A token of one purpose is never accepted for another: a `call` token cannot replace policy data, and a `policy-data` token cannot call a tool. There is no
+    purpose `manifest`: a token with `use: manifest` is `invalid_claims`. Test vectors: `test-vectors/jwt/purpose-*`, `test-vectors/jwt/valid-manifest-without-token`.
 
     **How the gateway connects.** Before each connection the gateway applies the address rule of the README ("Connecting a server") to every resolved
     address and then connects with a standard HTTP client. The `Host` header carries the name of the server's address, as for any HTTP client, and a
@@ -79,16 +71,16 @@ paths:
     get:
       tags: [server]
       operationId: getServerManifest
-      summary: The manifest of the server (called by the gateway).
+      summary: The manifest of the server (called by the gateway, no authentication).
       description: |
         The C6 document (`schemas/server-manifest.schema.json`) that the starter builds from the code of the server: its tools with their definitions and
         hashes, its policies and resource types, its credential types. It is the same document that the build writes to `target/mcp-manifest.json`.
         The gateway pulls it when a server is added, on a refresh requested by an administrator and in its runtime loop; it recomputes every
         hash, never trusts the declared ones and approves nothing by pulling (C5, "Manifest intake"). The answer is the same for every caller
-        and carries no secret, but only the gateway may read it: the purpose of the token is `manifest`.
+        and carries no secret (tool descriptions and policies, which are in the source of the server), so it is served without authentication: no
+        `Authorization` header is required or read, and the gateway sends none. A server that has not built its manifest yet answers `503`.
         `Cache-Control: no-store`.
-      security:
-        - gatewayJwt: []
+      security: []
       responses:
         '200':
           description: The manifest.
@@ -201,8 +193,6 @@ paths:
                             readOnlyHint: false
                             destructiveHint: false
                         definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
         '503':
           $ref: '#/components/responses/NotReady'
   /.well-known/mcp-policy-data:

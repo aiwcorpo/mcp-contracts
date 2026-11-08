@@ -8,7 +8,7 @@ const SERVICE_METHODS = new Set(['initialize', 'server/discover', 'tools/list', 
 const ajv = createAjv();
 const validateClaims = schemaValidator(ajv, 'internal-jwt.schema.json');
 
-// Server: initialize, server/discover (CC-069), tools/list, ping, GET /.well-known/mcp-manifest, POST /.well-known/mcp-policy-data.
+// Server: initialize, server/discover (CC-069), tools/list, ping, POST /.well-known/mcp-policy-data.
 // Broker: GET /v1/systems only (CC-030).
 function serviceRequestAllowed(request, audience) {
   if (audience === 'mcp-credential-broker') return request.method === 'GET' && request.path === '/v1/systems';
@@ -16,25 +16,22 @@ function serviceRequestAllowed(request, audience) {
   return purposeOf(request) !== 'call';
 }
 
-// CC-249: the purpose an endpoint requires. Everything that is not one of the two well-known endpoints of a server is a call.
-function purposeOf(request) {
-  if (request.kind === 'http' && request.method === 'GET' && request.path === '/.well-known/mcp-manifest') return 'manifest';
-  if (request.kind === 'http' && request.method === 'POST' && request.path === '/.well-known/mcp-policy-data') return 'policy-data';
-  return 'call';
+// GET /.well-known/mcp-manifest is served without authentication: no token is read, whatever the request carries.
+function isOpenEndpoint(request) {
+  return request.kind === 'http' && request.method === 'GET' && request.path === '/.well-known/mcp-manifest';
 }
 
-// CC-249: while the serverId is unknown (the add operation), the gateway's manifest token carries aud mcp-pending. A server accepts it for
-// use manifest on GET /.well-known/mcp-manifest and for nothing else, and only while it holds no policy data (it has never accepted a push, so it was
-// never connected); every other purpose and path, and every request once data is held, needs aud equal to its own serverId.
-function pendingAudienceAccepted(claims, request, verifier) {
-  return claims.aud === 'mcp-pending' && verifier.audience !== 'mcp-credential-broker' && verifier.holdsPolicyData !== true
-    && claims.use === 'manifest' && purposeOf(request) === 'manifest';
+// CC-249: the purpose an endpoint requires. Everything that is not the policy-data endpoint of a server is a call.
+function purposeOf(request) {
+  if (request.kind === 'http' && request.method === 'POST' && request.path === '/.well-known/mcp-policy-data') return 'policy-data';
+  return 'call';
 }
 
 // Reference receiver for C2. Order of checks only decides which reason is reported for a token with
 // several defects; every vector has exactly one defect.
 async function verify(vector) {
   const { token, verifier, request } = vector;
+  if (isOpenEndpoint(request)) return null;
   if (!token) return 'missing_token';
   const parts = token.split('.');
   if (parts.length !== 3) return 'malformed';
@@ -56,7 +53,7 @@ async function verify(vector) {
   // CC-226: the schema cannot tell the receiver; only the sidecar of an adapter accepts the classification claims.
   if (('mcp_risk' in claims || 'mcp_action' in claims) && verifier.receiverMode !== 'adapter') return 'invalid_claims';
   if (claims.iss !== verifier.issuer) return 'wrong_issuer';
-  if (claims.aud !== verifier.audience && !pendingAudienceAccepted(claims, request, verifier)) return 'wrong_audience';
+  if (claims.aud !== verifier.audience) return 'wrong_audience';
   const now = Date.parse(verifier.now) / 1000;
   if (now > claims.exp + verifier.clockSkewSeconds) return 'expired';
   if (claims.iat > now + verifier.clockSkewSeconds) return 'not_yet_valid';
@@ -105,7 +102,7 @@ for (const { name, data } of vectors) {
     if (data.expected.valid) {
       assert.equal(reason, null);
       assert.equal(data.expected.httpStatus, 200);
-      assert.ok(validateClaims(data.claims), 'valid token must match internal-jwt.schema.json');
+      if (data.token) assert.ok(validateClaims(data.claims), 'valid token must match internal-jwt.schema.json');
     } else {
       assert.equal(reason, data.expected.reason);
       assert.equal(data.expected.httpStatus, 401);

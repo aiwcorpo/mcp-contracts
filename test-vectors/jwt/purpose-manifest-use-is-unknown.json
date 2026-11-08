@@ -1,6 +1,6 @@
 {
-  "description": "aud mcp-pending with use policy-data at POST /.well-known/mcp-policy-data: refused, policy data is only for the server whose id is known.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLXBlbmRpbmciLCJ1c2UiOiJwb2xpY3ktZGF0YSIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAyMjEifQ.FDftm5q5ta1bFKJ9WBOF3YuWOiDkf5xnHrQ_AVLQQIHlVKQEG-MRLDnJPAwCMV2a6dqS5UAYt88fk_CynFpZ0Q",
+  "description": "use manifest no longer exists (the manifest is open): a token carrying it is invalid_claims, whatever endpoint it is presented to.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJtYW5pZmVzdCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAyMDMifQ.CeO3mbrru3Mb5JDNDgYsrTd_0Fo0EjDXIIts_9VapVvdeCCa-P9RD_WSdYdnNOByk7bH7XnDezpvomzLB6K2eA",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -8,15 +8,15 @@
   },
   "claims": {
     "iss": "https://mcp-gateway.internal",
-    "aud": "mcp-pending",
-    "use": "policy-data",
+    "aud": "mcp-jira",
+    "use": "manifest",
     "sub": "system:mcp-gateway",
     "grp": [],
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
     "prv": 41,
     "iat": 1793016000,
     "exp": 1793016060,
-    "jti": "0192d1b2-7c3a-7f00-9a11-000000000221"
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000203"
   },
   "verifier": {
     "issuer": "https://mcp-gateway.internal",
@@ -37,6 +37,6 @@
   "expected": {
     "valid": false,
     "httpStatus": 401,
-    "reason": "wrong_audience"
+    "reason": "invalid_claims"
   }
 }

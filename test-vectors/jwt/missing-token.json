@@ -1,5 +1,5 @@
 {
-  "description": "No Authorization header. Never anonymous.",
+  "description": "No Authorization header on a protected endpoint (the manifest is the exception, it is open). Never anonymous.",
   "token": null,
   "header": null,
   "claims": null,

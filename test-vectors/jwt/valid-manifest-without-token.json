@@ -1,0 +1,26 @@
+{
+  "description": "GET /.well-known/mcp-manifest without an Authorization header: 200. The manifest is served without authentication; a server must not require a token and the gateway sends none.",
+  "token": null,
+  "header": null,
+  "claims": null,
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-jira",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "http",
+    "method": "GET",
+    "path": "/.well-known/mcp-manifest",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80"
+  },
+  "expected": {
+    "valid": true,
+    "httpStatus": 200
+  }
+}
