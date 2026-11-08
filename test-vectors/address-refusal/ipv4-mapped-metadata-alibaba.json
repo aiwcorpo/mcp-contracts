@@ -1,0 +1,11 @@
+{
+  "description": "The Alibaba metadata address behind an IPv4-mapped form.",
+  "input": {
+    "address": "::ffff:6464:64c8"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "100.100.100.200"
+  }
+}

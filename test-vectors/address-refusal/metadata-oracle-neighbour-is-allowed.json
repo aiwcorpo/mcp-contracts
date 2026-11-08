@@ -1,0 +1,9 @@
+{
+  "description": "Its neighbour in 192.0.0.0/24 is not refused by this rule.",
+  "input": {
+    "address": "192.0.0.193"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

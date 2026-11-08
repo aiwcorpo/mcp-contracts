@@ -1,0 +1,12 @@
+{
+  "description": "Octal parts are normalised too: 0144.0144.0144.0310 is 100.100.100.200.",
+  "input": {
+    "url": "https://0144.0144.0144.0310/mcp"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "100.100.100.200",
+    "class": "metadata"
+  }
+}

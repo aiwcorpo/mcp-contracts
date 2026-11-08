@@ -1,0 +1,11 @@
+{
+  "description": "The deprecated IPv4-compatible form of the Oracle metadata address.",
+  "input": {
+    "address": "::192.0.0.192"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "192.0.0.192"
+  }
+}

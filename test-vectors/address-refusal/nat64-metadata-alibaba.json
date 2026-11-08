@@ -1,0 +1,11 @@
+{
+  "description": "A NAT64 address that embeds the Alibaba metadata address.",
+  "input": {
+    "address": "64:ff9b::6464:64c8"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "100.100.100.200"
+  }
+}

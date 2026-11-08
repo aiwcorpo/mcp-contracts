@@ -1,0 +1,11 @@
+{
+  "description": "The same for 169.254.169.254, which keeps its class link_local.",
+  "input": {
+    "address": "2002:a9fe:a9fe::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "link_local",
+    "judgedAs": "169.254.169.254"
+  }
+}

@@ -23,6 +23,12 @@ function purposeOf(request) {
   return 'call';
 }
 
+// CC-249: while the serverId is unknown (the add operation), the gateway's manifest token carries aud mcp-pending. A server accepts it for
+// use manifest on GET /.well-known/mcp-manifest and for nothing else; every other purpose and path needs aud equal to its own serverId.
+function pendingAudienceAccepted(claims, request, verifier) {
+  return claims.aud === 'mcp-pending' && verifier.audience !== 'mcp-credential-broker' && claims.use === 'manifest' && purposeOf(request) === 'manifest';
+}
+
 // Reference receiver for C2. Order of checks only decides which reason is reported for a token with
 // several defects; every vector has exactly one defect.
 async function verify(vector) {
@@ -48,7 +54,7 @@ async function verify(vector) {
   // CC-226: the schema cannot tell the receiver; only the sidecar of an adapter accepts the classification claims.
   if (('mcp_risk' in claims || 'mcp_action' in claims) && verifier.receiverMode !== 'adapter') return 'invalid_claims';
   if (claims.iss !== verifier.issuer) return 'wrong_issuer';
-  if (claims.aud !== verifier.audience) return 'wrong_audience';
+  if (claims.aud !== verifier.audience && !pendingAudienceAccepted(claims, request, verifier)) return 'wrong_audience';
   const now = Date.parse(verifier.now) / 1000;
   if (now > claims.exp + verifier.clockSkewSeconds) return 'expired';
   if (claims.iat > now + verifier.clockSkewSeconds) return 'not_yet_valid';

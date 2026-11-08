@@ -1,0 +1,9 @@
+{
+  "description": "Any other 6to4 address is an ordinary IPv6 address: 2002:c000:204::1 embeds 192.0.2.4 and is allowed.",
+  "input": {
+    "address": "2002:c000:204::1"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

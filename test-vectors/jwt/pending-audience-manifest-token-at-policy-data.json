@@ -1,0 +1,42 @@
+{
+  "description": "aud mcp-pending with use manifest at the policy-data path: refused, mcp-pending is for GET /.well-known/mcp-manifest only.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLXBlbmRpbmciLCJ1c2UiOiJtYW5pZmVzdCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAyMjIifQ.wVjPaSWA1vpXoYTboU35taA6ziDgatoQxekfdN1FyvMfseVuGb7Ov5EkH04kUno94_WN8R8gH2Pk5BSAegiBgA",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-pending",
+    "use": "manifest",
+    "sub": "system:mcp-gateway",
+    "grp": [],
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
+    "prv": 41,
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000222"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-jira",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "http",
+    "method": "POST",
+    "path": "/.well-known/mcp-policy-data",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80"
+  },
+  "expected": {
+    "valid": false,
+    "httpStatus": 401,
+    "reason": "wrong_audience"
+  }
+}

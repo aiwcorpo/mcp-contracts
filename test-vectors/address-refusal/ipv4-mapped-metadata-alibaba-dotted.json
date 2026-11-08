@@ -1,0 +1,11 @@
+{
+  "description": "The same in dotted form.",
+  "input": {
+    "address": "::ffff:100.100.100.200"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "100.100.100.200"
+  }
+}

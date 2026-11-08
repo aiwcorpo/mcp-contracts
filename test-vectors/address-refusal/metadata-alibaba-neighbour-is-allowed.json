@@ -1,0 +1,9 @@
+{
+  "description": "Only the one address is an exception: its neighbour in 100.64.0.0/10 stays allowed.",
+  "input": {
+    "address": "100.100.100.201"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

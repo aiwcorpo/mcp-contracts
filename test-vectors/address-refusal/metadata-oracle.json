@@ -1,0 +1,10 @@
+{
+  "description": "The Oracle Cloud metadata address 192.0.0.192 is refused by name.",
+  "input": {
+    "address": "192.0.0.192"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata"
+  }
+}

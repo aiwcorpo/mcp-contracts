@@ -1,0 +1,11 @@
+{
+  "description": "The Oracle metadata address behind an IPv4-mapped form.",
+  "input": {
+    "address": "::ffff:c000:c0"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "192.0.0.192"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "An address outside every configured range is judged by the built-in rule only.",
+  "input": {
+    "address": "10.21.0.15",
+    "refusedAddresses": [
+      "10.20.0.0/16"
+    ]
+  },
+  "expected": {
+    "allowed": true
+  }
+}

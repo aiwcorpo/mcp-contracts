@@ -1,0 +1,11 @@
+{
+  "description": "A NAT64 address that embeds the Oracle metadata address.",
+  "input": {
+    "address": "64:ff9b::c000:c0"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "192.0.0.192"
+  }
+}

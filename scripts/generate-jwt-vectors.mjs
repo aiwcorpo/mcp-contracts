@@ -349,6 +349,18 @@ await purposeCase('purpose-policy-data-with-tool', 'A policy-data token with a t
   serviceClaims({ use: 'policy-data', tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000216' }), POLICY_DATA, 'invalid_claims');
 await purposeCase('purpose-policy-data-wrong-audience', 'A policy-data token minted for another server.',
   serviceClaims({ use: 'policy-data', aud: 'mcp-confluence', jti: '0192d1b2-7c3a-7f00-9a11-000000000217' }), POLICY_DATA, 'wrong_audience');
+// Audience at add time (CC-249): the serverId is unknown before the first manifest is read, so the gateway's token for that first pull carries aud mcp-pending.
+const PENDING = 'mcp-pending';
+await purposeCase('valid-service-manifest-pending-audience', 'The probe token of the add operation: aud mcp-pending, use manifest, GET /.well-known/mcp-manifest. The only place where mcp-pending is accepted.',
+  serviceClaims({ use: 'manifest', aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000218' }), MANIFEST);
+await purposeCase('pending-audience-call-token-at-tools-list', 'aud mcp-pending with use call at the MCP endpoint: refused, a server accepts mcp-pending only for the manifest.',
+  serviceClaims({ aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000219' }), rpc('tools/list'), 'wrong_audience');
+await purposeCase('pending-audience-call-token-at-manifest', 'aud mcp-pending with use call at the manifest path: refused, the token must also have use manifest.',
+  serviceClaims({ aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000220' }), MANIFEST, 'wrong_audience');
+await purposeCase('pending-audience-policy-data', 'aud mcp-pending with use policy-data at POST /.well-known/mcp-policy-data: refused, policy data is only for the server whose id is known.',
+  serviceClaims({ use: 'policy-data', aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000221' }), POLICY_DATA, 'wrong_audience');
+await purposeCase('pending-audience-manifest-token-at-policy-data', 'aud mcp-pending with use manifest at the policy-data path: refused, mcp-pending is for GET /.well-known/mcp-manifest only.',
+  serviceClaims({ use: 'manifest', aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000222' }), POLICY_DATA, 'wrong_audience');
 
 await add('service-variant-with-tool', 'Claims of the service variant plus a tool claim; matches neither variant.', {
   token: await sign(serviceClaims({ tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000034' }), 'test-gateway-jwt-a'),

@@ -1,0 +1,11 @@
+{
+  "description": "A 6to4 address (2002::/16) is judged as the IPv4 address it embeds only when that is a metadata address: here 100.100.100.200.",
+  "input": {
+    "address": "2002:6464:64c8::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "100.100.100.200"
+  }
+}

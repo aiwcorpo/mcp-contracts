@@ -1,0 +1,18 @@
+{
+  "description": "One resolved address in a configured range refuses the host.",
+  "input": {
+    "resolved": [
+      "10.0.0.5",
+      "172.31.5.9"
+    ],
+    "refusedAddresses": [
+      "172.31.5.9"
+    ]
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "address": "172.31.5.9",
+    "class": "refused_by_configuration"
+  }
+}

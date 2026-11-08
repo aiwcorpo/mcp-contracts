@@ -1,0 +1,10 @@
+{
+  "description": "The Alibaba Cloud metadata address 100.100.100.200 lies in the shared address space 100.64.0.0/10 and is refused by name.",
+  "input": {
+    "address": "100.100.100.200"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata"
+  }
+}

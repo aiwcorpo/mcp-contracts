@@ -1,0 +1,12 @@
+{
+  "description": "The hexadecimal literal 0xc00000c0 is 192.0.0.192.",
+  "input": {
+    "url": "http://0xc00000c0/opc/v2"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "192.0.0.192",
+    "class": "metadata"
+  }
+}

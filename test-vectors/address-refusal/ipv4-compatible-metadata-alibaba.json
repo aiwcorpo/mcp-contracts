@@ -1,0 +1,11 @@
+{
+  "description": "The deprecated IPv4-compatible form of the Alibaba metadata address.",
+  "input": {
+    "address": "::100.100.100.200"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "100.100.100.200"
+  }
+}

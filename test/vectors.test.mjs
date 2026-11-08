@@ -125,14 +125,15 @@ test('address refusal vectors: loopback, link-local, unspecified and multicast a
   const classes = new Set();
   for (const { name, data } of vectors) {
     const kind = Object.keys(data.input)[0];
-    const actual = kind === 'address' ? addressDecision(data.input.address)
-      : kind === 'resolved' ? hostDecision(data.input.resolved)
-        : kind === 'connectedTo' ? hostDecision([data.input.connectedTo]) : urlDecision(data.input.url);
+    const refused = data.input.refusedAddresses ?? [];
+    const actual = kind === 'address' ? addressDecision(data.input.address, refused)
+      : kind === 'resolved' ? hostDecision(data.input.resolved, refused)
+        : kind === 'connectedTo' ? hostDecision([data.input.connectedTo], refused) : urlDecision(data.input.url, refused);
     assert.deepEqual(actual, data.expected, name);
     if (data.expected.class) classes.add(data.expected.class);
   }
-  assert.deepEqual([...classes].sort(), ['broadcast', 'link_local', 'loopback', 'metadata', 'multicast', 'not_an_address', 'unspecified']);
-  for (const address of ['127.0.0.1', '::1', '169.254.169.254', '::ffff:127.0.0.1', '::ffff:a9fe:a9fe', '0.0.0.0', '::', '224.0.0.251', 'ff02::1', '255.255.255.255', 'fd00:ec2::254']) {
+  assert.deepEqual([...classes].sort(), ['broadcast', 'link_local', 'loopback', 'metadata', 'multicast', 'not_an_address', 'refused_by_configuration', 'unspecified']);
+  for (const address of ['127.0.0.1', '::1', '169.254.169.254', '::ffff:127.0.0.1', '::ffff:a9fe:a9fe', '0.0.0.0', '::', '224.0.0.251', 'ff02::1', '255.255.255.255', 'fd00:ec2::254', '100.100.100.200', '192.0.0.192', '::ffff:6464:64c8', '::ffff:c000:c0', '64:ff9b::6464:64c8', '64:ff9b::c000:c0']) {
     assert.ok(vectors.some((v) => v.data.input.address === address && !v.data.expected.allowed), `no refusal vector for ${address}`);
   }
 });

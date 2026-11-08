@@ -21,7 +21,7 @@ info:
 
     **Authentication.** Every path of the server except a minimal health check (not part of this contract) needs `Authorization: Bearer <internal JWT>` of
     the right purpose (C2, `schemas/internal-jwt.schema.json`): ES256 signature against the JWKS of the gateway, `iss`, `aud` equal to the
-    `serverId` of the receiver, `exp` within 30 s of the clock and `exp - iat` at most 60 s, a `jti` not seen within its validity window
+    `serverId` of the receiver (one exception, below), `exp` within 30 s of the clock and `exp - iat` at most 60 s, a `jti` not seen within its validity window
     (each request has a new token), and `rid` equal to the `X-Request-Id` header. **The purpose is the claim `use`**, and the receiver refuses a token
     whose purpose is not the one of the endpoint (`401`, reason `wrong_purpose`), whatever else is valid:
 
@@ -34,6 +34,17 @@ info:
     A token of one purpose is never accepted for another: a `call` token cannot read the manifest or replace policy data, and a `manifest`
     or `policy-data` token cannot call a tool. Test vectors: `test-vectors/jwt/purpose-*`.
 
+    **Audience at add time.** The `serverId` is derived from the manifest, so it is unknown when the gateway reads the manifest for the first time
+    (the add operation of C5). The token of that probe carries `aud: mcp-pending`. A server accepts `mcp-pending` ONLY for `use: manifest` and ONLY on
+    `GET /.well-known/mcp-manifest`; every other purpose and path (`policy-data`, every `call`) requires `aud` equal to its own `serverId`, and a token
+    with `aud: mcp-pending` presented there is `401` `wrong_audience`. Test vectors: `test-vectors/jwt/valid-service-manifest-pending-audience` and
+    `test-vectors/jwt/pending-audience-*`.
+
+    **How the gateway connects.** For every connection the gateway resolves the host once, judges every resolved address (README, "Connecting a server") and
+    connects only to an address it judged, never resolving the name again for that connection. Over TLS it keeps the original name for SNI and hostname
+    verification; over plain `http` it connects to the IP literal, so the `Host` header of the request carries the IP, not the name. A server must therefore
+    not depend on the `Host` header, and a self-signed certificate is not matched against any `Host` by the server.
+
     **The gate of policy data (fail-closed).** A server evaluates a `tools/call` only with policy data that is at least as new as `prv` of the token
     and only when its own policies are the approved ones (README, "Policy data gate"). Which refusal the server returns:
 
@@ -44,7 +55,7 @@ info:
     - the data is current but the server refuses to evaluate (`policies_not_approved`, `policies_differ`, `overrides_invalid`):
       the MCP answer is `upstream_unavailable` (C10); the gateway does not push and does not repeat.
 
-    The gateway also pushes after every change of the revision and periodically (at most every 60 s), so `409` is the exception: a server
+    The gateway also pushes after every change of the revision and periodically (at most every 60 s, an upper bound; an unreachable server may be retried sooner), so `409` is the exception: a server
     that was restarted, or one that missed a push. A server never accepts a revision lower than or equal to the one it holds as new data.
     Reference rule and vectors: `scripts/lib/policy-data-gate.mjs`, `test-vectors/policy-data-gate`.
   license:

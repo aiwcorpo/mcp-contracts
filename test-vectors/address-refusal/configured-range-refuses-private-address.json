@@ -1,0 +1,14 @@
+{
+  "description": "MCP_SERVER_REFUSED_ADDRESSES lists 10.20.0.0/16: an address in it is refused with the class refused_by_configuration although private addresses are allowed otherwise.",
+  "input": {
+    "address": "10.20.0.15",
+    "refusedAddresses": [
+      "10.20.0.0/16",
+      "172.31.5.9"
+    ]
+  },
+  "expected": {
+    "allowed": false,
+    "class": "refused_by_configuration"
+  }
+}

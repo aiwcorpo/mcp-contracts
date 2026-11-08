@@ -1,0 +1,11 @@
+{
+  "description": "The same for 192.0.0.192.",
+  "input": {
+    "address": "2002:c000:c0::1"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata",
+    "judgedAs": "192.0.0.192"
+  }
+}

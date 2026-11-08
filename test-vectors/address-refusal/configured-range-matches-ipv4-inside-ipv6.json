@@ -1,0 +1,14 @@
+{
+  "description": "A configured range also matches the IPv4 address inside an IPv4-mapped form.",
+  "input": {
+    "address": "::ffff:10.20.0.15",
+    "refusedAddresses": [
+      "10.20.0.0/16"
+    ]
+  },
+  "expected": {
+    "allowed": false,
+    "class": "refused_by_configuration",
+    "judgedAs": "10.20.0.15"
+  }
+}

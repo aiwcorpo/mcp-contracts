@@ -35,9 +35,13 @@ info:
 
     **The gateway connects to servers (CC-249).** An administrator gives only the address of a server (`createServer`:
     `internalUrl`, optionally `allowPlainHttp` and `credential`). The gateway resolves the host and refuses loopback,
-    link-local (`169.254.0.0/16`, so also `169.254.169.254`, and `fe80::/10`), unspecified and multicast addresses, IPv4-mapped
-    IPv6 forms judged as the IPv4 address they carry; it checks every resolved address, and checks again at connect time
-    against the address it actually connects to (DNS rebinding). It then probes TLS (a handshake without a client certificate,
+    link-local (`169.254.0.0/16`, so also `169.254.169.254`, and `fe80::/10`), unspecified and multicast addresses and the cloud
+    metadata addresses `100.100.100.200` and `192.0.0.192` (class `metadata`), IPv6 forms (IPv4-mapped, IPv4-compatible, NAT64)
+    judged as the IPv4 address they carry, and a 6to4 address only when it embeds one of the metadata addresses. The operator can
+    refuse more with the gateway setting `MCP_SERVER_REFUSED_ADDRESSES` (comma-separated IPs and CIDRs; a range also matches the
+    IPv4 address inside the IPv6 forms above; class `refused_by_configuration`). The gateway resolves the name once per connection,
+    judges every resolved address and connects only to an address it judged, never resolving the name again; TLS keeps the original
+    name for SNI and hostname verification, and plain `http` connects to the IP literal, so its `Host` header carries the IP. It then probes TLS (a handshake without a client certificate,
     capturing the leaf certificate) and pulls the manifest (`GET /.well-known/mcp-manifest`, C14) with an internal JWT whose
     purpose is `manifest` (C2). The `serverId` is `mcp-<system>` of that manifest: reserved system ids, a `serverId` that
     exists and a namespace that another server owns (approved policies) are refused as described on `createServer`. The server
@@ -57,8 +61,8 @@ info:
       a warning.
 
     Tools stay hidden and refused (`tool_disabled`) until the connection AND the policies AND the tool are approved. The gateway
-    pulls the manifest again on `refreshServer` and in its runtime loop (at most every 60 s, the interval of the definition
-    pinning of the README); a changed hash makes the entry `pending_approval` as described below. No pipeline writes to the
+    pulls the manifest again on `refreshServer` and in its runtime loop (at most every 60 s, an upper bound on how stale a
+    manifest can be: a server that is unreachable may be retried sooner, the gateway uses 5 s); a changed hash makes the entry `pending_approval` as described below. No pipeline writes to the
     registry any more: the operations `registerServer` and `submitAdapterManifest` and the client certificates of pipelines and
     adapters do not exist.
 
@@ -1262,8 +1266,10 @@ paths:
         the gateway itself (CC-249, "The gateway connects to servers" above). Steps, in this order, and the first failure answers (nothing is stored):
 
         1. `internalUrl` is parsed: `http` or `https`, a host, no user info, no fragment, at most 255 characters, otherwise `400 invalid_request`.
-        2. The host is resolved and every resolved address is checked: loopback, link-local (including `169.254.169.254`), unspecified and
-           multicast addresses are refused (`422 server_rejected`, reason `address_refused`); the gateway then connects only to an address it checked.
+        2. The host is resolved and every resolved address is checked: loopback, link-local (including `169.254.169.254`), unspecified,
+           multicast and metadata addresses (`100.100.100.200`, `192.0.0.192`) and every range of `MCP_SERVER_REFUSED_ADDRESSES` are refused
+           (`422 server_rejected`, reason `address_refused`); the gateway then connects only to an address it checked, without resolving the name again.
+           The manifest token of this step carries `aud: mcp-pending`, because the `serverId` is not known before the manifest is read (C2, C14).
         3. `http` without `allowPlainHttp: true` is `422`, reason `plain_http_not_allowed`.
         4. TLS probe (for `https`): a handshake without a client certificate that accepts any certificate in order to read it; a failure
            to complete a handshake (no TLS, protocol or timeout error) is `422`, reason `tls_handshake_failed`. The leaf certificate is captured: subject, issuer,
@@ -3178,7 +3184,7 @@ components:
     ServerRejected:
       type: object
       description: |
-        422 of adding or changing a server, or of approving its connection. Known reasons: address_refused (the host resolves to a loopback, link-local, unspecified or multicast address), plain_http_not_allowed (`http` without allowPlainHttp), tls_handshake_failed (no TLS handshake could be completed with the address), manifest_unreachable (no `200` from `/.well-known/mcp-manifest`), manifest_invalid (the manifest fails the checks of Manifest intake; `manifestReason` is the cause), system_reserved (the system of the manifest is one of the reserved ids), namespace_conflict (another server owns the namespace of its policies), tls_mode_not_allowed (`approveServerConnection` chose a mode the pending connection does not allow), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes). A client must show an unknown value as a generic message.
+        422 of adding or changing a server, or of approving its connection. Known reasons: address_refused (the host resolves to a loopback, link-local, unspecified, multicast or metadata address, or to one that the operator refuses by configuration), plain_http_not_allowed (`http` without allowPlainHttp), tls_handshake_failed (no TLS handshake could be completed with the address), manifest_unreachable (no `200` from `/.well-known/mcp-manifest`), manifest_invalid (the manifest fails the checks of Manifest intake; `manifestReason` is the cause), system_reserved (the system of the manifest is one of the reserved ids), namespace_conflict (another server owns the namespace of its policies), tls_mode_not_allowed (`approveServerConnection` chose a mode the pending connection does not allow), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes). A client must show an unknown value as a generic message.
       required:
         - error
       properties:

@@ -373,6 +373,10 @@ comes before the checks of the variant and of `tool`, so a policy-data token use
 purpose, `aud` is the `serverId` of the receiver, `exp - iat` is at most 60 s. A token without `use`, or with another value, is `invalid_claims`
 (the schema is closed). Vectors: `test-vectors/jwt/purpose-*`.
 
+One exception to `aud`: when the gateway adds a server, the `serverId` is not known before the first manifest is read, so the token of that probe carries `aud: "mcp-pending"`.
+A server accepts `mcp-pending` ONLY for `use: manifest` and ONLY on `GET /.well-known/mcp-manifest`. Every other purpose and path requires `aud` equal to its own `serverId`
+(`wrong_audience`): a `call` or `policy-data` token with `mcp-pending` is refused. Vectors: `jwt/valid-service-manifest-pending-audience`, `jwt/pending-audience-*`.
+
 A `prv` of `00000000000000-0000000` means a gateway without policy data. It is not the revision of any data, and a receiver draws no
 conclusion about policy from it. Since 7.0.0 `prv` is the revision of the policy data of the gateway (CC-234): a server that sees a newer one
 than it holds does not evaluate the call and answers `409 policy_data_stale`; the gateway pushes its data and repeats the call once
@@ -876,12 +880,17 @@ either side, no token to create, and no CI certificate. The server-facing interf
 `approveServerConnection`, `refreshServer`) and C12.
 
 1. **Add.** `POST /admin/v1/servers` with `{internalUrl, allowPlainHttp?, credential?}` (fresh MFA). In this order: the URL is checked (`400`); the host is resolved and every
-   resolved address is checked, refusing loopback, link-local (`169.254.0.0/16` with `169.254.169.254`, `fe80::/10`), unspecified and multicast addresses, an IPv6 address that carries an
-   IPv4 address (IPv4-mapped, IPv4-compatible, NAT64) being judged as that IPv4 address, and a literal such as `127.1` or `2130706433` as the address it denotes (`422 address_refused`); `http`
+   resolved address is checked, refusing loopback, link-local (`169.254.0.0/16` with `169.254.169.254`, `fe80::/10`), unspecified and multicast addresses, the cloud metadata addresses `100.100.100.200` and
+   `192.0.0.192` (class `metadata`, also `fd00:ec2::254`), an IPv6 address that carries an IPv4 address (IPv4-mapped, IPv4-compatible, NAT64) being judged as that IPv4 address (a 6to4 address
+   only when it embeds a metadata address), and a literal such as `127.1`, `2130706433` or `0xc00000c0` as the address it denotes (`422 address_refused`). The operator can refuse more with the
+   gateway setting `MCP_SERVER_REFUSED_ADDRESSES`: a comma-separated list of IPs and CIDRs, for example `10.20.0.0/16,172.31.5.9`; a range also matches the IPv4 address inside an IPv4-mapped,
+   IPv4-compatible or NAT64 address, and the refusal class is `refused_by_configuration`. The probe token of this step carries `aud: mcp-pending` (section "MCP methods and JWT"); `http`
    needs `allowPlainHttp` (`422 plain_http_not_allowed`); a TLS handshake is made without a client certificate, reading the leaf certificate (`422 tls_handshake_failed`); the
    manifest is pulled (`422 manifest_unreachable`, `422 manifest_invalid`); `serverId` is `mcp-<system>` of the manifest (`422 system_reserved`, `409 server_exists`,
-   `422 namespace_conflict`). Private addresses are allowed. The same address check runs again at every connection on the address actually connected to (DNS rebinding), and a refused address
-   makes the server unreachable (`lastError: address_refused`). Vectors `address-refusal/`.
+   `422 namespace_conflict`). Private addresses are allowed. **Connect-time check (required mechanism).** For every connection the gateway resolves the name once, judges every resolved address, and connects only to
+   an address it judged; it never resolves the name again for that connection, which closes DNS rebinding (checking and then letting the client library resolve again does not). A refused
+   address makes the server unreachable (`lastError: address_refused`). Over TLS the original name stays the name for SNI and hostname verification. Over plain `http` the gateway connects to
+   the IP literal, so the `Host` header carries the IP; a server must not depend on `Host`, and the self-signed certificate of a server needs no `Host` match on the server side. Vectors `address-refusal/`.
 2. **Trust, chosen per server at approval.** `ca`: the chain leads to a CA in the server trust of the gateway (the default truststore of the JVM plus an optional PEM bundle in its
    configuration) AND the host of `internalUrl` matches (standard hostname verification); renewals need nothing. `pinned`: exactly one leaf certificate, by the SHA-256 of its DER encoding
    (`sha256:<64 lower-case hex>`, never the hash of the PEM text; vectors `certificate-fingerprint/`), no chain and no hostname check; another certificate makes the server unreachable
@@ -890,7 +899,7 @@ either side, no token to create, and no CI certificate. The server-facing interf
    (fresh MFA) takes the `tlsMode` and the `fingerprint` that the administrator saw; another pending fingerprint is `409 connection_changed`. Vectors `server-connection/`.
 3. **Everything is pending at first.** The server is created `pending_approval` with a pending connection, pending policies and pending tools, `READ_ONLY` ones included. A tool is listed and
    callable only when the connection AND the policies AND the tool are approved; until then `tool_disabled` (vector `server-connection/first-connection-all-tools-pending`).
-4. **Refresh and the runtime loop.** `POST /admin/v1/servers/{serverId}/refresh` probes and pulls at once; the gateway does the same in a loop (at most every 60 s). A changed hash makes the
+4. **Refresh and the runtime loop.** `POST /admin/v1/servers/{serverId}/refresh` probes and pulls at once; the gateway does the same in a loop. "At most every 60 s" is an upper bound on how stale the manifest can be, not a fixed schedule: an unreachable server may be retried sooner (the gateway uses 5 s). A changed hash makes the
    entry pending, exactly like the pinning of a definition that changed outside a deployment (next section); an unreachable server is `status: unreachable` and its calls are
    `upstream_unavailable`.
 5. **The server side (starter).** No client certificate is required on its port. Every path except a minimal health check needs a valid internal JWT of the right purpose (`use`, section "MCP methods and
@@ -920,7 +929,7 @@ For every tool the gateway keeps an approved definition (its fingerprint is `def
 whose current definition differs. Rules:
 
 1. **Where the manifest comes from and who pulls it (CC-249).** The gateway pulls the manifest from the server itself (`GET /.well-known/mcp-manifest`, C14)
-   when an administrator adds the server, on a refresh and in a runtime loop (at most every 60 s); nothing is written to the registry by a
+   when an administrator adds the server, on a refresh and in a runtime loop (at most every 60 s as an upper bound on staleness; an unreachable server may be retried sooner, the gateway uses 5 s); nothing is written to the registry by a
    pipeline, and there is no certificate of a pipeline (`PUT /admin/v1/registry/servers/{serverId}` and its certificate are gone). The body is
    the C6 manifest that the starter builds from the code of the running server; the gateway recomputes every hash and applies the rules of
    "Manifest semantic rules" and `environment` (section "Production mode and dev mode") before it stores anything. A manifest that fails
@@ -1296,7 +1305,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 
 | Directory | Count | What it checks |
 | --- | --- | --- |
-| `jwt/` | 83 | the C2 receiver: 23 valid, 60 rejections, 17 of them about the purpose `use` (`purpose-*`: a call token at the manifest or policy-data endpoint and the reverse, a manifest or policy-data token at the MCP endpoint or the broker, the user variant with another purpose, a missing or unknown `use`, `jti` replay for each purpose) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
+| `jwt/` | 88 | the C2 receiver: 24 valid, 64 rejections, 17 of them about the purpose `use` (`purpose-*`: a call token at the manifest or policy-data endpoint and the reverse, a manifest or policy-data token at the MCP endpoint or the broker, the user variant with another purpose, a missing or unknown `use`, `jti` replay for each purpose; `pending-audience-*`: the audience `mcp-pending` accepted only for a manifest token at the manifest path) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
 | `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 139 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
@@ -1304,7 +1313,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
 | `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
 | `policy-data-push/` | 11 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
-| `address-refusal/` | 46 | loopback, link-local, `169.254.169.254`, unspecified, multicast and limited broadcast in IPv4 and IPv6, the IPv6 metadata address fd00:ec2::254, and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, connect-time check (CC-249) |
+| `address-refusal/` | 69 | loopback, link-local, `169.254.169.254`, unspecified, multicast and limited broadcast in IPv4 and IPv6, the metadata addresses fd00:ec2::254, 100.100.100.200 and 192.0.0.192 (also in 6to4 and as inet_aton literals), configured refusals (`MCP_SERVER_REFUSED_ADDRESSES`), and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, connect-time check (CC-249) |
 | `server-connection/` | 24 | first connection with every tool pending (`READ_ONLY` too), tool availability, `ca` renewal versus `pinned` change, approval of a connection (CC-249) |
 | `certificate-fingerprint/` | 12 | SHA-256 over the DER of real certificates (`sha256:<lower-case hex>`), PEM re-wrapping, wrong inputs, the format (CC-249); random keys, `scripts/generate-certificate-vectors.mjs` is not part of `generate:vectors` |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |

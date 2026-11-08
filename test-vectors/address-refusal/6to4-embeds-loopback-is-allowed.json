@@ -1,0 +1,9 @@
+{
+  "description": "Even a 6to4 address that embeds 127.0.0.1 is not judged as loopback: only the metadata addresses are looked for inside 6to4.",
+  "input": {
+    "address": "2002:7f00:1::1"
+  },
+  "expected": {
+    "allowed": true
+  }
+}
