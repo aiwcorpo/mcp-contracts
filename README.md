@@ -375,7 +375,7 @@ purpose, `aud` is the `serverId` of the receiver, `exp - iat` is at most 60 s. A
 
 One exception to `aud`: when the gateway adds a server, the `serverId` is not known before the first manifest is read, so the token of that probe carries `aud: "mcp-pending"`.
 A server accepts `mcp-pending` ONLY for `use: manifest`, ONLY on `GET /.well-known/mcp-manifest` and ONLY while it holds no policy data (it has never accepted a push, so it was
-never connected). The audience is shared by every server, so once the server holds policy data it requires `aud` equal to its own `serverId` for every purpose, the manifest included.
+never connected). The audience is shared by every server, so once the server holds policy data it requires `aud` equal to its own `serverId` for every purpose, the manifest included; the server keeps that fact in its state directory (a marker file after the first accepted push), so a restart does not accept `mcp-pending` again.
 Every other purpose and path requires `aud` equal to its own `serverId` from the start (`wrong_audience`): a `call` or `policy-data` token with `mcp-pending` is refused.
 Vectors: `jwt/valid-service-manifest-pending-audience`, `jwt/pending-audience-*` (`pending-audience-manifest-after-policy-data-push` is the refusal after the first push),
 `jwt/valid-service-manifest-own-audience-after-policy-data-push`.

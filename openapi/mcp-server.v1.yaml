@@ -38,7 +38,7 @@ info:
     (the add operation of C5). The token of that probe carries `aud: mcp-pending`. A server accepts `mcp-pending` ONLY for `use: manifest`, ONLY on
     `GET /.well-known/mcp-manifest` and ONLY while it holds no policy data, that is while it has never accepted a policy-data push and so was never connected.
     `mcp-pending` is a shared audience, so it must not outlive the first connection: once the server holds policy data it requires `aud` equal to its own
-    `serverId` for every purpose, the manifest included (refresh and the runtime loop use the real `serverId`). Every other purpose and path (`policy-data`, every
+    `serverId` for every purpose, the manifest included (refresh and the runtime loop use the real `serverId`). The server keeps that fact in its state directory (a marker file written after the first accepted push and read at start), so a restart does not accept `mcp-pending` again. Every other purpose and path (`policy-data`, every
     `call`) requires `aud` equal to its own `serverId` from the start, and a token with `aud: mcp-pending` presented there, or after the first push, is `401` `wrong_audience`.
     Test vectors: `test-vectors/jwt/valid-service-manifest-pending-audience`, `pending-audience-manifest-after-policy-data-push` and
     `test-vectors/jwt/pending-audience-*` (the verifier field `holdsPolicyData` says which state the server is in).
