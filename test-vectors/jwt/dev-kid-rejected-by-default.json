@@ -1,6 +1,6 @@
 {
   "description": "Otherwise valid token whose kid starts with dev- (signed with a key of a dev stack that is not one of the published test keys); a receiver that is not in dev mode (devstack profile and allowTestKeys) rejects it (CC-137).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA5MSJ9.H5IanAb73ZYb5yJ9WSnyvx5rPrjvFA7PDTS6-BsD-kQ_iNh5fldAUiawwvgUN5bFMxsJe5W1H5AvUruHh-lgQQ",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRldi1ndy0yMDI2LTEwLWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTEifQ.wE5f02VSs3FFLqohS8QBccOJY77jvUK41eBIm67pAAoDfD-mH_rVwAQq_dJwWq8zDpkkso7T0mByIV8-LrGQNQ",
   "header": {
     "alg": "ES256",
     "kid": "dev-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

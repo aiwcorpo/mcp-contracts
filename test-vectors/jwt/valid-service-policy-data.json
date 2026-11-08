@@ -1,0 +1,41 @@
+{
+  "description": "Service variant accepted for POST /.well-known/mcp-policy-data.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJwb2xpY3ktZGF0YSIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMTUifQ.IB2_jrgX-c05qXh2OpzeW3GXAqW8fFcK0duUxxzLZIz2WAIQkQUaRPhNq5Cl8PumIW65Bez61E4dVcOCSovJbw",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-jira",
+    "use": "policy-data",
+    "sub": "system:mcp-gateway",
+    "grp": [],
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
+    "prv": 41,
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000015"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-jira",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "http",
+    "method": "POST",
+    "path": "/.well-known/mcp-policy-data",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80"
+  },
+  "expected": {
+    "valid": true,
+    "httpStatus": 200
+  }
+}

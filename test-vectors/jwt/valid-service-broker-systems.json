@@ -1,6 +1,6 @@
 {
   "description": "Service variant accepted by the broker only for GET /v1/systems (CC-030).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA0NCJ9.18XDwx01s2hAn-Hx-KOf7qyXhNuMeOBS2NtGhPy2KjmksIaJMybAKa_Ifc8PYPV3z_jv7-a3yeeKdJzXn23q9A",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwidXNlIjoiY2FsbCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwNDQifQ.v5PLyiTH2Gu2uTTGq2HySWnkJHAX3j6EiJvfIWwvQUYiFRqXXOw0YHIvlyxzQJJLFscmotC6fwpOQ8Dsf3uM8Q",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-credential-broker",
+    "use": "call",
     "sub": "system:mcp-gateway",
     "grp": [],
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",

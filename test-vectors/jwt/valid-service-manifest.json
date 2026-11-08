@@ -1,6 +1,6 @@
 {
-  "description": "Service variant accepted for GET /mcp-manifest.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDEzIn0.u8ArUaojmRWqe9WkUNYkP0ny7GeXG5zpzTAQ7VC9sQ2t3gNcMyxAXV-bMdmxe7LvW08gM7_WOI9dNjZXK3VLRA",
+  "description": "Service variant accepted for GET /.well-known/mcp-manifest.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJtYW5pZmVzdCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMTMifQ.lob4ZTHDh8nB68rZRX9ExxbLfe7IyJ92NsBCmHqD5qSdKQNpLsFKt2bGm17xBuBQ1QcfiYQDhXASTDm7i50gPw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "manifest",
     "sub": "system:mcp-gateway",
     "grp": [],
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
@@ -30,7 +31,7 @@
   "request": {
     "kind": "http",
     "method": "GET",
-    "path": "/mcp-manifest",
+    "path": "/.well-known/mcp-manifest",
     "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80"
   },
   "expected": {

@@ -1,6 +1,6 @@
 {
   "description": "User variant without tool is accepted for tools/list (CC-033, CC-038).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDQxIn0.djmsC1IgD-HYh0UXrDrteXGIZzxF2IsBZEVE8iCFxbE2dP1MYWEQywUgdaCyXLOb96dEBlN_Cv1boUTliItBKg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA0MSJ9.jr1C-js4mHMQ_pQjXz0qq_EgW3HZgLv5pL_rphE15NS7eIjGUCgcXZEvUjl8cWzwv0X-n03HPy6nJ4gJhQp-xg",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

@@ -1,6 +1,6 @@
 {
   "description": "resolve needs the tool the credential is for (CC-038).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA1MiJ9.HNmTAw0V5gbrE7qIjCQuHRejql4AAK-SHV4MKQTqrcofxipNCVuSXH7xb8VjTJoEwVryxnAjI9L9Ke6vRVvUrg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwidXNlIjoiY2FsbCIsInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsInVzciI6Imprb3dhbHNraSIsImdycCI6WyJtY3AtamlyYS1yZWFkIiwibWNwLWppcmEtd3JpdGUiLCJtY3AtamlyYS1wcm9qLUFCQyJdLCJhenAiOiJjbGF1ZGUtY29kZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwNTIifQ.ZjO4CNrb9J6HrFmOfaCRxeEOXJHEn78XEJdri77yvcvMPI0cL2XTNej6c6p9XAnfJ01DLGwldiO6DS7A9XjE9A",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-credential-broker",
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

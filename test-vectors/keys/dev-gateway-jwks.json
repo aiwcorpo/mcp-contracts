@@ -2,8 +2,8 @@
   "keys": [
     {
       "kty": "EC",
-      "x": "C7bJsOgR9i0O95sczcq9AmKEbfsuc2MHd6aqcPeyhVU",
-      "y": "eBFuHGdbR3KdcUI2UYGB4slQ7l7gkpPHBZZNPVcn4U0",
+      "x": "JAw4vj81LEfZGp4BYgzv0J4z1ybjJQ12YyRVkl4PR2o",
+      "y": "1q1i6PntkZ8wRtM8v2JkK0ur9Oe3YVUKiWTfBlqtZqM",
       "crv": "P-256",
       "kid": "dev-gw-2026-10-a",
       "alg": "ES256",

@@ -1,6 +1,6 @@
 {
   "description": "tools/call for the sidecar of an adapter: the gateway adds the classification of the administrator from the registry as mcp_risk and mcp_action (CC-226).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiI2ZjFjMmE5ZS00ZDRiLTRjNTEtOWE1My0xZTBmMGM3ZDJiMTEiLCJ1c3IiOiJqa293YWxza2kiLCJncnAiOlsibWNwLWppcmEtcmVhZCIsIm1jcC1qaXJhLXdyaXRlIiwibWNwLWppcmEtcHJvai1BQkMiXSwiYXpwIjoiY2xhdWRlLWNvZGUiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA5NCIsIm1jcF9yaXNrIjoiUkVBRF9PTkxZIiwibWNwX2FjdGlvbiI6InJlYWQifQ.dBOPiSpOeoUhNXKTakj1NIxpUj7alWqjgsycQhMJhlQjofG8UIC18z3Plo8U2eQit7rgysQooJMW8-RKFtP1Qg",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTQiLCJtY3BfcmlzayI6IlJFQURfT05MWSIsIm1jcF9hY3Rpb24iOiJyZWFkIn0.pNXjfzw72WkGhgTz-zRC7Vn43jEmJDwY2K0HTe0Fd6hotSN5TG0l02r_nvZUmXcrPepoK0EGDetz65UXMLrjCA",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

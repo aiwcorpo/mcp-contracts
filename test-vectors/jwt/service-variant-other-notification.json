@@ -1,6 +1,6 @@
 {
   "description": "Service variant used for notifications/initialized; the service variant exists only without a session, requests of a session carry the user variant (CC-070).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDYwIn0.YTfkoOstMy5KHk-mTOAeyLpk4m-uy7ZgeFzzA7uos8PgFWcKWn18Q3K0304ywHAZhjXHJ2KfbWOtFnoBVwHLkQ",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDA2MCJ9.uqOg97unCc4N6ou0j2o0HkBRaS24E1QaAx-85_xpXNILsfvw3DWiqHm0AEmdqVmyNXwc83Yr23voLb-R3l0Klg",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "call",
     "sub": "system:mcp-gateway",
     "grp": [],
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",

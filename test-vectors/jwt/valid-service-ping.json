@@ -1,6 +1,6 @@
 {
   "description": "Service variant accepted for ping.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDEyIn0.wQOq7Xx5aQjTD1aYMAalBXi-8Ma-xgnust8EKYe5EE18BKm0M71HscO6LrfS0srcFr81WES737uJTv5clkU3TA",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAxMiJ9.BcyI8ADGeMG8JerjhJhPy1THxfoSSRlzOmuEkaEHlbtXFY8UazUskUSvcbKHplm3mh2oaOqpYpHIqWqvoG48bQ",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "call",
     "sub": "system:mcp-gateway",
     "grp": [],
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",

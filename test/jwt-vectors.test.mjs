@@ -8,11 +8,19 @@ const SERVICE_METHODS = new Set(['initialize', 'server/discover', 'tools/list', 
 const ajv = createAjv();
 const validateClaims = schemaValidator(ajv, 'internal-jwt.schema.json');
 
-// Server: initialize, server/discover (CC-069), tools/list, ping, GET /mcp-manifest. Broker: GET /v1/systems only (CC-030).
+// Server: initialize, server/discover (CC-069), tools/list, ping, GET /.well-known/mcp-manifest, POST /.well-known/mcp-policy-data.
+// Broker: GET /v1/systems only (CC-030).
 function serviceRequestAllowed(request, audience) {
   if (audience === 'mcp-credential-broker') return request.method === 'GET' && request.path === '/v1/systems';
   if (request.kind === 'jsonrpc') return SERVICE_METHODS.has(request.method);
-  return request.method === 'GET' && request.path === '/mcp-manifest';
+  return purposeOf(request) !== 'call';
+}
+
+// CC-249: the purpose an endpoint requires. Everything that is not one of the two well-known endpoints of a server is a call.
+function purposeOf(request) {
+  if (request.kind === 'http' && request.method === 'GET' && request.path === '/.well-known/mcp-manifest') return 'manifest';
+  if (request.kind === 'http' && request.method === 'POST' && request.path === '/.well-known/mcp-policy-data') return 'policy-data';
+  return 'call';
 }
 
 // Reference receiver for C2. Order of checks only decides which reason is reported for a token with
@@ -46,6 +54,7 @@ async function verify(vector) {
   if (claims.iat > now + verifier.clockSkewSeconds) return 'not_yet_valid';
   if (claims.exp - claims.iat > verifier.maxLifetimeSeconds) return 'lifetime_too_long';
   if (verifier.seenJtis.includes(claims.jti)) return 'replayed_jti';
+  if (claims.use !== purposeOf(request)) return 'wrong_purpose';
   const service = claims.sub === 'system:mcp-gateway';
   if (service && !serviceRequestAllowed(request, verifier.audience)) return 'service_token_not_allowed';
   if (request.xRequestId !== claims.rid) return 'request_id_mismatch';
@@ -77,7 +86,7 @@ test('every C2 rejection case is covered', () => {
   for (const reason of ['missing_token', 'bad_signature', 'unknown_kid', 'alg_not_allowed', 'wrong_issuer',
     'wrong_audience', 'expired', 'replayed_jti', 'service_token_not_allowed', 'tool_mismatch',
     'invalid_claims', 'lifetime_too_long', 'not_yet_valid', 'request_id_mismatch', 'tool_missing',
-    'tool_not_allowed', 'test_key_not_allowed']) {
+    'tool_not_allowed', 'test_key_not_allowed', 'wrong_purpose']) {
     assert.ok(reasons.has(reason), `no vector for ${reason}`);
   }
 });

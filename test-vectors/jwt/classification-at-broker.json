@@ -1,6 +1,6 @@
 {
   "description": "mcp_risk and mcp_action in a token for the credential broker: rejected as invalid_claims (CC-226).",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwOTgiLCJtY3BfcmlzayI6IlJFQURfT05MWSIsIm1jcF9hY3Rpb24iOiJyZWFkIn0.QQJAD_7OUaXZ_eGhuVhorP9RuAJv8ghD8aSEio_DB7W9C7qMv7NM4cmcWlNjiAgjWETpxXiw_cgtwO1eEGbmYA",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwidXNlIjoiY2FsbCIsInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsInVzciI6Imprb3dhbHNraSIsImdycCI6WyJtY3AtamlyYS1yZWFkIiwibWNwLWppcmEtd3JpdGUiLCJtY3AtamlyYS1wcm9qLUFCQyJdLCJhenAiOiJjbGF1ZGUtY29kZSIsInRvb2wiOiJnZXRfaXNzdWUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDk4IiwibWNwX3Jpc2siOiJSRUFEX09OTFkiLCJtY3BfYWN0aW9uIjoicmVhZCJ9.qwS-UHsbq-Smx6A_4AVyIBHGppUAgfC-FF4WmBQUf8ZWuFHHb4E17554f0LU-6UrOVrrdLvDlkQjxE8-_CO4cw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-credential-broker",
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

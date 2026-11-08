@@ -1,6 +1,6 @@
 {
   "description": "Service variant accepted for server/discover.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJzdWIiOiJzeXN0ZW06bWNwLWdhdGV3YXkiLCJncnAiOltdLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlODAiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDE0In0.v_lf-xVTZvytUjK7_cezanwZKHyu07HuUSuc5rkndiy7t32aDzYJaDYrPrzEvJB7eUAcDLpa9se20WqUvH4-8A",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoic3lzdGVtOm1jcC1nYXRld2F5IiwiZ3JwIjpbXSwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTgwIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDAxNCJ9.MWa7G40auzLJVBxdN-XCu4o-xJUWd9SUVZPg3RhyJAQgPWXL31NVOx7flMmemKLMlp4HwpyKF6vGeotLLXAyMw",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-jira",
+    "use": "call",
     "sub": "system:mcp-gateway",
     "grp": [],
     "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",

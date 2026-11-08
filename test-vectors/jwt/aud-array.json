@@ -1,6 +1,6 @@
 {
   "description": "aud as an array that contains the receiver; C2 defines aud as a single string.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjpbIm1jcC1qaXJhIiwibWNwLWNvbmZsdWVuY2UiXSwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMjIifQ.n7VfXe_eR7Y5neUwQIVHPihpeqHF76x0Ho9noBfq5L-MZ1GbMPD48dyDvNNzRB41twv2mGw7lLDh1Ufhmnyd8g",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjpbIm1jcC1qaXJhIiwibWNwLWNvbmZsdWVuY2UiXSwidXNlIjoiY2FsbCIsInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsInVzciI6Imprb3dhbHNraSIsImdycCI6WyJtY3AtamlyYS1yZWFkIiwibWNwLWppcmEtd3JpdGUiLCJtY3AtamlyYS1wcm9qLUFCQyJdLCJhenAiOiJjbGF1ZGUtY29kZSIsInRvb2wiOiJnZXRfaXNzdWUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDIyIn0.HX-euWdFijtXfhrN9tfPQzTfhxg_L6MPuW-iuOkJkWXFz6Vem8i8IHGC9PMGgZth253M0MzgdtbEV4_Qual8TA",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -12,6 +12,7 @@
       "mcp-jira",
       "mcp-confluence"
     ],
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

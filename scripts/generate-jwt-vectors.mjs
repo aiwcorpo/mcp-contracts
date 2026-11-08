@@ -16,6 +16,7 @@ function userClaims(overrides = {}) {
   return {
     iss: ISSUER,
     aud: 'mcp-jira',
+    use: 'call',
     sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11',
     usr: 'jkowalski',
     grp: ['mcp-jira-read', 'mcp-jira-write', 'mcp-jira-proj-ABC'],
@@ -34,6 +35,7 @@ function serviceClaims(overrides = {}) {
   return {
     iss: ISSUER,
     aud: 'mcp-jira',
+    use: 'call',
     sub: 'system:mcp-gateway',
     grp: [],
     rid: SERVICE_RID,
@@ -107,7 +109,6 @@ for (const [suffix, request, jti] of [
   ['initialize', rpc('initialize', USER_RID), '40'],
   ['tools-list', rpc('tools/list', USER_RID), '41'],
   ['ping', rpc('ping', USER_RID), '42'],
-  ['manifest', http('GET', '/mcp-manifest'), '43'],
   ['discover', rpc('server/discover', USER_RID), '55'],
   ['subscriptions-listen', rpc('subscriptions/listen', USER_RID), '56'],
 ]) {
@@ -119,15 +120,16 @@ for (const [suffix, request, jti] of [
 await add('valid-service-broker-systems', 'Service variant accepted by the broker only for GET /v1/systems (CC-030).', {
   token: await sign(serviceClaims({ aud: 'mcp-credential-broker', jti: '0192d1b2-7c3a-7f00-9a11-000000000044' }), 'test-gateway-jwt-a'),
   request: http('GET', '/v1/systems', SERVICE_RID), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
-for (const [suffix, request, jti] of [
+for (const [suffix, request, jti, use] of [
   ['initialize', rpc('initialize'), '10'],
   ['tools-list', rpc('tools/list'), '11'],
   ['ping', rpc('ping'), '12'],
-  ['manifest', http('GET', '/mcp-manifest', SERVICE_RID), '13'],
+  ['manifest', http('GET', '/.well-known/mcp-manifest', SERVICE_RID), '13', 'manifest'],
+  ['policy-data', http('POST', '/.well-known/mcp-policy-data', SERVICE_RID), '15', 'policy-data'],
   ['discover', rpc('server/discover'), '14'],
 ]) {
   await add(`valid-service-${suffix}`, `Service variant accepted for ${request.method} ${request.path ?? ''}`.trim() + '.', {
-    token: await sign(serviceClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}` }), 'test-gateway-jwt-a'),
+    token: await sign(serviceClaims({ jti: `0192d1b2-7c3a-7f00-9a11-0000000000${jti}`, ...(use && { use }) }), 'test-gateway-jwt-a'),
     request, valid: true });
 }
 
@@ -188,7 +190,7 @@ await add('issued-in-future', 'iat 120 s after the verifier clock, beyond the 30
   await add('missing-jti', 'No jti; replay protection is impossible.', {
     token: await sign(claims, 'test-gateway-jwt-a'), request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
 }
-await add('service-variant-tools-call', 'Service variant used for tools/call; only allowed for initialize, tools/list, ping and the manifest.', {
+await add('service-variant-tools-call', 'Service variant used for tools/call; only allowed for initialize, server/discover, tools/list, ping and the two well-known endpoints.', {
   token: await sign(serviceClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000032' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue', SERVICE_RID), valid: false, reason: 'service_token_not_allowed' });
 await add('service-variant-broker', 'Service variant sent to the broker resolve endpoint, which needs a user.', {
@@ -305,6 +307,49 @@ await add('classification-without-tool', 'mcp_risk and mcp_action without tool: 
 await add('classification-pair-does-not-fit', 'READ_ONLY with delete: risk and action must fit each other as in approveTool (CC-207, CC-226); rejected as invalid_claims.', {
   token: await sign(userClaims({ mcp_risk: 'READ_ONLY', mcp_action: 'delete', jti: '0192d1b2-7c3a-7f00-9a11-000000000099' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), verifierOverrides: ADAPTER, valid: false, reason: 'invalid_claims' });
+// Purpose separation (CC-249): the claim use must be the purpose of the endpoint, whatever else is valid.
+const MANIFEST = http('GET', '/.well-known/mcp-manifest', SERVICE_RID);
+const POLICY_DATA = http('POST', '/.well-known/mcp-policy-data', SERVICE_RID);
+const purposeCase = async (name, description, claims, request, reason, verifierOverrides) => add(name, description, {
+  token: await sign(claims, 'test-gateway-jwt-a'), request, verifierOverrides, valid: reason === undefined, reason });
+await purposeCase('purpose-call-token-at-manifest', 'A service token minted for calls presented to GET /.well-known/mcp-manifest: refused, the manifest is only for use manifest.',
+  serviceClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000201' }), MANIFEST, 'wrong_purpose');
+await purposeCase('purpose-call-token-at-policy-data', 'A call token presented to POST /.well-known/mcp-policy-data: a token that can call a tool cannot replace policy data.',
+  serviceClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000202' }), POLICY_DATA, 'wrong_purpose');
+await purposeCase('purpose-manifest-token-at-policy-data', 'A manifest token presented to POST /.well-known/mcp-policy-data.',
+  serviceClaims({ use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000203' }), POLICY_DATA, 'wrong_purpose');
+await purposeCase('purpose-policy-data-token-at-manifest', 'A policy-data token presented to GET /.well-known/mcp-manifest.',
+  serviceClaims({ use: 'policy-data', jti: '0192d1b2-7c3a-7f00-9a11-000000000204' }), MANIFEST, 'wrong_purpose');
+await purposeCase('purpose-manifest-token-at-tools-list', 'A manifest token presented to the MCP endpoint (tools/list, which accepts the service variant): refused, the endpoint wants use call.',
+  serviceClaims({ use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000205' }), rpc('tools/list'), 'wrong_purpose');
+await purposeCase('purpose-manifest-token-at-initialize', 'A manifest token presented to initialize.',
+  serviceClaims({ use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000206' }), rpc('initialize'), 'wrong_purpose');
+await purposeCase('purpose-policy-data-token-at-tools-list', 'A policy-data token presented to tools/list.',
+  serviceClaims({ use: 'policy-data', jti: '0192d1b2-7c3a-7f00-9a11-000000000207' }), rpc('tools/list'), 'wrong_purpose');
+await purposeCase('purpose-policy-data-token-at-tools-call', 'A policy-data token presented to tools/call: the purpose is checked before anything about the variant, so this is wrong_purpose, not service_token_not_allowed.',
+  serviceClaims({ use: 'policy-data', jti: '0192d1b2-7c3a-7f00-9a11-000000000208' }), toolsCall('get_issue', SERVICE_RID), 'wrong_purpose');
+await purposeCase('purpose-user-call-token-at-manifest', 'A user token (use call) presented to GET /.well-known/mcp-manifest: wrong_purpose.',
+  userClaims({ tool: undefined, jti: '0192d1b2-7c3a-7f00-9a11-000000000209' }), http('GET', '/.well-known/mcp-manifest', USER_RID), 'wrong_purpose');
+await purposeCase('purpose-manifest-token-at-broker', 'A manifest token presented to the credential broker (GET /v1/systems, which accepts the service variant): the broker wants use call.',
+  serviceClaims({ aud: 'mcp-credential-broker', use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000210' }), http('GET', '/v1/systems', SERVICE_RID), 'wrong_purpose', { audience: 'mcp-credential-broker' });
+await purposeCase('purpose-user-variant-with-manifest-use', 'The user variant carries only use call; a user token with use manifest matches no variant.',
+  userClaims({ tool: undefined, use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000211' }), http('GET', '/.well-known/mcp-manifest', USER_RID), 'invalid_claims');
+await purposeCase('purpose-unknown-value', 'use outside call, manifest and policy-data.',
+  serviceClaims({ use: 'admin', jti: '0192d1b2-7c3a-7f00-9a11-000000000212' }), rpc('tools/list'), 'invalid_claims');
+{
+  const claims = userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000213' });
+  delete claims.use;
+  await purposeCase('purpose-missing', 'A token without use (a token of a gateway before 7.0.0 final) is refused; the purpose is required.', claims, toolsCall('get_issue'), 'invalid_claims');
+}
+await purposeCase('purpose-policy-data-replayed-jti', 'A policy-data token whose jti was already accepted: the one-time jti holds for every purpose.',
+  serviceClaims({ use: 'policy-data', jti: '0192d1b2-7c3a-7f00-9a11-000000000214' }), POLICY_DATA, 'replayed_jti', { seenJtis: ['0192d1b2-7c3a-7f00-9a11-000000000214'] });
+await purposeCase('purpose-manifest-replayed-jti', 'The same for a manifest token.',
+  serviceClaims({ use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000215' }), MANIFEST, 'replayed_jti', { seenJtis: ['0192d1b2-7c3a-7f00-9a11-000000000215'] });
+await purposeCase('purpose-policy-data-with-tool', 'A policy-data token with a tool claim matches no variant.',
+  serviceClaims({ use: 'policy-data', tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000216' }), POLICY_DATA, 'invalid_claims');
+await purposeCase('purpose-policy-data-wrong-audience', 'A policy-data token minted for another server.',
+  serviceClaims({ use: 'policy-data', aud: 'mcp-confluence', jti: '0192d1b2-7c3a-7f00-9a11-000000000217' }), POLICY_DATA, 'wrong_audience');
+
 await add('service-variant-with-tool', 'Claims of the service variant plus a tool claim; matches neither variant.', {
   token: await sign(serviceClaims({ tool: 'get_issue', jti: '0192d1b2-7c3a-7f00-9a11-000000000034' }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });

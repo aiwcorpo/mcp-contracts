@@ -1,6 +1,6 @@
 {
   "description": "User variant sent to the credential broker for resolve.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwic3ViIjoiNmYxYzJhOWUtNGQ0Yi00YzUxLTlhNTMtMWUwZjBjN2QyYjExIiwidXNyIjoiamtvd2Fsc2tpIiwiZ3JwIjpbIm1jcC1qaXJhLXJlYWQiLCJtY3AtamlyYS13cml0ZSIsIm1jcC1qaXJhLXByb2otQUJDIl0sImF6cCI6ImNsYXVkZS1jb2RlIiwidG9vbCI6ImdldF9pc3N1ZSIsInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU3ZiIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAwMDYifQ.OcuMjhQeVoQw-O8c2tUg1k64oo73n3aD9ZRm0JqcfX9Jgrnb1j0d-PdcNeJsAi2lHeLRv6bBGk6T4D4ypDrsxA",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwidXNlIjoiY2FsbCIsInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsInVzciI6Imprb3dhbHNraSIsImdycCI6WyJtY3AtamlyYS1yZWFkIiwibWNwLWppcmEtd3JpdGUiLCJtY3AtamlyYS1wcm9qLUFCQyJdLCJhenAiOiJjbGF1ZGUtY29kZSIsInRvb2wiOiJnZXRfaXNzdWUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMDA2In0.NZC-hDsAcVKcrFChqKx5BogRuBkIbjSjTttV-3iXAHpXJecwqx0IcQ_UKlUPJbZMBkNft4PaM1RqwzHxSbhFbg",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -9,6 +9,7 @@
   "claims": {
     "iss": "https://mcp-gateway.internal",
     "aud": "mcp-credential-broker",
+    "use": "call",
     "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
     "usr": "jkowalski",
     "grp": [

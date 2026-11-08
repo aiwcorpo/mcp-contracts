@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Internal JWT claims (C2)",
-  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (unit tests and dev, CC-044), and kid not starting with 'dev-' unless the receiver is in dev mode, that is the devstack profile and allowTestKeys=true together (CC-137; allowTestKeys alone is not enough for dev-), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window, rid == X-Request-Id header, tool present and == params.name for tools/call, tool present for the broker resolve and for the authenticator calls of the gateway (GET /v1/authenticator, POST /v1/authenticator/verify, POST /v1/authenticator/invalidate-codes; CC-092, CC-128), tool absent for every other request (CC-038), service variant only for initialize, server/discover, tools/list, ping, GET /mcp-manifest and (broker) GET /v1/systems, and only outside a session (stateless, CC-070): notifications/*, GET/DELETE on the MCP endpoint, subscriptions/listen and every other request of a session carry the user variant without tool. A tools/call retry with inputResponses (MRTR, MCP 2026-07-28) is an ordinary tools/call with a fresh token (CC-069). mcp_risk and mcp_action (CC-226) only when the receiver is the sidecar of an adapter, otherwise invalid_claims. Any failure -> HTTP 401.",
+  "description": "Payload of the ES256 JWT issued by the gateway for MCP servers and the credential broker. Rules that a schema cannot express and that receivers MUST check: kid not starting with 'test-' unless the receiver is explicitly configured with allowTestKeys=true (unit tests and dev, CC-044), and kid not starting with 'dev-' unless the receiver is in dev mode, that is the devstack profile and allowTestKeys=true together (CC-137; allowTestKeys alone is not enough for dev-), signature against the gateway JWKS, iss, aud == own id, exp with clock skew <= 30 s, iat not more than 30 s in the future, exp - iat <= 60 s, jti not seen within its validity window (one-time, for every purpose), rid == X-Request-Id header, purpose: `use` == the purpose of the endpoint, otherwise the token is refused as wrong_purpose (CC-249): `manifest` only for GET /.well-known/mcp-manifest and `policy-data` only for POST /.well-known/mcp-policy-data of a server (C14), both only in the service variant; `call` for everything else (the MCP endpoint of a server, every endpoint of the credential broker) and never for those two paths; tool present and == params.name for tools/call, tool present for the broker resolve and for the authenticator calls of the gateway (GET /v1/authenticator, POST /v1/authenticator/verify, POST /v1/authenticator/invalidate-codes; CC-092, CC-128), tool absent for every other request (CC-038), service variant only for initialize, server/discover, tools/list, ping, GET /.well-known/mcp-manifest, POST /.well-known/mcp-policy-data and (broker) GET /v1/systems, and only outside a session (stateless, CC-070): notifications/*, GET/DELETE on the MCP endpoint, subscriptions/listen and every other request of a session carry the user variant without tool. A tools/call retry with inputResponses (MRTR, MCP 2026-07-28) is an ordinary tools/call with a fresh token (CC-069). mcp_risk and mcp_action (CC-226) only when the receiver is the sidecar of an adapter, otherwise invalid_claims. Any failure -> HTTP 401.",
   "oneOf": [
     {
       "$ref": "#/$defs/UserClaims"
@@ -66,6 +66,15 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 128
+        },
+        "use": {
+          "description": "Purpose of the token (CC-249). call: a request of the MCP endpoint of a server or of the credential broker (user variant, or the service variant for initialize, server/discover, tools/list, ping and the broker GET /v1/systems). manifest: the pull of the manifest of a server, GET /.well-known/mcp-manifest (C14). policy-data: the push of policy data to a server, POST /.well-known/mcp-policy-data (C14). A receiver refuses a token whose purpose is not the one of the endpoint, whatever else is valid, so that a token minted for one purpose cannot be used for another.",
+          "type": "string",
+          "enum": [
+            "call",
+            "manifest",
+            "policy-data"
+          ]
         }
       }
     },
@@ -83,7 +92,7 @@
       "unevaluatedProperties": false
     },
     "ServiceClaims": {
-      "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping and GET /mcp-manifest (CC-069, CC-070).",
+      "description": "Gateway call without a user and without a session. Accepted only for initialize, server/discover, tools/list, ping (use call), GET /.well-known/mcp-manifest (use manifest) and POST /.well-known/mcp-policy-data (use policy-data) of a server, and GET /v1/systems of the broker (use call) (CC-069, CC-070, CC-249).",
       "allOf": [
         {
           "$ref": "#/$defs/Common"
@@ -95,6 +104,7 @@
         "aud",
         "sub",
         "grp",
+        "use",
         "rid",
         "prv",
         "iat",
@@ -121,6 +131,7 @@
         "usr",
         "grp",
         "azp",
+        "use",
         "rid",
         "prv",
         "iat",
@@ -158,13 +169,17 @@
           "maxLength": 255
         },
         "tool": {
-          "description": "Server-side name of the tool being called. Present exactly for tools/call (and for the broker resolve and authenticator calls that serve it); absent for initialize, server/discover, subscriptions/listen, tools/list, ping and GET /mcp-manifest (CC-038, CC-069).",
+          "description": "Server-side name of the tool being called. Present exactly for tools/call (and for the broker resolve and authenticator calls that serve it); absent for initialize, server/discover, subscriptions/listen, tools/list, and ping (CC-038, CC-069).",
           "$ref": "common.schema.json#/$defs/ToolName"
         },
         "mfa": {
           "description": "Seconds since the last authentication at an MFA acr level. Absent means unknown.",
           "type": "integer",
           "minimum": 0
+        },
+        "use": {
+          "description": "The user variant is only ever for calls (CC-249).",
+          "const": "call"
         }
       },
       "description": "Claims shared by the user variant for every receiver (CC-038, CC-069)."
