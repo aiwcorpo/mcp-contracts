@@ -1611,7 +1611,7 @@ paths:
         becomes the `pendingConnection` (reason `certificate_changed`, or `ca_validation_failed` for a server in `ca` mode) and the status is
         `certificate_changed`. Every other failure is reported in the answer, not as an HTTP error: `status` `unreachable` or `manifest_invalid`
         and `lastError` (`address_refused`, `tls_handshake_failed`, `manifest_unreachable`, `manifest_invalid`); the registry keeps what it has. It needs no fresh MFA because it approves
-        nothing; the administrator group is checked as for the other operations. A `serverId` that names no server is `404`.
+        nothing; the administrator group is checked as for the other operations. A `serverId` that names no server is `404`. At most one probe per server per 5 s: a faster call is `429 refresh_too_frequent` with `Retry-After`.
       security:
         - mtls: []
           bffUserToken: []
@@ -1659,6 +1659,23 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '429':
+          description: The server was probed less than 5 s ago.
+          headers:
+            Retry-After:
+              description: Seconds to wait.
+              schema:
+                type: integer
+                minimum: 1
+              example: 5
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                too_frequent:
+                  value:
+                    error: refresh_too_frequent
   /admin/v1/policy/scope-mapping:
     get:
       tags: [policy]

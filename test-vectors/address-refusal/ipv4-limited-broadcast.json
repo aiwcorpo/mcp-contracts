@@ -1,0 +1,10 @@
+{
+  "description": "The limited broadcast 255.255.255.255 is refused.",
+  "input": {
+    "address": "255.255.255.255"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "broadcast"
+  }
+}

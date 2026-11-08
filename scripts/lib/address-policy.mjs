@@ -1,6 +1,6 @@
 // Reference of the address rule for servers (CC-249): the gateway refuses to connect to a loopback, link-local (169.254.0.0/16, which holds the
 // cloud metadata address 169.254.169.254, and fe80::/10), unspecified or multicast address. Private ranges (10/8, 172.16/12, 192.168/16, fc00::/7)
-// are allowed: servers live on the internal network. An IPv6 address that carries an IPv4 address (IPv4-mapped ::ffff:a.b.c.d, the deprecated
+// are allowed: servers live on the internal network, except the IPv6 metadata address fd00:ec2::254 (refused by name) and the limited broadcast 255.255.255.255. An IPv6 address that carries an IPv4 address (IPv4-mapped ::ffff:a.b.c.d, the deprecated
 // IPv4-compatible ::a.b.c.d, NAT64 64:ff9b::a.b.c.d) is judged as the IPv4 address it carries. Used by the vectors in test-vectors/address-refusal.
 import { isIP } from 'node:net';
 
@@ -32,6 +32,7 @@ function classifyV4([a, b, c, d]) {
   if (a === 169 && b === 254) return 'link_local';
   if (a === 0) return 'unspecified';
   if (a >= 224 && a <= 239) return 'multicast';
+  if (a === 255 && b === 255 && c === 255 && d === 255) return 'broadcast';
   return null;
 }
 
@@ -61,6 +62,8 @@ export function addressDecision(text) {
   if (bytes.slice(0, 15).every((x) => x === 0) && bytes[15] === 1) return { allowed: false, class: 'loopback' };
   if (bytes[0] === 0xfe && (bytes[1] & 0xc0) === 0x80) return { allowed: false, class: 'link_local' };
   if (bytes[0] === 0xff) return { allowed: false, class: 'multicast' };
+  // The AWS IPv6 metadata address sits inside the allowed unique-local range fc00::/7, so it is refused by name.
+  if (bytes.join(',') === [0xfd, 0x00, 0x0e, 0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02, 0x54].join(',')) return { allowed: false, class: 'metadata' };
   return { allowed: true };
 }
 

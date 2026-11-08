@@ -2321,6 +2321,25 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/RequestId"
+            Retry-After:
+              description: Seconds to wait.
+              schema:
+                type: integer
+                minimum: 1
+              example: 5
+          description: The server was probed less than 5 s ago (one probe per server per 5 s).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                too_frequent:
+                  value:
+                    error: refresh_too_frequent
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/policy/scope-mapping:

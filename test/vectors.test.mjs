@@ -131,8 +131,8 @@ test('address refusal vectors: loopback, link-local, unspecified and multicast a
     assert.deepEqual(actual, data.expected, name);
     if (data.expected.class) classes.add(data.expected.class);
   }
-  assert.deepEqual([...classes].sort(), ['link_local', 'loopback', 'multicast', 'not_an_address', 'unspecified']);
-  for (const address of ['127.0.0.1', '::1', '169.254.169.254', '::ffff:127.0.0.1', '::ffff:a9fe:a9fe', '0.0.0.0', '::', '224.0.0.251', 'ff02::1']) {
+  assert.deepEqual([...classes].sort(), ['broadcast', 'link_local', 'loopback', 'metadata', 'multicast', 'not_an_address', 'unspecified']);
+  for (const address of ['127.0.0.1', '::1', '169.254.169.254', '::ffff:127.0.0.1', '::ffff:a9fe:a9fe', '0.0.0.0', '::', '224.0.0.251', 'ff02::1', '255.255.255.255', 'fd00:ec2::254']) {
     assert.ok(vectors.some((v) => v.data.input.address === address && !v.data.expected.allowed), `no refusal vector for ${address}`);
   }
 });

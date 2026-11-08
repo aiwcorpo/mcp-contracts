@@ -1,0 +1,10 @@
+{
+  "description": "The IPv6 cloud metadata address fd00:ec2::254 is refused by name, although it lies in the allowed unique-local range.",
+  "input": {
+    "address": "fd00:ec2::254"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata"
+  }
+}

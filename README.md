@@ -1304,7 +1304,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
 | `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
 | `policy-data-push/` | 11 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
-| `address-refusal/` | 42 | loopback, link-local, `169.254.169.254`, unspecified and multicast in IPv4 and IPv6 and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, connect-time check (CC-249) |
+| `address-refusal/` | 46 | loopback, link-local, `169.254.169.254`, unspecified, multicast and limited broadcast in IPv4 and IPv6, the IPv6 metadata address fd00:ec2::254, and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, connect-time check (CC-249) |
 | `server-connection/` | 24 | first connection with every tool pending (`READ_ONLY` too), tool availability, `ca` renewal versus `pinned` change, approval of a connection (CC-249) |
 | `certificate-fingerprint/` | 12 | SHA-256 over the DER of real certificates (`sha256:<lower-case hex>`), PEM re-wrapping, wrong inputs, the format (CC-249); random keys, `scripts/generate-certificate-vectors.mjs` is not part of `generate:vectors` |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |

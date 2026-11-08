@@ -1,0 +1,9 @@
+{
+  "description": "A neighbour of the metadata address in the same range stays allowed: only the one address is an exception.",
+  "input": {
+    "address": "fd00:ec2::255"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

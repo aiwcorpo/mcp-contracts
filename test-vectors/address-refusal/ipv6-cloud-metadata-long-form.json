@@ -1,0 +1,10 @@
+{
+  "description": "The same address written in full.",
+  "input": {
+    "address": "fd00:0ec2:0000:0000:0000:0000:0000:0254"
+  },
+  "expected": {
+    "allowed": false,
+    "class": "metadata"
+  }
+}
