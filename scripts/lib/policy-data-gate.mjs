@@ -41,3 +41,22 @@ export function gatewayCall({ ownHash, held, gateway, pushReachesServer = true }
   if (second.decision === 'continue') return { calls: 2, pushes: 1, result: 'executed' };
   return { calls: 2, pushes: 1, result: 'upstream_unavailable', reason: second.reason };
 }
+
+/**
+ * What POST /.well-known/mcp-policy-data answers before it looks at the data: `prv` of the token is the revision of the body, so a body whose
+ * `revision` differs is 400 invalid_request and changes nothing (a token minted for one revision cannot carry another).
+ */
+export function pushBodyCheck({ prv, bodyRevision }) {
+  return prv === bodyRevision ? { status: 200 } : { status: 400, error: 'invalid_request' };
+}
+
+/**
+ * How the gateway reads the answer of a push. `pushed` is the revision it sent, `ack` is { accepted, revision }. accepted false with a revision
+ * greater than the pushed one means the server holds data that this gateway does not have (the push changed nothing and the server will refuse
+ * calls with the gateway's prv as stale only until it catches up): the push failed and the gateway logs it. accepted false with the same revision
+ * is the periodic push of unchanged data and is fine.
+ */
+export function ackOutcome({ pushed, ack }) {
+  if (ack.accepted) return { outcome: 'in_sync' };
+  return ack.revision > pushed ? { outcome: 'failed', reason: 'server_holds_newer_revision' } : { outcome: 'in_sync' };
+}

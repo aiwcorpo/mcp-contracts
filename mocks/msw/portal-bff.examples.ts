@@ -2323,6 +2323,18 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 422,
+        "name": "system_mismatch",
+        "body": {
+          "error": "server_rejected",
+          "reason": "system_mismatch",
+          "message": "the manifest claims confluence, not jira"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
         "name": "system_reserved",
         "body": {
           "error": "server_rejected",

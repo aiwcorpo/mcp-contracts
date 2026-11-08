@@ -6,7 +6,7 @@ import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
 import { manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
 import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
-import { acceptRevision, gatewayCall, policyDataGate, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
+import { acceptRevision, ackOutcome, gatewayCall, policyDataGate, pushBodyCheck, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
@@ -19,7 +19,7 @@ import { killSwitchDecision } from '../scripts/lib/kill-switch.mjs';
 import { manifestPullDecision } from '../scripts/lib/adapter-registry.mjs';
 import { adapterToolState, approveDecision, pullDecision } from '../scripts/lib/registry-approval.mjs';
 import { addressDecision, hostDecision, urlDecision } from '../scripts/lib/address-policy.mjs';
-import { approveConnectionDecision, connectionCheck, firstConnection, toolAvailability } from '../scripts/lib/server-connection.mjs';
+import { approveConnectionDecision, connectionCheck, expectedSystemDecision, firstConnection, toolAvailability } from '../scripts/lib/server-connection.mjs';
 
 const ajv = createAjv();
 
@@ -112,7 +112,7 @@ test('policy data push vectors: replacement rule and the push-and-retry of the g
   const vectors = listJson('test-vectors', 'policy-data-push');
   assert.ok(vectors.length >= 9);
   for (const { name, data } of vectors) {
-    const actual = 'offered' in data.input ? pushDecision(data.input) : gatewayCall(data.input);
+    const actual = 'offered' in data.input ? pushDecision(data.input) : 'bodyRevision' in data.input ? pushBodyCheck(data.input) : 'ack' in data.input ? ackOutcome(data.input) : gatewayCall(data.input);
     assert.deepEqual(actual, data.expected, name);
     // One push and one repeat at most: there is no third attempt.
     if ('gateway' in data.input) assert.ok(data.expected.calls <= 2 && data.expected.pushes <= 1, name);
@@ -143,7 +143,7 @@ test('connection vectors: first connection, trust modes, approval (CC-249)', () 
   assert.ok(vectors.length >= 20);
   for (const { name, data } of vectors) {
     const input = data.input[data.kind];
-    const actual = { firstConnection, availability: toolAvailability, check: connectionCheck, approve: approveConnectionDecision }[data.kind](input);
+    const actual = { firstConnection, availability: toolAvailability, check: connectionCheck, approve: approveConnectionDecision, addSystem: expectedSystemDecision }[data.kind](input);
     assert.deepEqual(actual, data.expected, name);
     if (data.kind === 'firstConnection') {
       assert.ok(Object.values(actual.tools).every((status) => status === 'pending_approval'), `${name}: every tool is pending, a READ_ONLY one too`);

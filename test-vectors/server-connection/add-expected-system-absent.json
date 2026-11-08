@@ -1,0 +1,12 @@
+{
+  "description": "No expectedSystem: no check, the manifest decides (the old behaviour).",
+  "kind": "addSystem",
+  "input": {
+    "addSystem": {
+      "manifestSystem": "confluence"
+    }
+  },
+  "expected": {
+    "status": 200
+  }
+}

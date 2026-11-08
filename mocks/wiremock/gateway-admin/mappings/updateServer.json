@@ -335,6 +335,33 @@
       }
     },
     {
+      "name": "updateServer 422 system_mismatch",
+      "priority": 2,
+      "request": {
+        "method": "PATCH",
+        "urlPathTemplate": "/admin/v1/servers/{serverId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=system_mismatch($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "system_mismatch",
+          "message": "the manifest claims confluence, not jira"
+        }
+      }
+    },
+    {
       "name": "updateServer 422 system_reserved",
       "priority": 2,
       "request": {

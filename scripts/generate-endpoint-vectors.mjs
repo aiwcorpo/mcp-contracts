@@ -11,7 +11,7 @@ import { killSwitchDecision } from './lib/kill-switch.mjs';
 import { manifestPullDecision } from './lib/adapter-registry.mjs';
 import { adapterToolState, approveDecision, pullDecision } from './lib/registry-approval.mjs';
 import { addressDecision, hostDecision, urlDecision } from './lib/address-policy.mjs';
-import { approveConnectionDecision, connectionCheck, firstConnection, toolAvailability } from './lib/server-connection.mjs';
+import { approveConnectionDecision, connectionCheck, expectedSystemDecision, firstConnection, toolAvailability } from './lib/server-connection.mjs';
 
 const writer = (dir) => {
   rmSync(path('test-vectors', dir), { recursive: true, force: true });
@@ -734,6 +734,12 @@ approve('approve-nothing-pending', '409 no_pending_connection.', { pending: null
 approve('approve-plain', 'plain for an http address of a server that was added with allowPlainHttp.', { pending: { tlsMode: 'plain', fingerprint: null, validatesAsCa: false }, body: { tlsMode: 'plain', fingerprint: null }, scheme: 'http', addedWithAllowPlainHttp: true });
 approve('approve-plain-without-the-flag', 'plain without allowPlainHttp is refused (it cannot even be added without the flag, so this guards a record that lost it).', { pending: { tlsMode: 'plain', fingerprint: null, validatesAsCa: false }, body: { tlsMode: 'plain', fingerprint: null }, scheme: 'http', addedWithAllowPlainHttp: false });
 approve('approve-plain-for-https', 'plain is never accepted for an https address.', { pending: { tlsMode: 'pinned', fingerprint: FP_A, validatesAsCa: false }, body: { tlsMode: 'plain', fingerprint: null } });
+
+const expectedSystem = (name, description, input) => connectionVector(name, description, { addSystem: input }, expectedSystemDecision(input));
+expectedSystem('add-expected-system-matches', 'The administrator expected jira and the manifest says jira: the add goes on.', { expectedSystem: 'jira', manifestSystem: 'jira' });
+expectedSystem('add-expected-system-mismatch', 'The administrator expected jira but the manifest claims confluence: 422 server_rejected, reason system_mismatch, nothing is created.', { expectedSystem: 'jira', manifestSystem: 'confluence' });
+expectedSystem('add-expected-system-absent', 'No expectedSystem: no check, the manifest decides (the old behaviour).', { manifestSystem: 'confluence' });
+expectedSystem('add-expected-system-null', 'expectedSystem null is the same as absent.', { expectedSystem: null, manifestSystem: 'confluence' });
 
 // ---------- failure of an instance behind the balancer (CC-204) ----------
 

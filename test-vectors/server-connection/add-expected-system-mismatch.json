@@ -1,0 +1,15 @@
+{
+  "description": "The administrator expected jira but the manifest claims confluence: 422 server_rejected, reason system_mismatch, nothing is created.",
+  "kind": "addSystem",
+  "input": {
+    "addSystem": {
+      "expectedSystem": "jira",
+      "manifestSystem": "confluence"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "server_rejected",
+    "reason": "system_mismatch"
+  }
+}

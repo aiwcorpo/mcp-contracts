@@ -1,0 +1,11 @@
+{
+  "description": "A token minted for revision 41 carrying a body of revision 42 (or the reverse) is 400 invalid_request and changes nothing.",
+  "input": {
+    "prv": 41,
+    "bodyRevision": 42
+  },
+  "expected": {
+    "status": 400,
+    "error": "invalid_request"
+  }
+}

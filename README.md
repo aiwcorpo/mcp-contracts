@@ -878,14 +878,14 @@ connects to nothing of the platform except the public key set of the gateway), a
 either side, no token to create, and no CI certificate. The server-facing interface is C14, `openapi/mcp-server.v1.yaml`; the admin side is C5 (`createServer`,
 `approveServerConnection`, `refreshServer`) and C12.
 
-1. **Add.** `POST /admin/v1/servers` with `{internalUrl, allowPlainHttp?, credential?}` (fresh MFA). In this order: the URL is checked (`400`); the host is resolved and every
+1. **Add.** `POST /admin/v1/servers` with `{internalUrl, allowPlainHttp?, credential?, expectedSystem?}` (fresh MFA). In this order: the URL is checked (`400`); the host is resolved and every
    resolved address is checked, refusing loopback, link-local (`169.254.0.0/16` with `169.254.169.254`, `fe80::/10`), unspecified and multicast addresses, the cloud metadata addresses `100.100.100.200` and
    `192.0.0.192` (class `metadata`, also `fd00:ec2::254`), an IPv6 address that carries an IPv4 address (IPv4-mapped, IPv4-compatible, NAT64) being judged as that IPv4 address (a 6to4 address
    only when it embeds a metadata address), and a literal such as `127.1`, `2130706433` or `0xc00000c0` as the address it denotes (`422 address_refused`). The operator can refuse more with the
    gateway setting `MCP_SERVER_REFUSED_ADDRESSES`: a comma-separated list of IPs and CIDRs, for example `10.20.0.0/16,172.31.5.9`; a range also matches the IPv4 address inside an IPv4-mapped,
    IPv4-compatible or NAT64 address, and the refusal class is `refused_by_configuration`. `http`
    needs `allowPlainHttp` (`422 plain_http_not_allowed`); a TLS handshake is made without a client certificate, reading the leaf certificate (`422 tls_handshake_failed`); the
-   manifest is pulled (`422 manifest_unreachable`, `422 manifest_invalid`); `serverId` is `mcp-<system>` of the manifest (`422 system_reserved`, `409 server_exists`,
+   manifest is pulled (`422 manifest_unreachable`, `422 manifest_invalid`); when the request names an `expectedSystem` and the manifest claims another system, `422 system_mismatch` (vector `server-connection/add-expected-system-mismatch`); `serverId` is `mcp-<system>` of the manifest (`422 system_reserved`, `409 server_exists`,
    `422 namespace_conflict`). Private addresses are allowed. **Check before each connection.** The gateway applies the address rule to every resolved address at add time and again before each connection it makes (probe, manifest pull, policy-data push, tool call), then connects with a standard HTTP client, which may try the resolved addresses in order; a refused address makes the server unreachable (`lastError: address_refused`). The rule alone does not stop DNS rebinding, TLS does: for `ca` the host name must match a certificate from a trusted CA, for `pinned` the certificate must be the pinned one, so a name that is moved to another address cannot present an acceptable certificate. `plain` exists only with the administrator's flag, for servers in the Docker network of the gateway, whose names Docker's internal DNS resolves; the short window between the check and the connection is accepted there. The `Host` header carries the name of `internalUrl`, and the self-signed certificate of a server needs no `Host` match on the server side. Vectors `address-refusal/`.
 2. **Trust, chosen per server at approval.** `ca`: the chain leads to a CA in the server trust of the gateway (the default truststore of the JVM plus an optional PEM bundle in its
    configuration) AND the host of `internalUrl` matches (standard hostname verification); renewals need nothing. `pinned`: exactly one leaf certificate, by the SHA-256 of its DER encoding
@@ -907,7 +907,7 @@ either side, no token to create, and no CI certificate. The server-facing interf
 
 The gateway pushes the policy data of a server to it (`POST /.well-known/mcp-policy-data`, body `PolicyData`: `revision`, `scopeMapping` reduced to the namespace of the server, `allowedClients`,
 `overrides` for this server or all servers, `approvedPoliciesHash`) after every change of the revision and periodically (at most every 60 s). The server never fetches anything. It replaces its data
-only with a strictly newer `revision` (equal or older: `200`, `accepted: false`); the data lives in memory, so a restarted server holds none. A `tools/call` is evaluated only through this gate
+only with a strictly newer `revision` (equal or older: `200`, `accepted: false`; the gateway treats `accepted: false` with a revision above the one it pushed as a failed push). The token's `prv` is the revision of the body: a body with another `revision` is `400 invalid_request`. The data lives in memory, so a restarted server holds none. A `tools/call` is evaluated only through this gate
 (`scripts/lib/policy-data-gate.mjs`, Java twin `PolicyDataGate` in `mcp-manifest`):
 
 1. The server holds no data, or the `prv` of the token is greater than its `revision`: `409 {"error":"policy_data_stale","heldRevision":...,"requiredRevision":...}` before anything is executed.

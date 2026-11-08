@@ -1,0 +1,14 @@
+{
+  "description": "accepted false with a revision greater than the pushed one: the push failed (the gateway logs it and does not count it as delivered).",
+  "input": {
+    "pushed": 42,
+    "ack": {
+      "accepted": false,
+      "revision": 43
+    }
+  },
+  "expected": {
+    "outcome": "failed",
+    "reason": "server_holds_newer_revision"
+  }
+}

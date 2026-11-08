@@ -207,10 +207,12 @@ paths:
         The body is the administrator data that the server needs to evaluate its own policies, reduced to this server by the gateway: the scope mapping to the scopes
         of the namespace of this server (it never learns the grants of another system), `approvedPoliciesHash` (the hash the administrator approved
         for this server; absent while nothing is approved), the allowed AI clients (`azp`) and the overrides that target this server or all servers.
-        The purpose of the token is `policy-data`; `prv` of the token is the revision of the body.
+        The purpose of the token is `policy-data`; `prv` of the token is the revision of the body, and the server checks it: a body whose `revision` differs from
+        `prv` is `400 invalid_request` and changes nothing, so a token minted for one revision cannot carry another.
 
         **Replacement rule.** The server replaces what it holds only with a strictly higher `revision`; a `revision` equal to or lower than the one it holds is
-        answered `200` with `accepted: false` and the revision it keeps (a gateway instance that is behind must not move a server back). The revision is a counter
+        answered `200` with `accepted: false` and the revision it keeps (a gateway instance that is behind must not move a server back). The gateway reads
+        `accepted: false` with a `revision` greater than the one it pushed as a failed push (the server holds data the gateway does not have): it logs it and does not count the push as delivered (there is no audit reason for it); the same revision again is the periodic push of unchanged data and is not a failure. The revision is a counter
         that only rises. The server keeps the data in memory and loses it when it stops, which is why the gateway pushes after every change and
         periodically; a server that holds none refuses calls as `policy_data_stale` (see above) until the next push.
 
@@ -418,6 +420,10 @@ components:
               value:
                 error: invalid_request
                 message: revision is required
+            revision_differs_from_prv:
+              value:
+                error: invalid_request
+                message: the revision of the body differs from prv of the token
     TooLarge:
       description: The body is larger than the limit of the server (at least 1 MiB is accepted).
       content:

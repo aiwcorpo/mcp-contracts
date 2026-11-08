@@ -1,0 +1,13 @@
+{
+  "description": "The administrator expected jira and the manifest says jira: the add goes on.",
+  "kind": "addSystem",
+  "input": {
+    "addSystem": {
+      "expectedSystem": "jira",
+      "manifestSystem": "jira"
+    }
+  },
+  "expected": {
+    "status": 200
+  }
+}

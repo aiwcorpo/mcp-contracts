@@ -1,0 +1,13 @@
+{
+  "description": "expectedSystem null is the same as absent.",
+  "kind": "addSystem",
+  "input": {
+    "addSystem": {
+      "expectedSystem": null,
+      "manifestSystem": "confluence"
+    }
+  },
+  "expected": {
+    "status": 200
+  }
+}

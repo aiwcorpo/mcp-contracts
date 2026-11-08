@@ -366,6 +366,33 @@
       }
     },
     {
+      "name": "createServer 422 system_mismatch",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/servers",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=system_mismatch($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "server_rejected",
+          "reason": "system_mismatch",
+          "message": "the manifest claims confluence, not jira"
+        }
+      }
+    },
+    {
       "name": "createServer 422 system_reserved",
       "priority": 2,
       "request": {

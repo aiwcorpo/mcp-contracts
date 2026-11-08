@@ -1,0 +1,13 @@
+{
+  "description": "The server took the data: in sync.",
+  "input": {
+    "pushed": 42,
+    "ack": {
+      "accepted": true,
+      "revision": 42
+    }
+  },
+  "expected": {
+    "outcome": "in_sync"
+  }
+}

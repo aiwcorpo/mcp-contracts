@@ -1,0 +1,13 @@
+{
+  "description": "The periodic push of unchanged data: accepted false, same revision, fine.",
+  "input": {
+    "pushed": 42,
+    "ack": {
+      "accepted": false,
+      "revision": 42
+    }
+  },
+  "expected": {
+    "outcome": "in_sync"
+  }
+}

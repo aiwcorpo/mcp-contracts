@@ -1767,7 +1767,7 @@ paths:
         The body is the address (`internalUrl`) and, optionally, `allowPlainHttp` and `credential`; nothing else, because the gateway reads the rest from the server (CC-249). Needs a fresh MFA
         (`step_up_required` otherwise); the gateway checks it too. The answer is the server in `status: pending_approval` with a `pendingConnection` that the portal shows on the card (tls mode proposed,
         fingerprint, subject, issuer, SANs, expiry; a warning for `plain`). The refusals are `422` with the reasons `address_refused`, `plain_http_not_allowed`, `tls_handshake_failed`,
-        `manifest_unreachable`, `manifest_invalid`, `system_reserved` and `namespace_conflict`, and `409 server_exists`.
+        `manifest_unreachable`, `manifest_invalid`, `system_mismatch`, `system_reserved` and `namespace_conflict`, and `409 server_exists`. The optional `expectedSystem` is the system the administrator expects; when the manifest claims another one the gateway refuses with `system_mismatch`.
       security:
         - session: []
           csrf: []
@@ -1875,6 +1875,11 @@ paths:
                       reason: manifest_invalid
                       manifestReason: environment_mismatch
                       message: manifest of mcp-notes declares environment dev
+                system_mismatch:
+                  value:
+                      error: server_rejected
+                      reason: system_mismatch
+                      message: the manifest claims confluence, not jira
                 system_reserved:
                   value:
                       error: server_rejected

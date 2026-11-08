@@ -62,3 +62,13 @@ export function approveConnectionDecision({ pending, body, scheme = 'https', add
   if (!allowed) return { status: 422, error: 'server_rejected', reason: 'tls_mode_not_allowed' };
   return { status: 200, connection: { tlsMode: body.tlsMode, fingerprint: body.fingerprint }, pendingConnection: null };
 }
+
+/**
+ * Whether the add request is refused because the manifest names another system than the administrator expected. `expectedSystem` is the optional
+ * field of the request (null or absent: no check), `manifestSystem` the `system` of the pulled manifest. The check runs before any decision on the
+ * serverId, so a server that claims a system whose users hold credentials is refused when the administrator named the system they expected.
+ */
+export function expectedSystemDecision({ expectedSystem = null, manifestSystem }) {
+  if (expectedSystem !== null && expectedSystem !== manifestSystem) return { status: 422, error: 'server_rejected', reason: 'system_mismatch' };
+  return { status: 200 };
+}

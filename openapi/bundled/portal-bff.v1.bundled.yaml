@@ -1851,7 +1851,7 @@ paths:
         The body is the address (`internalUrl`) and, optionally, `allowPlainHttp` and `credential`; nothing else, because the gateway reads the rest from the server (CC-249). Needs a fresh MFA
         (`step_up_required` otherwise); the gateway checks it too. The answer is the server in `status: pending_approval` with a `pendingConnection` that the portal shows on the card (tls mode proposed,
         fingerprint, subject, issuer, SANs, expiry; a warning for `plain`). The refusals are `422` with the reasons `address_refused`, `plain_http_not_allowed`, `tls_handshake_failed`,
-        `manifest_unreachable`, `manifest_invalid`, `system_reserved` and `namespace_conflict`, and `409 server_exists`.
+        `manifest_unreachable`, `manifest_invalid`, `system_mismatch`, `system_reserved` and `namespace_conflict`, and `409 server_exists`. The optional `expectedSystem` is the system the administrator expects; when the manifest claims another one the gateway refuses with `system_mismatch`.
       security:
         - session: []
           csrf: []
@@ -1961,6 +1961,11 @@ paths:
                     reason: manifest_invalid
                     manifestReason: environment_mismatch
                     message: manifest of mcp-notes declares environment dev
+                system_mismatch:
+                  value:
+                    error: server_rejected
+                    reason: system_mismatch
+                    message: the manifest claims confluence, not jira
                 system_reserved:
                   value:
                     error: server_rejected
@@ -4681,11 +4686,14 @@ components:
         credential:
           description: Optional. When absent it is derived from the manifest.
           $ref: "#/components/schemas/ServerCredentialConfig"
+        expectedSystem:
+          description: Optional. The system the administrator expects the server to serve. When given and the manifest names another system, the add is refused (`422 server_rejected`, reason `system_mismatch`) and nothing is created. Without it the manifest decides, which lets a server claim a system whose users already hold credentials; the portal offers the field for that reason.
+          $ref: "#/components/schemas/SystemId"
       additionalProperties: false
     ServerRejected:
       type: object
       description: |
-        422 of adding or changing a server, or of approving its connection. Known reasons: address_refused (the host resolves to a loopback, link-local, unspecified, multicast or metadata address, or to one that the operator refuses by configuration), plain_http_not_allowed (`http` without allowPlainHttp), tls_handshake_failed (no TLS handshake could be completed with the address), manifest_unreachable (no `200` from `/.well-known/mcp-manifest`), manifest_invalid (the manifest fails the checks of Manifest intake; `manifestReason` is the cause), system_reserved (the system of the manifest is one of the reserved ids), namespace_conflict (another server owns the namespace of its policies), tls_mode_not_allowed (`approveServerConnection` chose a mode the pending connection does not allow), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes). A client must show an unknown value as a generic message.
+        422 of adding or changing a server, or of approving its connection. Known reasons: address_refused (the host resolves to a loopback, link-local, unspecified, multicast or metadata address, or to one that the operator refuses by configuration), plain_http_not_allowed (`http` without allowPlainHttp), tls_handshake_failed (no TLS handshake could be completed with the address), manifest_unreachable (no `200` from `/.well-known/mcp-manifest`), manifest_invalid (the manifest fails the checks of Manifest intake; `manifestReason` is the cause), system_mismatch (the add named an `expectedSystem` and the manifest claims another), system_reserved (the system of the manifest is one of the reserved ids), namespace_conflict (another server owns the namespace of its policies), tls_mode_not_allowed (`approveServerConnection` chose a mode the pending connection does not allow), credential_types_mixed (service-account next to a user type, CC-168) and credential_type_not_accepted (type is not in acceptedTypes). A client must show an unknown value as a generic message.
       required:
         - error
       properties:

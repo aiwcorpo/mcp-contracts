@@ -1,0 +1,10 @@
+{
+  "description": "The token carries prv 42 and the body revision 42: processed.",
+  "input": {
+    "prv": 42,
+    "bodyRevision": 42
+  },
+  "expected": {
+    "status": 200
+  }
+}

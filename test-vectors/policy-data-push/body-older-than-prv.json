@@ -1,0 +1,11 @@
+{
+  "description": "The body revision is lower than prv: also 400.",
+  "input": {
+    "prv": 42,
+    "bodyRevision": 41
+  },
+  "expected": {
+    "status": 400,
+    "error": "invalid_request"
+  }
+}
