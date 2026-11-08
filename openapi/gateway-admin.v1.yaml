@@ -33,7 +33,7 @@ info:
     `openapi/mcp-server.v1.yaml`); servers never call this API and hold no certificate of the platform.
 
     **The gateway connects to servers (CC-249).** An administrator gives only the address of a server (`createServer`:
-    `internalUrl`, optionally `allowPlainHttp` and `credential`). The gateway resolves the host and refuses loopback,
+    `internalUrl`, optionally `allowPlainHttp`, `credential` and `expectedSystem`). The gateway resolves the host and refuses loopback,
     link-local (`169.254.0.0/16`, so also `169.254.169.254`, and `fe80::/10`), unspecified and multicast addresses and the cloud
     metadata addresses `100.100.100.200` and `192.0.0.192` (class `metadata`), IPv6 forms (IPv4-mapped, IPv4-compatible, NAT64)
     judged as the IPv4 address they carry, and a 6to4 address only when it embeds one of the metadata addresses. The operator can
