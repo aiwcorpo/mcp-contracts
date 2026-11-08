@@ -128,7 +128,7 @@ test('address refusal vectors: loopback, link-local, unspecified and multicast a
     const refused = data.input.refusedAddresses ?? [];
     const actual = kind === 'address' ? addressDecision(data.input.address, refused)
       : kind === 'resolved' ? hostDecision(data.input.resolved, refused)
-        : kind === 'connectedTo' ? hostDecision([data.input.connectedTo], refused) : urlDecision(data.input.url, refused);
+        : urlDecision(data.input.url, refused);
     assert.deepEqual(actual, data.expected, name);
     if (data.expected.class) classes.add(data.expected.class);
   }

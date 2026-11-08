@@ -1,0 +1,15 @@
+{
+  "description": "The host resolved to 10.0.0.5 when it was added; before a later connection (probe, manifest pull, policy-data push or tool call) its resolved addresses include 169.254.169.254: the rule is applied again, one refused address refuses the host and the server is unreachable with lastError address_refused. TLS (ca, pinned) is what stops a rebinding name from being trusted; this check only refuses the address.",
+  "input": {
+    "resolved": [
+      "10.0.0.5",
+      "169.254.169.254"
+    ]
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "address": "169.254.169.254",
+    "class": "link_local"
+  }
+}

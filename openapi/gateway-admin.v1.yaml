@@ -38,9 +38,12 @@ info:
     metadata addresses `100.100.100.200` and `192.0.0.192` (class `metadata`), IPv6 forms (IPv4-mapped, IPv4-compatible, NAT64)
     judged as the IPv4 address they carry, and a 6to4 address only when it embeds one of the metadata addresses. The operator can
     refuse more with the gateway setting `MCP_SERVER_REFUSED_ADDRESSES` (comma-separated IPs and CIDRs; a range also matches the
-    IPv4 address inside the IPv6 forms above; class `refused_by_configuration`). The gateway resolves the name once per connection,
-    judges every resolved address and connects only to an address it judged, never resolving the name again; TLS keeps the original
-    name for SNI and hostname verification, and plain `http` connects to the IP literal, so its `Host` header carries the IP. It then probes TLS (a handshake without a client certificate,
+    IPv4 address inside the IPv6 forms above; class `refused_by_configuration`). The gateway applies this rule to every resolved address at add time and before each connection it makes (probe, manifest
+    pull, policy-data push, tool call), then connects with a standard HTTP client, which may try the resolved addresses in order. DNS
+    rebinding is stopped by TLS, not by the address rule: for `ca` the host name must match a certificate from a trusted CA, for
+    `pinned` the certificate must be the pinned one. `plain` is allowed only with the administrator's flag, for servers in the gateway's
+    own Docker network whose names Docker's internal DNS resolves; the window between the check and the connection is accepted there.
+    The `Host` header carries the name of `internalUrl`. It then probes TLS (a handshake without a client certificate,
     capturing the leaf certificate) and pulls the manifest (`GET /.well-known/mcp-manifest`, C14) with an internal JWT whose
     purpose is `manifest` (C2). The `serverId` is `mcp-<system>` of that manifest: reserved system ids, a `serverId` that
     exists and a namespace that another server owns (approved policies) are refused as described on `createServer`. The server
@@ -1217,8 +1220,8 @@ paths:
         1. `internalUrl` is parsed: `http` or `https`, a host, no user info, no fragment, at most 255 characters, otherwise `400 invalid_request`.
         2. The host is resolved and every resolved address is checked: loopback, link-local (including `169.254.169.254`), unspecified,
            multicast and metadata addresses (`100.100.100.200`, `192.0.0.192`) and every range of `MCP_SERVER_REFUSED_ADDRESSES` are refused
-           (`422 server_rejected`, reason `address_refused`); the gateway then connects only to an address it checked, without resolving the name again.
-           The manifest token of this step carries `aud: mcp-pending`, because the `serverId` is not known before the manifest is read (C2, C14).
+           (`422 server_rejected`, reason `address_refused`); the address rule is applied again before every later connection.
+           The manifest token of this step carries `aud: mcp-pending`, because the `serverId` is not known before the manifest is read; a server accepts it only until it holds policy data (C2, C14).
         3. `http` without `allowPlainHttp: true` is `422`, reason `plain_http_not_allowed`.
         4. TLS probe (for `https`): a handshake without a client certificate that accepts any certificate in order to read it; a failure
            to complete a handshake (no TLS, protocol or timeout error) is `422`, reason `tls_handshake_failed`. The leaf certificate is captured: subject, issuer,
@@ -1610,7 +1613,7 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Probe a server again and pull its manifest now (group mcp-platform-admin).
       description: |
-        Does what the gateway does at add time and in its runtime loop (CC-249): checks the address (also against DNS rebinding), connects
+        Does what the gateway does at add time and in its runtime loop (CC-249): checks the address (again before this connection), connects
         under the approved trust (or probes the address when the connection is not approved yet), and pulls
         `GET /.well-known/mcp-manifest`. A manifest that passes "Manifest intake" is applied (new or changed tools and policies become
         pending, nothing is approved); a manifest that fails changes nothing. A certificate that the approved trust does not accept

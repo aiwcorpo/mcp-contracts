@@ -624,7 +624,9 @@ const addressOut = writer('address-refusal');
 const addressVector = (name, description, input) => {
   const kind = Object.keys(input)[0];
   const refused = input.refusedAddresses ?? [];
-  const expected = kind === 'address' ? addressDecision(input.address, refused) : kind === 'resolved' ? hostDecision(input.resolved, refused) : kind === 'connectedTo' ? hostDecision([input.connectedTo], refused) : urlDecision(input.url, refused);
+  const expected = kind === 'address' ? addressDecision(input.address, refused) : kind === 'resolved' ? hostDecision(input.resolved, refused) : urlDecision(input.url, refused);
+  // A vector named after a metadata address must refuse it; a wrong literal in the input would otherwise pass as "allowed" unnoticed.
+  if (name.includes('metadata') && !name.includes('is-allowed') && !name.includes('next-to') && expected.allowed !== false) throw new Error(`address-refusal/${name} is expected to be refused but is allowed`);
   addressOut(name, { description, input, expected });
 };
 addressVector('ipv4-loopback', 'Loopback 127.0.0.1.', { address: '127.0.0.1' });
@@ -669,8 +671,9 @@ addressVector('6to4-embeds-metadata-oracle', 'The same for 192.0.0.192.', { addr
 addressVector('6to4-embeds-aws-metadata', 'The same for 169.254.169.254, which keeps its class link_local.', { address: '2002:a9fe:a9fe::1' });
 addressVector('6to4-embeds-other-address-is-allowed', 'Any other 6to4 address is an ordinary IPv6 address: 2002:c000:204::1 embeds 192.0.2.4 and is allowed.', { address: '2002:c000:204::1' });
 addressVector('6to4-embeds-loopback-is-allowed', 'Even a 6to4 address that embeds 127.0.0.1 is not judged as loopback: only the metadata addresses are looked for inside 6to4.', { address: '2002:7f00:1::1' });
-addressVector('url-decimal-metadata-alibaba', 'The decimal literal 1684300488 (inet_aton form) is 100.100.100.200.', { url: 'http://1684300488/latest/meta-data' });
+addressVector('url-decimal-metadata-alibaba', 'The decimal literal 1684301000 (inet_aton form) is 100.100.100.200.', { url: 'http://1684301000/latest/meta-data' });
 addressVector('url-hex-metadata-oracle', 'The hexadecimal literal 0xc00000c0 is 192.0.0.192.', { url: 'http://0xc00000c0/opc/v2' });
+addressVector('url-decimal-metadata-oracle', 'The decimal literal 3221225664 (inet_aton form) is 192.0.0.192.', { url: 'http://3221225664/opc/v2' });
 addressVector('url-octal-metadata-alibaba', 'Octal parts are normalised too: 0144.0144.0144.0310 is 100.100.100.200.', { url: 'https://0144.0144.0144.0310/mcp' });
 addressVector('configured-range-refuses-private-address', 'MCP_SERVER_REFUSED_ADDRESSES lists 10.20.0.0/16: an address in it is refused with the class refused_by_configuration although private addresses are allowed otherwise.', { address: '10.20.0.15', refusedAddresses: ['10.20.0.0/16', '172.31.5.9'] });
 addressVector('configured-range-matches-ipv4-inside-ipv6', 'A configured range also matches the IPv4 address inside an IPv4-mapped form.', { address: '::ffff:10.20.0.15', refusedAddresses: ['10.20.0.0/16'] });
@@ -688,7 +691,7 @@ addressVector('host-with-one-bad-address', 'Every resolved address is checked: a
 addressVector('host-with-only-good-addresses', 'All resolved addresses are allowed.', { resolved: ['10.0.0.5', '10.0.0.6', '2001:db8::1'] });
 addressVector('host-with-a-metadata-aaaa', 'The AAAA record hides the metadata address behind an IPv4-mapped form.', { resolved: ['10.0.0.5', '::ffff:a9fe:a9fe'] });
 addressVector('host-does-not-resolve', 'A host that resolves to nothing is not accepted.', { resolved: [] });
-addressVector('rebinding-at-connect-time', 'The host resolved to 10.0.0.5 when it was added; the connection later resolves to 169.254.169.254 (DNS rebinding): the address actually connected to is checked again and refused, the server is unreachable with lastError address_refused.', { connectedTo: '169.254.169.254' });
+addressVector('refused-address-before-connection', 'The host resolved to 10.0.0.5 when it was added; before a later connection (probe, manifest pull, policy-data push or tool call) its resolved addresses include 169.254.169.254: the rule is applied again, one refused address refuses the host and the server is unreachable with lastError address_refused. TLS (ca, pinned) is what stops a rebinding name from being trusted; this check only refuses the address.', { resolved: ['10.0.0.5', '169.254.169.254'] });
 addressVector('url-decimal-ipv4', 'A decimal host in the URL is the address it denotes: http://2130706433/ is 127.0.0.1.', { url: 'http://2130706433/mcp' });
 addressVector('url-hex-ipv4', 'Hexadecimal and shortened forms are normalised by the URL parser before the check.', { url: 'http://0x7f.1/mcp' });
 addressVector('url-shortened-ipv4', 'http://127.1/ is 127.0.0.1.', { url: 'http://127.1:8080/mcp' });

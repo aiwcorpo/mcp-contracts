@@ -125,7 +125,7 @@ function builtInDecision(text) {
   return { allowed: true };
 }
 
-/** Every resolved address of a host is checked; one refused address refuses the host. The same function runs again at connect time on the address connected to. */
+/** Every resolved address of a host is checked; one refused address refuses the host. The same function runs again before each connection. */
 export function hostDecision(resolved, refused = []) {
   for (const address of resolved) {
     const d = addressDecision(address, refused);

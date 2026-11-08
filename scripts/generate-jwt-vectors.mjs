@@ -351,8 +351,12 @@ await purposeCase('purpose-policy-data-wrong-audience', 'A policy-data token min
   serviceClaims({ use: 'policy-data', aud: 'mcp-confluence', jti: '0192d1b2-7c3a-7f00-9a11-000000000217' }), POLICY_DATA, 'wrong_audience');
 // Audience at add time (CC-249): the serverId is unknown before the first manifest is read, so the gateway's token for that first pull carries aud mcp-pending.
 const PENDING = 'mcp-pending';
-await purposeCase('valid-service-manifest-pending-audience', 'The probe token of the add operation: aud mcp-pending, use manifest, GET /.well-known/mcp-manifest. The only place where mcp-pending is accepted.',
-  serviceClaims({ use: 'manifest', aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000218' }), MANIFEST);
+await purposeCase('valid-service-manifest-pending-audience', 'The probe token of the add operation: aud mcp-pending, use manifest, GET /.well-known/mcp-manifest. The only place where mcp-pending is accepted, and only while the server holds no policy data.',
+  serviceClaims({ use: 'manifest', aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000218' }), MANIFEST, undefined, { holdsPolicyData: false });
+await purposeCase('pending-audience-manifest-after-policy-data-push', 'aud mcp-pending with use manifest at the manifest path, but the server already holds policy data (it accepted a push, so it was connected): refused, from then on every purpose needs aud equal to the serverId.',
+  serviceClaims({ use: 'manifest', aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000223' }), MANIFEST, 'wrong_audience', { holdsPolicyData: true });
+await purposeCase('valid-service-manifest-own-audience-after-policy-data-push', 'The manifest token with aud equal to the serverId is accepted whether or not the server holds policy data (refresh and the runtime loop use it).',
+  serviceClaims({ use: 'manifest', jti: '0192d1b2-7c3a-7f00-9a11-000000000224' }), MANIFEST, undefined, { holdsPolicyData: true });
 await purposeCase('pending-audience-call-token-at-tools-list', 'aud mcp-pending with use call at the MCP endpoint: refused, a server accepts mcp-pending only for the manifest.',
   serviceClaims({ aud: PENDING, jti: '0192d1b2-7c3a-7f00-9a11-000000000219' }), rpc('tools/list'), 'wrong_audience');
 await purposeCase('pending-audience-call-token-at-manifest', 'aud mcp-pending with use call at the manifest path: refused, the token must also have use manifest.',

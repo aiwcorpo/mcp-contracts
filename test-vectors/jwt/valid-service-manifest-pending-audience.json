@@ -1,6 +1,6 @@
 {
-  "description": "The probe token of the add operation: aud mcp-pending, use manifest, GET /.well-known/mcp-manifest. The only place where mcp-pending is accepted.",
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLXBlbmRpbmciLCJ1c2UiOiJtYW5pZmVzdCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAyMTgifQ.A4g5eomRG_2FWVhVijeuKJqYkcBwwZ5xUyojWGGrtS8KMM95aVcQmR_1hzVHEb1e0NRTSRJCi-jHz_3-Q0WwcA",
+  "description": "The probe token of the add operation: aud mcp-pending, use manifest, GET /.well-known/mcp-manifest. The only place where mcp-pending is accepted, and only while the server holds no policy data.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLXBlbmRpbmciLCJ1c2UiOiJtYW5pZmVzdCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAyMTgifQ.2zosBfCWbVmnTPvn8276SU0HBn8NNyRbo52n7DdOCjb9QAAythKhzkJtLk-XmPg1mDoMngx0uOhicB5HrB9mWQ",
   "header": {
     "alg": "ES256",
     "kid": "test-gw-2026-10-a",
@@ -26,7 +26,8 @@
     "clockSkewSeconds": 30,
     "maxLifetimeSeconds": 60,
     "seenJtis": [],
-    "allowTestKeys": true
+    "allowTestKeys": true,
+    "holdsPolicyData": false
   },
   "request": {
     "kind": "http",

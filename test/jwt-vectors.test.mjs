@@ -24,9 +24,11 @@ function purposeOf(request) {
 }
 
 // CC-249: while the serverId is unknown (the add operation), the gateway's manifest token carries aud mcp-pending. A server accepts it for
-// use manifest on GET /.well-known/mcp-manifest and for nothing else; every other purpose and path needs aud equal to its own serverId.
+// use manifest on GET /.well-known/mcp-manifest and for nothing else, and only while it holds no policy data (it has never accepted a push, so it was
+// never connected); every other purpose and path, and every request once data is held, needs aud equal to its own serverId.
 function pendingAudienceAccepted(claims, request, verifier) {
-  return claims.aud === 'mcp-pending' && verifier.audience !== 'mcp-credential-broker' && claims.use === 'manifest' && purposeOf(request) === 'manifest';
+  return claims.aud === 'mcp-pending' && verifier.audience !== 'mcp-credential-broker' && verifier.holdsPolicyData !== true
+    && claims.use === 'manifest' && purposeOf(request) === 'manifest';
 }
 
 // Reference receiver for C2. Order of checks only decides which reason is reported for a token with

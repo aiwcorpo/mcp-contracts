@@ -36,15 +36,17 @@ info:
     or `policy-data` token cannot call a tool. Test vectors: `test-vectors/jwt/purpose-*`.
 
     **Audience at add time.** The `serverId` is derived from the manifest, so it is unknown when the gateway reads the manifest for the first time
-    (the add operation of C5). The token of that probe carries `aud: mcp-pending`. A server accepts `mcp-pending` ONLY for `use: manifest` and ONLY on
-    `GET /.well-known/mcp-manifest`; every other purpose and path (`policy-data`, every `call`) requires `aud` equal to its own `serverId`, and a token
-    with `aud: mcp-pending` presented there is `401` `wrong_audience`. Test vectors: `test-vectors/jwt/valid-service-manifest-pending-audience` and
-    `test-vectors/jwt/pending-audience-*`.
+    (the add operation of C5). The token of that probe carries `aud: mcp-pending`. A server accepts `mcp-pending` ONLY for `use: manifest`, ONLY on
+    `GET /.well-known/mcp-manifest` and ONLY while it holds no policy data, that is while it has never accepted a policy-data push and so was never connected.
+    `mcp-pending` is a shared audience, so it must not outlive the first connection: once the server holds policy data it requires `aud` equal to its own
+    `serverId` for every purpose, the manifest included (refresh and the runtime loop use the real `serverId`). Every other purpose and path (`policy-data`, every
+    `call`) requires `aud` equal to its own `serverId` from the start, and a token with `aud: mcp-pending` presented there, or after the first push, is `401` `wrong_audience`.
+    Test vectors: `test-vectors/jwt/valid-service-manifest-pending-audience`, `pending-audience-manifest-after-policy-data-push` and
+    `test-vectors/jwt/pending-audience-*` (the verifier field `holdsPolicyData` says which state the server is in).
 
-    **How the gateway connects.** For every connection the gateway resolves the host once, judges every resolved address (README, "Connecting a server") and
-    connects only to an address it judged, never resolving the name again for that connection. Over TLS it keeps the original name for SNI and hostname
-    verification; over plain `http` it connects to the IP literal, so the `Host` header of the request carries the IP, not the name. A server must therefore
-    not depend on the `Host` header, and a self-signed certificate is not matched against any `Host` by the server.
+    **How the gateway connects.** Before each connection the gateway applies the address rule of the README ("Connecting a server") to every resolved
+    address and then connects with a standard HTTP client. The `Host` header carries the name of the server's address, as for any HTTP client, and a
+    self-signed certificate is not matched against any `Host` by the server. A server does not depend on the `Host` header.
 
     **The gate of policy data (fail-closed).** A server evaluates a `tools/call` only with policy data that is at least as new as `prv` of the token
     and only when its own policies are the approved ones (README, "Policy data gate"). Which refusal the server returns:

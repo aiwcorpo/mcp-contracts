@@ -1,0 +1,12 @@
+{
+  "description": "The decimal literal 3221225664 (inet_aton form) is 192.0.0.192.",
+  "input": {
+    "url": "http://3221225664/opc/v2"
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "192.0.0.192",
+    "class": "metadata"
+  }
+}

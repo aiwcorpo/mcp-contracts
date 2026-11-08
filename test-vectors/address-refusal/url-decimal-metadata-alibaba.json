@@ -1,10 +1,12 @@
 {
-  "description": "The decimal literal 1684300488 (inet_aton form) is 100.100.100.200.",
+  "description": "The decimal literal 1684301000 (inet_aton form) is 100.100.100.200.",
   "input": {
-    "url": "http://1684300488/latest/meta-data"
+    "url": "http://1684301000/latest/meta-data"
   },
   "expected": {
-    "allowed": true,
-    "host": "100.100.98.200"
+    "allowed": false,
+    "reason": "address_refused",
+    "host": "100.100.100.200",
+    "class": "metadata"
   }
 }
