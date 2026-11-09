@@ -5,9 +5,7 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
-## 7.0.0 - 2026-11-06
-
-**7.0.0 is not released.** Its content may still change until the release tag `v7.0.0`; nothing was pushed or tagged, and the artifacts in `~/.m2` and `release/` are local builds that are replaced when it changes.
+## 7.0.0 - 2026-11-09
 
 Serwery, systemy i typy zasobów przestają być listą w kontraktach: są danymi uruchomieniowymi (rejestr gatewaya, systemy brokera,
 deklaracje w manifeście serwera). Decyzja właściciela platformy z 2026-11-06 ("dynamic servers"), CC-229 ... CC-236. Wydanie **major**
