@@ -729,6 +729,22 @@ audit('gateway-registry-adapter-tool-classified', 'An administrator approved a t
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
   reason: 'definition_approved', risk: 'UPDATE', action: 'update', definitionHash: 'sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', outcome: 'ok',
 }, true);
+audit('broker-service-account-key-set', 'An administrator set the service account key of a system (CC-251): the version and the expiry, never the value, the login or the password.', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
+  reason: 'service_account_key_set', kvVersion: 4, expiresAt: '2027-03-01T00:00:00Z', outcome: 'ok',
+}, true);
+audit('broker-service-account-key-deleted', 'An administrator removed the service account key of a system (CC-251); kvVersion is the version that was current.', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
+  reason: 'service_account_key_deleted', kvVersion: 4, outcome: 'ok',
+}, true);
+audit('broker-service-account-key-set-with-value', 'A field that would carry the key is not part of the event (CC-251): the closed field list rejects it.', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
+  reason: 'service_account_key_set', kvVersion: 4, value: 'test-only-service-token-0000000000', outcome: 'ok',
+}, false);
+audit('broker-service-account-key-version-on-other-reason', 'kvVersion is only for the two service account key reasons (CC-251).', {
+  ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-notes',
+  reason: 'system_updated', kvVersion: 4, outcome: 'ok',
+}, false);
 audit('broker-connection-secret-missing', 'The secret of a connection is gone from the secret store: the connection goes to error (CC-205).', {
   ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'connection_change',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', server: 'mcp-jira', credentialType: 'user-secret', reason: 'secret_missing', outcome: 'error',
