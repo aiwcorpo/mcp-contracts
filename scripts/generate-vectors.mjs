@@ -687,6 +687,10 @@ audit('gateway-registry-risk-lowered-by-admin', 'An administrator explicitly app
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
   risk: 'READ_ONLY', reason: 'risk_lowered_by_admin', definitionHash: 'sha256:'+'d4'.repeat(32), outcome: 'ok',
 }, true);
+audit('gateway-registry-hidden-characters', 'An approval was refused because the definition holds a forbidden character (CC-121, CC-250): outcome denied, the hash that was sent, the tool stays pending.', {
+  ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'admin_change', sub: adminSub, username: 'a.admin', server: 'mcp-jira', tool: 'update_issue',
+  reason: 'hidden_characters', definitionHash: 'sha256:'+'e5'.repeat(32), outcome: 'denied',
+}, true);
 audit('gateway-limit-store-unavailable', 'The counter of the limits does not answer: the tools/call is refused as upstream_unavailable, recorded as tool_call like the other limit refusals (CC-167).', {
   ...auditBase, component: 'gateway', componentId: 'mcp-gateway', event: 'tool_call',
   sub: '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11', username: 'jkowalski', client: 'claude-code', server: 'mcp-jira',

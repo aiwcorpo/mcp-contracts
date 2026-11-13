@@ -809,7 +809,8 @@ and U+2029; unpaired surrogates; noncharacters (U+FDD0..U+FDEF, U+xFFFE and U+xF
 U+200C..U+200F (ZWNJ, ZWJ, LRM, RLM), which includes U+200B, U+2060, U+FEFF, U+00AD, U+061C, the bidirectional controls
 U+202A..U+202E and U+2066..U+2069 and the tag characters U+E0000..U+E007F; invisible characters outside `\p{Cf}`: U+034F, U+115F,
 U+1160, U+3164, U+FFA0, U+2800 and the variation selectors U+FE00..U+FE0F and U+E0100..U+E01EF, except a single U+FE0F directly
-after an emoji character (`Extended_Pictographic`).
+after an emoji character (`Extended_Pictographic`). The gateway applies the same set to the names and texts of a tool definition when an
+administrator approves it (CC-250).
 
 - **Tool arguments:** a character from the forbidden set gives `invalid_argument` (C10, a message without the value). In values
   with a `pattern` (identifiers), TAB, LF and CR are also forbidden. In arguments that pass through the mention filter (the
@@ -970,15 +971,17 @@ whose current definition differs. Rules:
    (a hash mismatch, the semantic manifest rules, `environment_mismatch`, `credential_type_mismatch`, a mismatch with the gateway
    configuration). An entry with `riskLowered` is approved only by an administrator (`mcp-platform-admin`, never a pulled manifest):
    `approve` with `acceptRiskLowering: true` (the BFF then requires fresh MFA, like registering the Authenticator: `401
-   step_up_required` with `stepUpUrl`, the same window; a plain `approve` is unchanged and the BFF sends the field only when it is
+   step_up_required` with `stepUpUrl`, the same window, and the gateway checks it on the token as well, CC-250; a plain `approve` is unchanged and the BFF sends the field only when it is
    `true`); the floor drops to the approved risk, and the audit is one `admin_change` event with the reason `risk_lowered_by_admin`
    (instead of `definition_approved`; the field `risk` carries the new risk). Without the flag, `approve` of such an entry is `422
    risk_lowered`; with the flag on an entry that lowers nothing, the field is ignored (`definition_approved`). `source: server`
    entries do not raise the floor (`risk` comes from the approved entry). Rule 4 wins over rule 2: even a return to a previously
    approved definition (for example a reverted commit after a mistaken report of a higher risk) is a report below the floor and
-   waits for an administrator; the tool is hidden until the decision. The gateway trusts the BFF about fresh MFA for
-   `acceptRiskLowering` (as the broker does for the Authenticator, CC-093): it accepts `approve` only from the CN `mcp-portal-bff`
-   with an administrator token.
+   waits for an administrator; the tool is hidden until the decision. The gateway accepts `approve` only from the CN `mcp-portal-bff`
+   with an administrator token, and checks the fresh MFA for `acceptRiskLowering` itself (CC-250).
+   **Hidden characters (CC-250).** `approve` refuses a definition whose names or texts hold a character of the forbidden set of the text
+   hygiene rule: `422 manifest_rejected` without `reason`, the tool stays pending, the audit is `admin_change` with `hidden_characters`,
+   outcome `denied`, `tool` and `definitionHash`.
 5. **Residual risk accepted by the maintainers (2026-10-29).** A rename with a risk reduction in a single pulled manifest (a removed write
    tool and a new `READ_ONLY` tool in the same manifest) passes without `approve`: the gateway does not link them. Protection comes
    from the administrator who reads the pending entries (a removed tool and a new `READ_ONLY` one are both pending since CC-249, so the rename is seen) and from the starter's rules for `risk` and `action`.
@@ -1051,7 +1054,7 @@ list of active ones is `GET /admin/v1/kill-switches`. In the portal: `PUT`/`DELE
 - **Propagation:** after a `204`, the effect on every instance comes no later than 5 s (a database write, invalidation over a shared
   channel, and an instance reads the state from a cache no older than 5 s and does not extend it when the read fails).
 - **MFA:** enabling needs no fresh MFA (an incident does not wait for a second factor); lifting needs the administrator's fresh MFA in
-  the portal (`401 step_up_required`).
+  the portal and on the token the gateway gets (`401 step_up_required`, CC-250).
 - **Audit:** `admin_change` with `kill_switch_set` and `kill_switch_cleared` (the administrator's sub; the `reason` text from the
   request stays in the registry and the portal, not in the event); refusals are `tool_call` deny with `reason: kill_switch`,
   `errorCode: tool_disabled`; the activity row `tool_disabled`.
@@ -1304,7 +1307,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `jwt/` | 75 | the C2 receiver: 23 valid (one of them the manifest without a token), 52 rejections, 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
 | `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 139 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
+| `audit-events/` | 140 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
 | `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
