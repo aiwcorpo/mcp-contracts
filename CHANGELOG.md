@@ -14,6 +14,10 @@ Dopasowanie kontraktów do gatewaya (aiwcorpo/mcp-gateway PR #10), CC-250. Bez z
 - Nowy powód audytu `hidden_characters` (`admin_change`, `denied`, z `tool` i `definitionHash`) i wektor `audit-events/gateway-registry-hidden-characters`.
 - Reguła higieny tekstu bez zmian (pojedynczy U+FE0F po `Extended_Pictographic` jest dozwolony); README mówi, że obejmuje też definicje przy zatwierdzeniu.
 
+Decyzje właściciela po audycie z 2026-11-13. Bez zmiany wersji.
+
+- **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna.
+
 ## 7.0.0 - 2026-11-09
 
 Serwery, systemy i typy zasobów przestają być listą w kontraktach: są danymi uruchomieniowymi (rejestr gatewaya, systemy brokera,
