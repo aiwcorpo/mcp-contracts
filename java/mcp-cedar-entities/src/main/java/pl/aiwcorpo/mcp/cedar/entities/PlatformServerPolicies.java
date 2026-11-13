@@ -33,13 +33,16 @@ public final class PlatformServerPolicies {
     private PlatformServerPolicies() {
     }
 
-    /** @return policy id to Cedar text, in a stable order */
+    /**
+     * @return policy id to Cedar text, in a stable order
+     * @throws IllegalArgumentException when two declarations lead to the same policy id
+     */
     public static Map<String, String> texts(ResourceTypes types) {
         Map<String, String> out = new LinkedHashMap<>();
         for (ResourceTypeDeclaration d : types.declarations()) {
             String ns = d.namespace().toLowerCase(Locale.ROOT);
             String local = d.type().substring(d.type().indexOf("::") + 2).toLowerCase(Locale.ROOT);
-            d.classification().ifPresent(c -> out.put("platform-" + ns + "-restricted-" + local,
+            d.classification().ifPresent(c -> put(out, "platform-" + ns + "-restricted-" + local,
                     restricted("platform-" + ns + "-restricted-" + local, d.type(), "resource", c)));
             String path = "resource";
             ResourceTypeDeclaration at = d;
@@ -51,15 +54,23 @@ public final class PlatformServerPolicies {
                 ancestor.classification().ifPresent(c -> {
                     String id = "platform-" + ns + "-restricted-" + local + "-by-"
                             + ancestor.type().substring(ancestor.type().indexOf("::") + 2).toLowerCase(Locale.ROOT);
-                    out.put(id, restricted(id, d.type(), via, c));
+                    put(out, id, restricted(id, d.type(), via, c));
                 });
             }
             String id = "platform-" + ns + "-" + local + "-service-account-outside-scope";
-            out.put(id, "@id(\"" + id + "\")\nforbid (principal, action, resource is " + d.type() + ")\nwhen {\n"
+            put(out, id, "@id(\"" + id + "\")\nforbid (principal, action, resource is " + d.type() + ")\nwhen {\n"
                     + "  !(context has credentialType && " + userList() + ".contains(context.credentialType)) &&\n"
                     + "  !(principal in resource.scopes)\n};\n");
         }
         return out;
+    }
+
+    // Ids are lower-cased, so two types that differ only in case would map to one id and the later text would silently
+    // replace the forbid of the earlier type.
+    private static void put(Map<String, String> out, String id, String text) {
+        if (out.putIfAbsent(id, text) != null) {
+            throw new IllegalArgumentException("platform policy id generated twice: " + id);
+        }
     }
 
     /** @return the policies as a set whose policy id is the {@code @id} */
