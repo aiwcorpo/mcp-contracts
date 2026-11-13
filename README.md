@@ -1112,7 +1112,8 @@ The limit values are component configuration, not contract. The contract says on
 - **Broker and BFF:** starting and finishing an OAuth flow in the broker (per `sub`), writing a token and Authenticator operations in
   the BFF (per user, `sub`, on each BFF instance; a new session or a new login does not start a new window, CC-255): `429
   rate_limited` with `Retry-After`. Authenticator registration: 10 starts per hour per `sub` by default
-  (CC-151).
+  (CC-151). The broker also limits writing a token (`putSecret`) per `sub`, checked before the whoami call, so that a new portal
+  session does not give new attempts against the target system (CC-256); the BFF passes the broker's `429` on as its own.
 
 ## Token-exchange credentials and the service account (CC-157, CC-158, CC-159)
 

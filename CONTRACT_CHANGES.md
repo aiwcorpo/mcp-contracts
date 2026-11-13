@@ -4466,4 +4466,13 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Pliki:** `README.md`, `openapi/portal-bff.v1.yaml` (opis), `openapi/bundled/portal-bff.v1.bundled.yaml`.
 - **Zgodność wstecz (SemVer):** tylko opis zachowania, bez zmiany kształtu: patch.
 - **Kogo dotyka:** mcp-portal (gałąź `audit/l-03-secret-write-limit-per-user` w mcp-portal już tak liczy).
+
+## CC-256 | C4/C12 | Limit zapisu tokenu per `sub` w brokerze i `429` w `putSecret`
+
+- **Źródło:** audyt bezpieczeństwa z 2026-11-13 (mcp-credential-broker L-09, mcp-portal L-03); decyzja właściciela platformy z 2026-11-13.
+- **Stan:** `putSecret` wysyła każdą parę login i sekret do whoami systemu i odpowiada `200` z `backendUser` albo `422 secret_invalid`. Jedyny limit to limit BFF per sesja (CC-156), który zaczyna się od nowa z nową sesją, więc broker był nielimitowaną wyrocznią dla par login i hasło systemów z `Basic`. Kontrakt `putSecret` nie miał odpowiedzi `429`, więc broker nie mógł odmówić zgodnie z kontraktem.
+- **Zmiana:** broker limituje zapisy tokenu per `sub` (wszystkie systemy razem, każdy wynik się liczy), sprawdza limit przed whoami, więc odmowa niczego nie wysyła do systemu, i ponad limitem odpowiada `429 rate_limited` z `Retry-After` (`components/responses/TooManyRequests`, jak `startOAuth` i `completeOAuth`, CC-156), bez nagłówków ujawniających ustawienia. Wartość limitu jest konfiguracją brokera (CC-135). BFF odpowiada na `429` brokera własnym `429 rate_limited` z `Retry-After` brokera (nie `503`); `putMySecret` już ma `429`.
+- **Pliki:** `openapi/credential-broker.v1.yaml` (`putSecret`: opis i `429`), `openapi/portal-bff.v1.yaml` (opis limitów), `README.md` ("Rate limits"), `openapi/bundled/*`, mocki.
+- **Zgodność wstecz (SemVer):** nowa odpowiedź na istniejącej operacji z istniejącym kształtem błędu; klient, który obsługuje `429` innych operacji brokera, działa bez zmian: minor.
+- **Kogo dotyka:** mcp-credential-broker (limit i odpowiedź), mcp-portal (przekazanie `429`).
 - **Status:** accepted (decyzja: właściciel platformy, 2026-11-13)
