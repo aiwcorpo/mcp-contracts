@@ -2049,6 +2049,17 @@ export const portalBffExamples: OperationExamples[] = [
       },
       {
         "status": 422,
+        "name": "hidden_characters",
+        "body": {
+          "error": "manifest_rejected",
+          "message": "update_issue has a control, format or bidirectional character in its definition"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
         "name": "risk_lowered",
         "body": {
           "error": "manifest_rejected",

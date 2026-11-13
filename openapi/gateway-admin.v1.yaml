@@ -109,8 +109,8 @@ info:
 
     **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds AND proof of MFA in the token: `acr` in a list of MFA levels or `amr` containing one of `mfa`, `otp`, `hwk`, `totp` (both lists are configuration of the receiver); `auth_time` alone is not enough, because a fresh password-only login passes it. A token without either proof is not fresh, and the answer is `401 step_up_required`
     (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
-    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `approveServerConnection`, `deleteServer` and
-    `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check).
+    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `approveServerConnection`, `deleteServer`, `deleteServerKillSwitch`, `deleteToolKillSwitch`, `approveTool` when the body has `acceptRiskLowering: true` (a plain approval needs no fresh MFA) and
+    `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check). Putting a kill switch needs none: an incident does not wait for a second factor. A refused call is audited as `admin_change` with reason `step_up_required`, outcome `denied`.
 
     **Malformed input (7.0.0).** Malformed input is `400 invalid_request`: an `If-Match` or `If-None-Match` that is not a well-formed value, and a path id that does not match its pattern (never `404`). A well-formed id that names nothing is `404` (a delete of a system that has none is `204`), and a well-formed `If-Match` that is stale is `412`.
 
@@ -502,6 +502,14 @@ paths:
         manifest_rejected, unless the administrator says so explicitly with acceptRiskLowering true (the only way to lower a risk; a pulled manifest never can, CC-167). The approval is audited as admin_change with reason definition_approved, or, when a lowering was accepted, with one event risk_lowered_by_admin in its place (risk = the new risk), the administrator
         as sub and the approved hash as definitionHash.
 
+        **Fresh MFA (CC-250).** `acceptRiskLowering: true` needs a fresh MFA: without it `401 step_up_required` (see Fresh MFA), before the hash is looked at and also when the entry
+        lowers nothing. A plain approval needs none.
+
+        **Hidden characters (CC-250).** A definition whose names (property names included) or texts, at any depth, hold a character of the forbidden set of the
+        text hygiene rule (control, format, bidirectional or tag characters, README "Text hygiene", CC-121) is never approved: `422 manifest_rejected` without `reason`, with a
+        message that names the tool, and the entry stays pending. The refusal is audited as `admin_change` with reason `hidden_characters`, outcome `denied`, `tool` and
+        `definitionHash` (the hash that was sent). The check comes after the hash comparison and before the classification of an adapter entry.
+
         **Entries of an adapter (CC-193).** An entry with source adapter has no risk and no action; the body must carry both (`risk`, `action`), otherwise 422
         manifest_rejected with reason classification_required, and a body with them for any other entry is 422 classification_not_allowed. Approval then also
         classifies: the registry stores risk, action, the administrator and the time (`classifiedBy`, `classifiedAt` in the registry listing); the audit event is
@@ -533,7 +541,7 @@ paths:
         '204':
           description: Approved.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -549,12 +557,16 @@ paths:
                   value:
                     error: hash_mismatch
         '422':
-          description: The pending entry lowers the risk floor and acceptRiskLowering was not given; it is not approved (CC-133, CC-167).
+          description: The pending entry lowers the risk floor and acceptRiskLowering was not given, or the definition holds a hidden character (no reason); it is not approved (CC-133, CC-167, CC-250).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ManifestRejected'
               examples:
+                hidden_characters:
+                  value:
+                    error: manifest_rejected
+                    message: update_issue has a control, format or bidirectional character in its definition
                 risk_lowered:
                   value:
                     error: manifest_rejected
@@ -1042,8 +1054,9 @@ paths:
       summary: Lift the switch of a server (group mcp-platform-admin, CC-194).
       description: |
         Idempotent: `204` also when the switch was not on. The tools of the server return to the state their approval gives them (a tool
-        pending approval stays disabled). Audited as `admin_change` with reason `kill_switch_cleared`. The portal requires a fresh MFA of the
-        administrator before it calls this operation.
+        pending approval stays disabled). Audited as `admin_change` with reason `kill_switch_cleared`. Needs a fresh MFA (`401 step_up_required`, see
+        Fresh MFA): the portal asks for it first, and the gateway checks it on the token it gets (CC-250). The check comes before the address is looked at, so an
+        old token gets `401` also for a switch that is not on.
       security:
         - mtls: []
           bffUserToken: []
@@ -1051,7 +1064,7 @@ paths:
         '204':
           description: The switch is off.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1109,7 +1122,7 @@ paths:
       x-allowed-client-cn: [mcp-portal-bff]
       summary: Lift the switch of a tool (group mcp-platform-admin, CC-194).
       description: |
-        Idempotent: `204` also when the switch was not on. Same rules as for a server. A switch of the whole server stays on when only the
+        Idempotent: `204` also when the switch was not on. Same rules as for a server, the fresh MFA included (CC-250). A switch of the whole server stays on when only the
         tool switch is lifted.
       security:
         - mtls: []
@@ -1118,7 +1131,7 @@ paths:
         '204':
           description: The switch is off.
         '401':
-          $ref: '#/components/responses/Unauthenticated'
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -2488,7 +2501,7 @@ components:
       description: Why a tool or server is disabled, present only when disabled is true (CC-194). kill_switch is an emergency switch of an administrator, approval a definition waiting for approval or classification, configuration the server in the registry or an overrides policy. When more than one applies the first of the list is shown.
     ManifestRejected:
       type: object
-      description: 422 of an approval of a tool or of policies (CC-133). reason is a known value or absent.
+      description: 422 of an approval of a tool or of policies (CC-133). reason is a known value or absent; it is absent when the definition of a tool holds a hidden character (CC-250).
       required: [error]
       properties:
         error:
@@ -2671,7 +2684,7 @@ components:
         acceptRiskLowering:
           type: boolean
           default: false
-          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; a pulled manifest never lowers a risk, and the portal asks for a fresh MFA first. Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
+          description: Only an administrator (mcp-platform-admin) can set it, and only through this operation; a pulled manifest never lowers a risk, and it needs a fresh MFA (the portal asks for it first, the gateway checks it, CC-250). Sent only when true. On an entry that lowers nothing it is ignored (definition_approved). Without it an entry that lowers the risk floor is 422 risk_lowered; with it the lower risk is approved, the floor becomes that risk and the audit event is admin_change with reason risk_lowered_by_admin (CC-167).
         risk:
           $ref: '../schemas/common.schema.json#/$defs/Risk'
           description: Classification by the administrator (CC-193). Required for an entry with source adapter, which has no risk, and for such an entry only READ_ONLY is accepted (an adapter is read only, CC-227, any other value is 422 manifest_rejected, reason classification_not_allowed); forbidden for any other entry (the same 422). The classification is data of the registry, outside definitionHash; lowering a classification given earlier needs acceptRiskLowering like any lowering (CC-167).

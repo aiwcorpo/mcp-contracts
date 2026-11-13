@@ -39,7 +39,7 @@
       }
     },
     {
-      "name": "approveTool 401 unauthenticated",
+      "name": "approveTool 401 step_up_required",
       "priority": 2,
       "request": {
         "method": "POST",
@@ -49,7 +49,7 @@
             "matches": "^Bearer .+$"
           },
           "Prefer": {
-            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
           }
         }
       },
@@ -59,7 +59,7 @@
           "Content-Type": "application/json; charset=utf-8"
         },
         "jsonBody": {
-          "error": "unauthenticated"
+          "error": "step_up_required"
         }
       }
     },
@@ -135,6 +135,32 @@
         },
         "jsonBody": {
           "error": "hash_mismatch"
+        }
+      }
+    },
+    {
+      "name": "approveTool 422 hidden_characters",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/tools/{tool}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=hidden_characters($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "message": "update_issue has a control, format or bidirectional character in its definition"
         }
       }
     },

@@ -1681,12 +1681,16 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: The pending definition lowers the risk floor and acceptRiskLowering was not given; it is not approved (CC-133, CC-167).
+          description: The pending definition lowers the risk floor and acceptRiskLowering was not given, or the definition holds a hidden character (no reason, CC-250); it is not approved (CC-133, CC-167).
           content:
             application/json:
               schema:
                 $ref: 'gateway-admin.v1.yaml#/components/schemas/ManifestRejected'
               examples:
+                hidden_characters:
+                  value:
+                    error: manifest_rejected
+                    message: update_issue has a control, format or bidirectional character in its definition
                 risk_lowered:
                   value:
                     error: manifest_rejected

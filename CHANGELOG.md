@@ -5,6 +5,15 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
+## Unreleased
+
+Dopasowanie kontraktów do gatewaya (aiwcorpo/mcp-gateway PR #10), CC-250. Bez zmiany wersji.
+
+- Zdjęcie przełącznika awaryjnego serwera albo narzędzia (`deleteServerKillSwitch`, `deleteToolKillSwitch`) i zatwierdzenie narzędzia z `acceptRiskLowering: true` wymagają świeżego MFA także w gatewayu: `401 step_up_required` (`StepUpOrUnauthenticated`), audyt `admin_change` z powodem `step_up_required`. Zwykłe zatwierdzenie i ustawienie przełącznika bez zmian.
+- `approveTool`: definicja z ukrytymi znakami (sterujące, formatujące, dwukierunkowe, znaczniki, reguła CC-121) w nazwach albo tekstach to `422 manifest_rejected` bez `reason`, narzędzie zostaje oczekujące.
+- Nowy powód audytu `hidden_characters` (`admin_change`, `denied`, z `tool` i `definitionHash`) i wektor `audit-events/gateway-registry-hidden-characters`.
+- Reguła higieny tekstu bez zmian (pojedynczy U+FE0F po `Extended_Pictographic` jest dozwolony); README mówi, że obejmuje też definicje przy zatwierdzeniu.
+
 ## 7.0.0 - 2026-11-09
 
 Serwery, systemy i typy zasobów przestają być listą w kontraktach: są danymi uruchomieniowymi (rejestr gatewaya, systemy brokera,
