@@ -1,5 +1,7 @@
 # mcp-contracts
 
+Part of [MCP Platform](https://github.com/aiwcorpo/mcp-platform), a self-hosted MCP gateway for companies. Documentation: [mcp.aiwcorpo.pl](https://mcp.aiwcorpo.pl/).
+
 The machine-readable form of the MCP platform contracts: OpenAPI 3.1, JSON Schema 2020-12, the Cedar schema, the entity
 builder specification, test keys, test vectors and mocks. Changes are listed in [`CHANGELOG.md`](CHANGELOG.md). License:
 Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
