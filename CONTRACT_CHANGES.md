@@ -4420,4 +4420,4 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Higiena tekstu (CC-121, CC-122):** reguła kontraktu bez zmian: pojedynczy U+FE0F bezpośrednio po `Extended_Pictographic` jest dozwolony, inny (sam, na początku, podwójny, po literze) zakazany; gateway zaczął ją stosować tak samo także w tym sprawdzeniu (wcześniej odrzucał każdy U+FE0F). README "Text hygiene" dopisuje, że zbiór dotyczy też definicji przy zatwierdzeniu.
 - **Pliki:** `openapi/gateway-admin.v1.yaml`, `openapi/portal-bff.v1.yaml`, `schemas/audit-event.schema.json`, `scripts/generate-vectors.mjs`, wektory, `README.md`, `openapi/bundled/*`.
 - **Zgodność wstecz (SemVer):** nowa znana wartość `reason` i nowa odpowiedź na istniejącym kodzie `422`, `401` na operacjach, które wcześniej go dla tego powodu nie dawały; zachowanie już wdrożone na main gatewaya. Klient, który obsługuje `step_up_required` i nieznany `reason`, działa bez zmian: minor.
-- **Status:** proposed (czeka na zatwierdzenie człowieka; wdrożone w gatewayu przed wpisem)
+- **Status:** accepted (decyzja: właściciel platformy, 2026-11-13); wdrożone w gatewayu przed wpisem
