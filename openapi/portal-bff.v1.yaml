@@ -2877,7 +2877,8 @@ paths:
       description: |
         Needs `If-Match` (the ETag of the system that was edited) and a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise); the broker checks the MFA
         freshness of the token itself as well. Deleting an id that has no system is `204` and deletes no secret. Nothing is sent to
-        the backend.
+        the backend. The service account key of the system is removed with it (all versions, CC-251); the broker audits that as
+        `service_account_key_deleted` next to `system_deleted`.
       security:
         - session: []
           csrf: []
@@ -2956,7 +2957,7 @@ paths:
         Proxy to C4 `putServiceAccountKey` (CC-251), with the same body and the same validation: `{value}` or `{username, password}` (Basic
         systems only), optional `expiresAt` in the future. The body is never logged by the BFF and never returned; the response is the
         status of the new version. A fresh MFA is required (`auth_time` within 300 s and `acr` or `amr` proving MFA, `401 step_up_required`
-        otherwise, as for the other admin writes of the Systems tab); the broker checks it on the token as well. The portal sends the value only
+        otherwise, as for the other admin writes of the Systems tab); the broker checks it on the token as well. Last write wins (no `If-Match`). The portal sends the value only
         to this operation, over the session with the CSRF token, and does not keep it after the call.
       security:
         - session: []
