@@ -175,6 +175,7 @@ paths:
                             access: denied
                             requiredEntitlements:
                               - mcp-jira-write
+                            requiresConfirmation: true
                           - name: jira__delete_issue
                             title: Usunięcie zgłoszenia
                             description: Deletes an issue permanently.
@@ -2677,7 +2678,7 @@ components:
         requiresConfirmation:
           type: boolean
           default: false
-          description: True when every call needs a confirmation (C11), risk DESTRUCTIVE or a policy requires it. Computed by the gateway (CC-081).
+          description: "True when every call needs a confirmation (C11): risk UPDATE or DESTRUCTIVE (CC-257). Computed by the gateway (CC-081)."
       additionalProperties: false
     CatalogServer:
       type: object

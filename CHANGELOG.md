@@ -8,6 +8,7 @@ versions are historical and are kept in the language they were written in.
 ## Unreleased
 
 - **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Tylko opis zachowania: patch.
+- **CC-257 (C11, C10, C5, README):** każde narzędzie o ryzyku `UPDATE` albo `DESTRUCTIVE` wymaga potwierdzenia kodem TOTP; bez kodu działają tylko narzędzia `READ_ONLY`. `requiresConfirmation` jest `true` także dla `UPDATE`. Ponowienie `UPDATE` po nieznanym wyniku wymaga nowego kodu (CC-204 w części). Reguły jednej operacji `DESTRUCTIVE` (CC-127) bez zmian.
 
 ## 7.1.0 - 2026-11-17
 

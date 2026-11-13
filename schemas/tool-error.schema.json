@@ -113,7 +113,7 @@
       "additionalProperties": false
     },
     "ConfirmationRequired": {
-      "description": "The confirmation of a destructive call is the current code of the user's TOTP authenticator (C11, CC-091). One of two shapes: a pending call exists (confirmationId, description, previewUrl, expiresAt) or the user has no authenticator and only registerUrl is given.",
+      "description": "The confirmation of an UPDATE or DESTRUCTIVE call (CC-257) is the current code of the user's TOTP authenticator (C11, CC-091). One of two shapes: a pending call exists (confirmationId, description, previewUrl, expiresAt) or the user has no authenticator and only registerUrl is given.",
       "type": "object",
       "required": [
         "error",

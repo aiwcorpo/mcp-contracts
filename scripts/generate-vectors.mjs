@@ -1231,7 +1231,7 @@ firstCallVector('first-call-other-tool-also-supersedes', 'Another DESTRUCTIVE to
 firstCallVector('first-call-expired-pending-is-not-superseded', 'An expired pending call is gone already: nothing is superseded.',
   { pendingCalls: [stored()], at: '2026-10-26T20:05:00Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:07:00Z', pendingCreated: true, supersededIds: [] });
-firstCallVector('first-call-update-does-not-supersede-destructive', 'A pending confirmation of another risk (required by policy) does not touch the DESTRUCTIVE one.',
+firstCallVector('first-call-update-does-not-supersede-destructive', 'A pending confirmation of an UPDATE call does not touch the DESTRUCTIVE one.',
   { pendingCalls: [stored()], call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-125', summary: 'x' } }, at: '2026-10-26T20:00:30Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: [] });
 firstCallVector('first-call-destructive-does-not-supersede-update', 'A new DESTRUCTIVE operation leaves pending confirmations of other risk alone.',
