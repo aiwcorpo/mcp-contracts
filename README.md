@@ -8,7 +8,7 @@ Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
 
 ## Who this is for and how to use it
 
-**Status: 7.0.0 is unreleased.** The current content is the 7.0.0 work in progress (dynamic servers); it may still change until the release tag `v7.0.0`, so a component that builds against a local 7.0.0 must rebuild when it changes.
+**Status: 7.0.0 is released** (tag `v7.0.0`, 2026-11-09). Changes after the tag are listed under "Unreleased" in `CHANGELOG.md`.
 
 This is a library for the authors of platform components (the gateway, the credential broker, the portal, and every MCP server
 of the platform), not a product to run. Other repositories generate clients,
