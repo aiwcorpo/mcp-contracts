@@ -71,6 +71,7 @@ class ResourceTypesTest {
     @Test
     void patternsOutsideTheGrammarAreRefused() {
         for (String pattern : List.of("^(.*a){12}$", "^(a+)+$", "^(a|aa)+$", "^(a|a?)+$", "^([a-z]+)*[0-9]$", "^(a)\\1$", "^(?=a)a$", "^(?!a)b$",
+                "^\\Q[\\E(a+)+\\Q]\\E$", "^\\Q[\\E(a+)+\\1?\\Q]\\E$", "^\\c\\(a+\\c\\)+$",
                 "^" + "a".repeat(520) + "$")) {
             assertThrows(IllegalArgumentException.class, () -> ResourceTypes.of(List.of(
                     declaration("Acme::Box", null, null, pattern, null, false, null))), pattern);
