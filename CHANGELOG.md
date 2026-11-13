@@ -8,6 +8,7 @@ versions are historical and are kept in the language they were written in.
 ## Unreleased
 
 - **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Tylko opis zachowania: patch.
+- **CC-254 (C5, C10, README):** udział per użytkownik w limicie otwartych strumieni gatewaya (`MCP_MAX_OPEN_STREAMS_PER_USER`, domyślnie 20 na instancję), sprawdzany przed limitem instancji; ponad nim `429 rate_limited` z `Retry-After`, audyt `rate_limited_user`. Wektor `gateway-authentication/user-streams-limit-reached`. Zastępuje w części CC-223.
 
 ## 7.1.0 - 2026-11-17
 
