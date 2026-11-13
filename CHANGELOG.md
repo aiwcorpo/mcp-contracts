@@ -10,7 +10,7 @@ versions are historical and are kept in the language they were written in.
 Klucz konta serwisowego ustawiany z portalu (CC-251). Bez zmiany wersji.
 
 - Broker: `getServiceAccountKey`, `putServiceAccountKey`, `deleteServiceAccountKey` pod `/v1/admin/systems/{system}/service-account-key`; BFF: `getAdminServiceAccountKey`, `putAdminServiceAccountKey`, `deleteAdminServiceAccountKey`. Tylko do zapisu: status (`set`, `kvVersion`, `expiresAt`, `expired`, `updatedAt`, `updatedBy`) nigdy nie zawiera klucza. Zapis i usunięcie wymagają świeżego MFA; nowe schematy `ServiceAccountKeyRequest`, `ServiceAccountKeyStatus`, `ServiceAccountKeyRejected`.
-- `deleteAdminSystem` usuwa też klucz konta serwisowego; `SystemAdminView` ma opcjonalne `serviceAccountKey` (`set`, `expiresAt`, `expired`) dla systemów z `service-account`.
+- `deleteAdminSystem` usuwa też klucz konta serwisowego; `SystemAdminView` ma opcjonalne `serviceAccountKey` (`state`: `set`, `missing`, `unknown`; `expiresAt`, `expired` przy `set`) dla systemów z `service-account`; niedostępny magazyn sekretów daje `unknown`, nie błąd odczytu systemu.
 - Audyt: powody `service_account_key_set` i `service_account_key_deleted`, nowe pola `kvVersion` i `expiresAt`; wektory `audit-events/broker-service-account-key-*`.
 
 Dopasowanie kontraktów do gatewaya (aiwcorpo/mcp-gateway PR #10), CC-250. Bez zmiany wersji.
