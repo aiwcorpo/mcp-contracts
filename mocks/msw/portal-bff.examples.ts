@@ -3965,6 +3965,244 @@ export const portalBffExamples: OperationExamples[] = [
     ]
   },
   {
+    "operationId": "getAdminServiceAccountKey",
+    "method": "GET",
+    "route": "/api/v1/admin/systems/{system}/service-account-key",
+    "defaultExample": "set",
+    "responses": [
+      {
+        "status": 200,
+        "name": "set",
+        "body": {
+          "system": "notes",
+          "set": true,
+          "kvVersion": 3,
+          "expiresAt": "2027-03-01T00:00:00Z",
+          "expired": false,
+          "updatedAt": "2026-11-13T09:15:00Z",
+          "updatedBy": "a.admin"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 200,
+        "name": "not_set",
+        "body": {
+          "system": "notes",
+          "set": false
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "unauthenticated",
+        "body": {
+          "error": "unauthenticated"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "putAdminServiceAccountKey",
+    "method": "PUT",
+    "route": "/api/v1/admin/systems/{system}/service-account-key",
+    "defaultExample": "stored",
+    "responses": [
+      {
+        "status": 200,
+        "name": "stored",
+        "body": {
+          "system": "notes",
+          "set": true,
+          "kvVersion": 4,
+          "expiresAt": "2027-03-01T00:00:00Z",
+          "expired": false,
+          "updatedAt": "2026-11-13T09:20:00Z",
+          "updatedBy": "a.admin"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 422,
+        "name": "expires_at_in_past",
+        "body": {
+          "error": "service_account_key_rejected",
+          "reason": "expires_at_in_past",
+          "message": "expiresAt must be in the future"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
+    "operationId": "deleteAdminServiceAccountKey",
+    "method": "DELETE",
+    "route": "/api/v1/admin/systems/{system}/service-account-key",
+    "defaultExample": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "name": "status-204",
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 400,
+        "name": "invalid_request",
+        "body": {
+          "error": "invalid_request"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 401,
+        "name": "step_up_required",
+        "body": {
+          "error": "step_up_required",
+          "stepUpUrl": "/api/v1/auth/login?stepUp=true&returnPath=/catalog"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 403,
+        "name": "access_denied",
+        "body": {
+          "error": "access_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 404,
+        "name": "not_found_or_denied",
+        "body": {
+          "error": "not_found_or_denied"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      },
+      {
+        "status": 503,
+        "name": "upstream_unavailable",
+        "body": {
+          "error": "upstream_unavailable"
+        },
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+        }
+      }
+    ]
+  },
+  {
     "operationId": "listAdminKillSwitches",
     "method": "GET",
     "route": "/api/v1/admin/kill-switches",

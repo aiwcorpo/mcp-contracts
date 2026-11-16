@@ -2877,7 +2877,8 @@ paths:
       description: |
         Needs `If-Match` (the ETag of the system that was edited) and a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise); the broker checks the MFA
         freshness of the token itself as well. Deleting an id that has no system is `204` and deletes no secret. Nothing is sent to
-        the backend.
+        the backend. The service account key of the system is removed with it (all versions, CC-251); the broker audits that as
+        `service_account_key_deleted` next to `system_deleted`.
       security:
         - session: []
           csrf: []
@@ -2899,6 +2900,152 @@ paths:
           $ref: '#/components/responses/PreconditionFailed'
         '428':
           $ref: '#/components/responses/PreconditionRequired'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/systems/{system}/service-account-key:
+    parameters:
+      - $ref: '#/components/parameters/System'
+    get:
+      tags: [admin]
+      operationId: getAdminServiceAccountKey
+      summary: "Status of the service account key of a system, never the key (proxy to C4)."
+      description: |
+        Proxy to C4 `getServiceAccountKey` (CC-251): whether the key exists, its KV version, `expiresAt`, whether it has expired, the time of
+        the last write and, for a key set from the portal, who set it. The value is never returned. The Systems tab calls it for a system
+        whose credential type is `service-account`. A system that is not configured is `404`.
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The status.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/ServiceAccountKeyStatus'
+              examples:
+                set:
+                  value:
+                    system: notes
+                    set: true
+                    kvVersion: 3
+                    expiresAt: '2027-03-01T00:00:00Z'
+                    expired: false
+                    updatedAt: '2026-11-13T09:15:00Z'
+                    updatedBy: a.admin
+                not_set:
+                  value:
+                    system: notes
+                    set: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    put:
+      tags: [admin]
+      operationId: putAdminServiceAccountKey
+      summary: "Set or replace the service account key of a system (proxy to C4); write-only, fresh MFA."
+      description: |
+        Proxy to C4 `putServiceAccountKey` (CC-251), with the same body and the same validation: `{value}` or `{username, password}` (Basic
+        systems only), optional `expiresAt` in the future. The body is never logged by the BFF and never returned; the response is the
+        status of the new version. A fresh MFA is required (`auth_time` within 300 s and `acr` or `amr` proving MFA, `401 step_up_required`
+        otherwise, as for the other admin writes of the Systems tab); the broker checks it on the token as well. Last write wins (no `If-Match`). The portal sends the value only
+        to this operation, over the session with the CSRF token, and does not keep it after the call.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'credential-broker.v1.yaml#/components/schemas/ServiceAccountKeyRequest'
+            examples:
+              token:
+                value:
+                  value: test-only-service-token-0000000000
+                  expiresAt: '2027-03-01T00:00:00Z'
+              basic_pair:
+                value:
+                  username: test-only-service-login
+                  password: test-only-service-password
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Stored; the body is the status without the key.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/ServiceAccountKeyStatus'
+              examples:
+                stored:
+                  value:
+                    system: notes
+                    set: true
+                    kvVersion: 4
+                    expiresAt: '2027-03-01T00:00:00Z'
+                    expired: false
+                    updatedAt: '2026-11-13T09:20:00Z'
+                    updatedBy: a.admin
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Rejected; the body says why and never contains the submitted value.
+          content:
+            application/json:
+              schema:
+                $ref: 'credential-broker.v1.yaml#/components/schemas/ServiceAccountKeyRejected'
+              examples:
+                expires_at_in_past:
+                  value:
+                    error: service_account_key_rejected
+                    reason: expires_at_in_past
+                    message: expiresAt must be in the future
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminServiceAccountKey
+      summary: "Remove the service account key of a system (proxy to C4); fresh MFA."
+      description: |
+        Proxy to C4 `deleteServiceAccountKey` (CC-251): removes the entry with all its versions; calls for the system fail closed
+        afterwards. `204` also when there was no key. Needs a fresh MFA (`step_up_required` otherwise), checked by the broker as well.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Removed (or there was none).
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
   /api/v1/admin/kill-switches:
