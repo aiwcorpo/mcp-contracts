@@ -2795,6 +2795,8 @@ paths:
         `oauth.tokenUrl`; the client secret must be given again when `baseUrl`, `authorizeUrl`, `tokenUrl`, `clientId` or `revokeUrl` changes. A change of
         any of those five invalidates every user connection of the system without sending anything to any endpoint (status `needs_reconnect`,
         shown as `reconnect_required` in the catalog). A create sends `If-None-Match: *`, a replace `If-Match`. A fresh MFA is required.
+        A create first removes a leftover service account key of the same id; when the broker cannot, the create is `503` and no system is
+        created (C4 `putAdminSystem`, CC-251 amendment of 2026-11-16).
       security:
         - session: []
           csrf: []
@@ -2878,7 +2880,8 @@ paths:
         Needs `If-Match` (the ETag of the system that was edited) and a fresh MFA (`auth_time` within 300 s and `acr` or `amr` proving MFA; `step_up_required` otherwise); the broker checks the MFA
         freshness of the token itself as well. Deleting an id that has no system is `204` and deletes no secret. Nothing is sent to
         the backend. The service account key of the system is removed with it (all versions, CC-251); the broker audits that as
-        `service_account_key_deleted` next to `system_deleted`.
+        `service_account_key_deleted` next to `system_deleted`. The key is removed after the system row; when that fails the system stays
+        deleted and the answer is `503` (CC-251 amendment of 2026-11-16).
       security:
         - session: []
           csrf: []
@@ -2956,9 +2959,11 @@ paths:
       description: |
         Proxy to C4 `putServiceAccountKey` (CC-251), with the same body and the same validation: `{value}` or `{username, password}` (Basic
         systems only), optional `expiresAt` in the future. The body is never logged by the BFF and never returned; the response is the
-        status of the new version. A fresh MFA is required (`auth_time` within 300 s and `acr` or `amr` proving MFA, `401 step_up_required`
+        status of the new version. When the system is deleted while the write is in flight, the broker removes the entry it wrote and the answer
+        is `404`. A fresh MFA is required (`auth_time` within 300 s and `acr` or `amr` proving MFA, `401 step_up_required`
         otherwise, as for the other admin writes of the Systems tab); the broker checks it on the token as well. Last write wins (no `If-Match`). The portal sends the value only
-        to this operation, over the session with the CSRF token, and does not keep it after the call.
+        to this operation, over the session with the CSRF token, and does not keep it after the call. On a `422` the BFF passes `error` and
+        `reason` only, never the free text `message` of the broker (CC-251 amendment of 2026-11-16).
       security:
         - session: []
           csrf: []
@@ -3019,7 +3024,6 @@ paths:
                   value:
                     error: service_account_key_rejected
                     reason: expires_at_in_past
-                    message: expiresAt must be in the future
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
     delete:
@@ -3028,7 +3032,8 @@ paths:
       summary: "Remove the service account key of a system (proxy to C4); fresh MFA."
       description: |
         Proxy to C4 `deleteServiceAccountKey` (CC-251): removes the entry with all its versions; calls for the system fail closed
-        afterwards. `204` also when there was no key. Needs a fresh MFA (`step_up_required` otherwise), checked by the broker as well.
+        afterwards. `204` also when there was no key, and also for an id that has no system but still has a leftover key (the broker removes it);
+        `404` only when neither a system nor a key exists (CC-251 amendment of 2026-11-16). Needs a fresh MFA (`step_up_required` otherwise), checked by the broker as well.
       security:
         - session: []
           csrf: []

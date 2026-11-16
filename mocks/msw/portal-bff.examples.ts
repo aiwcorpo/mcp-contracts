@@ -4117,8 +4117,7 @@ export const portalBffExamples: OperationExamples[] = [
         "name": "expires_at_in_past",
         "body": {
           "error": "service_account_key_rejected",
-          "reason": "expires_at_in_past",
-          "message": "expiresAt must be in the future"
+          "reason": "expires_at_in_past"
         },
         "headers": {
           "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
