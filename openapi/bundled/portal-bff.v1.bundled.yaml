@@ -2919,7 +2919,7 @@ paths:
         shown as `reconnect_required` in the catalog). A create sends `If-None-Match: *`, a replace `If-Match`. A fresh MFA is required.
         A create first removes a leftover service account key of the same id, in the transaction of the insert; when the broker cannot, the create is
         `503` and no system is created. A replace that drops `service-account` removes the key after the change; when that fails the change stays applied
-        and the answer is `503` (C4 `putAdminSystem`, CC-251 amendment of 2026-11-16).
+        and the answer is `503`. A replace that adds `service-account` removes any stored entry first, in the same transaction (`503` and nothing applied when it cannot) (C4 `putAdminSystem`, CC-251 amendment of 2026-11-16).
       security:
         - session: []
           csrf: []
