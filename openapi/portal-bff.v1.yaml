@@ -2795,8 +2795,9 @@ paths:
         `oauth.tokenUrl`; the client secret must be given again when `baseUrl`, `authorizeUrl`, `tokenUrl`, `clientId` or `revokeUrl` changes. A change of
         any of those five invalidates every user connection of the system without sending anything to any endpoint (status `needs_reconnect`,
         shown as `reconnect_required` in the catalog). A create sends `If-None-Match: *`, a replace `If-Match`. A fresh MFA is required.
-        A create first removes a leftover service account key of the same id; when the broker cannot, the create is `503` and no system is
-        created (C4 `putAdminSystem`, CC-251 amendment of 2026-11-16).
+        A create first removes a leftover service account key of the same id, in the transaction of the insert; when the broker cannot, the create is
+        `503` and no system is created. A replace that drops `service-account` removes the key after the change; when that fails the change stays applied
+        and the answer is `503` (C4 `putAdminSystem`, CC-251 amendment of 2026-11-16).
       security:
         - session: []
           csrf: []
@@ -2960,7 +2961,7 @@ paths:
         Proxy to C4 `putServiceAccountKey` (CC-251), with the same body and the same validation: `{value}` or `{username, password}` (Basic
         systems only), optional `expiresAt` in the future. The body is never logged by the BFF and never returned; the response is the
         status of the new version. When the system is deleted while the write is in flight, the broker removes the entry it wrote and the answer
-        is `404`. A fresh MFA is required (`auth_time` within 300 s and `acr` or `amr` proving MFA, `401 step_up_required`
+        is `404` (`422` when its types or scheme changed so that the key no longer fits). A fresh MFA is required (`auth_time` within 300 s and `acr` or `amr` proving MFA, `401 step_up_required`
         otherwise, as for the other admin writes of the Systems tab); the broker checks it on the token as well. Last write wins (no `If-Match`). The portal sends the value only
         to this operation, over the session with the CSRF token, and does not keep it after the call. On a `422` the BFF passes `error` and
         `reason` only, never the free text `message` of the broker (CC-251 amendment of 2026-11-16).
