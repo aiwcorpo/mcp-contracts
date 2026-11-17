@@ -25,7 +25,7 @@ starter) and `mcp-manifest`.
 The contracts are frozen: a change is proposed in [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md) and approved by a person.
 That file also records every place where the original contract text was imprecise, with the variant that was adopted.
 CC-001 ... CC-034 shipped in 1.1.0, CC-036 ... CC-045 in 1.2.0, CC-046 ... CC-067 in 2.0.0, CC-068 ... CC-077 in 2.1.0,
-CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0; CC-035 was rejected.
+CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0, CC-250 and CC-251 in 7.1.0; CC-035 was rejected.
 
 ## Using the artifacts
 
