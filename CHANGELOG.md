@@ -5,16 +5,19 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
-## Unreleased
+## 7.1.0 - 2026-11-17
 
-Klucz konta serwisowego ustawiany z portalu (CC-251). Bez zmiany wersji.
+Wydanie **minor**: nowe operacje, opcjonalne pole widoku systemu, nowe powody audytu i wektory (CC-250, CC-251); istniejące
+odpowiedzi, wymagania i wektory bez zmian.
+
+Klucz konta serwisowego ustawiany z portalu (CC-251).
 
 - Broker: `getServiceAccountKey`, `putServiceAccountKey`, `deleteServiceAccountKey` pod `/v1/admin/systems/{system}/service-account-key`; BFF: `getAdminServiceAccountKey`, `putAdminServiceAccountKey`, `deleteAdminServiceAccountKey`. Tylko do zapisu: status (`set`, `kvVersion`, `expiresAt`, `expired`, `updatedAt`, `updatedBy`) nigdy nie zawiera klucza. Zapis i usunięcie wymagają świeżego MFA; nowe schematy `ServiceAccountKeyRequest`, `ServiceAccountKeyStatus`, `ServiceAccountKeyRejected`.
 - `deleteAdminSystem` usuwa też klucz konta serwisowego; `SystemAdminView` ma opcjonalne `serviceAccountKey` (`state`: `set`, `missing`, `unknown`; `expiresAt`, `expired` przy `set`) dla systemów z `service-account`; niedostępny magazyn sekretów daje `unknown`, nie błąd odczytu systemu.
 - Audyt: powody `service_account_key_set` i `service_account_key_deleted`, nowe pola `kvVersion` i `expiresAt`; wektory `audit-events/broker-service-account-key-*`.
-- Aneks CC-251 z 2026-11-16 (proposed, czeka na właściciela): `deleteAdminSystem` usuwa klucz po wierszu systemu, a nieudane usunięcie klucza daje `503` przy usuniętym systemie; `putServiceAccountKey` po zapisie sprawdza system jeszcze raz i przy braku usuwa wpis (`404`); utworzenie systemu najpierw usuwa pozostały klucz (`503` i brak systemu, gdy się nie da); `deleteServiceAccountKey` dla id bez systemu usuwa pozostały wpis (`204`), `404` tylko gdy nic nie ma. Zapis klucza jest związany z wierszem systemu (`404`, gdy system usunięto lub utworzono ponownie, `422`, gdy zmienił się typ albo schemat; wpis zapisany wcześniej jest usuwany), a po wymianie poprzednia wersja jest niszczona (nowy powód audytu `service_account_key_destroy_failed`); utworzenie systemu usuwa klucz w transakcji wstawienia, a zmiana zdejmująca `service-account` usuwa klucz po zatwierdzeniu, zmiana dodająca `service-account` usuwa pozostały wpis w transakcji (`503` i brak zmiany, gdy się nie da). BFF przy `422` przekazuje tylko `error` i `reason`.
+- Aneks CC-251 z 2026-11-16 (zaakceptowany 2026-11-16): `deleteAdminSystem` usuwa klucz po wierszu systemu, a nieudane usunięcie klucza daje `503` przy usuniętym systemie; `putServiceAccountKey` po zapisie sprawdza system jeszcze raz i przy braku usuwa wpis (`404`); utworzenie systemu najpierw usuwa pozostały klucz (`503` i brak systemu, gdy się nie da); `deleteServiceAccountKey` dla id bez systemu usuwa pozostały wpis (`204`), `404` tylko gdy nic nie ma. Zapis klucza jest związany z wierszem systemu (`404`, gdy system usunięto lub utworzono ponownie, `422`, gdy zmienił się typ albo schemat; wpis zapisany wcześniej jest usuwany), a po wymianie poprzednia wersja jest niszczona (nowy powód audytu `service_account_key_destroy_failed`); utworzenie systemu usuwa klucz w transakcji wstawienia, a zmiana zdejmująca `service-account` usuwa klucz po zatwierdzeniu, zmiana dodająca `service-account` usuwa pozostały wpis w transakcji (`503` i brak zmiany, gdy się nie da). BFF przy `422` przekazuje tylko `error` i `reason`.
 
-Dopasowanie kontraktów do gatewaya (aiwcorpo/mcp-gateway PR #10), CC-250. Bez zmiany wersji.
+Dopasowanie kontraktów do gatewaya (aiwcorpo/mcp-gateway PR #10), CC-250.
 
 - Zdjęcie przełącznika awaryjnego serwera albo narzędzia (`deleteServerKillSwitch`, `deleteToolKillSwitch`) i zatwierdzenie narzędzia z `acceptRiskLowering: true` wymagają świeżego MFA także w gatewayu: `401 step_up_required` (`StepUpOrUnauthenticated`), audyt `admin_change` z powodem `step_up_required`. Zwykłe zatwierdzenie i ustawienie przełącznika bez zmian.
 - `approveTool`: definicja z ukrytymi znakami (sterujące, formatujące, dwukierunkowe, znaczniki, reguła CC-121) w nazwach albo tekstach to `422 manifest_rejected` bez `reason`, narzędzie zostaje oczekujące.
