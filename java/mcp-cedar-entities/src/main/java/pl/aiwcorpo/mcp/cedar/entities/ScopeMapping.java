@@ -63,7 +63,9 @@ public final class ScopeMapping {
      * Mapping for evaluation: a scope that is not valid is skipped on its own and reported by {@link #ignored()}, so that
      * one bad entry never removes the grants of the others (a server that was removed leaves undeclared types in the stored
      * document; a manifest with a narrower {@code scopePattern} leaves scopes that no longer match). The caller audits the
-     * ignored list. Never throws for the content of the mapping.
+     * ignored list. The gateway also uses it at a policy approval: the {@code undeclared_type} and {@code invalid_scope}
+     * entries of the server's namespaces are deleted from the stored document there (CC-252), so they cannot grant again
+     * when a later approval declares the type again. Never throws for the content of the mapping.
      */
     public static ScopeMapping ofRegistered(ResourceTypes types, Map<String, ? extends Collection<String>> scopesByGroup) {
         return build(types, scopesByGroup, true);

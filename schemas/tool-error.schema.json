@@ -113,7 +113,7 @@
       "additionalProperties": false
     },
     "ConfirmationRequired": {
-      "description": "The confirmation of a destructive call is the current code of the user's TOTP authenticator (C11, CC-091). One of two shapes: a pending call exists (confirmationId, description, previewUrl, expiresAt) or the user has no authenticator and only registerUrl is given.",
+      "description": "The confirmation of an UPDATE or DESTRUCTIVE call (CC-257) is the current code of the user's TOTP authenticator (C11, CC-091). One of two shapes: a pending call exists (confirmationId, description, previewUrl, expiresAt) or the user has no authenticator and only registerUrl is given. Issued by the gateway; a server may report it in a tools/call result only in the registerUrl shape, and the gateway builds registerUrl itself (the value from the server is ignored). A server result with confirmationId, description, previewUrl or expiresAt names a confirmation the gateway does not hold and reaches the client as internal_error (CC-253).",
       "type": "object",
       "required": [
         "error",
@@ -136,12 +136,12 @@
           "maxLength": 1000
         },
         "previewUrl": {
-          "description": "Read-only portal page /confirm/<confirmationId> (owner only, a session without fresh MFA is enough). Opening it is optional.",
+          "description": "Read-only portal page /confirm/<confirmationId> (owner only, a session without fresh MFA is enough). Opening it is optional. Always built by the gateway from its portal address (CC-253).",
           "type": "string",
           "format": "uri"
         },
         "registerUrl": {
-          "description": "Portal page where the user registers the authenticator. Present exactly when the user has no usable authenticator: none registered, or disabled by the daily limit of wrong codes (CC-126); no pending call exists then.",
+          "description": "Portal page where the user registers the authenticator. Present exactly when the user has no usable authenticator: none registered, or disabled by the daily limit of wrong codes (CC-126); no pending call exists then. Always built by the gateway from its portal address, also when a server reported the error (CC-253).",
           "type": "string",
           "format": "uri"
         },
@@ -213,6 +213,7 @@
       "additionalProperties": false
     },
     "CredentialRequired": {
+      "description": "Issued by the gateway, or reported by a server in a tools/call result; in both cases the gateway sets system to the system of the called tool and builds connectUrl (CC-253).",
       "type": "object",
       "required": [
         "error",
@@ -231,7 +232,7 @@
           "$ref": "common.schema.json#/$defs/SystemId"
         },
         "connectUrl": {
-          "description": "Portal page where the user connects the account.",
+          "description": "Portal page where the user connects the account. Always built by the gateway from its portal address and the system of the called tool; a value from the broker (CC-105) or from a server is ignored (CC-253).",
           "type": "string",
           "format": "uri"
         }
@@ -296,6 +297,7 @@
       "additionalProperties": false
     },
     "StepUpRequired": {
+      "description": "Issued by the gateway, or reported by a server in a tools/call result; in both cases the gateway builds stepUpUrl (CC-253).",
       "type": "object",
       "required": [
         "error",
@@ -310,7 +312,7 @@
           "$ref": "#/$defs/Message"
         },
         "stepUpUrl": {
-          "description": "Portal URL that re-authenticates with max_age/acr_values.",
+          "description": "Portal URL that re-authenticates with max_age/acr_values. Always built by the gateway from its portal address; a value from a server is ignored (CC-253).",
           "type": "string",
           "format": "uri"
         }
