@@ -771,7 +771,12 @@ the status `expiring` (< 7 days) exists only when a date was given (CC-084).
 - **OAuth client `client_secret` (CC-104):** the broker keeps it in OpenBao under `secret/data/mcp/oauth-clients/<system>`,
   separately from user connections (`mcp/connections/<sha256(sub)>/<system>`); no response other than `resolve` returns it.
 - **`CredentialRequired.connectUrl` (CC-105):** an informational field; the gateway builds the link from its own `publicBaseUrl`
-  and ignores the broker's value (one source of the portal address).
+  and ignores the broker's value (one source of the portal address). Since CC-253 the same rule covers every link of a tool error
+  (`stepUpUrl`, `connectUrl`, `registerUrl`, `previewUrl`) and every origin: a server may report `step_up_required`,
+  `credential_required` or `confirmation_required` (only with `registerUrl`, no pending call) in a `tools/call` result, and the
+  gateway replaces the server's link with its own (for `credential_required` also `system`, which becomes the system of the called
+  tool). A server's `confirmation_required` with `confirmationId`, `description`, `previewUrl` or `expiresAt` reaches the client as
+  `internal_error`, because only the gateway holds pending calls.
 - **The gateway internal port (CC-106):** `/admin/v1/*` and the JWKS (C2) are on one TLS port. JWKS clients may not present a
   client certificate (clientAuth), so the client certificate's target is checked in the application layer for `/admin/v1`, not in
   the TLS handshake (this applies to the broker and the starter too).
