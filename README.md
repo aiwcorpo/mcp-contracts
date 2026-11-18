@@ -1449,7 +1449,8 @@ One-time setup (a human):
 
 1. Account on https://central.sonatype.com and the namespace `pl.aiwcorpo`: the Portal shows a verification key; add it as a
    DNS TXT record on `aiwcorpo.pl` (exactly that host) and press Verify. Requires control of the domain.
-2. Portal user token (Account, Generate User Token): repository secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN`.
+2. Portal user token (Account, Generate User Token): secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN` of the
+   environment `release` (step 4), never repository secrets.
 3. GPG key dedicated to releases (`gpg --quick-generate-key "aiwcorpo releases" ed25519 sign 2y`; with a passphrase). Publish the
    public key: `gpg --keyserver keyserver.ubuntu.com --send-keys <fingerprint>`. keys.openpgp.org publishes a key only with a
    confirmed e-mail address of a user ID, so use it only if the key has an organisational address as its UID; otherwise leave
@@ -1458,8 +1459,10 @@ One-time setup (a human):
    and its revocation certificate, and add the fingerprint to `SECURITY.md`.
 4. Put the four Maven secrets in the GitHub environment `release` (not repository-wide). In both environments (`release` and
    `release-npm`): required reviewers other than the person who pushes the tag, the option **Prevent self-review**, and a
-   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that blocks deletion and
-   updates, so a released tag cannot be moved.
+   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that restricts creation to the
+   release maintainers and blocks deletion and updates, so only they start a release and a released tag cannot be moved.
+   Protect `main` with a rule that requires a reviewed pull request: the `build` job refuses a tagged commit that is not on
+   `main`, but the workflow comes from the tagged commit, so only these settings bind a release to reviewed code.
 5. npm: create the organization `aiwcorpo` on npmjs.org (free for public packages; check that the name is available) and turn on 2FA for it.
    The first version cannot use trusted publishing, because the trusted publisher is configured on an existing package: either put a
    granular access token (read and write, package scope `@aiwcorpo`, short expiry, with **Bypass two-factor authentication**
