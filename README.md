@@ -8,7 +8,7 @@ Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
 
 ## Who this is for and how to use it
 
-**Status: 7.1.0 is released** (tag `v7.1.0`, 2026-11-17). Changes after the tag are listed under "Unreleased" in `CHANGELOG.md`.
+**Status: 7.2.0 is released** (tag `v7.2.0`, 2026-11-18). Changes after the tag are listed under "Unreleased" in `CHANGELOG.md`.
 
 This is a library for the authors of platform components (the gateway, the credential broker, the portal, and every MCP server
 of the platform), not a product to run. Other repositories generate clients,
@@ -25,7 +25,7 @@ starter) and `mcp-manifest`.
 The contracts are frozen: a change is proposed in [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md) and approved by a person.
 That file also records every place where the original contract text was imprecise, with the variant that was adopted.
 CC-001 ... CC-034 shipped in 1.1.0, CC-036 ... CC-045 in 1.2.0, CC-046 ... CC-067 in 2.0.0, CC-068 ... CC-077 in 2.1.0,
-CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0, CC-250 and CC-251 in 7.1.0; CC-035 was rejected.
+CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0, CC-250 and CC-251 in 7.1.0, CC-252 ... CC-257 in 7.2.0; CC-035 was rejected.
 
 ## Using the artifacts
 
@@ -42,12 +42,12 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>7.1.0</version>
+  <version>7.2.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>7.1.0</version>
+  <version>7.2.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -56,15 +56,15 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 npm, public registry, scope `@aiwcorpo`, no `.npmrc` needed:
 
 ```bash
-npm install --save-dev @aiwcorpo/mcp-contracts@7.1.0
+npm install --save-dev @aiwcorpo/mcp-contracts@7.2.0
 ```
 
 The npm package is published from GitHub Actions with provenance; `npm audit signatures` shows the attestation that ties the
 tarball to the tag and the workflow run. Maven artifacts carry a GPG signature (`.asc`); the public key is published on
 `keyserver.ubuntu.com`. A version is immutable once it is on Central, so a fix is a new number.
 
-If you built 7.1.0 locally or installed it from another source before it reached Central, delete
-`~/.m2/repository/pl/aiwcorpo/mcp/*/7.1.0` and let Maven fetch the published files; the local copies are not byte-identical.
+If you built 7.2.0 locally or installed it from another source before it reached Central, delete
+`~/.m2/repository/pl/aiwcorpo/mcp/*/7.2.0` and let Maven fetch the published files; the local copies are not byte-identical.
 
 ## What is where
 
@@ -214,12 +214,12 @@ and the `info.version` fields, and the tag `vX.Y.Z`.
 
 | Artifact | Contents | Use |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:7.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` under the classpath prefix `mcp-contracts/` | may be on the runtime classpath (for example the Cedar schema, manifest validation) |
-| `pl.aiwcorpo.mcp:mcp-contracts:7.1.0:test-vectors` (jar, classifier) | `test-vectors/` including the test keys, under `mcp-contracts/test-vectors/` | **only** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:7.1.0` (jar + javadoc) | Cedar entity builder (C7, C9), validation of policy fragments and overrides | gateway and starter, runtime |
-| `pl.aiwcorpo.mcp:mcp-manifest:7.1.0` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:7.1.0` (pom) | parent of the modules | installed together with them |
-| `@aiwcorpo/mcp-contracts@7.1.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@7.1.0`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:7.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` under the classpath prefix `mcp-contracts/` | may be on the runtime classpath (for example the Cedar schema, manifest validation) |
+| `pl.aiwcorpo.mcp:mcp-contracts:7.2.0:test-vectors` (jar, classifier) | `test-vectors/` including the test keys, under `mcp-contracts/test-vectors/` | **only** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:7.2.0` (jar + javadoc) | Cedar entity builder (C7, C9), validation of policy fragments and overrides | gateway and starter, runtime |
+| `pl.aiwcorpo.mcp:mcp-manifest:7.2.0` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:7.2.0` (pom) | parent of the modules | installed together with them |
+| `@aiwcorpo/mcp-contracts@7.2.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@7.2.0`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
 
 In Maven the test keys (private ones too, which are public by design) are only in the `test-vectors` jar, so that a production
 component cannot load a test JWKS from the classpath by accident. Receiver tests sign tokens with them, so the jar
@@ -264,7 +264,7 @@ needs Guava on the compile classpath (it is a runtime dependency of cedar-java a
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>7.1.0</version>
+  <version>7.2.0</version>
 </dependency>
 ```
 
