@@ -4140,7 +4140,7 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** opis i nowy wektor, bez zmiany schematów i enum: minor.
 - **Kogo dotyka:** ws-05 (zgodność z opisem), ws-01 (konfiguracja, alert na `mcp_gateway_streams_refused_total`), ws-10 (scenariusz przekroczenia limitu).
 - **Rekomendacja:** decyzja człowieka 2026-11-03, do wydania.
-- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (limit strumieni); zgłosił: ws-05, 2026-11-03
+- **Status:** accepted (decyzja: człowiek, 2026-11-03, wydanie 6.3.0) (limit strumieni); zgłosił: ws-05, 2026-11-03; superseded w części przez CC-254 ("bez limitu na użytkownika" zastąpione udziałem per użytkownik; limit na instancję zostaje)
 
 ## CC-224 | C5/C10 | `503 upstream_unavailable` z `Retry-After` dla katalogu przy nieczytelnych wyłącznikach
 
@@ -4508,3 +4508,15 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** schematy bez zmian walidacji, `requiresConfirmation` i `confirmation_required` już istniały. Zmienia się zachowanie gatewaya: klient AI, który obsługuje `confirmation_required` dla `DESTRUCTIVE`, działa bez zmian także dla `UPDATE`. Użytkownik bez zarejestrowanego Authenticatora przestaje móc wywoływać narzędzia `UPDATE` bez rejestracji: minor, z uwagą w informacji o wydaniu.
 - **Kogo dotyka:** mcp-gateway (`ToolDefinition.requiresConfirmation()` = ryzyko różne od `READ_ONLY`, gałąź `audit/template-l-08-confirm-update-tools`), mcp-portal (baner o braku rejestracji przy narzędziach `requiresConfirmation` obejmuje teraz też `UPDATE`), mcp-docs (strony, które mówią, że narzędzia zapisu działają bez kodu). Serwery i starter bez zmian.
 - **Status:** accepted (decyzja: właściciel platformy, 2026-11-13); zmienia w części CC-204
+
+## CC-254 | C5/C10/README | Udział per użytkownik w limicie otwartych strumieni gatewaya
+
+- **Źródło:** audyt bezpieczeństwa z 2026-11-13 (mcp-contracts L-06); decyzja właściciela platformy z 2026-11-13, wariant "udział per użytkownik w gatewayu" (odrzucone: sam alert na `mcp_gateway_streams_refused_total`; obniżenie limitu otwarć per użytkownik).
+- **Stan:** CC-192 i CC-223 przyjęły limit otwartych strumieni tylko na instancję (`MCP_MAX_OPEN_STREAMS`, 2000), bez limitu na użytkownika. Liczone było tylko tempo otwierania (CC-135: 600 na minutę na użytkownika, 300 na parę użytkownik i klient), a strumień żyje do wygaśnięcia tokenu (900 s w dostarczanym realmie). Jeden klient zapełnia instancję w około 400 s, potem każdy inny użytkownik tej instancji dostaje `503` przy otwarciu strumienia i traci `tools/list_changed`.
+- **Zmiana:** gateway trzyma na instancji najwyżej `MCP_MAX_OPEN_STREAMS_PER_USER` otwartych strumieni jednego `sub` (domyślnie 20; `GET` sesji i `subscriptions/listen` razem, wszyscy klienci AI użytkownika razem). Udział jest sprawdzany przed limitem instancji, po kontrolach kolejności z CC-184 i po limitach żądań (CC-135). Ponad udziałem otwarcie strumienia to `429 rate_limited` z `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`, domyślnie 2 s) i ciałem z CC-156, bez `WWW-Authenticate` i bez `X-RateLimit-*` (klient nie dowiaduje się, który limit zadziałał); audyt `policy_decision`, `decision: deny`, `outcome: denied`, `errorCode: rate_limited`, powód `rate_limited_user` (istniejący, otwarcie strumienia jest żądaniem użytkownika). Odmowa liczy się do `mcp_gateway_streams_refused_total`. Wpis udziału jest zwalniany przy każdym końcu strumienia, jak wpis limitu instancji. Limit instancji i jego `503` (CC-223) bez zmian.
+- **Wartość domyślna 20:** przy 2000 na instancję jeden użytkownik zajmuje najwyżej 1%, do zapełnienia instancji potrzeba 100 użytkowników na granicy udziału. Zwykły użytkownik trzyma po jednym strumieniu sesji i ewentualnie `subscriptions/listen` na klienta AI; 20 mieści kilka klientów i nakładanie się starego i nowego strumienia przy odnowieniu tokenu. Wartość jest konfiguracją (CC-135).
+- **Wektory:** nowy `gateway-authentication/user-streams-limit-reached` (powód `user_streams_limit_reached` w `scripts/lib/gateway-authentication.mjs`); `streams-limit-reached` bez zmian.
+- **Pliki:** `README.md` ("Notifications", tabela wektorów), `scripts/lib/gateway-authentication.mjs`, `scripts/generate-vectors.mjs`, wektor.
+- **Zgodność wstecz (SemVer):** nowy limit konfiguracyjny, istniejąca odpowiedź `429 rate_limited` i istniejący powód audytu, nowy wektor: minor. Klient, który obsługuje `429` innych żądań MCP, działa bez zmian.
+- **Kogo dotyka:** mcp-gateway (`ToolStreams.open`: licznik per `sub`, ustawienie, odmowa, audyt), mcp-platform (zmienna `MCP_MAX_OPEN_STREAMS_PER_USER` w konfiguracji, jeśli domyślna nie pasuje).
+- **Status:** accepted (decyzja: właściciel platformy, 2026-11-13); zastępuje w części CC-223 i decyzję o strumieniach z CC-192

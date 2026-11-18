@@ -25,8 +25,10 @@ export function gatewayAuthenticationResponse({ reason, publicBaseUrl, resourceP
   }
   // CC-156: a request over a limit that is not a tool call. The client waits; it does not log in again, so no challenge,
   // and no X-RateLimit-* header, which would reveal the settings.
-  if (reason === 'rate_limited') {
-    const wait = Math.max(1, Math.ceil(retryAfterSeconds));
+  // CC-254: a stream over the per-user share is refused the same way; the user hit a limit of their own, not an overloaded
+  // instance, and the body does not tell which limit applied.
+  if (reason === 'rate_limited' || reason === 'user_streams_limit_reached') {
+    const wait = Math.max(1, Math.ceil(given ?? (reason === 'rate_limited' ? RETRY_AFTER_SECONDS : SHED_RETRY_AFTER_SECONDS)));
     return {
       status: 429,
       headers: {

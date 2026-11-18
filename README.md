@@ -723,14 +723,21 @@ stateless), and sends an empty `notifications/tools/list_changed` when the `tool
 - **Stream lifetime:** it ends with the expiry of the token it was opened with (the client opens a new one), with `DELETE` of the
   session and with a user `purge`. Events are not replayed (`Last-Event-ID` is ignored): after reconnecting, the client calls
   `tools/list`. Losing a notification does not harm security, because `tools/call` is checked on every call.
-- **No per-user stream limit, a per-instance limit (CC-223).** No stream, neither `GET` nor `POST subscriptions/listen`, counts
+- **A per-user share and a per-instance limit (CC-254, CC-223).** No stream, neither `GET` nor `POST subscriptions/listen`, counts
   toward the in-flight request limit (`MCP_MAX_CONCURRENT_REQUESTS`, CC-199), and the number of open streams is a gateway metric
-  (CC-207). An instance holds at most `MCP_MAX_OPEN_STREAMS` open streams (default 2000, `GET` of sessions and
-  `subscriptions/listen` together; decision of 2026-11-03). Above the limit, opening a stream is `503` with `Retry-After`
-  (`MCP_SHED_RETRY_AFTER_SECONDS`, default 2 s) and the same body as the overload of CC-199 (`upstream_unavailable`, no
-  `WWW-Authenticate`), and the count of refusals is a metric. Opening a stream is an ordinary request for the user and client
-  limits (CC-135) and passes all the order checks of CC-184 before the limit is checked; the stream entry is released on every
-  end, also when the response did not start. Vector `gateway-authentication/streams-limit-reached`.
+  (CC-207). An instance holds at most `MCP_MAX_OPEN_STREAMS_PER_USER` open streams of one user (`sub`; default 20, `GET` of
+  sessions and `subscriptions/listen` together, all AI clients of the user together; CC-254 reverses the "no per-user limit" of
+  CC-192 and CC-223) and at most `MCP_MAX_OPEN_STREAMS` open streams in total (default 2000; decision of 2026-11-03). The share is
+  checked first: above it, opening a stream is `429 rate_limited` with `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`, default 2 s)
+  and the body of CC-156, no `WWW-Authenticate` and no `X-RateLimit-*`, recorded as `policy_decision` with `decision: deny`,
+  `errorCode: rate_limited` and the reason `rate_limited_user`. Above the instance limit, opening a stream is `503` with
+  `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`) and the same body as the overload of CC-199 (`upstream_unavailable`, no
+  `WWW-Authenticate`). Both refusals are counted in `mcp_gateway_streams_refused_total`. With the defaults one user fills at most
+  1% of an instance, and 100 users at their share are needed to fill it; 20 leaves room for several AI clients, each with a
+  session stream and `subscriptions/listen`, and for the overlap when a client opens a new stream before the old token expires.
+  Opening a stream is an ordinary request for the user and client limits (CC-135) and passes all the order checks of CC-184
+  before either limit is checked; the stream entry is released on every end, also when the response did not start. Vectors
+  `gateway-authentication/user-streams-limit-reached`, `streams-limit-reached`.
 - **Stream heartbeat (CC-207).** On every open SSE stream (`GET` and `POST subscriptions/listen`) the gateway sends the SSE comment
   line `: keepalive` every 15 s (`MCP_SSE_HEARTBEAT_INTERVAL`, default 15 s), so that an intermediary does not drop an idle
   stream. nginx cannot tell `subscriptions/listen` from any other `POST /mcp`, so the same applies to `/mcp` and `/s/...`:
@@ -1338,7 +1345,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `activity-calls/` | 57 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
 | `gateway-authentication-decision/` | 12 | choosing the reason and the 401/503 status from the key copy state, `kid` and refresh (CC-124) |
 | `activity-cursor/` | 9 | the `/activity/calls` cursor: HMAC, binding to `sub`, 15 min validity (CC-095); a test key, NOT FOR PRODUCTION |
-| `gateway-authentication/` | 21 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
+| `gateway-authentication/` | 22 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request (CC-083, CC-113) |
 | `query-rendering/` | 26 | server queries from a structure: JQL and CQL with hostile values, the OpenSearch index pattern and name resolution (CC-160) |
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
