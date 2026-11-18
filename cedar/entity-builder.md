@@ -101,7 +101,10 @@ Reguły:
 - Do oceny gateway używa `ScopeMapping.ofRegistered`: nieważny zakres (typ, którego żaden zarejestrowany serwer nie deklaruje, bo
   serwer usunięto; część lokalna niepasująca do węższego `scopePattern`) jest pomijany osobno i zgłaszany przez `ignored()`, więc
   jeden zły wpis nie odbiera grantów pozostałym. Usunięcie serwera usuwa z mapowania wpisy typów jego przestrzeni, żeby serwer
-  dodany później pod tą samą przestrzenią nie odziedziczył grantów.
+  dodany później pod tą samą przestrzenią nie odziedziczył grantów. Zatwierdzenie polityk serwera usuwa z mapowania zakresy jego
+  przestrzeni, które przestały pasować do zatwierdzonych deklaracji (`undeclared_type`, `invalid_scope`), z audytem
+  `scope_mapping_entry_removed`, żeby taki zakres nie nadał dostępu ponownie, gdy późniejsze zatwierdzenie przywróci typ albo
+  poszerzy `scopePattern` (CC-252).
 - `ScopeMapping.fromJson(types, json, skipUndeclared)` czyta kształt z danych polityki.
 
 ## 4. Principal
@@ -272,6 +275,9 @@ nadpisanie o id polityki platformy zastąpiłoby ją.
 - **Własność przestrzeni:** przestrzeń należy do pierwszego `serverId`, którego polityki są ZATWIERDZONE z tą przestrzenią; rejestracja
   sprawdza tylko względem zatwierdzonych właścicieli i niczego nie zajmuje. Gdy zatwierdzenie zmienia albo zwalnia przestrzeń serwera,
   wpisy mapowania zwolnionej przestrzeni są usuwane i audytowane (`scope_mapping_entry_removed`), tak jak przy `deleteServer`.
+  W tej samej zmianie zatwierdzenie usuwa zakresy przestrzeni serwera (sprzed i po zatwierdzeniu), które `ScopeMapping.ofRegistered`
+  z nową sumą deklaracji zgłasza jako `undeclared_type` albo `invalid_scope`, i audytuje każdy (`scope_mapping_entry_removed`);
+  odpowiedź wymienia je w `ignoredMappingEntries` (CC-252).
 - **Certyfikat serwera MCP (CC-249):** dowolny certyfikat HTTPS (od zaufanego CA, samopodpisany albo wygenerowany przez starter); gateway łączy się bez
   certyfikatu klienta i ufa mu według trybu zatwierdzonego przez administratora (`ca`, `pinned`, `plain`, C5), a nie według nazwy w certyfikacie.
 - **Rewizja danych polityki:** `max(poprzednia + 1, bieżący czas w milisekundach epoki)`, żeby odtworzenie bazy nie obniżyło jej poniżej

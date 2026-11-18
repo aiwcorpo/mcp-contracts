@@ -79,7 +79,7 @@ test('portal-bff.v1.yaml: catalog examples follow the action table of CC-083', a
         assert.equal(server.connection, null, `${where}: no connection`);
       }
       for (const tool of server.tools) {
-        if (tool.risk === 'DESTRUCTIVE') assert.equal(tool.requiresConfirmation, true, `${where} ${tool.name}`);
+        if (tool.risk !== 'READ_ONLY') assert.equal(tool.requiresConfirmation, true, `${where} ${tool.name}`);
       }
     }
   }

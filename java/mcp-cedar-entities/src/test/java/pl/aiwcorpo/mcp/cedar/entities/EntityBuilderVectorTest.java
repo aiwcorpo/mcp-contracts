@@ -94,6 +94,24 @@ class EntityBuilderVectorTest {
     }
 
     @Test
+    void scopesAnApprovalRemovesDoNotGrantWhenTheTypeReturns() {
+        // CC-252: at a policy approval the gateway deletes from the stored mapping the undeclared_type and invalid_scope
+        // entries that ofRegistered reports for the server's namespace. Kept, the same stored scope grants again as soon
+        // as a later approval declares the type again.
+        ResourceTypes withFolder = ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve("test-vectors/fixtures/notes/resource-types.json")));
+        Map<String, List<String>> stored = Map.of("mcp-team", List.of("Notes::Folder/team"));
+
+        ScopeMapping atApproval = ScopeMapping.ofRegistered(ResourceTypes.empty(), stored);
+        assertEquals(List.of(new ScopeMapping.Ignored("mcp-team", "Notes::Folder/team", "undeclared_type")), atApproval.ignored());
+
+        List<String> removed = atApproval.ignored().stream().map(ScopeMapping.Ignored::scope).toList();
+        Map<String, List<String>> afterApproval = Map.of("mcp-team",
+                stored.get("mcp-team").stream().filter(scope -> !removed.contains(scope)).toList());
+        assertEquals(List.of(), List.copyOf(ScopeMapping.ofRegistered(withFolder, afterApproval).scopesOf("mcp-team")));
+        assertEquals(List.of("Notes::Folder/team"), List.copyOf(ScopeMapping.ofRegistered(withFolder, stored).scopesOf("mcp-team")));
+    }
+
+    @Test
     void mappingForANamespaceKeepsOnlyItsScopes() {
         ResourceTypes types = ResourceTypes.of(java.util.stream.Stream.of("cedar/examples/systems/jira", "test-vectors/fixtures/notes")
                 .flatMap(d -> ResourceTypes.fromJson(ContractFiles.read(ContractFiles.resolve(d + "/resource-types.json"))).declarations().stream()).toList());

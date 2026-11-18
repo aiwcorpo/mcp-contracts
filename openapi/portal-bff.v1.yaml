@@ -2674,7 +2674,7 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Approved; the mapping entries that the approval makes invalid and that evaluation will ignore.
+          description: Approved; the mapping entries that the approval made invalid and therefore removed from the stored scope mapping (CC-252).
           content:
             application/json:
               schema:

@@ -1,5 +1,5 @@
 {
-  "description": "A pending confirmation of another risk (required by policy) does not touch the DESTRUCTIVE one.",
+  "description": "A pending confirmation of an UPDATE call does not touch the DESTRUCTIVE one.",
   "kind": "first-call",
   "authenticator": "active",
   "pendingCalls": [

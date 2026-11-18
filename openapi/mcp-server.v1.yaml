@@ -275,6 +275,10 @@ paths:
         gateway acts on. The token has the purpose `call`. Besides `401` (a token that fails C2, including `wrong_purpose`), a `tools/call` can be refused with
         `409 policy_data_stale`, see "The gate of policy data" above: the gateway pushes its policy data and repeats the call once. Any other refusal of the gate is an MCP
         answer with the error `upstream_unavailable` (C10) and is not retried.
+        A server may report `step_up_required`, `credential_required` or `confirmation_required` (only the shape with `registerUrl`) in a `tools/call` result, but
+        never chooses a link (CC-253): the gateway drops `stepUpUrl`, `connectUrl`, `registerUrl` and `previewUrl` from the server and builds each from its own portal
+        address (for `credential_required` with the system of the called tool), as for `connectUrl` of the broker (CC-105). A `confirmation_required` from a server with
+        `confirmationId`, `description`, `previewUrl` or `expiresAt` names a confirmation the gateway does not hold and reaches the client as `internal_error`.
       security:
         - gatewayJwt: []
       requestBody:
