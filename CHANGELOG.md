@@ -5,8 +5,14 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
-## Unreleased
+## 7.2.0 - 2026-11-18
 
+Wydanie **minor** po audycie bezpieczeństwa z 2026-11-13 (CC-252 ... CC-257): nowe odpowiedzi i limity, zmiany zachowania gatewaya
+i brokera; istniejące kształty odpowiedzi bez zmian.
+
+- `DefinitionHash` (Java) i `hashInput` (npm) odrzucają człony definicji spoza `name`, `title`, `description`, `inputSchema`,
+  `outputSchema` i `annotations` (np. `_meta`, `icons`), zgodnie z CC-042; wcześniej były pomijane w hashu.
+- Workflow wydania buduje tylko z otagowanego commita na `main`.
 - **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Tylko opis zachowania: patch.
 - **CC-252 (C5, C7, C8):** `approveServerPolicies` usuwa z zapisanego mapowania zakresów zakresy przestrzeni serwera, które przestały pasować do zatwierdzonych deklaracji (`undeclared_type`, `invalid_scope`), z audytem `scope_mapping_entry_removed`; `ignoredMappingEntries` wymienia usunięte zakresy. Taki zakres nie wraca, gdy późniejsze zatwierdzenie przywróci typ.
 - **CC-253 (C10, C14):** serwer może zgłosić w wyniku `tools/call` `step_up_required`, `credential_required` albo `confirmation_required` (tylko z `registerUrl`), ale linki (`stepUpUrl`, `connectUrl`, `registerUrl`, `previewUrl`) zawsze buduje gateway z własnego adresu portalu; wartości od serwera są ignorowane. `confirmation_required` od serwera z `confirmationId` dociera do klienta jako `internal_error`.

@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: MCP Server Interface
-  version: 7.1.0
+  version: 7.2.0
   summary: Contract C14 of the MCP platform (what every MCP server serves to the gateway, and the public key set of the gateway).
   description: |
     The gateway connects to every MCP server; a server connects to nothing of the platform except the public key set of the
