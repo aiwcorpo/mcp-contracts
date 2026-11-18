@@ -25,8 +25,8 @@ info:
     Operations backed by the broker (C4) or the gateway admin API (C5) answer `503 upstream_unavailable` when
     those (or the IdP token exchange) fail; there are no partial answers (CC-050).
 
-    Limits (CC-156). The BFF limits per session the writing of a token (`PUT /connections/{system}/secret`) and the
-    operations of the authenticator; over a limit it answers `429 rate_limited` with `Retry-After` (seconds, at least
+    Limits (CC-156, CC-255). The BFF limits per user (`sub`) the writing of a token (`PUT /connections/{system}/secret`)
+    and the operations of the authenticator, so a new session or login does not reset the window; over a limit it answers `429 rate_limited` with `Retry-After` (seconds, at least
     1). The values are configuration, not contract, and no `X-RateLimit-*` header is sent.
 
     Correlation: the BFF creates a requestId (UUIDv7) per request (a value sent by the client is ignored) and

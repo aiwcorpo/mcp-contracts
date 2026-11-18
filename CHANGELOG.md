@@ -5,6 +5,10 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
+## Unreleased
+
+- **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Tylko opis zachowania: patch.
+
 ## 7.1.0 - 2026-11-17
 
 Wydanie **minor**: nowe operacje, opcjonalne pole widoku systemu, nowe powody audytu i wektory (CC-250, CC-251); istniejące

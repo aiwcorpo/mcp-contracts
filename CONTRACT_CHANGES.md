@@ -4457,3 +4457,13 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** doprecyzowanie opisów i przykładu, brak zmiany schematów, kodów, wyliczeń i wektorów; CC-251 nie jest wydane, więc nie zmienia niczego w wydanym 7.0.0. Klasa: patch względem CC-251 (razem z CC-251: minor).
 - **Wpływ:** broker PR #5 jest zgodny z kontraktem po akceptacji aneksu (do tego czasu zachowania 1-4 są jego odstępstwami od tekstu CC-251); portal PR #8 jest zgodny ze schematami, rozjeżdża się tylko z przykładem 422, który aneks poprawia. Pozostali bez zmian.
 - **Status:** accepted (decyzja: właściciel platformy, 2026-11-16)
+
+## CC-255 | C12/README | Limity BFF per użytkownik, nie per sesja
+
+- **Źródło:** audyt bezpieczeństwa z 2026-11-13 (mcp-portal L-03); decyzja właściciela platformy z 2026-11-13 (akceptacja zmiany udokumentowanej decyzji).
+- **Stan:** README ("Rate limits") i opis `portal-bff.v1.yaml` mówiły, że BFF limituje zapis tokenu i operacje Authenticatora per sesja. Okno siedziało w atrybucie sesji, więc ponowne logowanie albo druga sesja zaczynały nowe okno i każda próba zapisu była kolejnym sprawdzeniem pary login i sekret w systemie docelowym.
+- **Zmiana:** BFF liczy oba limity per użytkownik (`sub`) na każdej instancji BFF; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Odpowiedź bez zmian (`429 rate_limited` z `Retry-After`), wartości nadal są konfiguracją. Uzupełnia limit per `sub` w brokerze (CC-256), który obejmuje wszystkie instancje BFF.
+- **Pliki:** `README.md`, `openapi/portal-bff.v1.yaml` (opis), `openapi/bundled/portal-bff.v1.bundled.yaml`.
+- **Zgodność wstecz (SemVer):** tylko opis zachowania, bez zmiany kształtu: patch.
+- **Kogo dotyka:** mcp-portal (gałąź `audit/l-03-secret-write-limit-per-user` w mcp-portal już tak liczy).
+- **Status:** accepted (decyzja: właściciel platformy, 2026-11-13)
