@@ -8,6 +8,7 @@ versions are historical and are kept in the language they were written in.
 ## Unreleased
 
 - **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Tylko opis zachowania: patch.
+- **CC-252 (C5, C7, C8):** `approveServerPolicies` usuwa z zapisanego mapowania zakresów zakresy przestrzeni serwera, które przestały pasować do zatwierdzonych deklaracji (`undeclared_type`, `invalid_scope`), z audytem `scope_mapping_entry_removed`; `ignoredMappingEntries` wymienia usunięte zakresy. Taki zakres nie wraca, gdy późniejsze zatwierdzenie przywróci typ.
 
 ## 7.1.0 - 2026-11-17
 
