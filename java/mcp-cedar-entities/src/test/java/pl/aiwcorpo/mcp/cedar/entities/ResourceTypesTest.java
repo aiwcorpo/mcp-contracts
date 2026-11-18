@@ -73,7 +73,8 @@ class ResourceTypesTest {
         for (String pattern : List.of("^(.*a){12}$", "^(a+)+$", "^(a|aa)+$", "^(a|a?)+$", "^([a-z]+)*[0-9]$", "^(a)\\1$", "^(?=a)a$", "^(?!a)b$",
                 "^a*a*a*a*a*$", "^[a-z]+[a-z0-9]*$", "^a{2,}b*a+$", "^.*a+$", "^(?:a*)(?:a*)$", "^a*(?:)a*$", "^a*(?:-x)?a*$",
                 "^a{0,1000}a{0,1000}$", "^a{0,1024}a{0,1024}$", "^a?a?a?a?a$", "^\\x61*\\x61*$", "^\\x61*\\u0061*$", "^\\p{L}*\\p{L}*$",
-                "^\\pL*\\pL*$", "^" + "a".repeat(520) + "$")) {
+                "^\\pL*\\pL*$", "^\\Q[\\E(a+)+\\Q]\\E$", "^\\Q[\\E(a+)+\\1?\\Q]\\E$", "^\\c\\(a+\\c\\)+$",
+                "^" + "a".repeat(520) + "$")) {
             assertThrows(IllegalArgumentException.class, () -> ResourceTypes.of(List.of(
                     declaration("Acme::Box", null, null, pattern, null, false, null))), pattern);
         }

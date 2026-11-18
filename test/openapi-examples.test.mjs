@@ -79,7 +79,7 @@ test('portal-bff.v1.yaml: catalog examples follow the action table of CC-083', a
         assert.equal(server.connection, null, `${where}: no connection`);
       }
       for (const tool of server.tools) {
-        if (tool.risk === 'DESTRUCTIVE') assert.equal(tool.requiresConfirmation, true, `${where} ${tool.name}`);
+        if (tool.risk !== 'READ_ONLY') assert.equal(tool.requiresConfirmation, true, `${where} ${tool.name}`);
       }
     }
   }
@@ -152,4 +152,14 @@ test('result groups of the activity filter (CC-142)', async () => {
   for (const r of ['denied_not_granted', 'denied_filter_scope', 'denied_policy', 'tool_disabled', 'step_up_required', 'rate_limited']) assert.equal(resultGroup(r), 'denied', r);
   for (const r of ['error', 'credential_required']) assert.equal(resultGroup(r), 'error', r);
   for (const r of ['confirmed', 'expired', 'confirmation_pending', 'confirmation_failed', 'superseded', 'blocked_by_pending', 'cancelled']) assert.equal(resultGroup(r), 'confirmation', r);
+});
+
+test('credential-broker.v1.yaml: a token write can be refused with 429 rate_limited and Retry-After (CC-256)', async () => {
+  const spec = await dereferenceOpenApi('credential-broker.v1.yaml');
+  const operation = operations(spec).find((o) => o.operation.operationId === 'putSecret').operation;
+  const refusal = operation.responses['429'];
+  assert.ok(refusal, 'putSecret has no 429 response');
+  assert.ok(refusal.headers?.['Retry-After'], 'the 429 of putSecret has no Retry-After');
+  const examples = Object.values(refusal.content['application/json'].examples).map((ex) => ex.value.error);
+  assert.deepEqual(examples, ['rate_limited']);
 });

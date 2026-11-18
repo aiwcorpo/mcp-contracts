@@ -267,4 +267,16 @@ class PolicyFragmentsTest {
     void policySetTakesTheIdFromTheAnnotation() {
         assertEquals(1, PolicyFragments.policySet(Map.of("f", "@id(\"a\") forbid (principal, action, resource);")).policies.size());
     }
+
+    private static final String CASE_TWINS = "[{\"type\":\"Notes::Page\",\"attributes\":[\"level\"],\"idPattern\":\"^[a-z]{1,8}$\","
+            + "\"classification\":{\"attribute\":\"level\",\"kind\":\"string\",\"required\":true}},"
+            + "{\"type\":\"Notes::PAGE\",\"attributes\":[\"level\"],\"idPattern\":\"^[a-z]{1,8}$\","
+            + "\"classification\":{\"attribute\":\"level\",\"kind\":\"string\",\"required\":true}}]";
+
+    @Test
+    void typesThatDifferOnlyInCaseAreRefusedInsteadOfDroppingAForbid() {
+        ResourceTypes types = ResourceTypes.fromJson(CASE_TWINS);
+        assertThrows(IllegalArgumentException.class, () -> PlatformServerPolicies.texts(types));
+        assertThrows(IllegalArgumentException.class, () -> PlatformServerPolicies.policySet(types));
+    }
 }

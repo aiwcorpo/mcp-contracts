@@ -122,6 +122,8 @@ export function grammarViolation(regex) {
     if (c === '\\') {
       const next = regex[i + 1] ?? ' ';
       if (!inClass && ((next >= '1' && next <= '9') || next === 'k')) return 'back reference';
+      // Same refusal as PatternGrammar: java.util.regex reads \Q...\E and \c as multi-character escapes.
+      if (next === 'Q' || next === 'E' || next === 'c') return 'quote or control escape';
       i++;
       lastClosedHadQuantifier = false;
       lastBody = null;

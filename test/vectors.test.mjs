@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash, X509Certificate } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
-import { manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
+import { definitionHash, manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
 import { grammarViolation, manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { acceptRevision, ackOutcome, gatewayCall, policyDataGate, pushBodyCheck, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
@@ -47,6 +47,14 @@ test('definition-hash vectors: canonical form and sha256', () => {
     assert.equal('sha256:' + createHash('sha256').update(data.canonical, 'utf8').digest('hex'), data.expected, name);
     if (data.sameAs) assert.equal(data.expected, byName[data.sameAs].expected, `${name} sameAs`);
     if (data.differsFrom) assert.notEqual(data.expected, byName[data.differsFrom].expected, `${name} differsFrom`);
+  }
+});
+
+test('definitionHash refuses a definition member it does not cover, as DefinitionHash does', () => {
+  const { input, expected } = readJson('test-vectors/definition-hash/get-issue.json');
+  assert.equal(definitionHash(input).hash, expected);
+  for (const extra of [{ _meta: { note: 'x' } }, { icons: [] }]) {
+    assert.throws(() => definitionHash({ ...input, tool: { ...input.tool, ...extra } }), /not covered by definitionHash/);
   }
 });
 

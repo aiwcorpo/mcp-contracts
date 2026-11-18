@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: MCP Portal BFF API
-  version: 7.1.0
+  version: 7.2.0
   summary: Contract C12 of the MCP platform (API of the portal backend-for-frontend).
   description: |
     Used only by the portal frontend, same origin. The session is the cookie `__Host-session`
@@ -27,7 +27,9 @@ info:
 
     Limits (CC-156, CC-255). The BFF limits per user (`sub`) the writing of a token (`PUT /connections/{system}/secret`)
     and the operations of the authenticator, so a new session or login does not reset the window; over a limit it answers `429 rate_limited` with `Retry-After` (seconds, at least
-    1). The values are configuration, not contract, and no `X-RateLimit-*` header is sent.
+    1). The values are configuration, not contract, and no `X-RateLimit-*` header is sent. The broker also limits
+    token writes per `sub` (CC-256); the BFF answers its `429` as its own `429 rate_limited` with the broker's
+    `Retry-After`, not as `503`.
 
     Correlation: the BFF creates a requestId (UUIDv7) per request (a value sent by the client is ignored) and
     sends it to the broker and gateway in `X-Request-Id`, so their audit events and the portal's share one
@@ -2672,7 +2674,7 @@ paths:
           headers:
             X-Request-Id:
               $ref: '#/components/headers/RequestId'
-          description: Approved; the mapping entries that the approval makes invalid and that evaluation will ignore.
+          description: Approved; the mapping entries that the approval made invalid and therefore removed from the stored scope mapping (CC-252).
           content:
             application/json:
               schema:

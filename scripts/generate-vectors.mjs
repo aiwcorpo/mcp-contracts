@@ -1231,7 +1231,7 @@ firstCallVector('first-call-other-tool-also-supersedes', 'Another DESTRUCTIVE to
 firstCallVector('first-call-expired-pending-is-not-superseded', 'An expired pending call is gone already: nothing is superseded.',
   { pendingCalls: [stored()], at: '2026-10-26T20:05:00Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:07:00Z', pendingCreated: true, supersededIds: [] });
-firstCallVector('first-call-update-does-not-supersede-destructive', 'A pending confirmation of another risk (required by policy) does not touch the DESTRUCTIVE one.',
+firstCallVector('first-call-update-does-not-supersede-destructive', 'A pending confirmation of an UPDATE call does not touch the DESTRUCTIVE one.',
   { pendingCalls: [stored()], call: { tool: 'update_issue', risk: 'UPDATE', arguments: { issueKey: 'ABC-125', summary: 'x' } }, at: '2026-10-26T20:00:30Z' },
   { outcome: 'confirmation_required', register: false, expiresAt: '2026-10-26T20:02:30Z', pendingCreated: true, supersededIds: [] });
 firstCallVector('first-call-destructive-does-not-supersede-update', 'A new DESTRUCTIVE operation leaves pending confirmations of other risk alone.',
@@ -1280,6 +1280,11 @@ gatewayAuth('streams-limit-reached', 'The instance has reached the limit of open
   { reason: 'streams_limit_reached', publicBaseUrl: BASE, resourcePath: '/mcp' },
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '2' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],
     body: { error: 'upstream_unavailable', message: 'The gateway is busy. Try again in a few seconds.' } });
+gatewayAuth('user-streams-limit-reached', 'The user already holds the per-user share of open streams on this instance (MCP_MAX_OPEN_STREAMS_PER_USER, 20 by default; GET of a session and subscriptions/listen together, CC-254): 429 rate_limited with Retry-After (2 s by default), the CC-156 body, no challenge and no X-RateLimit headers, no stream was opened. Checked before the instance limit.',
+  { reason: 'user_streams_limit_reached', publicBaseUrl: BASE, resourcePath: '/mcp' },
+  { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '2' },
+    absentHeaders: ['WWW-Authenticate', 'Set-Cookie', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+    body: { error: 'rate_limited', message: 'Too many requests. Try again later.', retryAfterSeconds: 2 } });
 gatewayAuth('session-store-unavailable', 'The store of the MCP sessions does not answer (CC-199): 503 with Retry-After, not a 404 (the session is not unknown, it cannot be read), no challenge.',
   { reason: 'session_store_unavailable', publicBaseUrl: BASE, resourcePath: '/mcp' },
   { status: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '10' }, absentHeaders: ['WWW-Authenticate', 'Set-Cookie'],

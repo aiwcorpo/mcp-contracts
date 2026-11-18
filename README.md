@@ -8,7 +8,7 @@ Apache-2.0 ([`LICENSE`](LICENSE), [`NOTICE`](NOTICE)).
 
 ## Who this is for and how to use it
 
-**Status: 7.1.0 is released** (tag `v7.1.0`, 2026-11-17). Changes after the tag are listed under "Unreleased" in `CHANGELOG.md`.
+**Status: 7.2.0 is released** (tag `v7.2.0`, 2026-11-18). Changes after the tag are listed under "Unreleased" in `CHANGELOG.md`.
 
 This is a library for the authors of platform components (the gateway, the credential broker, the portal, and every MCP server
 of the platform), not a product to run. Other repositories generate clients,
@@ -25,7 +25,7 @@ starter) and `mcp-manifest`.
 The contracts are frozen: a change is proposed in [`CONTRACT_CHANGES.md`](CONTRACT_CHANGES.md) and approved by a person.
 That file also records every place where the original contract text was imprecise, with the variant that was adopted.
 CC-001 ... CC-034 shipped in 1.1.0, CC-036 ... CC-045 in 1.2.0, CC-046 ... CC-067 in 2.0.0, CC-068 ... CC-077 in 2.1.0,
-CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0, CC-250 and CC-251 in 7.1.0; CC-035 was rejected.
+CC-169 ... CC-177 in 5.0.0, CC-229 ... CC-236 in 7.0.0, CC-250 and CC-251 in 7.1.0, CC-252 ... CC-257 in 7.2.0; CC-035 was rejected.
 
 ## Using the artifacts
 
@@ -42,12 +42,12 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>7.1.0</version>
+  <version>7.2.0</version>
 </dependency>
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-contracts</artifactId>
-  <version>7.1.0</version>
+  <version>7.2.0</version>
   <classifier>test-vectors</classifier>
   <scope>test</scope>
 </dependency>
@@ -56,15 +56,15 @@ Maven Central, group `pl.aiwcorpo.mcp`, no repository entry and no credentials n
 npm, public registry, scope `@aiwcorpo`, no `.npmrc` needed:
 
 ```bash
-npm install --save-dev @aiwcorpo/mcp-contracts@7.1.0
+npm install --save-dev @aiwcorpo/mcp-contracts@7.2.0
 ```
 
 The npm package is published from GitHub Actions with provenance; `npm audit signatures` shows the attestation that ties the
 tarball to the tag and the workflow run. Maven artifacts carry a GPG signature (`.asc`); the public key is published on
 `keyserver.ubuntu.com`. A version is immutable once it is on Central, so a fix is a new number.
 
-If you built 7.1.0 locally or installed it from another source before it reached Central, delete
-`~/.m2/repository/pl/aiwcorpo/mcp/*/7.1.0` and let Maven fetch the published files; the local copies are not byte-identical.
+If you built 7.2.0 locally or installed it from another source before it reached Central, delete
+`~/.m2/repository/pl/aiwcorpo/mcp/*/7.2.0` and let Maven fetch the published files; the local copies are not byte-identical.
 
 ## What is where
 
@@ -214,12 +214,12 @@ and the `info.version` fields, and the tag `vX.Y.Z`.
 
 | Artifact | Contents | Use |
 | --- | --- | --- |
-| `pl.aiwcorpo.mcp:mcp-contracts:7.1.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` under the classpath prefix `mcp-contracts/` | may be on the runtime classpath (for example the Cedar schema, manifest validation) |
-| `pl.aiwcorpo.mcp:mcp-contracts:7.1.0:test-vectors` (jar, classifier) | `test-vectors/` including the test keys, under `mcp-contracts/test-vectors/` | **only** `<scope>test</scope>` |
-| `pl.aiwcorpo.mcp:mcp-cedar-entities:7.1.0` (jar + javadoc) | Cedar entity builder (C7, C9), validation of policy fragments and overrides | gateway and starter, runtime |
-| `pl.aiwcorpo.mcp:mcp-manifest:7.1.0` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
-| `pl.aiwcorpo.mcp:mcp-contracts-parent:7.1.0` (pom) | parent of the modules | installed together with them |
-| `@aiwcorpo/mcp-contracts@7.1.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@7.1.0`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
+| `pl.aiwcorpo.mcp:mcp-contracts:7.2.0` (jar) | `openapi/`, `schemas/`, `cedar/`, `mocks/wiremock/` under the classpath prefix `mcp-contracts/` | may be on the runtime classpath (for example the Cedar schema, manifest validation) |
+| `pl.aiwcorpo.mcp:mcp-contracts:7.2.0:test-vectors` (jar, classifier) | `test-vectors/` including the test keys, under `mcp-contracts/test-vectors/` | **only** `<scope>test</scope>` |
+| `pl.aiwcorpo.mcp:mcp-cedar-entities:7.2.0` (jar + javadoc) | Cedar entity builder (C7, C9), validation of policy fragments and overrides | gateway and starter, runtime |
+| `pl.aiwcorpo.mcp:mcp-manifest:7.2.0` (jar + javadoc) | `definitionHash` (RFC 8785), C6 manifest rules and `EndpointFilter` (the `/mcp` query filter, CC-170) | starter (generation), gateway (registration, filter), BFF (filter) |
+| `pl.aiwcorpo.mcp:mcp-contracts-parent:7.2.0` (pom) | parent of the modules | installed together with them |
+| `@aiwcorpo/mcp-contracts@7.2.0` (npm, npmjs.org) | everything above except the jars, plus TS types (`dist/types`) and MSW handlers (`dist/msw`) | `npm install --save-dev @aiwcorpo/mcp-contracts@7.2.0`; locally `npm run pack` produces `release/aiwcorpo-mcp-contracts-<version>.tgz` |
 
 In Maven the test keys (private ones too, which are public by design) are only in the `test-vectors` jar, so that a production
 component cannot load a test JWKS from the classpath by accident. Receiver tests sign tokens with them, so the jar
@@ -264,7 +264,7 @@ needs Guava on the compile classpath (it is a runtime dependency of cedar-java a
 <dependency>
   <groupId>pl.aiwcorpo.mcp</groupId>
   <artifactId>mcp-cedar-entities</artifactId>
-  <version>7.1.0</version>
+  <version>7.2.0</version>
 </dependency>
 ```
 
@@ -389,8 +389,8 @@ types the code in the client (CC-091, 3.0.0).
 
 ## TOTP code confirmations (C11, since 3.0.0)
 
-A destructive action is confirmed by the current 6-digit code from the "MCP Platform" account in the Authenticator app, typed in
-the AI client (CC-091). The broker verifies the code (C4 `verifyAuthenticatorCode`); the gateway receives only the result.
+A call of a tool with risk `UPDATE` or `DESTRUCTIVE` is confirmed by the current 6-digit code from the "MCP Platform" account in
+the Authenticator app, typed in the AI client (CC-091; `UPDATE` since CC-257). Only `READ_ONLY` calls run without a code. The broker verifies the code (C4 `verifyAuthenticatorCode`); the gateway receives only the result.
 
 1. First call: the gateway asks the broker about registration (`GET /v1/authenticator`). Without a registration it fails
    closed: `confirmation_required` with only `registerUrl`, and no pending call. With a registration the gateway stores a
@@ -410,7 +410,7 @@ the AI client (CC-091). The broker verifies the code (C4 `verifyAuthenticatorCod
    trace** (viewed, unconfirmed A: pending, exhausted or expired) is stored separately, per `sub`, not under the operation key,
    and a new call of the same operation (A') does not replace it; the rule "replaces the trace" applies only to `superseded`
    traces (`first-calls-sequence-exhausted-a-then-same-operation-then-b`). The limit of pending calls per `sub` (3 by default)
-   now applies only to confirmations of a risk other than `DESTRUCTIVE` (required by policy) and gives `rate_limited` with
+   now applies only to confirmations of a risk other than `DESTRUCTIVE` (`UPDATE` calls, CC-257) and gives `rate_limited` with
    `retryAfterSeconds` equal to the time until the oldest of them expires.
 2. The preview (`previewUrl`, C12 `GET /api/v1/confirmations/{id}`) is **optional**: read-only, owner only, a session without
    fresh MFA, `no-store`; the code works without opening it. Residual risk accepted by the maintainers (2026-10-27): the code
@@ -494,14 +494,14 @@ the AI client (CC-091). The broker verifies the code (C4 `verifyAuthenticatorCod
    the code typed for B. Mitigations, without requiring the preview: one pending `DESTRUCTIVE` operation per user (without an
    open preview, a new one invalidates the older one before the code is typed and leaves an audit trace; after the preview is
    opened the first wins and the new one is rejected, so a human who saw the operation in the trusted channel does not lose it
-   silently; a code can confirm the newest pending `DESTRUCTIVE` operation, but also one of the pending confirmations of another
-   risk, which this rule does not cover, and only once), a TTL of 120 s, 3 attempts per call, the 5/15 min block, disabling after
+   silently; a code can confirm the newest pending `DESTRUCTIVE` operation, but also one of the pending `UPDATE` confirmations,
+   which this rule does not cover, and only once), a TTL of 120 s, 3 attempts per call, the 5/15 min block, disabling after
    20 errors a day, one-time use of a TOTP step, the optional preview in a trusted channel, and an audit that distinguishes
    confirmation with the preview (`user_confirmed`) from confirmation without it (`user_confirmed_no_preview`). The "one
    operation" mechanism without the preview does not prevent substitution (the agent can invalidate A with its own B and only
    then confirm B with the code); it narrows the number of pending operations and leaves a `superseded` trace. A user who did not
    open the preview gets no signal at the time of typing the code. After the preview is opened, substitution by another
-   `DESTRUCTIVE` operation is blocked until the block ends (this does not cover confirmations of another risk); the owner can
+   `DESTRUCTIVE` operation is blocked until the block ends (this does not cover `UPDATE` confirmations); the owner can
    cancel an unwanted operation in the preview (item 2), which lifts the block. A consequence of the daily limit: an agent can
    disable the Authenticator with about 20 wrong codes (about an hour), which denies confirmations until re-registration with
    Entra step-up MFA (CC-126).
@@ -606,7 +606,7 @@ code with the audit reason `policy_forbid` (CC-198); the user's activity row in 
 not reveal that the tool exists. Then the filter: a tool cut by the filter is `not_found_or_denied` with `filter_scope`, regardless
 of the state of the server, the tool and the account (the state does not leak). Only a tool that the filter leaves gets
 `tool_disabled`, then `upstream_unavailable`, then `credential_required`, and after them the Cedar decision with arguments and the
-`DESTRUCTIVE` confirmation gate. The filter therefore precedes the confirmation gate: a call cut out by the filter does not
+confirmation gate (`UPDATE` and `DESTRUCTIVE`). The filter therefore precedes the confirmation gate: a call cut out by the filter does not
 create, consume or invalidate a pending confirmation. Vectors `endpoint-filter/call-state-*`.
 A query longer than the transport limit (about 15 KB, depending on the deployment) never reaches the filter: it is `400` or `414`
 with the JSON `{"error":"invalid_request"}`, without `reason` (schema `TransportLimitError`, CC-189); `invalid_filter` applies up
@@ -723,26 +723,33 @@ stateless), and sends an empty `notifications/tools/list_changed` when the `tool
 - **Stream lifetime:** it ends with the expiry of the token it was opened with (the client opens a new one), with `DELETE` of the
   session and with a user `purge`. Events are not replayed (`Last-Event-ID` is ignored): after reconnecting, the client calls
   `tools/list`. Losing a notification does not harm security, because `tools/call` is checked on every call.
-- **No per-user stream limit, a per-instance limit (CC-223).** No stream, neither `GET` nor `POST subscriptions/listen`, counts
+- **A per-user share and a per-instance limit (CC-254, CC-223).** No stream, neither `GET` nor `POST subscriptions/listen`, counts
   toward the in-flight request limit (`MCP_MAX_CONCURRENT_REQUESTS`, CC-199), and the number of open streams is a gateway metric
-  (CC-207). An instance holds at most `MCP_MAX_OPEN_STREAMS` open streams (default 2000, `GET` of sessions and
-  `subscriptions/listen` together; decision of 2026-11-03). Above the limit, opening a stream is `503` with `Retry-After`
-  (`MCP_SHED_RETRY_AFTER_SECONDS`, default 2 s) and the same body as the overload of CC-199 (`upstream_unavailable`, no
-  `WWW-Authenticate`), and the count of refusals is a metric. Opening a stream is an ordinary request for the user and client
-  limits (CC-135) and passes all the order checks of CC-184 before the limit is checked; the stream entry is released on every
-  end, also when the response did not start. Vector `gateway-authentication/streams-limit-reached`.
+  (CC-207). An instance holds at most `MCP_MAX_OPEN_STREAMS_PER_USER` open streams of one user (`sub`; default 20, `GET` of
+  sessions and `subscriptions/listen` together, all AI clients of the user together; CC-254 reverses the "no per-user limit" of
+  CC-192 and CC-223) and at most `MCP_MAX_OPEN_STREAMS` open streams in total (default 2000; decision of 2026-11-03). The share is
+  checked first: above it, opening a stream is `429 rate_limited` with `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`, default 2 s)
+  and the body of CC-156, no `WWW-Authenticate` and no `X-RateLimit-*`, recorded as `policy_decision` with `decision: deny`,
+  `errorCode: rate_limited` and the reason `rate_limited_user`. Above the instance limit, opening a stream is `503` with
+  `Retry-After` (`MCP_SHED_RETRY_AFTER_SECONDS`) and the same body as the overload of CC-199 (`upstream_unavailable`, no
+  `WWW-Authenticate`). Both refusals are counted in `mcp_gateway_streams_refused_total`. With the defaults one user fills at most
+  1% of an instance, and 100 users at their share are needed to fill it; 20 leaves room for several AI clients, each with a
+  session stream and `subscriptions/listen`, and for the overlap when a client opens a new stream before the old token expires.
+  Opening a stream is an ordinary request for the user and client limits (CC-135) and passes all the order checks of CC-184
+  before either limit is checked; the stream entry is released on every end, also when the response did not start. Vectors
+  `gateway-authentication/user-streams-limit-reached`, `streams-limit-reached`.
 - **Stream heartbeat (CC-207).** On every open SSE stream (`GET` and `POST subscriptions/listen`) the gateway sends the SSE comment
   line `: keepalive` every 15 s (`MCP_SSE_HEARTBEAT_INTERVAL`, default 15 s), so that an intermediary does not drop an idle
   stream. nginx cannot tell `subscriptions/listen` from any other `POST /mcp`, so the same applies to `/mcp` and `/s/...`:
   `proxy_buffering off` and `proxy_read_timeout` of at least 60 s (four times the heartbeat). A stream cut by the balancer is `504`
   or a closed connection; the client opens a new stream and calls `tools/list`.
 
-**Delivery semantics (CC-204).** A `tools/call` with risk `READ_ONLY` can be retried safely. `UPDATE` is delivered **at least
-once**: after an error with an unknown result (a `502` from the balancer, a connection reset, a client timeout) a retry by the
-client may execute the operation a second time. The platform introduces no idempotency key, and the gateway itself does not retry
-a `tools/call` of risk `UPDATE` or `DESTRUCTIVE` to a server. A retry of `DESTRUCTIVE` needs a new confirmation (a TOTP code is
-single-use, C11). The author of an `UPDATE` tool should, where the target system allows, design the operation so that repeating it
-is harmless. When a gateway instance dies in the middle of a request, the balancer answers `502` with the body
+**Delivery semantics (CC-204, CC-257).** A `tools/call` with risk `READ_ONLY` can be retried safely. `UPDATE` and `DESTRUCTIVE`
+are confirmed calls (C11): after an error with an unknown result (a `502` from the balancer, a connection reset, a client timeout)
+a retry needs a new confirmation with a new TOTP code (a code is single-use and the pending call was consumed), and a confirmed
+retry may execute the operation a second time, so `UPDATE` stays **at least once** per confirmation. The platform introduces no
+idempotency key, and the gateway itself does not retry a `tools/call` of risk `UPDATE` or `DESTRUCTIVE` to a server. The author of
+an `UPDATE` tool should, where the target system allows, design the operation so that repeating it is harmless. When a gateway instance dies in the middle of a request, the balancer answers `502` with the body
 `{"error":"bad_gateway","message":"The request may or may not have been processed. Check the result before repeating a write."}`
 (schema `BalancerError`, constant text); the same for `504` (`gateway_timeout`, read limit). The balancer does not retry a
 request it has already sent: `proxy_next_upstream error timeout` **without** `non_idempotent` (nginx then does not pass a `POST`
@@ -771,7 +778,12 @@ the status `expiring` (< 7 days) exists only when a date was given (CC-084).
 - **OAuth client `client_secret` (CC-104):** the broker keeps it in OpenBao under `secret/data/mcp/oauth-clients/<system>`,
   separately from user connections (`mcp/connections/<sha256(sub)>/<system>`); no response other than `resolve` returns it.
 - **`CredentialRequired.connectUrl` (CC-105):** an informational field; the gateway builds the link from its own `publicBaseUrl`
-  and ignores the broker's value (one source of the portal address).
+  and ignores the broker's value (one source of the portal address). Since CC-253 the same rule covers every link of a tool error
+  (`stepUpUrl`, `connectUrl`, `registerUrl`, `previewUrl`) and every origin: a server may report `step_up_required`,
+  `credential_required` or `confirmation_required` (only with `registerUrl`, no pending call) in a `tools/call` result, and the
+  gateway replaces the server's link with its own (for `credential_required` also `system`, which becomes the system of the called
+  tool). A server's `confirmation_required` with `confirmationId`, `description`, `previewUrl` or `expiresAt` reaches the client as
+  `internal_error`, because only the gateway holds pending calls.
 - **The gateway internal port (CC-106):** `/admin/v1/*` and the JWKS (C2) are on one TLS port. JWKS clients may not present a
   client certificate (clientAuth), so the client certificate's target is checked in the application layer for `/admin/v1`, not in
   the TLS handshake (this applies to the broker and the starter too).
@@ -1112,7 +1124,8 @@ The limit values are component configuration, not contract. The contract says on
 - **Broker and BFF:** starting and finishing an OAuth flow in the broker (per `sub`), writing a token and Authenticator operations in
   the BFF (per user, `sub`, on each BFF instance; a new session or a new login does not start a new window, CC-255): `429
   rate_limited` with `Retry-After`. Authenticator registration: 10 starts per hour per `sub` by default
-  (CC-151).
+  (CC-151). The broker also limits writing a token (`putSecret`) per `sub`, checked before the whoami call, so that a new portal
+  session does not give new attempts against the target system (CC-256); the BFF passes the broker's `429` on as its own.
 
 ## Token-exchange credentials and the service account (CC-157, CC-158, CC-159)
 
@@ -1332,7 +1345,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `activity-calls/` | 57 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
 | `gateway-authentication-decision/` | 12 | choosing the reason and the 401/503 status from the key copy state, `kid` and refresh (CC-124) |
 | `activity-cursor/` | 9 | the `/activity/calls` cursor: HMAC, binding to `sub`, 15 min validity (CC-095); a test key, NOT FOR PRODUCTION |
-| `gateway-authentication/` | 21 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
+| `gateway-authentication/` | 22 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request (CC-083, CC-113) |
 | `query-rendering/` | 26 | server queries from a structure: JQL and CQL with hostile values, the OpenSearch index pattern and name resolution (CC-160) |
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
@@ -1449,7 +1462,8 @@ One-time setup (a human):
 
 1. Account on https://central.sonatype.com and the namespace `pl.aiwcorpo`: the Portal shows a verification key; add it as a
    DNS TXT record on `aiwcorpo.pl` (exactly that host) and press Verify. Requires control of the domain.
-2. Portal user token (Account, Generate User Token): repository secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN`.
+2. Portal user token (Account, Generate User Token): secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN` of the
+   environment `release` (step 4), never repository secrets.
 3. GPG key dedicated to releases (`gpg --quick-generate-key "aiwcorpo releases" ed25519 sign 2y`; with a passphrase). Publish the
    public key: `gpg --keyserver keyserver.ubuntu.com --send-keys <fingerprint>`. keys.openpgp.org publishes a key only with a
    confirmed e-mail address of a user ID, so use it only if the key has an organisational address as its UID; otherwise leave
@@ -1458,8 +1472,10 @@ One-time setup (a human):
    and its revocation certificate, and add the fingerprint to `SECURITY.md`.
 4. Put the four Maven secrets in the GitHub environment `release` (not repository-wide). In both environments (`release` and
    `release-npm`): required reviewers other than the person who pushes the tag, the option **Prevent self-review**, and a
-   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that blocks deletion and
-   updates, so a released tag cannot be moved.
+   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that restricts creation to the
+   release maintainers and blocks deletion and updates, so only they start a release and a released tag cannot be moved.
+   Protect `main` with a rule that requires a reviewed pull request: the `build` job refuses a tagged commit that is not on
+   `main`, but the workflow comes from the tagged commit, so only these settings bind a release to reviewed code.
 5. npm: create the organization `aiwcorpo` on npmjs.org (free for public packages; check that the name is available) and turn on 2FA for it.
    The first version cannot use trusted publishing, because the trusted publisher is configured on an existing package: either put a
    granular access token (read and write, package scope `@aiwcorpo`, short expiry, with **Bypass two-factor authentication**
