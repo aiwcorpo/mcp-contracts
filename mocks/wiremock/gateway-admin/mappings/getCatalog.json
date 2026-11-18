@@ -65,7 +65,8 @@
                   "access": "denied",
                   "requiredEntitlements": [
                     "mcp-jira-write"
-                  ]
+                  ],
+                  "requiresConfirmation": true
                 },
                 {
                   "name": "jira__delete_issue",
