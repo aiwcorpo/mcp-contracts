@@ -8,9 +8,9 @@ import java.util.List;
 /**
  * The grammar of {@code idPattern} and {@code scopePattern} of a resource type (C6, 7.0.0). A pattern is applied to ids that a
  * client chooses, so it must match in linear time. A pattern is within the grammar when it has at most
- * {@link #MAX_PATTERN_LENGTH} characters, no back references, no lookaround, no quantifier applied to a group that contains a
- * quantifier, and every quantified group that has alternatives lets them start with disjoint characters (so {@code (a|aa)+}
- * is out and {@code (?:[._-][a-z]|[a-z])*} is in). Ids longer than {@link #MAX_ID_LENGTH} are invalid before any matching.
+ * {@link #MAX_PATTERN_LENGTH} characters, no back references, no lookaround, no {@code \Q}, {@code \E} or {@code \c} escapes, no
+ * quantifier applied to a group that contains a quantifier, and every quantified group that has alternatives lets them start
+ * with disjoint characters (so {@code (a|aa)+} is out and {@code (?:[._-][a-z]|[a-z])*} is in). Ids longer than {@link #MAX_ID_LENGTH} are invalid before any matching.
  * The JavaScript twin is {@code grammarViolation} in {@code scripts/lib/manifest-rules.mjs}; the vectors keep them equal.
  */
 public final class PatternGrammar {
@@ -39,6 +39,11 @@ public final class PatternGrammar {
                 char next = i + 1 < regex.length() ? regex.charAt(i + 1) : ' ';
                 if (!inClass && ((next >= '1' && next <= '9') || next == 'k')) {
                     return "back reference";
+                }
+                // \Q...\E and \c consume more than one character in java.util.regex, so skipping one here would let the
+                // rest of the scan read quoted or control text as syntax and miss what the engine compiles.
+                if (next == 'Q' || next == 'E' || next == 'c') {
+                    return "quote or control escape";
                 }
                 i++;
                 lastClosedHadQuantifier = false;
