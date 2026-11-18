@@ -107,7 +107,7 @@
       "additionalProperties": false
     },
     "group": {
-      "description": "Group (C9) of a scope mapping entry, on admin_change events with reason scope_mapping_entry_removed (the entry of a deleted server's namespace), scope_mapping_entry_ignored (an entry that evaluation skipped because its scope no longer fits the declarations) or scope_mapping_changed. The scope id goes to resource: type is the resource type of the scope (the part before the slash, e.g. Jira::Project) and id the part after it, so the pair is the ResourceScope id <type>/<id>. Absent on every other event.",
+      "description": "Group (C9) of a scope mapping entry, on admin_change events with reason scope_mapping_entry_removed (the entry of a deleted server's namespace, of a namespace an approval changed or freed, or a scope an approval made invalid, CC-252), scope_mapping_entry_ignored (an entry that evaluation skipped because its scope no longer fits the declarations) or scope_mapping_changed. The scope id goes to resource: type is the resource type of the scope (the part before the slash, e.g. Jira::Project) and id the part after it, so the pair is the ResourceScope id <type>/<id>. Absent on every other event.",
       "$ref": "common.schema.json#/$defs/GroupName"
     },
     "overrideId": {

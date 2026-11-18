@@ -771,7 +771,12 @@ the status `expiring` (< 7 days) exists only when a date was given (CC-084).
 - **OAuth client `client_secret` (CC-104):** the broker keeps it in OpenBao under `secret/data/mcp/oauth-clients/<system>`,
   separately from user connections (`mcp/connections/<sha256(sub)>/<system>`); no response other than `resolve` returns it.
 - **`CredentialRequired.connectUrl` (CC-105):** an informational field; the gateway builds the link from its own `publicBaseUrl`
-  and ignores the broker's value (one source of the portal address).
+  and ignores the broker's value (one source of the portal address). Since CC-253 the same rule covers every link of a tool error
+  (`stepUpUrl`, `connectUrl`, `registerUrl`, `previewUrl`) and every origin: a server may report `step_up_required`,
+  `credential_required` or `confirmation_required` (only with `registerUrl`, no pending call) in a `tools/call` result, and the
+  gateway replaces the server's link with its own (for `credential_required` also `system`, which becomes the system of the called
+  tool). A server's `confirmation_required` with `confirmationId`, `description`, `previewUrl` or `expiresAt` reaches the client as
+  `internal_error`, because only the gateway holds pending calls.
 - **The gateway internal port (CC-106):** `/admin/v1/*` and the JWKS (C2) are on one TLS port. JWKS clients may not present a
   client certificate (clientAuth), so the client certificate's target is checked in the application layer for `/admin/v1`, not in
   the TLS handshake (this applies to the broker and the starter too).
@@ -1449,7 +1454,8 @@ One-time setup (a human):
 
 1. Account on https://central.sonatype.com and the namespace `pl.aiwcorpo`: the Portal shows a verification key; add it as a
    DNS TXT record on `aiwcorpo.pl` (exactly that host) and press Verify. Requires control of the domain.
-2. Portal user token (Account, Generate User Token): repository secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN`.
+2. Portal user token (Account, Generate User Token): secrets `MAVEN_CENTRAL_USERNAME` and `MAVEN_CENTRAL_TOKEN` of the
+   environment `release` (step 4), never repository secrets.
 3. GPG key dedicated to releases (`gpg --quick-generate-key "aiwcorpo releases" ed25519 sign 2y`; with a passphrase). Publish the
    public key: `gpg --keyserver keyserver.ubuntu.com --send-keys <fingerprint>`. keys.openpgp.org publishes a key only with a
    confirmed e-mail address of a user ID, so use it only if the key has an organisational address as its UID; otherwise leave
@@ -1458,8 +1464,10 @@ One-time setup (a human):
    and its revocation certificate, and add the fingerprint to `SECURITY.md`.
 4. Put the four Maven secrets in the GitHub environment `release` (not repository-wide). In both environments (`release` and
    `release-npm`): required reviewers other than the person who pushes the tag, the option **Prevent self-review**, and a
-   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that blocks deletion and
-   updates, so a released tag cannot be moved.
+   deployment rule that allows only tags `v*`. In Settings, Rules, add a tag ruleset for `v*` that restricts creation to the
+   release maintainers and blocks deletion and updates, so only they start a release and a released tag cannot be moved.
+   Protect `main` with a rule that requires a reviewed pull request: the `build` job refuses a tagged commit that is not on
+   `main`, but the workflow comes from the tagged commit, so only these settings bind a release to reviewed code.
 5. npm: create the organization `aiwcorpo` on npmjs.org (free for public packages; check that the name is available) and turn on 2FA for it.
    The first version cannot use trusted publishing, because the trusted publisher is configured on an existing package: either put a
    granular access token (read and write, package scope `@aiwcorpo`, short expiry, with **Bypass two-factor authentication**

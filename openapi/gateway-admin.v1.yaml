@@ -2121,9 +2121,15 @@ paths:
         resource type declarations together. The approval sets `approvedPoliciesHash` of that server in the policy data, which is
         the only thing that lets the server evaluate: the starter computes the hash of its own policies and resourceTypes and
         refuses every call (`upstream_unavailable`) when it differs from the approved one or when nothing is approved. Approval
-        is allowed even when it makes existing scope mapping entries invalid (a narrower `scopePattern`, a removed type); the
-        answer lists the entries that will be ignored, so the administrator sees the effect, and every one is audited when the
-        gateway evaluates. The tools of the server follow their own approvals again. The BFF asks for a fresh MFA. The audit
+        is allowed even when it makes existing scope mapping entries invalid (a narrower `scopePattern`, a removed type). In the
+        same change as the approval the gateway removes from the stored scope mapping every scope of a type in a namespace of this
+        server (before or after the approval) that no longer fits the approved declarations (reason `undeclared_type` or
+        `invalid_scope` of `ScopeMapping.ofRegistered`), and audits each removed scope as `admin_change` with reason
+        `scope_mapping_entry_removed`, `group` and `resource` (CC-252). The answer
+        lists the removed scopes in `ignoredMappingEntries`, so the administrator sees the effect. A scope removed this way never
+        grants again: a later approval that declares the type again or widens the pattern starts without it, and the
+        administrator has to write it again with `putScopeMapping`. Entries of other namespaces are not touched. The tools of the
+        server follow their own approvals again. The BFF asks for a fresh MFA. The audit
         event is `admin_change` with reason `policies_approved`. If the approved declarations change or free a namespace, the entries of
         the scope mapping for the freed namespace are removed and audited (`scope_mapping_entry_removed`).
       security:
@@ -2141,7 +2147,7 @@ paths:
                   policiesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
       responses:
         '200':
-          description: Approved; the mapping entries that the approval makes invalid and that evaluation will therefore ignore.
+          description: Approved; the mapping entries that the approval made invalid and therefore removed from the stored scope mapping (CC-252).
           content:
             application/json:
               schema:
@@ -3169,6 +3175,7 @@ components:
       required: [ignoredMappingEntries]
       properties:
         ignoredMappingEntries:
+          description: The scopes the approval removed from the stored scope mapping because they no longer fit the approved declarations (CC-252; the name is kept from 7.0.0, when such entries were only skipped). Empty when nothing was removed.
           type: array
           items:
             type: object
@@ -3179,7 +3186,7 @@ components:
               scope:
                 type: string
               reason:
-                description: undeclared_type, invalid_scope, group_missing or group_duplicate.
+                description: undeclared_type or invalid_scope (group_missing and group_duplicate are not caused by an approval and do not occur here).
                 type: string
                 pattern: '^[a-z][a-z0-9_]*$'
             additionalProperties: false
