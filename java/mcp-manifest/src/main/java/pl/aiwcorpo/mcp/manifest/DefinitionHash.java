@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Set;
 
 /**
  * definitionHash of C6 (CC-004, CC-005, CC-042): SHA-256 of the RFC 8785 form of the flat object {name, title?,
@@ -19,6 +20,7 @@ import java.util.HexFormat;
 public final class DefinitionHash {
 
     private static final ObjectMapper JSON = StrictJson.MAPPER;
+    private static final Set<String> HASHED_MEMBERS = Set.of("name", "title", "description", "inputSchema", "outputSchema", "annotations");
 
     private DefinitionHash() {
     }
@@ -65,6 +67,12 @@ public final class DefinitionHash {
     }
 
     private static ObjectNode hashedObject(JsonNode definition, JsonNode entry, String system, JsonNode credential) {
+        // A member the hash does not cover would reach clients unpinned by the approval (CC-042 keeps icons and _meta out of v1).
+        definition.fieldNames().forEachRemaining(member -> {
+            if (!HASHED_MEMBERS.contains(member)) {
+                throw new IllegalArgumentException("definition member not covered by definitionHash: " + member);
+            }
+        });
         ObjectNode flat = JSON.createObjectNode();
         flat.set("name", definition.get("name"));
         if (definition.has("title")) {

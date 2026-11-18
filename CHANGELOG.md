@@ -8,6 +8,7 @@ versions are historical and are kept in the language they were written in.
 ## Unreleased
 
 - **CC-255 (C12, README):** limit zapisu tokenu i operacji Authenticatora w BFF jest liczony per użytkownik (`sub`), nie per sesja; nowa sesja ani nowe logowanie nie zaczyna nowego okna. Tylko opis zachowania: patch.
+- **CC-252 (C5, C7, C8):** `approveServerPolicies` usuwa z zapisanego mapowania zakresów zakresy przestrzeni serwera, które przestały pasować do zatwierdzonych deklaracji (`undeclared_type`, `invalid_scope`), z audytem `scope_mapping_entry_removed`; `ignoredMappingEntries` wymienia usunięte zakresy. Taki zakres nie wraca, gdy późniejsze zatwierdzenie przywróci typ.
 - **CC-253 (C10, C14):** serwer może zgłosić w wyniku `tools/call` `step_up_required`, `credential_required` albo `confirmation_required` (tylko z `registerUrl`), ale linki (`stepUpUrl`, `connectUrl`, `registerUrl`, `previewUrl`) zawsze buduje gateway z własnego adresu portalu; wartości od serwera są ignorowane. `confirmation_required` od serwera z `confirmationId` dociera do klienta jako `internal_error`.
 
 ## 7.1.0 - 2026-11-17

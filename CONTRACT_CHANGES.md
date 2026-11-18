@@ -4467,6 +4467,16 @@ Decyzje człowieka 2026-11-03: wydanie **6.3.0**, bez zmian niezgodnych wstecz, 
 - **Zgodność wstecz (SemVer):** tylko opis zachowania, bez zmiany kształtu: patch.
 - **Kogo dotyka:** mcp-portal (gałąź `audit/l-03-secret-write-limit-per-user` w mcp-portal już tak liczy).
 
+## CC-252 | C5/C7/C8 | Zatwierdzenie polityk usuwa wpisy mapowania zakresów, które przestały pasować
+
+- **Źródło:** audyt bezpieczeństwa z 2026-11-13 (mcp-contracts L-02); decyzja właściciela platformy z 2026-11-13, wariant "usuwać przy zatwierdzeniu" (odrzucony wariant: pole `restoredMappingEntries` w odpowiedzi i nowy powód audytu).
+- **Stan:** zatwierdzenie, które usuwa typ albo zawęża `scopePattern`, zostawiało wpisy w zapisanym mapowaniu; `ScopeMapping.ofRegistered` tylko je pomijał (`ignored()`). Gdy późniejszy manifest tego samego serwera deklarował typ ponownie albo poszerzał wzorzec i administrator zatwierdzał `policiesHash`, ten sam zapisany zakres znów nadawał dostęp, odpowiedź miała `ignoredMappingEntries: []` i żaden powód audytu nie odnotowywał powrotu.
+- **Zmiana:** w tej samej zmianie co zatwierdzenie gateway usuwa z zapisanego mapowania każdy zakres typu z przestrzeni tego serwera (sprzed albo po zatwierdzeniu), który `ScopeMapping.ofRegistered` z nową sumą zatwierdzonych deklaracji zgłasza jako `undeclared_type` albo `invalid_scope`, i audytuje każdy jako `admin_change` z powodem `scope_mapping_entry_removed` (istniejący powód, jak przy `deleteServer` i zwolnionej przestrzeni), z `group` i `resource`. Odpowiedź wymienia usunięte zakresy w `ignoredMappingEntries` (nazwa pola bez zmian, żeby nie zmieniać kształtu; `group_missing` i `group_duplicate` nie powstają przy zatwierdzeniu i tu nie występują). Wpisy innych przestrzeni zostają. Usunięty zakres nie wraca sam: po przywróceniu typu administrator zapisuje go ponownie przez `putScopeMapping` (świeże MFA, audyt `scope_mapping_changed`). Ocena nadal używa `ofRegistered`, więc wpis nieważny z innego powodu jest dalej pomijany pojedynczo.
+- **Pliki:** `openapi/gateway-admin.v1.yaml` (`approveServerPolicies`, `ApprovePoliciesResult`), `openapi/portal-bff.v1.yaml` (opis odpowiedzi `approveAdminServerPolicies`), `schemas/audit-event.schema.json` (opis `group`), `cedar/entity-builder.md` (sekcje 3 i 7a), Javadoc `ScopeMapping.ofRegistered`, test `EntityBuilderVectorTest.scopesAnApprovalRemovesDoNotGrantWhenTheTypeReturns`, `openapi/bundled/*`, mocki.
+- **Zgodność wstecz (SemVer):** kształt odpowiedzi i lista powodów bez zmian; zmienia się zachowanie gatewaya przy zatwierdzeniu (wpis jest usuwany zamiast pomijany). Klient czyta tę samą listę: minor.
+- **Kogo dotyka:** mcp-gateway (usunięcie w `RegistryService.approvePolicies` w jednej transakcji z zatwierdzeniem, audyt), mcp-portal (tekst przy zatwierdzeniu: "usunięte" zamiast "będą pomijane").
+- **Status:** accepted (decyzja: właściciel platformy, 2026-11-13)
+
 ## CC-253 | C10/C14/README | Linki błędów narzędzi buduje zawsze gateway, także gdy kod zgłasza serwer
 
 - **Źródło:** audyt bezpieczeństwa z 2026-11-13 (mcp-contracts L-08); decyzja właściciela platformy z 2026-11-13, wariant "serwer może zgłosić kod, URL zawsze buduje gateway" (odrzucone: tylko gateway, kody od serwera odrzucane; bez ograniczeń).
