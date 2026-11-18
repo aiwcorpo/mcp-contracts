@@ -2,7 +2,12 @@
 import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 
+const HASHED_MEMBERS = ['name', 'title', 'description', 'inputSchema', 'outputSchema', 'annotations'];
+
 export function hashInput({ tool, manifestEntry, server }) {
+  // A member the hash does not cover would reach clients unpinned by the approval (CC-042 keeps icons and _meta out of v1).
+  const unhashed = Object.keys(tool).find((member) => !HASHED_MEMBERS.includes(member));
+  if (unhashed !== undefined) throw new Error(`definition member not covered by definitionHash: ${unhashed}`);
   const inputSchema = structuredClone(tool.inputSchema);
   // confirmation_code is added by the gateway to tools/list (C11) and never part of the hash.
   if (inputSchema?.properties?.confirmation_code) {
