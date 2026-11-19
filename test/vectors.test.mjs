@@ -5,7 +5,7 @@ import { createHash, X509Certificate } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
 import { definitionHash, manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
-import { manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
+import { grammarViolation, manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { acceptRevision, ackOutcome, gatewayCall, policyDataGate, pushBodyCheck, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
@@ -69,6 +69,16 @@ test('manifest vectors: schema plus semantic rules', () => {
     } else {
       assert.ok(violations.includes(data.expected.rule), `${name}: expected ${data.expected.rule}, got ${violations}`);
     }
+  }
+});
+
+test('pattern grammar refuses neighbouring variable-width atoms whose characters overlap, as PatternGrammar does', () => {
+  for (const pattern of ['^a*a*a*a*a*$', '^[a-z]+[a-z0-9]*$', '^a{2,}b*a+$', '^.*a+$', '^(?:a*)(?:a*)$', '^a*(?:)a*$', '^a*(?:-x)?a*$',
+    '^a{0,1000}a{0,1000}$', '^a{0,1024}a{0,1024}$', '^a?a?a?a?a$', '^\\x61*\\x61*$', '^\\x61*\\u0061*$', '^\\p{L}*\\p{L}*$', '^\\pL*\\pL*$']) {
+    assert.equal(grammarViolation(pattern), 'neighbouring quantified atoms overlap', pattern);
+  }
+  for (const pattern of ['^[a-z]+-[a-z]+\\.[0-9]*$', '^-?[0-9]+$', '^a(?:b|c)a*$', '^(?:ab)(?:ab)$', '^\\x61*\\x62*$', '^\\x61+-\\x61+$']) {
+    assert.equal(grammarViolation(pattern), null, pattern);
   }
 });
 

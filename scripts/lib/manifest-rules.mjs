@@ -172,7 +172,100 @@ export function grammarViolation(regex) {
     lastClosedHadQuantifier = false;
     lastBody = null;
   }
-  return groups.length === 0 ? null : 'unbalanced parenthesis';
+  return groups.length === 0 ? neighbouringQuantifiers(regex) : 'unbalanced parenthesis';
+}
+
+// \xHH, \uHHHH, \cX, \x{...}, \u{...}, \p{...}, \P{...}, \N{...} are one atom (PatternGrammar.escapeEnd).
+function escapeEnd(regex, at) {
+  const kind = regex[at + 1] ?? ' ';
+  let end = at + 2;
+  if ('xupPN'.includes(kind) && regex[at + 2] === '{' && regex.indexOf('}', at) > 0) end = regex.indexOf('}', at) + 1;
+  else if (kind === 'x') end = at + 4;
+  else if (kind === 'u') end = at + 6;
+  else if (kind === 'c' || kind === 'p' || kind === 'P') end = at + 3;
+  return Math.min(end, regex.length);
+}
+
+// The one BMP character of a hexadecimal escape, or null (any character) for every other multi-character escape.
+function escapedCharacter(escape) {
+  const hex = /^\\[xu](?:([0-9A-Fa-f]{2}|[0-9A-Fa-f]{4})|\{([0-9A-Fa-f]{1,6})\})$/.exec(escape);
+  if (hex === null) return null;
+  const code = parseInt(hex[1] ?? hex[2], 16);
+  return code > 0xffff ? null : new Set([code]);
+}
+
+// Twin of PatternGrammar.neighbouringQuantifiers: two variable-width atoms of one sequence with overlapping characters
+// (a*a*, a?a?, a{0,9}a{0,9}) cost about n^k steps on a failing id, unless a fixed atom disjoint from every variable atom
+// before it separates them. A group is one atom over the characters of its body; only alternation starts a new sequence.
+function neighbouringQuantifiers(regex) {
+  const overlaps = (a, b) => a === null || b === null || [...a].some((k) => b.has(k));
+  let i = 0;
+  let violation = null;
+  const quantifier = () => {
+    let range = [1, 1];
+    const q = regex[i];
+    const counted = /^\{(\d+)(,(\d*))?\}/.exec(regex.slice(i));
+    if (q === '*' || q === '+' || q === '?') {
+      range = [q === '+' ? 1 : 0, q === '?' ? 1 : -1];
+      i++;
+    } else if (counted) {
+      const min = Number(counted[1]);
+      range = [min, counted[2] === undefined ? min : counted[3] === '' ? -1 : Number(counted[3])];
+      i += counted[0].length;
+    } else return range;
+    if (regex[i] === '?' || regex[i] === '+') i++;
+    return range;
+  };
+  const scan = () => {
+    let any = false;
+    let all = new Set();
+    let variableBody = false;
+    let pending = false;
+    let pendingChars = null;
+    while (i < regex.length && violation === null) {
+      const c = regex[i];
+      if (c === ')') break;
+      if (c === '|') { variableBody = true; pending = false; i++; continue; }
+      if (c === '^' || c === '$') { i++; continue; }
+      let chars;
+      let variable = false;
+      if (c === '(') {
+        if (regex.startsWith('(?:', i)) i += 3;
+        else if (regex.startsWith('(?<', i) && regex.indexOf('>', i) > 0) i = regex.indexOf('>', i) + 1;
+        else i++;
+        const inner = scan();
+        i++;
+        if (inner === null) { quantifier(); continue; }
+        ({ chars, variable } = inner);
+      } else {
+        let end = i + 1;
+        if (c === '\\') end = escapeEnd(regex, i);
+        else if (c === '[') {
+          let k = i + 1;
+          while (k < regex.length && regex[k] !== ']') k += regex[k] === '\\' ? 2 : 1;
+          end = Math.min(k, regex.length - 1) + 1;
+        }
+        chars = c === '.' ? null : c === '\\' && end - i > 2 ? escapedCharacter(regex.slice(i, end)) : firstCharacters(regex.slice(i, end));
+        i = end;
+      }
+      const [min, max] = quantifier();
+      if (max === 0) continue;
+      variable = variable || min !== max;
+      any = true;
+      all = all === null || chars === null ? null : new Set([...all, ...chars]);
+      variableBody = variableBody || variable;
+      if (variable) {
+        if (pending && overlaps(pendingChars, chars)) violation = 'neighbouring quantified atoms overlap';
+        else if (pending) pendingChars = new Set([...pendingChars, ...chars]);
+        else { pending = true; pendingChars = chars; }
+      } else if (pending && pendingChars !== null && chars !== null && !overlaps(pendingChars, chars)) {
+        pending = false;
+      }
+    }
+    return any ? { chars: all, variable: variableBody } : null;
+  };
+  scan();
+  return violation;
 }
 const namespaceOf = (type) => type.slice(0, type.indexOf('::'));
 
