@@ -1,0 +1,126 @@
+{
+  "description": "Reader reads a resource template: the platform permit on read_resource applies, whatever the server (CC-262).",
+  "covers": [],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway-resource",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "notesreader",
+        "grp": [
+          "mcp-notes-read"
+        ],
+        "azp": "claude-code"
+      },
+      "resource": {
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "note_in_notebook",
+        "uriTemplate": "notes://notebook/{notebook}/note/{noteId}",
+        "variables": [
+          {
+            "name": "notebook",
+            "type": "Notes::Notebook"
+          },
+          {
+            "name": "noteId",
+            "type": "Notes::Note"
+          }
+        ]
+      },
+      "values": {
+        "notebook": "alpha",
+        "noteId": "17"
+      }
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read_resource"
+    },
+    "resource": {
+      "type": "McpResource",
+      "id": "notes__note_in_notebook"
+    },
+    "context": {
+      "client": "claude-code",
+      "principalType": "user",
+      "refs": [
+        {
+          "__entity": {
+            "type": "ResourceScope",
+            "id": "Notes::Notebook/alpha"
+          }
+        }
+      ]
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "McpResource",
+        "id": "notes__note_in_notebook"
+      },
+      "attrs": {
+        "server": "mcp-notes",
+        "name": "note_in_notebook",
+        "uriTemplate": "notes://notebook/{notebook}/note/{noteId}",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        }
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000006"
+      },
+      "attrs": {
+        "username": "notesreader",
+        "client": "claude-code",
+        "scopes": []
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "allow",
+    "determiningPolicies": [
+      "platform-read-resource-by-group"
+    ]
+  }
+}

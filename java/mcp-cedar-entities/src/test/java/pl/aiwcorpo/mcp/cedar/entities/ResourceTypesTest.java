@@ -24,6 +24,35 @@ class ResourceTypesTest {
     }
 
     @Test
+    void valueOnlyTypeKeepsOnlyAnIdPatternAndIsNotAnEntity() {
+        ResourceTypes types = ResourceTypes.fromJson("[{\"type\":\"Acme::Ref\",\"valueOnly\":true,\"idPattern\":\"^[a-z]+$\"},"
+                + "{\"type\":\"Acme::Box\",\"attributes\":[],\"idPattern\":\"^[a-z]+$\"}]");
+        assertTrue(types.isValueOnly("Acme::Ref"));
+        assertTrue(types.isValidId("Acme::Ref", "main"));
+        assertFalse(types.isValidId("Acme::Ref", "Main"));
+        assertFalse(types.isGrantable("Acme::Ref"));
+        assertEquals(List.of("Acme::Box"), types.entityDeclarations().stream().map(ResourceTypeDeclaration::type).toList());
+        assertEquals(2, types.declarations().size());
+        assertThrows(IllegalArgumentException.class, () -> ResourceTypes.fromJson(
+                "[{\"type\":\"Acme::Ref\",\"valueOnly\":true,\"attributes\":[],\"idPattern\":\"^[a-z]+$\"}]"));
+        assertThrows(IllegalArgumentException.class, () -> ResourceTypes.fromJson(
+                "[{\"type\":\"Acme::Ref\",\"valueOnly\":true,\"scopePattern\":\"^[a-z]+$\",\"idPattern\":\"^[a-z]+$\"}]"));
+        assertThrows(IllegalArgumentException.class, () -> ResourceTypes.fromJson(
+                "[{\"type\":\"Acme::Ref\",\"valueOnly\":true,\"idPattern\":\"^[a-z]+$\"},"
+                        + "{\"type\":\"Acme::Box\",\"attributes\":[],\"parent\":\"Acme::Ref\",\"parentAttribute\":\"ref\",\"idPattern\":\"^[a-z]+$\"}]"));
+    }
+
+    @Test
+    void valueOnlyTypesOfTwoRegistriesStillClaimTheirNamespace() {
+        ResourceTypes refs = ResourceTypes.fromJson("[{\"type\":\"Acme::Ref\",\"valueOnly\":true,\"idPattern\":\"^[a-z]+$\"}]");
+        assertThrows(IllegalArgumentException.class, () -> ResourceTypes.union(List.of(refs, flatRegistry())));
+    }
+
+    private static ResourceTypes flatRegistry() {
+        return ResourceTypes.of(List.of(flat()));
+    }
+
+    @Test
     void emptyRegistryKnowsNoType() {
         assertFalse(ResourceTypes.empty().isDeclared("Jira::Project"));
         assertFalse(ResourceTypes.empty().isValidId("Jira::Project", "ABC"));

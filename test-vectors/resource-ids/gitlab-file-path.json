@@ -1,0 +1,27 @@
+{
+  "resourceTypes": "cedar/examples/systems/gitlab/resource-types.json",
+  "type": "GitLab::FilePath",
+  "kind": "resource",
+  "valid": [
+    "src/main.java",
+    "a",
+    "README.md",
+    "docs/v1.2/guide-1.md",
+    "_config.yml",
+    "feature/x_y"
+  ],
+  "invalid": [
+    "../x",
+    "a/../b",
+    ".git/config",
+    "a//b",
+    "a/-x",
+    "-x",
+    "a\\b",
+    "ABC\n",
+    "",
+    "a/",
+    "/a",
+    "a..b"
+  ]
+}

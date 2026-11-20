@@ -58,3 +58,40 @@ export function policiesHash(policies, resourceTypes) {
   const canonical = canonicalize({ policies, resourceTypes });
   return { canonical, hash: 'sha256:' + createHash('sha256').update(canonical, 'utf8').digest('hex') };
 }
+
+const PRIMITIVE_MEMBERS = {
+  resource: ['name', 'title', 'description', 'uri', 'mimeType', 'annotations'],
+  resourceTemplate: ['name', 'title', 'description', 'uriTemplate', 'mimeType', 'annotations'],
+  prompt: ['name', 'title', 'description', 'arguments'],
+};
+// Entry fields next to the definition, in hash order (CC-258).
+const PRIMITIVE_ENTRY_FIELDS = { resource: [], resourceTemplate: ['variables'], prompt: ['argumentRules', 'messages'] };
+
+/**
+ * Flat object hashed for a resource, a resource template or a prompt (CC-258): kind, the members of definition, the entry fields
+ * (variables, or argumentRules and messages), additionalGroup when present, system, credential. kind keeps equal content under
+ * two kinds from hashing alike, and keeps a primitive from colliding with a tool.
+ */
+export function primitiveHashInput({ kind, definition, entry = {}, server }) {
+  const allowed = PRIMITIVE_MEMBERS[kind];
+  if (allowed === undefined) throw new Error(`unknown kind: ${kind}`);
+  const unhashed = Object.keys(definition).find((member) => !allowed.includes(member));
+  if (unhashed !== undefined) throw new Error(`definition member not covered by definitionHash: ${unhashed}`);
+  const flat = { kind };
+  for (const member of allowed) if (definition[member] !== undefined) flat[member] = definition[member];
+  for (const field of PRIMITIVE_ENTRY_FIELDS[kind]) flat[field] = entry[field];
+  if (entry.additionalGroup !== undefined) flat.additionalGroup = entry.additionalGroup;
+  flat.system = server.system;
+  flat.credential = server.credential;
+  return flat;
+}
+
+export function primitiveHash(input) {
+  const canonical = canonicalize(primitiveHashInput(input));
+  return { canonical, hash: 'sha256:' + createHash('sha256').update(canonical, 'utf8').digest('hex') };
+}
+
+/** Hash of a manifest resource, resource template or prompt entry; kind is resource, resourceTemplate or prompt. */
+export function manifestPrimitiveHash(manifest, kind, entry) {
+  return primitiveHash({ kind, definition: entry.definition, entry, server: { system: manifest.system, credential: manifest.credential } }).hash;
+}

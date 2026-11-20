@@ -26,9 +26,9 @@ class CedarSchemaTest {
         Schema parsed = Schema.parse(Schema.JsonOrCedar.Cedar, text);
         JsonNode json = parsed.toJsonFormat();
         assertEquals(List.of(""), List.copyOf(new TreeSet<>(iterate(json.fieldNames()))), "only the empty namespace");
-        assertEquals(List.of("ResourceScope", "Tool", "User", "UserGroup"),
+        assertEquals(List.of("McpPrompt", "McpResource", "ResourceScope", "Tool", "User", "UserGroup"),
                 List.copyOf(new TreeSet<>(iterate(json.get("").get("entityTypes").fieldNames()))));
-        assertEquals(List.of("call"), List.copyOf(iterate(json.get("").get("actions").fieldNames())));
+        assertEquals(List.of("call", "get_prompt", "read_resource"), List.copyOf(new TreeSet<>(iterate(json.get("").get("actions").fieldNames()))));
         assertFalse(text.contains("\r"), "LF line endings only");
     }
 
@@ -41,7 +41,7 @@ class CedarSchemaTest {
     @Test
     void platformPoliciesValidateAgainstTheBaseSchemaWithoutWarnings() throws Exception {
         PolicySet set = McpCedarSchema.platformPolicies();
-        assertEquals(4, set.policies.size());
+        assertEquals(10, set.policies.size());
         ValidationResponse response = engine.validate(new ValidationRequest(McpCedarSchema.schema(), set));
         assertTrue(response.validationPassed(), response::toString);
         assertEquals(0, response.success.orElseThrow().validationWarnings.size(), response::toString);

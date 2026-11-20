@@ -591,7 +591,7 @@ components:
             additionalProperties: false
       additionalProperties: false
     ResourceType:
-      description: "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in."
+      description: "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in. The second part must not be a name of the base schema: User, UserGroup, ResourceScope, Tool, McpResource, McpPrompt or RequestContext (CC-262; the rule resource-type-name-reserved checks it, because a type of that name would shadow the base type)."
       type: string
       pattern: ^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$
     ToolName:
@@ -687,6 +687,163 @@ components:
         definitionHash:
           description: sha256 over the canonical JSON of definition + risk, action, resourceRefs + system, credential (CC-004, CC-005). Receivers recompute it.
           $ref: "#/components/schemas/DefinitionHash"
+    ResourceName:
+      description: Server-side name of a resource or a resource template (CC-258), without the gateway prefix. Same pattern and limit as ToolName; static resources and templates of one server share one namespace of names.
+      type: string
+      pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 64
+    ResourceUri:
+      description: "URI of a static resource as seen by MCP clients (CC-258). The scheme is the SystemId of the server; for an adapter it is <system>+<foreign scheme>. ASCII only: a client encodes characters outside ASCII as percent-encoded UTF-8. Which scheme belongs to which manifest is checked by the rule resource-uri-scheme."
+      type: string
+      pattern: ^[a-z][a-z0-9]{1,30}(?:\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,2000}$
+      maxLength: 2100
+    McpResourceDefinition:
+      description: "MCP resource definition as returned by resources/list (CC-258): name, title, description, uri and optionally mimeType and annotations. No size, icons or _meta, as in McpToolDefinition: they would reach the client without being pinned. Every member is part of definitionHash."
+      type: object
+      required:
+        - name
+        - title
+        - description
+        - uri
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        title:
+          type: string
+          minLength: 1
+          description: Display name; hashed.
+        description:
+          type: string
+          minLength: 1
+          description: Hashed.
+        uri:
+          $ref: "#/components/schemas/ResourceUri"
+        mimeType:
+          description: Media type, lower case.
+          type: string
+          pattern: ^[a-z][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$
+          maxLength: 127
+        annotations:
+          type: object
+      additionalProperties: false
+    ResourceUriTemplate:
+      description: "URI template of a resource template (CC-258): the beginning of ResourceUri, then at most 1000 printable ASCII characters. Only level 1 expressions {name} are allowed; the rule uri-template-level1 checks the syntax."
+      type: string
+      pattern: ^[a-z][a-z0-9]{1,30}(?:\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,1000}$
+      maxLength: 1100
+    UriVariableName:
+      description: Name of a variable in a resource URI template (CC-258).
+      type: string
+      pattern: ^[A-Za-z][A-Za-z0-9]{0,31}$
+    McpResourceTemplateDefinition:
+      description: MCP resource template definition as returned by resources/templates/list (CC-258). Every member is part of definitionHash.
+      type: object
+      required:
+        - name
+        - title
+        - description
+        - uriTemplate
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        title:
+          type: string
+          minLength: 1
+          description: Display name; hashed.
+        description:
+          type: string
+          minLength: 1
+          description: Hashed.
+        uriTemplate:
+          $ref: "#/components/schemas/ResourceUriTemplate"
+        mimeType:
+          description: Media type, lower case.
+          type: string
+          pattern: ^[a-z][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$
+          maxLength: 127
+        annotations:
+          type: object
+      additionalProperties: false
+    ResourceTemplateVariable:
+      description: "A variable of a URI template bound to a resource type: the value must match the idPattern of the type. At least one variable of a template has a type with an entity (rule uri-template-entity-variable)."
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          $ref: "#/components/schemas/UriVariableName"
+        type:
+          $ref: "#/components/schemas/ResourceType"
+      additionalProperties: false
+    AdapterTemplateVariable:
+      description: "A variable of the URI template of an adapter (CC-258): an adapter declares no resourceTypes, so the variable carries its own bounds."
+      type: object
+      required:
+        - name
+        - maxLength
+        - pattern
+      properties:
+        name:
+          $ref: "#/components/schemas/UriVariableName"
+        maxLength:
+          type: integer
+          minimum: 1
+          maximum: 1024
+        pattern:
+          description: Anchored regular expression (^...$, no top-level alternation) matched against the whole value.
+          type: string
+          pattern: ^\^.+\$$
+          maxLength: 2048
+      additionalProperties: false
+    PromptName:
+      description: Server-side name of a prompt (CC-258), without the gateway prefix. Same pattern and limit as ToolName; prompts have a namespace of their own.
+      type: string
+      pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 64
+    PromptArgumentName:
+      type: string
+      pattern: ^[A-Za-z][A-Za-z0-9_]{0,63}$
+    McpPromptDefinition:
+      description: MCP prompt definition as returned by prompts/list (CC-258). Every member is part of definitionHash; the messages are a field of the entry and are hashed too.
+      type: object
+      required:
+        - name
+        - title
+        - description
+      properties:
+        name:
+          $ref: "#/components/schemas/PromptName"
+        title:
+          type: string
+          minLength: 1
+          description: Display name; hashed.
+        description:
+          type: string
+          minLength: 1
+          description: Hashed.
+        arguments:
+          type: array
+          maxItems: 32
+          items:
+            type: object
+            required:
+              - name
+            properties:
+              name:
+                $ref: "#/components/schemas/PromptArgumentName"
+              title:
+                type: string
+                minLength: 1
+                description: Display name of the argument.
+              description:
+                type: string
+                minLength: 1
+                description: Hashed.
+              required:
+                type: boolean
+            additionalProperties: false
+      additionalProperties: false
     AdapterToolEntry:
       description: "Manifest entry of a tool of an adapter (CC-193). The adapter does not classify: risk and action are absent (the administrator gives them at approval), resourceRefs is empty (policies are per tool), and definitionHash covers the definition, resourceRefs, system and credential without risk and action."
       type: object
@@ -708,15 +865,18 @@ components:
                 $ref: "#/components/schemas/ResourceRef"
       unevaluatedProperties: false
     ResourceTypeDeclaration:
-      description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
+      description: "Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md). A type with valueOnly true only limits a value (a file path, a ref): it has just type and idPattern, no entity and no attributes."
       type: object
       required:
         - type
-        - attributes
         - idPattern
       properties:
         type:
           $ref: "#/components/schemas/ResourceType"
+        valueOnly:
+          description: "True: the type has no Cedar entity, no scopes and no resolver; it may appear only in variables[].type of a resource template and argumentRules[].type of a prompt, never in resourceRefs (CC-258). Allowed members then: type, idPattern and valueOnly."
+          type: boolean
+          default: false
         attributes:
           description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
           type: array
@@ -768,6 +928,139 @@ components:
           - parentAttribute
         parentAttribute:
           - parent
+      if:
+        properties:
+          valueOnly:
+            const: true
+        required:
+          - valueOnly
+      then:
+        not:
+          anyOf:
+            - required:
+                - attributes
+            - required:
+                - parent
+            - required:
+                - parentAttribute
+            - required:
+                - scopePattern
+            - required:
+                - earlyScopeCheck
+            - required:
+                - classification
+      else:
+        required:
+          - attributes
+      additionalProperties: false
+    AdapterResourceEntry:
+      description: "Manifest entry of a static resource of an adapter (CC-258): no additionalGroup (an administrator classifies at approval). The uri is as the client sees it, with the <system>+ prefix of the scheme."
+      type: object
+      required:
+        - name
+        - definition
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        definition:
+          $ref: "#/components/schemas/McpResourceDefinition"
+        definitionHash:
+          description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+          $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    AdapterResourceTemplateEntry:
+      description: "Manifest entry of a resource template of an adapter (CC-258): variables carry maxLength and pattern instead of a type, no additionalGroup."
+      type: object
+      required:
+        - name
+        - definition
+        - variables
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        definition:
+          $ref: "#/components/schemas/McpResourceTemplateDefinition"
+        variables:
+          description: One entry per variable of uriTemplate, in the order of first occurrence (rule uri-variables-bound).
+          type: array
+          minItems: 1
+          maxItems: 32
+          items:
+            $ref: "#/components/schemas/AdapterTemplateVariable"
+        definitionHash:
+          description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+          $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    PromptEntry:
+      description: "Manifest entry of a prompt (CC-258). The prompt is data of the manifest: the gateway builds the result of prompts/get from messages and never calls the server. The author wraps an argument in markers (<ticket_id>{{ticketId}}</ticket_id>); the gateway refuses argument values with <, >, { or } at every prompts/get, whatever the pattern says. messages is removed from prompts/list."
+      type: object
+      required:
+        - name
+        - definition
+        - argumentRules
+        - messages
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/PromptName"
+        definition:
+          $ref: "#/components/schemas/McpPromptDefinition"
+        argumentRules:
+          description: One rule per argument of definition.arguments, no more and no fewer (rule prompts-valid).
+          type: array
+          maxItems: 32
+          items:
+            type: object
+            required:
+              - name
+              - maxLength
+              - pattern
+            properties:
+              name:
+                $ref: "#/components/schemas/PromptArgumentName"
+              maxLength:
+                type: integer
+                minimum: 1
+                maximum: 4096
+              pattern:
+                description: Anchored like a pattern in inputSchema (CC-078, CC-123). TAB, LF and CR are forbidden in values with a pattern (README, 'Text hygiene'), so arguments are one line.
+                type: string
+                pattern: ^\^.+\$$
+                maxLength: 2048
+              type:
+                description: "Optional resource type: the value must match its idPattern as well. May be a valueOnly type."
+                $ref: "#/components/schemas/ResourceType"
+            additionalProperties: false
+        messages:
+          description: Messages of the result of prompts/get; {{argument}} places a value, only names of definition.arguments (rule prompt-placeholders-declared).
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            required:
+              - role
+              - text
+            properties:
+              role:
+                enum:
+                  - user
+                  - assistant
+              text:
+                type: string
+                minLength: 1
+                maxLength: 8000
+            additionalProperties: false
+        additionalGroup:
+          description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
+          type: string
+          pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
+          maxLength: 70
+        definitionHash:
+          description: sha256 over the canonical JSON of kind, the members of definition, argumentRules, messages, additionalGroup when present, system and credential (CC-258).
+          $ref: "#/components/schemas/DefinitionHash"
       additionalProperties: false
     ToolEntry:
       description: Manifest entry of one tool. Every tool that accepts a resource identifier MUST declare resourceRefs (C6).
@@ -778,6 +1071,56 @@ components:
             - risk
             - action
       unevaluatedProperties: false
+    ResourceEntry:
+      description: Manifest entry of a static resource (CC-258). The gateway does not call the credential broker for it and the server gets no credential, so the content cannot come from the account of the user.
+      type: object
+      required:
+        - name
+        - definition
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        definition:
+          $ref: "#/components/schemas/McpResourceDefinition"
+        additionalGroup:
+          description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
+          type: string
+          pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
+          maxLength: 70
+        definitionHash:
+          description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+          $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
+    ResourceTemplateEntry:
+      description: Manifest entry of a resource template (CC-258).
+      type: object
+      required:
+        - name
+        - definition
+        - variables
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        definition:
+          $ref: "#/components/schemas/McpResourceTemplateDefinition"
+        variables:
+          description: One entry per variable of uriTemplate, in the order of first occurrence (rule uri-variables-bound).
+          type: array
+          minItems: 1
+          maxItems: 32
+          items:
+            $ref: "#/components/schemas/ResourceTemplateVariable"
+        additionalGroup:
+          description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
+          type: string
+          pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
+          maxLength: 70
+        definitionHash:
+          description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+          $ref: "#/components/schemas/DefinitionHash"
+      additionalProperties: false
     ServerId:
       description: MCP server id; always mcp-<system>, one server per system (C5).
       type: string
@@ -832,7 +1175,7 @@ components:
       pattern: ^override-[a-z0-9][a-z0-9-]{0,54}$
     ServerManifest:
       title: MCP server manifest (C6)
-      description: "Generated by the starter at build time (target/mcp-manifest.json) or built at startup from the server's tools/list (CC-140), served by every server at GET /.well-known/mcp-manifest (C14, without authentication) and pulled by the gateway when the server is added, on refresh and in its runtime loop (C5, 'Manifest intake'; CC-249). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique, all in one Cedar namespace that equals policies.namespace; each declaration consistent (parent and parentAttribute together, parent in the same namespace, earlyScopeCheck only with a scopePattern, the classification attribute among attributes, idPattern and scopePattern anchored with ^ and $ without a top-level alternation); policies.files names unique; policiesHash recomputed from policies and resourceTypes equals the declared one; definition.name == name; definition.inputSchema has no confirmation_code and is closed and bounded (CC-078, CC-123: type object and additionalProperties false at every object level, no open maps, every string with maxLength unless an enum or const, every array with maxItems and items, every number with minimum and maximum, patterns anchored with ^ and $, every node typed, no allOf/anyOf/oneOf/not/if/then/else); definitionHash recomputed from definition and the entry equals the declared one (CC-005)."
+      description: "Generated by the starter at build time (target/mcp-manifest.json) or built at startup from the server's tools/list (CC-140), served by every server at GET /.well-known/mcp-manifest (C14, without authentication) and pulled by the gateway when the server is added, on refresh and in its runtime loop (C5, 'Manifest intake'; CC-249). Rules checked in addition to this schema (see README, 'Reguły semantyczne'): serverId == 'mcp-' + system; tool names unique; every resourceRefs[].type and resourceTypes[].parent is declared in resourceTypes; resourceTypes[].type unique, all in one Cedar namespace that equals policies.namespace; each declaration consistent (parent and parentAttribute together, parent in the same namespace, earlyScopeCheck only with a scopePattern, the classification attribute among attributes, idPattern and scopePattern anchored with ^ and $ without a top-level alternation); policies.files names unique; policiesHash recomputed from policies and resourceTypes equals the declared one; definition.name == name; definition.inputSchema has no confirmation_code and is closed and bounded (CC-078, CC-123: type object and additionalProperties false at every object level, no open maps, every string with maxLength unless an enum or const, every array with maxItems and items, every number with minimum and maximum, patterns anchored with ^ and $, every node typed, no allOf/anyOf/oneOf/not/if/then/else); definitionHash recomputed from definition and the entry equals the declared one (CC-005). Since 8.0.0 (CC-258, CC-262): resources, resourceTemplates and prompts with the rules resources-valid, resource-templates-valid, prompts-valid, resource-uri-scheme, resource-names-unique, resource-uri-unambiguous, uri-template-level1, uri-variables-bound, uri-template-entity-variable and prompt-placeholders-declared; the second part of a resource type is not a name of the base schema (resource-type-name-reserved); a valueOnly type is used only in variables[].type and argumentRules[].type, never in resourceRefs; the hash of a resource, a template and a prompt is recomputed like that of a tool (see README, 'Registry and definition pinning')."
       type: object
       required:
         - serverId
@@ -890,12 +1233,36 @@ components:
             $ref: "#/components/schemas/ResourceTypeDeclaration"
         tools:
           type: array
-          minItems: 1
           items:
             oneOf:
               - $ref: "#/components/schemas/ToolEntry"
               - $ref: "#/components/schemas/AdapterToolEntry"
-          description: "Which of the two entry forms applies depends on source: AdapterToolEntry when source is adapter, ToolEntry otherwise (CC-193)."
+          description: "Which of the two entry forms applies depends on source: AdapterToolEntry when source is adapter, ToolEntry otherwise (CC-193). Since 8.0.0 the array may be empty when the manifest has resources, resourceTemplates or prompts (at least one of the four lists is not empty)."
+        contractsVersion:
+          description: Version of mcp-contracts the server was built against (CC-258). Absent means 7.x or older. The gateway reads it to decide which claims and fields a server accepts; it is not part of any definitionHash.
+          $ref: "#/components/schemas/SemVer"
+        resources:
+          description: "Static resources of the server (CC-258): catalog documents whose content comes from the server, not from the account of the user. Names are unique together with resourceTemplates."
+          type: array
+          maxItems: 100
+          items:
+            anyOf:
+              - $ref: "#/components/schemas/ResourceEntry"
+              - $ref: "#/components/schemas/AdapterResourceEntry"
+        resourceTemplates:
+          description: "Resource templates of the server (CC-258): a URI template with variables bound to resource types."
+          type: array
+          maxItems: 100
+          items:
+            anyOf:
+              - $ref: "#/components/schemas/ResourceTemplateEntry"
+              - $ref: "#/components/schemas/AdapterResourceTemplateEntry"
+        prompts:
+          description: "Prompts of the server (CC-258): a static catalog pinned by definitionHash, messages included. The gateway builds the result of prompts/get from it and never calls the server. An adapter has none."
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/PromptEntry"
         source:
           description: "Absent for a server built on the starter. adapter marks the manifest of an adapter, the sidecar of a foreign MCP server (CC-193): its tool entries carry no risk and no action (an administrator classifies them at approval, outside definitionHash) and no resourceRefs, no resourceTypes and no policies (its policies are its own, outside the platform)."
           const: adapter
@@ -940,15 +1307,18 @@ components:
       additionalProperties: false
       $defs:
         ResourceTypeDeclaration:
-          description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
+          description: "Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md). A type with valueOnly true only limits a value (a file path, a ref): it has just type and idPattern, no entity and no attributes."
           type: object
           required:
             - type
-            - attributes
             - idPattern
           properties:
             type:
               $ref: "#/components/schemas/ResourceType"
+            valueOnly:
+              description: "True: the type has no Cedar entity, no scopes and no resolver; it may appear only in variables[].type of a resource template and argumentRules[].type of a prompt, never in resourceRefs (CC-258). Allowed members then: type, idPattern and valueOnly."
+              type: boolean
+              default: false
             attributes:
               description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
               type: array
@@ -1000,6 +1370,30 @@ components:
               - parentAttribute
             parentAttribute:
               - parent
+          if:
+            properties:
+              valueOnly:
+                const: true
+            required:
+              - valueOnly
+          then:
+            not:
+              anyOf:
+                - required:
+                    - attributes
+                - required:
+                    - parent
+                - required:
+                    - parentAttribute
+                - required:
+                    - scopePattern
+                - required:
+                    - earlyScopeCheck
+                - required:
+                    - classification
+          else:
+            required:
+              - attributes
           additionalProperties: false
         ResourceRef:
           type: object
@@ -1100,6 +1494,298 @@ components:
                   items:
                     $ref: "#/components/schemas/ResourceRef"
           unevaluatedProperties: false
+        McpResourceDefinition:
+          description: "MCP resource definition as returned by resources/list (CC-258): name, title, description, uri and optionally mimeType and annotations. No size, icons or _meta, as in McpToolDefinition: they would reach the client without being pinned. Every member is part of definitionHash."
+          type: object
+          required:
+            - name
+            - title
+            - description
+            - uri
+          properties:
+            name:
+              $ref: "#/components/schemas/ResourceName"
+            title:
+              type: string
+              minLength: 1
+              description: Display name; hashed.
+            description:
+              type: string
+              minLength: 1
+              description: Hashed.
+            uri:
+              $ref: "#/components/schemas/ResourceUri"
+            mimeType:
+              description: Media type, lower case.
+              type: string
+              pattern: ^[a-z][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$
+              maxLength: 127
+            annotations:
+              type: object
+          additionalProperties: false
+        ResourceEntry:
+          description: Manifest entry of a static resource (CC-258). The gateway does not call the credential broker for it and the server gets no credential, so the content cannot come from the account of the user.
+          type: object
+          required:
+            - name
+            - definition
+            - definitionHash
+          properties:
+            name:
+              $ref: "#/components/schemas/ResourceName"
+            definition:
+              $ref: "#/components/schemas/McpResourceDefinition"
+            additionalGroup:
+              description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
+              type: string
+              pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
+              maxLength: 70
+            definitionHash:
+              description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+              $ref: "#/components/schemas/DefinitionHash"
+          additionalProperties: false
+        AdapterResourceEntry:
+          description: "Manifest entry of a static resource of an adapter (CC-258): no additionalGroup (an administrator classifies at approval). The uri is as the client sees it, with the <system>+ prefix of the scheme."
+          type: object
+          required:
+            - name
+            - definition
+            - definitionHash
+          properties:
+            name:
+              $ref: "#/components/schemas/ResourceName"
+            definition:
+              $ref: "#/components/schemas/McpResourceDefinition"
+            definitionHash:
+              description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+              $ref: "#/components/schemas/DefinitionHash"
+          additionalProperties: false
+        McpResourceTemplateDefinition:
+          description: MCP resource template definition as returned by resources/templates/list (CC-258). Every member is part of definitionHash.
+          type: object
+          required:
+            - name
+            - title
+            - description
+            - uriTemplate
+          properties:
+            name:
+              $ref: "#/components/schemas/ResourceName"
+            title:
+              type: string
+              minLength: 1
+              description: Display name; hashed.
+            description:
+              type: string
+              minLength: 1
+              description: Hashed.
+            uriTemplate:
+              $ref: "#/components/schemas/ResourceUriTemplate"
+            mimeType:
+              description: Media type, lower case.
+              type: string
+              pattern: ^[a-z][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*$
+              maxLength: 127
+            annotations:
+              type: object
+          additionalProperties: false
+        ResourceTemplateVariable:
+          description: "A variable of a URI template bound to a resource type: the value must match the idPattern of the type. At least one variable of a template has a type with an entity (rule uri-template-entity-variable)."
+          type: object
+          required:
+            - name
+            - type
+          properties:
+            name:
+              $ref: "#/components/schemas/UriVariableName"
+            type:
+              $ref: "#/components/schemas/ResourceType"
+          additionalProperties: false
+        AdapterTemplateVariable:
+          description: "A variable of the URI template of an adapter (CC-258): an adapter declares no resourceTypes, so the variable carries its own bounds."
+          type: object
+          required:
+            - name
+            - maxLength
+            - pattern
+          properties:
+            name:
+              $ref: "#/components/schemas/UriVariableName"
+            maxLength:
+              type: integer
+              minimum: 1
+              maximum: 1024
+            pattern:
+              description: Anchored regular expression (^...$, no top-level alternation) matched against the whole value.
+              type: string
+              pattern: ^\^.+\$$
+              maxLength: 2048
+          additionalProperties: false
+        ResourceTemplateEntry:
+          description: Manifest entry of a resource template (CC-258).
+          type: object
+          required:
+            - name
+            - definition
+            - variables
+            - definitionHash
+          properties:
+            name:
+              $ref: "#/components/schemas/ResourceName"
+            definition:
+              $ref: "#/components/schemas/McpResourceTemplateDefinition"
+            variables:
+              description: One entry per variable of uriTemplate, in the order of first occurrence (rule uri-variables-bound).
+              type: array
+              minItems: 1
+              maxItems: 32
+              items:
+                $ref: "#/components/schemas/ResourceTemplateVariable"
+            additionalGroup:
+              description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
+              type: string
+              pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
+              maxLength: 70
+            definitionHash:
+              description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+              $ref: "#/components/schemas/DefinitionHash"
+          additionalProperties: false
+        AdapterResourceTemplateEntry:
+          description: "Manifest entry of a resource template of an adapter (CC-258): variables carry maxLength and pattern instead of a type, no additionalGroup."
+          type: object
+          required:
+            - name
+            - definition
+            - variables
+            - definitionHash
+          properties:
+            name:
+              $ref: "#/components/schemas/ResourceName"
+            definition:
+              $ref: "#/components/schemas/McpResourceTemplateDefinition"
+            variables:
+              description: One entry per variable of uriTemplate, in the order of first occurrence (rule uri-variables-bound).
+              type: array
+              minItems: 1
+              maxItems: 32
+              items:
+                $ref: "#/components/schemas/AdapterTemplateVariable"
+            definitionHash:
+              description: sha256 over the canonical JSON of kind, the members of definition, the entry fields and system, credential (CC-258). Receivers recompute it.
+              $ref: "#/components/schemas/DefinitionHash"
+          additionalProperties: false
+        PromptArgumentName:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_]{0,63}$
+        McpPromptDefinition:
+          description: MCP prompt definition as returned by prompts/list (CC-258). Every member is part of definitionHash; the messages are a field of the entry and are hashed too.
+          type: object
+          required:
+            - name
+            - title
+            - description
+          properties:
+            name:
+              $ref: "#/components/schemas/PromptName"
+            title:
+              type: string
+              minLength: 1
+              description: Display name; hashed.
+            description:
+              type: string
+              minLength: 1
+              description: Hashed.
+            arguments:
+              type: array
+              maxItems: 32
+              items:
+                type: object
+                required:
+                  - name
+                properties:
+                  name:
+                    $ref: "#/components/schemas/PromptArgumentName"
+                  title:
+                    type: string
+                    minLength: 1
+                    description: Display name of the argument.
+                  description:
+                    type: string
+                    minLength: 1
+                    description: Hashed.
+                  required:
+                    type: boolean
+                additionalProperties: false
+          additionalProperties: false
+        PromptEntry:
+          description: "Manifest entry of a prompt (CC-258). The prompt is data of the manifest: the gateway builds the result of prompts/get from messages and never calls the server. The author wraps an argument in markers (<ticket_id>{{ticketId}}</ticket_id>); the gateway refuses argument values with <, >, { or } at every prompts/get, whatever the pattern says. messages is removed from prompts/list."
+          type: object
+          required:
+            - name
+            - definition
+            - argumentRules
+            - messages
+            - definitionHash
+          properties:
+            name:
+              $ref: "#/components/schemas/PromptName"
+            definition:
+              $ref: "#/components/schemas/McpPromptDefinition"
+            argumentRules:
+              description: One rule per argument of definition.arguments, no more and no fewer (rule prompts-valid).
+              type: array
+              maxItems: 32
+              items:
+                type: object
+                required:
+                  - name
+                  - maxLength
+                  - pattern
+                properties:
+                  name:
+                    $ref: "#/components/schemas/PromptArgumentName"
+                  maxLength:
+                    type: integer
+                    minimum: 1
+                    maximum: 4096
+                  pattern:
+                    description: Anchored like a pattern in inputSchema (CC-078, CC-123). TAB, LF and CR are forbidden in values with a pattern (README, 'Text hygiene'), so arguments are one line.
+                    type: string
+                    pattern: ^\^.+\$$
+                    maxLength: 2048
+                  type:
+                    description: "Optional resource type: the value must match its idPattern as well. May be a valueOnly type."
+                    $ref: "#/components/schemas/ResourceType"
+                additionalProperties: false
+            messages:
+              description: Messages of the result of prompts/get; {{argument}} places a value, only names of definition.arguments (rule prompt-placeholders-declared).
+              type: array
+              minItems: 1
+              maxItems: 20
+              items:
+                type: object
+                required:
+                  - role
+                  - text
+                properties:
+                  role:
+                    enum:
+                      - user
+                      - assistant
+                  text:
+                    type: string
+                    minLength: 1
+                    maxLength: 8000
+                additionalProperties: false
+            additionalGroup:
+              description: "Optional group (C9) that a user needs in addition to the group the risk derives: mcp-<system>-<suffix> with the system of this server and a suffix other than read, write and destructive (checked by the rule additional-group-valid), for example mcp-opensearch-ops for an ops-only tool. It can only narrow access (platform-call-additional-group); the risk-derived group is still needed. Part of definitionHash, so a change needs approval. Not allowed in an adapter manifest."
+              type: string
+              pattern: ^mcp-[a-z][a-z0-9]{1,30}-[a-z][a-z0-9-]{0,30}$
+              maxLength: 70
+            definitionHash:
+              description: sha256 over the canonical JSON of kind, the members of definition, argumentRules, messages, additionalGroup when present, system and credential (CC-258).
+              $ref: "#/components/schemas/DefinitionHash"
+          additionalProperties: false
       allOf:
         - if:
             required:
@@ -1115,6 +1801,19 @@ components:
                 maxItems: 0
                 items:
                   $ref: "#/components/schemas/ResourceTypeDeclaration"
+              resources:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdapterResourceEntry"
+              resourceTemplates:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdapterResourceTemplateEntry"
+              prompts:
+                type: array
+                maxItems: 0
+                items:
+                  $ref: "#/components/schemas/PromptEntry"
             not:
               anyOf:
                 - required:
@@ -1127,9 +1826,45 @@ components:
                 items:
                   $ref: "#/components/schemas/ToolEntry"
                 type: array
+              resources:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResourceEntry"
+              resourceTemplates:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResourceTemplateEntry"
             required:
               - policies
               - policiesHash
+        - description: "At least one of the four lists is not empty (CC-258): a manifest without any primitive is refused."
+          anyOf:
+            - properties:
+                tools:
+                  type: array
+                  minItems: 1
+                  items: {}
+            - required:
+                - resources
+              properties:
+                resources:
+                  type: array
+                  minItems: 1
+                  items: {}
+            - required:
+                - resourceTemplates
+              properties:
+                resourceTemplates:
+                  type: array
+                  minItems: 1
+                  items: {}
+            - required:
+                - prompts
+              properties:
+                prompts:
+                  type: array
+                  minItems: 1
+                  items: {}
       dependentRequired:
         policies:
           - policiesHash

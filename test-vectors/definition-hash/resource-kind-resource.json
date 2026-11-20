@@ -1,0 +1,23 @@
+{
+  "description": "The same definition members under the kind resource.",
+  "input": {
+    "kind": "resource",
+    "definition": {
+      "name": "guide",
+      "title": "Guide",
+      "description": "Same words."
+    },
+    "entry": {},
+    "server": {
+      "system": "servicedesk",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "service-account"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"credential\":{\"acceptedTypes\":[\"service-account\"],\"required\":true},\"description\":\"Same words.\",\"kind\":\"resource\",\"name\":\"guide\",\"system\":\"servicedesk\",\"title\":\"Guide\"}",
+  "expected": "sha256:f5a0923d83008c04703685cee2578506f3a0efc42497bfc3653c1d7a80751248"
+}

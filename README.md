@@ -250,6 +250,14 @@ when a server is added or removed, a manifest changes or the administrator write
 (`ScopeMapping.of` to validate a document, `ScopeMapping.ofRegistered` to evaluate (skips an invalid scope on its own and reports it in `ignored()`), `ScopeMapping.fromJson` for the `scopeMapping`
 of the policy data). `Scopes.pathPrefixes` and `Scopes.dashPrefixes` are helpers for the server that derives `scopes` of a resource.
 
+**Resources, prompts and principal type (8.0.0).** `builder.forResourceRead(caller, ResourceDescriptor, values)` and
+`builder.forPromptGet(caller, PromptDescriptor)` build `Action::"read_resource"` on `McpResource` and `Action::"get_prompt"` on
+`McpPrompt` (CC-262); `Caller.withPrincipalType("agent")` and `withActor(sub)` fill `context.principalType` (always present, `user` by
+default) and `context.actor` (only with `delegated`; otherwise `internal_error`) (CC-263). A `valueOnly` declaration
+(`ResourceTypeDeclaration.valueOnly()`) stays in `ResourceTypes.declarations()` and validates ids, while `entityDeclarations()`
+(what fragments, `PlatformServerPolicies` and requests are built from) leaves it out; it is refused as a `resourceRef` type and as a
+resolved resource (`internal_error`).
+
 **API compatibility (CC-039):** the public records (`Caller`, `ToolDescriptor`, `ResourceRef`, `ResolvedResource`,
 `ResourceTypeDeclaration`, `CedarRequest`, `QueryConstraint`) and the cedar-java types in signatures are part of the API. Adding
 a record component, or moving to a new major version of cedar-java, is a new major version of the library.
@@ -324,15 +332,31 @@ Each IGA adapter chooses the requester identifier from configuration (for exampl
 `preferred_username`); a missing claim in `Requester` is an adapter error and a refusal (fail-closed). The shapes of
 `AccessRequest` and `RequestResult`: CC-024.
 
-## Frozen Cedar schema (7.0 line)
+## Frozen Cedar schema (8.0 line)
 
 `cedar/mcp.cedarschema` is the base schema, in the empty namespace. Every server's fragment is appended to its text and validated
 against the result, so the file is frozen byte for byte within a major line, including the header comment and LF line endings:
 a change of one byte could make a fragment that validated yesterday fail today. The tests (Node and Java) compare the SHA-256 of
-the file (`.gitattributes` enforces LF). SHA-256 of the 7.0.0 schema: `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`.
-It names no system, server or resource type; it has `ResourceScope`, `UserGroup`, `User` (with one flat `scopes` set), `Tool` (with
-`requiredGroup`), `RequestContext` (`refs` is a set of `ResourceScope`) and the action `call`. The previous bytes
-(`51d71b2d...`, 5.0.0 ... 6.3.2) are not valid on this line, and policy bundles no longer exist.
+the file (`.gitattributes` enforces LF). SHA-256 of the 8.0.0 schema: `a9adfc9d55519c7d8da31a5666a7e4d56f07724f41b31f84eec3285ea1917ed8`.
+It names no system, server or resource type; it has `ResourceScope`, `UserGroup`, `User` (with one flat `scopes` set), `Tool`
+(with `requiredGroup`), `McpResource` and `McpPrompt` (CC-262: `server`, `name`, `requiredGroup`, `additionalGroup?`, and
+`uriTemplate` for a resource), `RequestContext` (`refs` is a set of `ResourceScope`; CC-263 adds the optional `principalType`,
+`actor`) and the actions `call` on `Tool`, `read_resource` on `McpResource` and `get_prompt` on `McpPrompt`. The previous bytes
+(`6340b0f5...`, 7.0.0 ... 7.x; `51d71b2d...`, 5.0.0 ... 6.3.2) are not valid on this line, and policy bundles no longer exist.
+The `policiesHash` of a server does not change with the base schema (it covers `policies` and `resourceTypes` only), but the
+gateway and the starter must compose the fragments with the 8.0 schema to get one text.
+
+The second part of a resource type of a server (`Notes::<Name>`) is never one of `User`, `UserGroup`, `ResourceScope`, `Tool`,
+`McpResource`, `McpPrompt`, `RequestContext`: such a type would shadow a type of the base schema. The manifest rule
+`resource-type-name-reserved` refuses it, so check the manifests of registered servers before the gateway moves to 8.0.
+
+Platform policies of `cedar/platform` (decided by the gateway, never by a server): `call-by-group` and `call-additional-group`,
+`call-write-outside-scope`, `read-resource-by-group` and `read-resource-additional-group` (`platform-read-resource-*`),
+`get-prompt-by-group` and `get-prompt-additional-group` (`platform-get-prompt-*`), and `agent-no-destructive`
+(`platform-call-agent-no-destructive`, `platform-call-destructive-without-principal-type`): a DESTRUCTIVE tool is called only with
+`context.principalType == "user"`; `agent` and `delegated` are refused, and so is a request without `principalType`. A fragment
+policy may not mention `McpResource`, `McpPrompt`, `read_resource` or `get_prompt`; a gateway override must be a `forbid` on one of
+the pairs `call` / `Tool`, `read_resource` / `McpResource`, `get_prompt` / `McpPrompt`.
 
 ## Resource identifiers
 
@@ -934,10 +958,19 @@ only with a strictly newer `revision` (equal or older: `200`, `accepted: false`;
 On `409 policy_data_stale` the gateway pushes its current data and repeats the `tools/call` **once** with a new token (new `jti`; the first token is spent). If the second answer is again `409`, or the push
 fails, the client gets `upstream_unavailable`; any other refusal is not retried and triggers no push. Vectors: `policy-data-gate/` (the rule), `policy-data-push/` (the replacement rule and the gateway sequence).
 
-## Registry and definition pinning (CC-097, CC-133, CC-249)
+## Registry and definition pinning (CC-097, CC-133, CC-249, CC-258)
 
 For every tool the gateway keeps an approved definition (its fingerprint is `definitionHash`) and neither shows nor runs a tool
 whose current definition differs. Rules:
+
+0. **Resources, templates and prompts (8.0.0, CC-258).** They are pinned like tools. The hash is SHA-256 of the RFC 8785 form of a flat
+   object: `kind` (`resource`, `resourceTemplate` or `prompt`; the same content under another kind gives another hash), the members of
+   `definition` (resource: `name`, `title`, `description`, `uri`, `mimeType`, `annotations`; template: `uriTemplate` instead of `uri`;
+   prompt: `name`, `title`, `description`, `arguments`; a member outside the set is an error, as for tools), the entry fields
+   (`variables`; `argumentRules` and `messages`), `additionalGroup` when present, `system` and `credential`
+   (`scripts/lib/definition-hash.mjs` `primitiveHash`, `DefinitionHash.computePrimitive`, vectors `definition-hash/resource-*`,
+   `resource-template-*`, `prompt-*`). The text of a prompt reaches the model, so `messages` is pinned like the description of a tool.
+   The content of a resource is not pinned: only the definition and the URI template are.
 
 1. **Where the manifest comes from and who pulls it (CC-249).** The gateway pulls the manifest from the server itself (`GET /.well-known/mcp-manifest`, C14)
    when an administrator adds the server, on a refresh and in a runtime loop (at most every 60 s as an upper bound on staleness; an unreachable server may be retried sooner, the gateway uses 5 s); nothing is written to the registry by a
@@ -1373,14 +1406,17 @@ Formats:
 - **The rest:** `description`, input data and `expected`; described in `cedar/entity-builder.md` (Cedar) and in the tests
   `test/*.test.mjs`, which are also the reference verifiers.
 
-## Identifiers in `common.schema.json` (CC-079, CC-229)
+## Identifiers in `common.schema.json` (CC-079, CC-229, CC-258)
 
 `SystemId` (`^[a-z][a-z0-9]{1,30}$`), `ServerId` (`^mcp-<SystemId>$`), `QualifiedToolName` (`<system>__<tool>`) and `ResourceType`
 (`^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$`, the namespace is the Cedar namespace of the server) are patterns, not
 enumerations; the four credential types stay an enumeration because they are protocol, not a list of systems. Until 6.3.2 this
 file also held the id patterns of the five systems (`JiraProjectKey` ... `ServiceDeskTicketId`, `ResourceIdPatterns`) for the
 `@ArgumentLimits(contractPattern = ...)` of the starter; they are gone, and a server takes the pattern of an argument from its own
-`resourceTypes[].idPattern`. `test/schemas.test.mjs` checks that no enumeration in the file names a system.
+`resourceTypes[].idPattern`. `test/schemas.test.mjs` checks that no enumeration in the file names a system. Since 8.0.0: `ResourceName` and `PromptName` (the pattern
+and the limit of `ToolName`), `QualifiedPromptName` (`<system>__<prompt>`), `ResourceUri` (scheme = system id, `<system>+<scheme>` for an
+adapter, ASCII, at most 2100 characters), `ResourceUriTemplate` (the same start, at most 1000 characters after `://`) and
+`UriVariableName`.
 
 ## Manifest semantic rules
 
@@ -1415,6 +1451,26 @@ Beyond the JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), checked by th
     `policies` and `resourceTypes` (RFC 8785 + SHA-256, `scripts/lib/definition-hash.mjs` `policiesHash`) equals the declared one
     (`policies-hash-matches`). The schema requires `policies` and `policiesHash` together, for every manifest that is not an
     adapter's, and forbids them (and `resourceTypes` entries) in an adapter manifest.
+12. Resources, resource templates and prompts (8.0.0, CC-258). The root has `resources`, `resourceTemplates` and `prompts` (each at
+    most 100 entries) and `contractsVersion` (absent: 7.x or older; in no hash); `tools` stays required and may be empty, but at
+    least one of the four lists is not (schema). Rules: `resources-valid` and `resource-templates-valid` (`definition.name == name`;
+    adapter template variables carry an anchored `pattern` inside the pattern grammar), `prompts-valid` (unique names, a rule for
+    exactly the declared arguments, anchored patterns that compile), `resource-uri-scheme` (the scheme is `system`; an adapter has
+    `<system>+<scheme>`), `resource-names-unique` (resources and templates share one namespace of names, prompts have their own),
+    `resource-uri-unambiguous` (no two templates with one skeleton, where every variable is replaced by `{}`; no static resource that a
+    template matches, a variable standing for any non-empty text), `uri-template-level1` (only `{name}`: no operator `+ # . / ; ? &`, no
+    `*`, no `:`), `uri-variables-bound` (`variables` has one entry per variable, in order of first occurrence), `uri-template-entity-variable`
+    (a starter template has a variable whose type is not `valueOnly`; not checked for an adapter, which has no types) and
+    `prompt-placeholders-declared` (every `{{name}}` in `messages[].text` is an argument, no stray `{{` or `}}`). Every variable and
+    argument `type` is declared (`resource-types-declared`).
+13. A type with `valueOnly: true` has only `type` and `idPattern` (the schema refuses `attributes`, `parent`, `parentAttribute`,
+    `scopePattern`, `earlyScopeCheck` and `classification` next to it). It has no entity, so it is left out of the types that a
+    fragment schema must declare, and it may be the type of `variables[]` and `argumentRules[]` entries, never of a `resourceRefs[]`
+    entry (`resource-types-valid`). Resource types whose second part is a name of the base schema are refused
+    (`resource-type-name-reserved`, CC-262).
+14. `definitionHash` of a resource, a template and a prompt is recomputed like that of a tool ("Registry and definition pinning").
+    The text hygiene rule applies to names, titles, descriptions and message texts; the gateway checks it at approval (CC-250), the
+    rules of this section do not.
 
 ## Requirements for receivers
 

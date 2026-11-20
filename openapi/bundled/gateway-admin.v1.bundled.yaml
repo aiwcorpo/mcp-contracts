@@ -3489,7 +3489,7 @@ components:
       pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
       maxLength: 64
     ResourceType:
-      description: "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in."
+      description: "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in. The second part must not be a name of the base schema: User, UserGroup, ResourceScope, Tool, McpResource, McpPrompt or RequestContext (CC-262; the rule resource-type-name-reserved checks it, because a type of that name would shadow the base type)."
       type: string
       pattern: ^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$
     ResourceRef:
@@ -3709,15 +3709,18 @@ components:
             additionalProperties: false
       additionalProperties: false
     ResourceTypeDeclaration:
-      description: Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md).
+      description: "Everything the entity builder knows about a resource type of this server; there is no built-in type (cedar/entity-builder.md). A type with valueOnly true only limits a value (a file path, a ref): it has just type and idPattern, no entity and no attributes."
       type: object
       required:
         - type
-        - attributes
         - idPattern
       properties:
         type:
           $ref: "#/components/schemas/ResourceType"
+        valueOnly:
+          description: "True: the type has no Cedar entity, no scopes and no resolver; it may appear only in variables[].type of a resource template and argumentRules[].type of a prompt, never in resourceRefs (CC-258). Allowed members then: type, idPattern and valueOnly."
+          type: boolean
+          default: false
         attributes:
           description: Attributes the server's resolver fills from the system (Cedar entity attributes), without the parent attribute and without scopes, which the builder adds.
           type: array
@@ -3769,6 +3772,30 @@ components:
           - parentAttribute
         parentAttribute:
           - parent
+      if:
+        properties:
+          valueOnly:
+            const: true
+        required:
+          - valueOnly
+      then:
+        not:
+          anyOf:
+            - required:
+                - attributes
+            - required:
+                - parent
+            - required:
+                - parentAttribute
+            - required:
+                - scopePattern
+            - required:
+                - earlyScopeCheck
+            - required:
+                - classification
+      else:
+        required:
+          - attributes
       additionalProperties: false
     AuditEvent:
       title: Audit event (C8)

@@ -51,6 +51,7 @@
     "context": {
       "client": "claude-code",
       "mfaAge": 120,
+      "principalType": "user",
       "refs": []
     },
     "entities": [

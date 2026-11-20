@@ -244,16 +244,9 @@ public final class PolicyFragments {
             }
             JsonNode est = JSON.readTree(policy.toJson());
             if (target == OverrideTarget.GATEWAY) {
-                boolean isCall = "Action".equals(est.path("action").path("entity").path("type").asText())
-                        && "call".equals(est.path("action").path("entity").path("id").asText())
-                        && "==".equals(est.path("action").path("op").asText());
-                boolean onTool = "is".equals(est.path("resource").path("op").asText())
-                        && "Tool".equals(est.path("resource").path("entity_type").asText());
-                if (!isCall || !onTool) {
-                    errors.add("a gateway override must be action == Action::\"call\" on resource is Tool");
-                }
+                errors.addAll(gatewayOverrideErrors(est));
             } else if (mentionsGatewayOnly(est)) {
-                errors.add("a server override may not mention Action::\"call\" or Tool");
+                errors.add("a server override may not mention Action::\"call\", \"read_resource\", \"get_prompt\", Tool, McpResource or McpPrompt");
             }
         } catch (Exception e) {
             return new Result(List.of("the override cannot be read: " + e.getMessage()));
@@ -266,6 +259,20 @@ public final class PolicyFragments {
             }
         }
         return new Result(errors);
+    }
+
+    /** The pairs of action and resource type that the gateway decides: call on Tool, read_resource on McpResource, get_prompt on McpPrompt. */
+    private static final Map<String, String> GATEWAY_ACTIONS = Map.of("call", "Tool", "read_resource", "McpResource", "get_prompt", "McpPrompt");
+
+    private static List<String> gatewayOverrideErrors(JsonNode est) {
+        JsonNode action = est.path("action");
+        String actionId = action.path("entity").path("id").asText();
+        boolean namesAction = "Action".equals(action.path("entity").path("type").asText()) && "==".equals(action.path("op").asText())
+                && GATEWAY_ACTIONS.containsKey(actionId);
+        boolean onResource = namesAction && "is".equals(est.path("resource").path("op").asText())
+                && GATEWAY_ACTIONS.get(actionId).equals(est.path("resource").path("entity_type").asText());
+        return onResource ? List.of() : List.of("a gateway override must be action == Action::\"call\" on resource is Tool, "
+                + "Action::\"read_resource\" on McpResource or Action::\"get_prompt\" on McpPrompt");
     }
 
     private static List<String> validatePolicies(Schema schema, PolicySet policies) {
@@ -303,7 +310,7 @@ public final class PolicyFragments {
 
     private static void checkDeclarations(String namespace, JsonNode own, ResourceTypes types, List<String> errors) {
         Set<String> declaredLocal = new HashSet<>();
-        for (ResourceTypeDeclaration d : types.declarations()) {
+        for (ResourceTypeDeclaration d : types.entityDeclarations()) {
             if (!d.namespace().equals(namespace)) {
                 continue;
             }
@@ -355,7 +362,7 @@ public final class PolicyFragments {
         for (Policy policy : policies.policies) {
             try {
                 if (mentionsGatewayOnly(JSON.readTree(policy.toJson()))) {
-                    errors.add("policy " + policy.policyID + " mentions Action::\"call\" or Tool: those belong to the gateway");
+                    errors.add("policy " + policy.policyID + " mentions Action::\"call\", \"read_resource\", \"get_prompt\", Tool, McpResource or McpPrompt: those belong to the gateway");
                 }
             } catch (Exception e) {
                 errors.add("policy " + policy.policyID + " cannot be read: " + e.getMessage());
@@ -366,11 +373,13 @@ public final class PolicyFragments {
 
     private static boolean mentionsGatewayOnly(JsonNode node) {
         if (node.isObject()) {
-            if ("Action".equals(node.path("type").asText()) && "call".equals(node.path("id").asText())) {
+            if ("Action".equals(node.path("type").asText()) && GATEWAY_ACTIONS.containsKey(node.path("id").asText())) {
                 return true;
             }
-            if ("Tool".equals(node.path("entity_type").asText()) || "Tool".equals(node.path("type").asText())) {
-                return true;
+            for (String type : GATEWAY_ACTIONS.values()) {
+                if (type.equals(node.path("entity_type").asText()) || type.equals(node.path("type").asText())) {
+                    return true;
+                }
             }
         }
         for (JsonNode child : node) {

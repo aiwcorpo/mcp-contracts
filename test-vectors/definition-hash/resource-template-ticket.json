@@ -1,0 +1,32 @@
+{
+  "description": "Resource template: variables are hashed with the definition (CC-258).",
+  "input": {
+    "kind": "resourceTemplate",
+    "definition": {
+      "name": "ticket",
+      "title": "Ticket",
+      "description": "One service desk ticket by id.",
+      "uriTemplate": "servicedesk://ticket/{ticketId}",
+      "mimeType": "application/json"
+    },
+    "entry": {
+      "variables": [
+        {
+          "name": "ticketId",
+          "type": "ServiceDesk::Ticket"
+        }
+      ]
+    },
+    "server": {
+      "system": "servicedesk",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "service-account"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"credential\":{\"acceptedTypes\":[\"service-account\"],\"required\":true},\"description\":\"One service desk ticket by id.\",\"kind\":\"resourceTemplate\",\"mimeType\":\"application/json\",\"name\":\"ticket\",\"system\":\"servicedesk\",\"title\":\"Ticket\",\"uriTemplate\":\"servicedesk://ticket/{ticketId}\",\"variables\":[{\"name\":\"ticketId\",\"type\":\"ServiceDesk::Ticket\"}]}",
+  "expected": "sha256:6dbb6ef649dd02511d52669f22db93c8b0da876cb1d32bdbe46022df8f41680c"
+}

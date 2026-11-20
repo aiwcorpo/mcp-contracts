@@ -96,10 +96,17 @@ class PolicyDecisionVectorTest {
             withoutTool.removeIf(e -> "Tool".equals(e.getEUID().getType().toString()));
             built = new CedarRequest(built.principal(), built.action(), built.resource(), built.context(), withoutTool);
         }
-        if ("remove-refs".equals(builder.path("adjustment").asText())) {
-            Map<String, com.cedarpolicy.value.Value> context = new java.util.LinkedHashMap<>(built.context());
-            context.remove("refs");
-            built = new CedarRequest(built.principal(), built.action(), built.resource(), context, built.entities());
+        if ("remove-resource-entity".equals(builder.path("adjustment").asText())) {
+            Set<Entity> withoutResource = new LinkedHashSet<>(built.entities());
+            withoutResource.removeIf(e -> "McpResource".equals(e.getEUID().getType().toString()));
+            built = new CedarRequest(built.principal(), built.action(), built.resource(), built.context(), withoutResource);
+        }
+        for (String[] removal : new String[][] {{"remove-refs", "refs"}, {"remove-principal-type", "principalType"}}) {
+            if (removal[0].equals(builder.path("adjustment").asText())) {
+                Map<String, com.cedarpolicy.value.Value> context = new java.util.LinkedHashMap<>(built.context());
+                context.remove(removal[1]);
+                built = new CedarRequest(built.principal(), built.action(), built.resource(), context, built.entities());
+            }
         }
         ObjectNode json = VectorInputs.toJson(built);
         assertEquals(vector.get("request").get("context"), json.get("context"), file::toString);

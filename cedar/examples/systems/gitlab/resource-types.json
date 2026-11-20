@@ -29,5 +29,15 @@
       "kind": "set",
       "required": false
     }
+  },
+  {
+    "type": "GitLab::Ref",
+    "valueOnly": true,
+    "idPattern": "^[A-Za-z0-9_](?:[./-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+  },
+  {
+    "type": "GitLab::FilePath",
+    "valueOnly": true,
+    "idPattern": "^[A-Za-z0-9_](?:[./-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
   }
 ]

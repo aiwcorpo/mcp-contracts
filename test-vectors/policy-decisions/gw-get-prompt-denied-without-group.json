@@ -1,0 +1,103 @@
+{
+  "description": "No mcp-notes-read: default deny.",
+  "covers": [
+    "no_group"
+  ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway-prompt",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-00000000000a",
+        "usr": "weatherreader",
+        "grp": [
+          "mcp-weather-read"
+        ],
+        "azp": "claude-code"
+      },
+      "prompt": {
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "summarize_note"
+      }
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000a"
+    },
+    "action": {
+      "type": "Action",
+      "id": "get_prompt"
+    },
+    "resource": {
+      "type": "McpPrompt",
+      "id": "notes__summarize_note"
+    },
+    "context": {
+      "client": "claude-code",
+      "principalType": "user",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "McpPrompt",
+        "id": "notes__summarize_note"
+      },
+      "attrs": {
+        "server": "mcp-notes",
+        "name": "summarize_note",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        }
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-00000000000a"
+      },
+      "attrs": {
+        "username": "weatherreader",
+        "client": "claude-code",
+        "scopes": []
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-weather-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-weather-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": []
+  }
+}

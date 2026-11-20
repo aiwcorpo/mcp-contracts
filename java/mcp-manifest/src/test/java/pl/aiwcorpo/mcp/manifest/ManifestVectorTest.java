@@ -43,6 +43,16 @@ class ManifestVectorTest {
     void definitionHashMatchesJavaScript(Path file) throws Exception {
         JsonNode v = JSON.readTree(file.toFile());
         JsonNode input = v.get("input");
+        if (input.has("kind")) {
+            String kind = input.get("kind").asText();
+            String definition = JSON.writeValueAsString(input.get("definition"));
+            String entry = JSON.writeValueAsString(input.get("entry"));
+            String system = input.get("server").get("system").asText();
+            String credential = JSON.writeValueAsString(input.get("server").get("credential"));
+            assertEquals(v.get("canonical").asText(), DefinitionHash.canonicalPrimitiveInput(kind, definition, entry, system, credential), file::toString);
+            assertEquals(v.get("expected").asText(), DefinitionHash.computePrimitive(kind, definition, entry, system, credential), file::toString);
+            return;
+        }
         String definition = JSON.writeValueAsString(input.get("tool"));
         String entry = JSON.writeValueAsString(input.get("manifestEntry"));
         String system = input.get("server").get("system").asText();

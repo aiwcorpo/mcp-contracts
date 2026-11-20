@@ -21,12 +21,12 @@ class FrozenArtifactsTest {
 
     /**
      * The base schema is composed with the fragment text of every server, so a change of a single byte can make a
-     * fragment that validated yesterday fail today: the file is frozen within a major line and its hash is checked.
+     * fragment that validated yesterday fail today: the file is frozen within a major line (8.x) and its hash is checked.
      */
-    private static final String MCP_CEDARSCHEMA_SHA256 = "6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1";
+    private static final String MCP_CEDARSCHEMA_SHA256 = "a9adfc9d55519c7d8da31a5666a7e4d56f07724f41b31f84eec3285ea1917ed8";
 
     @Test
-    void cedarSchemaIsFrozenForTheWhole7xLine() throws Exception {
+    void cedarSchemaIsFrozenForTheWhole8xLine() throws Exception {
         byte[] file = Files.readAllBytes(ContractFiles.resolve("cedar/mcp.cedarschema"));
         assertEquals(MCP_CEDARSCHEMA_SHA256, sha256(file));
         assertEquals(MCP_CEDARSCHEMA_SHA256, sha256(McpCedarSchema.text().getBytes(StandardCharsets.UTF_8)));

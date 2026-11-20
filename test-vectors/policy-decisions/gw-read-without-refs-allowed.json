@@ -57,7 +57,8 @@
       "id": "jira__get_issue"
     },
     "context": {
-      "client": "claude-code"
+      "client": "claude-code",
+      "principalType": "user"
     }
   },
   "entities": [

@@ -1,0 +1,46 @@
+{
+  "description": "A template whose variables have a type with an entity (projectPath) and valueOnly types (ref, filePath): every value is checked against its idPattern, none of them is early-check, refs is empty (CC-258).",
+  "level": "gateway-resource",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000011",
+      "usr": "gitlabreader",
+      "grp": [
+        "mcp-gitlab-read"
+      ],
+      "azp": "claude-code"
+    },
+    "resource": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "blob",
+      "uriTemplate": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+      "variables": [
+        {
+          "name": "projectPath",
+          "type": "GitLab::Project"
+        },
+        {
+          "name": "ref",
+          "type": "GitLab::Ref"
+        },
+        {
+          "name": "filePath",
+          "type": "GitLab::FilePath"
+        }
+      ]
+    },
+    "values": {
+      "projectPath": "team-a/app",
+      "ref": "main",
+      "filePath": "src/main.java"
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}
