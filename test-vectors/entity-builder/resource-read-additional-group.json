@@ -1,0 +1,111 @@
+{
+  "description": "A resource whose manifest entry names an additionalGroup: the McpResource entity carries it next to requiredGroup.",
+  "level": "gateway-resource",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000d",
+      "usr": "notesops",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-ops"
+      ],
+      "azp": "claude-code"
+    },
+    "resource": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "handbook",
+      "uriTemplate": "notes://docs/handbook",
+      "variables": [],
+      "additionalGroup": "mcp-notes-ops"
+    },
+    "values": {}
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000d"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read_resource"
+    },
+    "resource": {
+      "type": "McpResource",
+      "id": "notes__handbook"
+    },
+    "context": {
+      "client": "claude-code",
+      "principalType": "user",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "McpResource",
+          "id": "notes__handbook"
+        },
+        "attrs": {
+          "server": "mcp-notes",
+          "name": "handbook",
+          "uriTemplate": "notes://docs/handbook",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-read"
+            }
+          },
+          "additionalGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-ops"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000d"
+        },
+        "attrs": {
+          "username": "notesops",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-ops"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-ops"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

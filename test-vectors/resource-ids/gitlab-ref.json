@@ -1,0 +1,25 @@
+{
+  "resourceTypes": "cedar/examples/systems/gitlab/resource-types.json",
+  "type": "GitLab::Ref",
+  "kind": "resource",
+  "valid": [
+    "main",
+    "v1.2.3",
+    "feature/login-fix",
+    "release/2026.11"
+  ],
+  "invalid": [
+    "../x",
+    "a/../b",
+    ".git/config",
+    "a//b",
+    "a/-x",
+    "-x",
+    "a\\b",
+    "ABC\n",
+    "",
+    "a/",
+    "/a",
+    "a..b"
+  ]
+}

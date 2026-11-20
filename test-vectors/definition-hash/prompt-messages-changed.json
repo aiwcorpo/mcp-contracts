@@ -1,0 +1,46 @@
+{
+  "description": "Only a message changed: the hash changes.",
+  "input": {
+    "kind": "prompt",
+    "definition": {
+      "name": "summarize_ticket",
+      "title": "Summarize ticket",
+      "description": "Asks for a short summary of one service desk ticket.",
+      "arguments": [
+        {
+          "name": "ticketId",
+          "description": "Id of the ticket",
+          "required": true
+        }
+      ]
+    },
+    "entry": {
+      "argumentRules": [
+        {
+          "name": "ticketId",
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+          "type": "ServiceDesk::Ticket"
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "text": "Summarize the ticket below in one line.\n<ticket_id>{{ticketId}}</ticket_id>"
+        }
+      ]
+    },
+    "server": {
+      "system": "servicedesk",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "service-account"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"argumentRules\":[{\"maxLength\":64,\"name\":\"ticketId\",\"pattern\":\"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$\",\"type\":\"ServiceDesk::Ticket\"}],\"arguments\":[{\"description\":\"Id of the ticket\",\"name\":\"ticketId\",\"required\":true}],\"credential\":{\"acceptedTypes\":[\"service-account\"],\"required\":true},\"description\":\"Asks for a short summary of one service desk ticket.\",\"kind\":\"prompt\",\"messages\":[{\"role\":\"user\",\"text\":\"Summarize the ticket below in one line.\\n<ticket_id>{{ticketId}}</ticket_id>\"}],\"name\":\"summarize_ticket\",\"system\":\"servicedesk\",\"title\":\"Summarize ticket\"}",
+  "expected": "sha256:068b506f68bb79370cb85a447e9bb17ccf91f02a50da92ff3d0db2273cdbbf21",
+  "differsFrom": "prompt-summarize-ticket.json"
+}

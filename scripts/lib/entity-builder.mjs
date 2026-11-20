@@ -28,12 +28,16 @@ export function resourceTypes(declarations) {
     const namespace = d.type.split('::')[0];
     if (!TYPE.test(d.type)) throw new Error(`not a resource type: ${d.type}`);
     const attributes = d.attributes ?? [];
+    if (d.valueOnly === true) {
+      const extra = ['attributes', 'parent', 'parentAttribute', 'scopePattern', 'earlyScopeCheck', 'classification'].find((member) => d[member] !== undefined);
+      if (extra !== undefined) throw new Error(`${d.type}: a valueOnly type has no ${extra}`);
+    }
     if (new Set(attributes).size !== attributes.length || attributes.some((a) => !ATTRIBUTE.test(a) || a === 'scopes')) {
       throw new Error(`${d.type}: attributes not allowed`);
     }
     if ((d.parent === undefined) !== (d.parentAttribute === undefined)) throw new Error(`${d.type}: parent and parentAttribute go together`);
     if (d.parent !== undefined) {
-      if (!byType.has(d.parent) || d.parent.split('::')[0] !== namespace) throw new Error(`${d.type}: parent not declared in the same namespace`);
+      if (!byType.has(d.parent) || byType.get(d.parent).valueOnly === true || d.parent.split('::')[0] !== namespace) throw new Error(`${d.type}: parent not declared in the same namespace`);
       if (!ATTRIBUTE.test(d.parentAttribute) || d.parentAttribute === 'scopes' || attributes.includes(d.parentAttribute)) {
         throw new Error(`${d.type}: parentAttribute not allowed`);
       }
@@ -43,7 +47,7 @@ export function resourceTypes(declarations) {
     if (d.earlyScopeCheck && d.scopePattern === undefined) throw new Error(`${d.type}: earlyScopeCheck needs a scopePattern`);
     if (d.classification && !attributes.includes(d.classification.attribute)) throw new Error(`${d.type}: classification attribute not in attributes`);
     registry.set(d.type, {
-      declaration: { ...d, attributes },
+      declaration: { ...d, attributes, valueOnly: d.valueOnly === true },
       id: new RegExp(d.idPattern, 'u'),
       scope: d.scopePattern === undefined ? null : new RegExp(d.scopePattern, 'u'),
     });
@@ -122,6 +126,7 @@ function argumentIds(argumentName, value) {
   throw new BuilderError('invalid_argument', `${argumentName}: not a resource identifier`);
 }
 
+const PRINCIPAL_TYPES = new Set(['user', 'agent', 'delegated']);
 const CREDENTIAL_TYPES = new Set(['user-oauth', 'user-secret', 'token-exchange', 'service-account']);
 
 function declaration(types, type) {
@@ -130,11 +135,14 @@ function declaration(types, type) {
   return entry.declaration;
 }
 
-/** Every value of every resourceRef argument as { type, id }, in argument order. */
-export function resourceValues(types, tool, args = {}) {
+/**
+ * Every value of every resourceRef argument as { type, id }, in argument order. A valueOnly type may be the type of a template
+ * variable (`variables` true), never of a resourceRef (CC-258).
+ */
+export function resourceValues(types, tool, args = {}, variables = false) {
   const values = [];
   for (const { argument, type } of tool.resourceRefs) {
-    declaration(types, type);
+    if (declaration(types, type).valueOnly && !variables) throw new BuilderError('internal_error', `a valueOnly type cannot be a resourceRef: ${type}`);
     for (const id of argumentIds(argument, args[argument])) {
       if (!validId(types, type, id)) throw new BuilderError('invalid_argument', `${argument}: not a valid ${type} id`);
       values.push({ type, id });
@@ -143,16 +151,27 @@ export function resourceValues(types, tool, args = {}) {
   return values;
 }
 
-function buildContext(types, { caller, tool, arguments: args = {}, credentialType }) {
-  if (tool.additionalGroup !== undefined) {
-    const prefix = `mcp-${tool.system}-`;
-    const suffix = tool.additionalGroup.startsWith(prefix) ? tool.additionalGroup.slice(prefix.length) : '';
-    if (!/^[a-z][a-z0-9-]{0,30}$/.test(suffix) || ['read', 'write', 'destructive'].includes(suffix)) {
-      throw new BuilderError('internal_error', 'additionalGroup must be mcp-<system>-<suffix> with a suffix other than read, write and destructive');
-    }
+function checkAdditionalGroup(entry) {
+  if (entry.additionalGroup === undefined) return;
+  const prefix = `mcp-${entry.system}-`;
+  const suffix = entry.additionalGroup.startsWith(prefix) ? entry.additionalGroup.slice(prefix.length) : '';
+  if (!/^[a-z][a-z0-9-]{0,30}$/.test(suffix) || ['read', 'write', 'destructive'].includes(suffix)) {
+    throw new BuilderError('internal_error', 'additionalGroup must be mcp-<system>-<suffix> with a suffix other than read, write and destructive');
   }
+}
+
+function buildContext(types, { caller, tool, arguments: args = {}, credentialType }) {
+  checkAdditionalGroup(tool);
   if (!RISKS.has(tool.risk)) throw new BuilderError('internal_error', `unknown risk ${tool.risk}`);
   if (!ACTIONS.has(tool.action)) throw new BuilderError('internal_error', `unknown action ${tool.action}`);
+  return contextOf(types, { caller, refs: tool.resourceRefs, values: args, credentialType, variables: false });
+}
+
+// pty and act are the claims of C2: pty absent means user, act.sub is the actor of a delegated token (CC-263).
+function contextOf(types, { caller, refs, values, credentialType, variables }) {
+  const principalType = caller.pty ?? 'user';
+  if (!PRINCIPAL_TYPES.has(principalType)) throw new BuilderError('internal_error', `unknown principalType ${principalType}`);
+  if (caller.act !== undefined && principalType !== 'delegated') throw new BuilderError('internal_error', 'actor only with principalType delegated');
   const context = { client: caller.azp };
   if (credentialType !== undefined) {
     if (!CREDENTIAL_TYPES.has(credentialType)) throw new BuilderError('internal_error', `unknown credentialType ${credentialType}`);
@@ -162,7 +181,9 @@ function buildContext(types, { caller, tool, arguments: args = {}, credentialTyp
     if (!Number.isInteger(caller.mfa) || caller.mfa < 0) throw new BuilderError('invalid_argument', 'mfa age must be >= 0');
     context.mfaAge = caller.mfa;
   }
-  const early = resourceValues(types, tool, args)
+  context.principalType = principalType;
+  if (caller.act !== undefined) context.actor = caller.act.sub;
+  const early = resourceValues(types, { resourceRefs: refs }, values, variables)
     .filter(({ type }) => types.get(type).declaration.earlyScopeCheck)
     .map(({ type, id }) => scopeId(type, id));
   context.refs = scopeRefs(early);
@@ -200,6 +221,7 @@ function normalizedClassification(type, classification, attrs) {
 
 function resourceEntity(types, resource, parent) {
   const d = declaration(types, resource.type);
+  if (d.valueOnly) throw new BuilderError('internal_error', `${resource.type} is a valueOnly type: it has no entity`);
   if (!validId(types, resource.type, resource.id)) throw new BuilderError('internal_error', `resolved ${resource.type} has an invalid id`);
   const input = Object.fromEntries(Object.entries(resource.attrs ?? {}).filter(([, v]) => v !== null && v !== undefined));
   if (d.classification) normalizedClassification(resource.type, d.classification, input);
@@ -224,6 +246,35 @@ function resourceEntity(types, resource, parent) {
   return { uid: uid(resource.type, resource.id), attrs: out, parents };
 }
 
+function primitiveEntity(type, entry, attrs) {
+  checkAdditionalGroup(entry);
+  return {
+    uid: uid(type, `${entry.system}__${entry.name}`),
+    attrs: {
+      server: entry.serverId, name: entry.name, ...attrs, requiredGroup: ref('UserGroup', `mcp-${entry.system}-read`),
+      ...(entry.additionalGroup !== undefined && { additionalGroup: ref('UserGroup', entry.additionalGroup) }),
+    },
+    parents: [],
+  };
+}
+
+/** Gateway, resources/read: Action::"read_resource" on McpResource; input has `resource` (the registry entry) and `values` of its variables. */
+function buildResourceRead({ caller, resource, values = {}, credentialType }, types, mapping) {
+  checkAdditionalGroup(resource);
+  const context = contextOf(types, { caller, refs: resource.variables.map(({ name, type }) => ({ argument: name, type })), values, credentialType, variables: true });
+  const entity = primitiveEntity('McpResource', resource, { uriTemplate: resource.uriTemplate });
+  const entities = [...principalEntities(caller, mapping), entity];
+  return { principal: uid('User', caller.sub), action: uid('Action', 'read_resource'), resource: entity.uid, context, entities: sortEntities(entities) };
+}
+
+/** Gateway, prompts/get: Action::"get_prompt" on McpPrompt; input has `prompt` (the registry entry). */
+function buildPromptGet({ caller, prompt, credentialType }, types, mapping) {
+  const context = contextOf(types, { caller, refs: [], values: {}, credentialType, variables: false });
+  const entity = primitiveEntity('McpPrompt', prompt, {});
+  const entities = [...principalEntities(caller, mapping), entity];
+  return { principal: uid('User', caller.sub), action: uid('Action', 'get_prompt'), resource: entity.uid, context, entities: sortEntities(entities) };
+}
+
 function sortEntities(entities) {
   return entities.sort((a, b) => {
     if (a.uid.type !== b.uid.type) return a.uid.type < b.uid.type ? -1 : 1;
@@ -233,6 +284,8 @@ function sortEntities(entities) {
 
 /** Builds { principal, action, resource, context, entities } for level 'gateway' or 'server'. */
 export function build(level, input, types, mapping) {
+  if (level === 'gateway-resource') return buildResourceRead(input, types, mapping);
+  if (level === 'gateway-prompt') return buildPromptGet(input, types, mapping);
   const { caller, tool } = input;
   const context = buildContext(types, input);
   const entities = principalEntities(caller, mapping);

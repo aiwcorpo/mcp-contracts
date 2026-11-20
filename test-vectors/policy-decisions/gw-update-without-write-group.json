@@ -59,6 +59,7 @@
     },
     "context": {
       "client": "claude-code",
+      "principalType": "user",
       "refs": []
     }
   },

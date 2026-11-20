@@ -39,7 +39,7 @@ public final class PlatformServerPolicies {
      */
     public static Map<String, String> texts(ResourceTypes types) {
         Map<String, String> out = new LinkedHashMap<>();
-        for (ResourceTypeDeclaration d : types.declarations()) {
+        for (ResourceTypeDeclaration d : types.entityDeclarations()) {
             String ns = d.namespace().toLowerCase(Locale.ROOT);
             String local = d.type().substring(d.type().indexOf("::") + 2).toLowerCase(Locale.ROOT);
             d.classification().ifPresent(c -> put(out, "platform-" + ns + "-restricted-" + local,

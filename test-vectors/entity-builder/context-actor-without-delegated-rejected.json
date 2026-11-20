@@ -1,0 +1,42 @@
+{
+  "description": "An actor with a principal type other than delegated is internal_error (CC-263).",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000f",
+      "usr": "agent",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code",
+      "pty": "agent",
+      "act": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000012"
+      }
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "get_issue",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "arguments": {
+      "issueKey": "ABC-1"
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

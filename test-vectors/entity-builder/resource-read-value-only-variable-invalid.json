@@ -1,0 +1,46 @@
+{
+  "description": "A value that does not match the idPattern of a valueOnly type is invalid_argument.",
+  "level": "gateway-resource",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000011",
+      "usr": "gitlabreader",
+      "grp": [
+        "mcp-gitlab-read"
+      ],
+      "azp": "claude-code"
+    },
+    "resource": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "blob",
+      "uriTemplate": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+      "variables": [
+        {
+          "name": "projectPath",
+          "type": "GitLab::Project"
+        },
+        {
+          "name": "ref",
+          "type": "GitLab::Ref"
+        },
+        {
+          "name": "filePath",
+          "type": "GitLab::FilePath"
+        }
+      ]
+    },
+    "values": {
+      "projectPath": "team-a/app",
+      "ref": "main",
+      "filePath": "../secret"
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

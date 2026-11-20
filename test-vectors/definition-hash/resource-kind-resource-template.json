@@ -1,0 +1,26 @@
+{
+  "description": "The same definition members under the kind resourceTemplate hash differently: kind is part of the hash.",
+  "input": {
+    "kind": "resourceTemplate",
+    "definition": {
+      "name": "guide",
+      "title": "Guide",
+      "description": "Same words."
+    },
+    "entry": {
+      "variables": []
+    },
+    "server": {
+      "system": "servicedesk",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "service-account"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"credential\":{\"acceptedTypes\":[\"service-account\"],\"required\":true},\"description\":\"Same words.\",\"kind\":\"resourceTemplate\",\"name\":\"guide\",\"system\":\"servicedesk\",\"title\":\"Guide\",\"variables\":[]}",
+  "expected": "sha256:988eef61bc3a1fc543935c818d587311a0cf097dc1797a7f2c2e04836850c8ae",
+  "differsFrom": "resource-kind-resource.json"
+}

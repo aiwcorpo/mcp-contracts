@@ -1,0 +1,62 @@
+{
+  "description": "An adapter entry has no additionalGroup (the administrator does not set groups at approval).",
+  "expected": {
+    "valid": false,
+    "rule": "schema"
+  },
+  "manifest": {
+    "serverId": "mcp-jira",
+    "version": "0.4.0",
+    "contractsVersion": "8.0.0",
+    "system": "jira",
+    "source": "adapter",
+    "internalUrl": "https://mcp-jira.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth",
+        "user-secret"
+      ]
+    },
+    "resourceTypes": [],
+    "tools": [],
+    "resources": [
+      {
+        "name": "field_guide",
+        "definition": {
+          "name": "field_guide",
+          "title": "Field guide",
+          "description": "Which Jira fields the teams use.",
+          "uri": "jira+file:///docs/fields.md",
+          "mimeType": "text/markdown"
+        },
+        "definitionHash": "sha256:2d76629ffc70992410b3e4d586969d128a0133189ddfd6e0dfea8b8b4a79827d",
+        "additionalGroup": "mcp-jira-ops"
+      }
+    ],
+    "resourceTemplates": [
+      {
+        "name": "attachment",
+        "definition": {
+          "name": "attachment",
+          "title": "Attachment",
+          "description": "One attachment of an issue.",
+          "uriTemplate": "jira+file:///issues/{issueKey}/attachments/{attachmentId}"
+        },
+        "variables": [
+          {
+            "name": "issueKey",
+            "maxLength": 32,
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+          },
+          {
+            "name": "attachmentId",
+            "maxLength": 20,
+            "pattern": "^[0-9]{1,20}$"
+          }
+        ],
+        "definitionHash": "sha256:b3e927bbfce54b7d08c175bc4b7b684db8a73c6b45245a9e10a56fa406d62e81"
+      }
+    ]
+  }
+}

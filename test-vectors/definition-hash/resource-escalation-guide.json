@@ -1,0 +1,25 @@
+{
+  "description": "Static resource: kind, the members of definition, system and credential (CC-258).",
+  "input": {
+    "kind": "resource",
+    "definition": {
+      "name": "escalation_guide",
+      "title": "Escalation guide",
+      "description": "How a ticket is escalated between support levels.",
+      "uri": "servicedesk://docs/escalation-guide",
+      "mimeType": "text/markdown"
+    },
+    "entry": {},
+    "server": {
+      "system": "servicedesk",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "service-account"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"credential\":{\"acceptedTypes\":[\"service-account\"],\"required\":true},\"description\":\"How a ticket is escalated between support levels.\",\"kind\":\"resource\",\"mimeType\":\"text/markdown\",\"name\":\"escalation_guide\",\"system\":\"servicedesk\",\"title\":\"Escalation guide\",\"uri\":\"servicedesk://docs/escalation-guide\"}",
+  "expected": "sha256:60e8ead59db1f5a3287edf4c20c055c8ba3bf0c1d6678d9e8fc931ac4d3a8c44"
+}

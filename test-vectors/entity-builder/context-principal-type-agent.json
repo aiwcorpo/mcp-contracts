@@ -1,0 +1,100 @@
+{
+  "description": "pty agent becomes context.principalType; the principal is still a User entity with the sub of the service account (CC-263).",
+  "level": "gateway",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000f",
+      "usr": "agent",
+      "grp": [
+        "mcp-jira-read"
+      ],
+      "azp": "claude-code",
+      "pty": "agent"
+    },
+    "tool": {
+      "serverId": "mcp-jira",
+      "system": "jira",
+      "name": "get_issue",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "issueKey",
+          "type": "Jira::Issue"
+        }
+      ]
+    },
+    "arguments": {
+      "issueKey": "ABC-1"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000f"
+    },
+    "action": {
+      "type": "Action",
+      "id": "call"
+    },
+    "resource": {
+      "type": "Tool",
+      "id": "jira__get_issue"
+    },
+    "context": {
+      "client": "claude-code",
+      "principalType": "agent",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Tool",
+          "id": "jira__get_issue"
+        },
+        "attrs": {
+          "server": "mcp-jira",
+          "name": "get_issue",
+          "risk": "READ_ONLY",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-jira-read"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000f"
+        },
+        "attrs": {
+          "username": "agent",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-jira-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-jira-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

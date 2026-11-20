@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash, X509Certificate } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
-import { definitionHash, manifestEntryHash, policiesHash } from '../scripts/lib/definition-hash.mjs';
+import { definitionHash, manifestEntryHash, manifestPrimitiveHash, policiesHash, primitiveHash } from '../scripts/lib/definition-hash.mjs';
 import { grammarViolation, manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { acceptRevision, ackOutcome, gatewayCall, policyDataGate, pushBodyCheck, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
 import { catalogActions } from '../scripts/lib/catalog-actions.mjs';
@@ -28,6 +28,14 @@ test('definition-hash vectors: canonical form and sha256', () => {
   assert.ok(vectors.length >= 5);
   const byName = Object.fromEntries(vectors.map((v) => [v.name, v.data]));
   for (const { name, data } of vectors) {
+    if (data.input.kind !== undefined) {
+      const { canonical, hash } = primitiveHash(data.input);
+      assert.equal(canonical, data.canonical, name);
+      assert.equal(hash, data.expected, name);
+      if (data.sameAs) assert.equal(data.expected, byName[data.sameAs].expected, `${name} sameAs`);
+      if (data.differsFrom) assert.notEqual(data.expected, byName[data.differsFrom].expected, `${name} differsFrom`);
+      continue;
+    }
     const { tool, manifestEntry, server } = data.input;
     const inputSchema = structuredClone(tool.inputSchema);
     if (inputSchema.properties?.confirmation_code) {
@@ -86,6 +94,11 @@ test('definitionHash recomputed from each valid manifest equals the declared one
   for (const { name, data } of listJson('test-vectors', 'manifests').filter((v) => v.data.expected.valid)) {
     for (const tool of data.manifest.tools) {
       assert.equal(manifestEntryHash(data.manifest, tool), tool.definitionHash, `${name}: ${tool.name}`);
+    }
+    for (const [kind, key] of [['resource', 'resources'], ['resourceTemplate', 'resourceTemplates'], ['prompt', 'prompts']]) {
+      for (const entry of data.manifest[key] ?? []) {
+        assert.equal(manifestPrimitiveHash(data.manifest, kind, entry), entry.definitionHash, `${name}: ${entry.name}`);
+      }
     }
   }
 });

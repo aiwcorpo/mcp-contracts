@@ -1,0 +1,116 @@
+{
+  "description": "The resource names mcp-notes-ops: the risk group alone does not open it, the additional group can only narrow.",
+  "covers": [
+    "forbid_overrides_permit"
+  ],
+  "policies": {
+    "schema": null,
+    "policies": [
+      "cedar/platform",
+      "cedar/examples/overrides"
+    ]
+  },
+  "builder": {
+    "level": "gateway-resource",
+    "resourceTypes": [
+      "cedar/examples/systems/jira/resource-types.json",
+      "test-vectors/fixtures/notes/resource-types.json"
+    ],
+    "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+    "input": {
+      "caller": {
+        "sub": "b1a7c0de-0000-4000-8000-000000000006",
+        "usr": "notesreader",
+        "grp": [
+          "mcp-notes-read"
+        ],
+        "azp": "claude-code"
+      },
+      "resource": {
+        "serverId": "mcp-notes",
+        "system": "notes",
+        "name": "handbook",
+        "uriTemplate": "notes://docs/handbook",
+        "variables": [],
+        "additionalGroup": "mcp-notes-ops"
+      },
+      "values": {}
+    }
+  },
+  "request": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-000000000006"
+    },
+    "action": {
+      "type": "Action",
+      "id": "read_resource"
+    },
+    "resource": {
+      "type": "McpResource",
+      "id": "notes__handbook"
+    },
+    "context": {
+      "client": "claude-code",
+      "principalType": "user",
+      "refs": []
+    }
+  },
+  "entities": [
+    {
+      "uid": {
+        "type": "McpResource",
+        "id": "notes__handbook"
+      },
+      "attrs": {
+        "server": "mcp-notes",
+        "name": "handbook",
+        "uriTemplate": "notes://docs/handbook",
+        "requiredGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        },
+        "additionalGroup": {
+          "__entity": {
+            "type": "UserGroup",
+            "id": "mcp-notes-ops"
+          }
+        }
+      },
+      "parents": []
+    },
+    {
+      "uid": {
+        "type": "User",
+        "id": "b1a7c0de-0000-4000-8000-000000000006"
+      },
+      "attrs": {
+        "username": "notesreader",
+        "client": "claude-code",
+        "scopes": []
+      },
+      "parents": [
+        {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        }
+      ]
+    },
+    {
+      "uid": {
+        "type": "UserGroup",
+        "id": "mcp-notes-read"
+      },
+      "attrs": {},
+      "parents": []
+    }
+  ],
+  "expected": {
+    "decision": "deny",
+    "determiningPolicies": [
+      "platform-read-resource-additional-group"
+    ]
+  }
+}
