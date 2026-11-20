@@ -1,0 +1,28 @@
+{
+  "description": "Tool call of an agent: principalType agent, and the owner of the agent (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "tool_call",
+    "sub": "9a4e7c10-2b5d-4f38-b6a1-0d8c3e5f7a22",
+    "username": "service-account-agent-nightly",
+    "client": "agent-nightly",
+    "principalType": "agent",
+    "agentOwner": "4c7d1e90-5a2b-4e63-8f14-b2a9d0c6e358",
+    "server": "mcp-jira",
+    "tool": "get_issue",
+    "risk": "READ_ONLY",
+    "decision": "allow",
+    "policyRevision": 41,
+    "credentialType": "user-secret",
+    "outcome": "ok",
+    "errorCode": null,
+    "latencyMs": 40,
+    "argsLength": 90
+  }
+}

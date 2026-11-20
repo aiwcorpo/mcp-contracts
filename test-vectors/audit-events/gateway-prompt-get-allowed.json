@@ -1,0 +1,25 @@
+{
+  "description": "Gateway built a prompt: argsLength is the only trace of the arguments, definitionHash the approved entry (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "prompt_get",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "server": "mcp-jira",
+    "prompt": "triage_issue",
+    "decision": "allow",
+    "policyRevision": 41,
+    "outcome": "ok",
+    "errorCode": null,
+    "latencyMs": 5,
+    "argsLength": 64,
+    "definitionHash": "sha256:b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8"
+  }
+}

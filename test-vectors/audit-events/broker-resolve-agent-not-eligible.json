@@ -1,0 +1,19 @@
+{
+  "description": "The broker refused a credential for an agent that may not use the system (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "broker",
+    "componentId": "mcp-credential-broker",
+    "event": "credential_resolve",
+    "sub": "9a4e7c10-2b5d-4f38-b6a1-0d8c3e5f7a22",
+    "principalType": "agent",
+    "server": "mcp-jira",
+    "credentialType": "user-secret",
+    "reason": "principal_not_eligible",
+    "outcome": "denied"
+  }
+}

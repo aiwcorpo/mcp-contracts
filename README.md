@@ -660,7 +660,7 @@ filter, and permissions are decided by Cedar on every call. `GET` on `/mcp` and 
 DELETE` (after the token check) because the gateway does not expose a server stream (CC-179). Vectors: `endpoint-filter/session-*`
 and `session-order-*`.
 
-**Audit and activity (CC-174).** The gateway events `tool_call`, `policy_decision`, `confirmation` and `credential_resolve` have
+**Audit and activity (CC-174).** The gateway events `tool_call`, `policy_decision`, `confirmation`, `credential_resolve`, `resource_read` and `prompt_get` have
 the optional field `filter` (canonical form, at most 512 characters, only when the request had a filter); `authentication`,
 servers and the broker do not have it (correlation by `requestId`). `filter` entries have the syntax of system and tool names, but
 the client chooses them and nobody compares them with the platform's list (CC-186). The field `virtualServer` is gone from C8 and
@@ -1109,7 +1109,7 @@ The limit values are component configuration, not contract. The contract says on
   client should wait, not log in again, as in CC-124). There are no `X-RateLimit-*` headers anywhere: the settings are not
   disclosed. Vectors: `gateway-authentication/rate-limited*.json`.
 - **Audit:** `tool_call` (for `tools/call`) or `policy_decision` with `decision: deny`, `outcome: denied`, `errorCode:
-  rate_limited` and the reason `rate_limited_user`, `rate_limited_client` or `rate_limited_tool` (the client does not learn which
+  rate_limited` and the reason `rate_limited_user`, `rate_limited_client` or `rate_limited_tool` (for an agent also `rate_limited_agent`, CC-264; the client does not learn which
   limit, the administrator does). The gateway may aggregate the excess as in CC-125. In `activity/calls` the row has the result
   `rate_limited` (filter group `denied`). The result of a row follows from the reason of the last event (CC-165): `rate_limited_*`
   -> `rate_limited`, `definition_changed` and `tool_not_served` -> `tool_disabled`, `exchange_denied` -> `denied_not_granted`, and
@@ -1208,6 +1208,38 @@ A receiver of requests without a correct token (a server through the starter, th
 counter `mcp_audit_authentication_suppressed_total{component,reason}` (a shared name). A request rejected with `400` or `413`
 before JWT verification is reached (a bad format, too large) is not an `authentication` event but enters the request counter, so
 as not to multiply reasons.
+
+## Audit of resources, prompts and agents (CC-264)
+
+C8 has two more events: `resource_read` (gateway and servers) and `prompt_get` (gateway only, because the gateway builds prompts).
+Both carry `decision`, `outcome`, `errorCode`, `latencyMs`, `sub`, `username`, `client` and `server` as `tool_call` does, and the
+optional `filter` of the gateway. The audit never holds a URI, the arguments of a prompt or any content.
+
+- **`resource_read`:** `resourceTemplate` (the name of the resource or template) and `resource` (`{type, id}` of the first
+  variable that is an entity, as the main resource of a `tool_call`, CC-098; never the full URI and never the value of a
+  `valueOnly` variable). On a successful read, `contentBytes` and `contentSha256` describe the content; the content itself is
+  not recorded. These two fields exist only on `resource_read`.
+- **`prompt_get`:** `prompt` (the name), `argsLength` as the only trace of the arguments, and `definitionHash` of the approved
+  entry from which the gateway built the result. `prompt` is also written on `admin_change` of a prompt definition, and
+  `resourceTemplate` on `admin_change` of a resource definition, in place of `tool`.
+- **Principal:** `principalType` is `agent` or `delegated`. Its absence means a human, and a human is never written, so a SIEM
+  sees the field only after the first agent exists. It may appear on every event with a `sub` from a verified token, also of
+  the broker and of servers, and never on `authentication` (the token is not trusted yet). `actorSub` and `actorClient` (the
+  agent behind a delegated call, `sub` being the user) exist only with `principalType: delegated`. `agentOwner` exists with
+  `principalType: agent` and on `admin_change` of the management of an agent.
+- **Reasons** (snake case, up to 64 characters). Reads and prompts: `uri_no_match`, `variable_invalid`, `argument_invalid`,
+  `header_mismatch`, `result_invalid`, `result_too_large`, `blob_not_supported`, `link_scheme_refused`,
+  `contracts_version_unsupported` (the receiver has not accepted the contracts version that carries the call, so the gateway
+  does not send it, CC-260), plus the existing `not_granted`, `policy_forbid`, `kill_switch`, `definition_changed`,
+  `filter_scope`, `rate_limited_*`, `upstream_unavailable` and `credential_required`. Agents: `agent_not_registered` and
+  `agent_token_lifetime` (on `authentication`, 401), `agent_suspended`, `agent_max_risk`, `principal_not_eligible` and
+  `rate_limited_agent` (a separate limit dimension; the value is configuration, see "Rate limits"). Management
+  (`admin_change`): `agent_registered`, `agent_updated`, `agent_key_rotated`, `agent_deleted`, `agent_kill_switch_set`,
+  `agent_kill_switch_cleared`, `agent_owner_purged`. Definitions: the existing `definition_submitted` and
+  `definition_approved` and the new `resource_removed` and `prompt_removed`.
+
+The new `event` values and reasons break a receiver that validates `event` strictly, so the SIEM schema is updated before the
+first agent exists. Vectors: `audit-events/*resource-read*`, `*prompt-get*`, `*agent*`, `*delegated*`, `*principal-type*`.
 
 ## Clarifications in 4.0.0
 
@@ -1323,7 +1355,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `jwt/` | 75 | the C2 receiver: 23 valid (one of them the manifest without a token), 52 rejections, 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
 | `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
 | `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 140 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
+| `audit-events/` | 167 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), resource reads, prompts and agent principals (CC-264), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
 | `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
