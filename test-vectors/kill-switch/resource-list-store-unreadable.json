@@ -1,0 +1,13 @@
+{
+  "description": "An unreadable store lists nothing.",
+  "kind": "primitive",
+  "input": {
+    "switches": [],
+    "serverId": "mcp-servicedesk",
+    "event": "list",
+    "storeReadable": false
+  },
+  "expected": {
+    "listed": false
+  }
+}

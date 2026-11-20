@@ -1,0 +1,12 @@
+{
+  "description": "No switch: allowed.",
+  "kind": "primitive",
+  "input": {
+    "switches": [],
+    "serverId": "mcp-servicedesk",
+    "event": "get"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

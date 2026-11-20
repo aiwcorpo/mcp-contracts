@@ -1,0 +1,19 @@
+{
+  "description": "A new resource is a change.",
+  "kind": "list-changed",
+  "primitives": true,
+  "input": {
+    "query": "",
+    "before": [],
+    "after": [
+      {
+        "system": "servicedesk",
+        "name": "runbook",
+        "definitionHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

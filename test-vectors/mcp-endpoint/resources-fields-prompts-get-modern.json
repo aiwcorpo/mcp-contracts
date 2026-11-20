@@ -1,0 +1,11 @@
+{
+  "description": "Fields of the result of prompts/get in the modern era (legacy: none).",
+  "kind": "result-fields",
+  "input": {
+    "method": "prompts/get",
+    "era": "modern"
+  },
+  "expected": {
+    "resultType": "complete"
+  }
+}

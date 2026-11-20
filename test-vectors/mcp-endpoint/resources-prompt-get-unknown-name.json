@@ -1,0 +1,48 @@
+{
+  "description": "An unknown name: -32602 Prompt not found with the name.",
+  "kind": "prompt-get",
+  "input": {
+    "name": "servicedesk__nothing",
+    "render": {
+      "result": {
+        "resultType": "complete",
+        "description": "Summarize one service desk ticket for a handover.",
+        "messages": [
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Summarize the ticket <ticket_id>SD-1042</ticket_id> for a handover."
+            }
+          },
+          {
+            "role": "assistant",
+            "content": {
+              "type": "text",
+              "text": "I will read the ticket first."
+            }
+          },
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Remark: <note></note>"
+            }
+          }
+        ]
+      }
+    },
+    "known": false
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Prompt not found",
+      "data": {
+        "name": "servicedesk__nothing"
+      }
+    },
+    "auditReason": "not_granted"
+  }
+}

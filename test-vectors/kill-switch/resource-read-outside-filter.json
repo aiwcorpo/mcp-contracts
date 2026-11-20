@@ -1,0 +1,20 @@
+{
+  "description": "The filter cuts the resource: filter_scope.",
+  "kind": "primitive",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "serverId": "mcp-servicedesk",
+    "event": "read",
+    "inFilter": false
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": -32602,
+    "auditReason": "filter_scope"
+  }
+}

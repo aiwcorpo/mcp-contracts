@@ -1,0 +1,11 @@
+{
+  "description": "A cursor of resources/list given back to resources/list. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "primitive-cursor",
+  "input": {
+    "issuedKind": "resources",
+    "presentedKind": "resources"
+  },
+  "expected": {
+    "valid": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "description": "A token of the IdP that carries pty and act: ignored like any claim the gateway does not know, never copied to the internal JWT (CC-260, as CC-201).",
+  "input": {
+    "claims": {
+      "iss": "https://idp.example/realms/corp",
+      "aud": "mcp-gateway",
+      "sub": "user-a",
+      "exp": 4102444800,
+      "iat": 4102444700,
+      "pty": "agent",
+      "act": {
+        "sub": "agent-a",
+        "azp": "agent-triage"
+      }
+    }
+  },
+  "expected": {
+    "accepted": true,
+    "ignoredClaims": [
+      "act",
+      "pty"
+    ],
+    "copiedToInternalJwt": []
+  }
+}

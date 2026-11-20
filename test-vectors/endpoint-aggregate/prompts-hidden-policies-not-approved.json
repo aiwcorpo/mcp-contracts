@@ -1,0 +1,28 @@
+{
+  "description": "The policies of the server are not approved (CC-249).",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "prompts",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "summarize_ticket",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ],
+        "policiesApproved": false
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": []
+  }
+}

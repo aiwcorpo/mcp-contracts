@@ -1,0 +1,48 @@
+{
+  "description": "The server is pending_approval, not approved or disabled: the prompt is hidden.",
+  "kind": "prompt-get",
+  "input": {
+    "name": "servicedesk__summarize_ticket",
+    "render": {
+      "result": {
+        "resultType": "complete",
+        "description": "Summarize one service desk ticket for a handover.",
+        "messages": [
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Summarize the ticket <ticket_id>SD-1042</ticket_id> for a handover."
+            }
+          },
+          {
+            "role": "assistant",
+            "content": {
+              "type": "text",
+              "text": "I will read the ticket first."
+            }
+          },
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Remark: <note></note>"
+            }
+          }
+        ]
+      }
+    },
+    "hidden": true
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Prompt not found",
+      "data": {
+        "name": "servicedesk__summarize_ticket"
+      }
+    },
+    "auditReason": "not_granted"
+  }
+}

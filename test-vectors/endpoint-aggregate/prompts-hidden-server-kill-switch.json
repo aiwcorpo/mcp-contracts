@@ -1,0 +1,28 @@
+{
+  "description": "A server kill switch.",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "prompts",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "summarize_ticket",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ],
+        "killSwitch": true
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": []
+  }
+}

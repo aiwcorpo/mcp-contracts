@@ -1,0 +1,20 @@
+{
+  "description": "resources/read goes through the same gate as tools/call (CC-259): a server that is behind answers 409 policy_data_stale before any work.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 40,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "method": "resources/read"
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "policy_data_stale",
+    "reason": "policy_data_stale",
+    "httpStatus": 409,
+    "gatewayAction": "push_and_retry_once"
+  }
+}

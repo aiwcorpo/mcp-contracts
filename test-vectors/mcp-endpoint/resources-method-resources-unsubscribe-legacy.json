@@ -1,0 +1,16 @@
+{
+  "description": "resources/unsubscribe is not supported: -32601, HTTP 200.",
+  "kind": "method",
+  "input": {
+    "method": "resources/unsubscribe",
+    "era": "legacy"
+  },
+  "expected": {
+    "handled": false,
+    "error": {
+      "code": -32601,
+      "message": "Method not found"
+    },
+    "httpStatus": 200
+  }
+}

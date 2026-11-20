@@ -1,0 +1,48 @@
+{
+  "description": "An unreadable store: -32603.",
+  "kind": "prompt-get",
+  "input": {
+    "name": "servicedesk__summarize_ticket",
+    "render": {
+      "result": {
+        "resultType": "complete",
+        "description": "Summarize one service desk ticket for a handover.",
+        "messages": [
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Summarize the ticket <ticket_id>SD-1042</ticket_id> for a handover."
+            }
+          },
+          {
+            "role": "assistant",
+            "content": {
+              "type": "text",
+              "text": "I will read the ticket first."
+            }
+          },
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Remark: <note></note>"
+            }
+          }
+        ]
+      }
+    },
+    "killSwitch": "unreadable"
+  },
+  "expected": {
+    "outcome": "error",
+    "error": {
+      "code": -32603,
+      "message": "Internal error",
+      "data": {
+        "error": "upstream_unavailable"
+      }
+    },
+    "auditReason": "upstream_unavailable"
+  }
+}

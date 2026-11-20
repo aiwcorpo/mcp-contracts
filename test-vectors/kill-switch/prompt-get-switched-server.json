@@ -1,0 +1,19 @@
+{
+  "description": "prompts/get of a switched server.",
+  "kind": "primitive",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "serverId": "mcp-servicedesk",
+    "event": "get"
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": -32602,
+    "auditReason": "kill_switch"
+  }
+}

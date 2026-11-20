@@ -1,0 +1,9 @@
+{
+  "description": "Fields of the result of prompts/list in the legacy era (legacy: none).",
+  "kind": "result-fields",
+  "input": {
+    "method": "prompts/list",
+    "era": "legacy"
+  },
+  "expected": {}
+}

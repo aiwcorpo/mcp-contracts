@@ -1,0 +1,29 @@
+{
+  "description": "The gateway renders prompts from the manifest: an unreachable server does not hide them.",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "prompts",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": false,
+        "entries": [
+          {
+            "name": "summarize_ticket",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": [
+      "servicedesk__summarize_ticket"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "description": "The slash of a value is in the URI only as %2F (RFC 6570 level 1 encodes everything outside ALPHA, DIGIT and -._~); the type of projectPath allows it, so the variable is grp/app.",
+  "kind": "template",
+  "input": {
+    "template": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+    "variables": [
+      {
+        "name": "projectPath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "ref",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "filePath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      }
+    ],
+    "uri": "gitlab://project/grp%2Fapp/blob/main/src%2Fmain.java"
+  },
+  "expected": {
+    "match": true,
+    "variables": {
+      "projectPath": "grp/app",
+      "ref": "main",
+      "filePath": "src/main.java"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "A switched server lists no prompts.",
+  "kind": "primitive",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "serverId": "mcp-servicedesk",
+    "event": "list"
+  },
+  "expected": {
+    "listed": false
+  }
+}

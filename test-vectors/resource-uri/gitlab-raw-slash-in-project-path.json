@@ -1,0 +1,25 @@
+{
+  "description": "A raw slash inside a variable is not the expansion of the template: the URI does not match.",
+  "kind": "template",
+  "input": {
+    "template": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+    "variables": [
+      {
+        "name": "projectPath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "ref",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "filePath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      }
+    ],
+    "uri": "gitlab://project/grp/app/blob/main/src%2Fmain.java"
+  },
+  "expected": {
+    "match": false
+  }
+}

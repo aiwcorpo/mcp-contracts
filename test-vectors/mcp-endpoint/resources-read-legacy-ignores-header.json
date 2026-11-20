@@ -1,0 +1,54 @@
+{
+  "description": "Legacy era: a header that arrives is not compared.",
+  "kind": "read",
+  "input": {
+    "era": "legacy",
+    "header": "servicedesk://ticket/SD-1",
+    "uri": "servicedesk://ticket/SD-1042",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "ok",
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        }
+      ],
+      "bytes": 11
+    },
+    "maxBytes": 1048576
+  },
+  "expected": {
+    "outcome": "ok",
+    "result": {
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        }
+      ]
+    },
+    "step": 10
+  }
+}

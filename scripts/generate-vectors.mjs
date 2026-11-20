@@ -2002,6 +2002,11 @@ toolError('invalid-missing-message', 'message is required.', { error: 'not_found
   gate('no-data-yet-with-prv', 'The same with a revision in the token.', { ownHash: OWN, held: null, prv: 41 });
   gate('prv-newer-than-held', 'The token carries a newer revision than the data held: the server does not evaluate with the older data and answers policy_data_stale.', { ownHash: OWN, held: data(40, OWN), prv: 41 });
   gate('stale-wins-over-refusal', 'Data that is behind decides nothing, not even a refusal: the older data says the policies differ, but a push may change that, so the answer is policy_data_stale.', { ownHash: OTHER, held: data(40, OWN), prv: 41 });
+  gate('resources-read-stale', 'resources/read goes through the same gate as tools/call (CC-259): a server that is behind answers 409 policy_data_stale before any work.', { ownHash: OWN, held: data(40, OWN), prv: 41, method: 'resources/read' });
+  gate('resources-read-policies-differ', 'resources/read with current data but other policies than the approved ones: upstream_unavailable, final.', { ownHash: OTHER, held: data(41, OWN), prv: 41, method: 'resources/read' });
+  gate('resources-read-approved-and-current', 'resources/read with approved policies and current data is evaluated.', { ownHash: OWN, held: data(41, OWN), prv: 41, method: 'resources/read' });
+  gate('prompts-get-no-gate', 'prompts/get never reaches a server (the gateway renders it from the manifest), so the gate does not apply even when the data is behind.', { ownHash: OWN, held: data(40, OWN), prv: 41, method: 'prompts/get' });
+  gate('resources-list-no-gate', 'The list methods are not evaluated against policy data by the server.', { ownHash: OWN, held: null, prv: 41, method: 'resources/list' });
 }
 
 // ---------- policy data push and the retry of the gateway (CC-249) ----------
