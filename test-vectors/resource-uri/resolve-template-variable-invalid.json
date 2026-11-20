@@ -1,0 +1,29 @@
+{
+  "description": "The shape of the template, a value that is not valid: variable_invalid for the audit.",
+  "kind": "resolve",
+  "input": {
+    "resources": [
+      {
+        "name": "runbook",
+        "uri": "servicedesk://runbook/escalation"
+      }
+    ],
+    "templates": [
+      {
+        "name": "ticket",
+        "uriTemplate": "servicedesk://ticket/{ticketId}",
+        "variables": [
+          {
+            "name": "ticketId",
+            "idPattern": "^SD-[0-9]{1,9}$"
+          }
+        ]
+      }
+    ],
+    "uri": "servicedesk://ticket/XX-1"
+  },
+  "expected": {
+    "kind": null,
+    "reason": "variable_invalid"
+  }
+}

@@ -2,7 +2,7 @@
 // when a session is told that its list changed. Used by the vectors in test-vectors/endpoint-aggregate/; the gateway
 // (ws-05) implements the same rules.
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { applyFilter } from './endpoint-filter.mjs';
+import { applyFilter, applyPrimitiveFilter } from './endpoint-filter.mjs';
 
 /** CC-180: the time one server has to answer the read of its tools/list; configurable, 3 s by default. */
 export const DEFAULT_TOOLS_LIST_TIMEOUT_MS = 3000;
@@ -31,6 +31,34 @@ export function visibleTools(servers) {
 }
 
 /**
+ * CC-259: the entries of resources/list, resources/templates/list and prompts/list that the user sees. `kind` is resources,
+ * templates or prompts. A server is { serverId, system, available, status, connectionApproved, policiesApproved, enabled, killSwitch,
+ * entries: [{ name, approved, enabled, definitionMatches, allowedByPolicy }] }; the state fields default to the healthy value.
+ * The gateway builds the lists from approved registry entries, never from lists of the server. Resources and templates follow the
+ * state of the server like tools: a server that is not available is skipped as a whole, and a definition that differs from the
+ * approved one hides its entry (definition_changed). Prompts are rendered by the gateway from the manifest, so an unreachable server
+ * does not hide them and there is no definition to compare; they are hidden when the server is pending_approval, its connection or
+ * policies are not approved, it is disabled or a server kill switch is set. Entries are keyed <system>__<name> for the order and the
+ * cursor: system by ServerId, then name, bytewise.
+ */
+export function visibleEntries(kind, servers) {
+  const out = [];
+  for (const server of [...servers].sort((a, b) => bytewise(a.serverId, b.serverId))) {
+    const { status = 'approved', connectionApproved = true, policiesApproved = true, enabled = true, killSwitch = false } = server;
+    if (status !== 'approved' || !connectionApproved || !policiesApproved || !enabled || killSwitch) continue;
+    if (kind !== 'prompts' && !server.available) continue;
+    const listed = server.entries
+      .filter((e) => e.approved && e.enabled && (kind === 'prompts' || e.definitionMatches) && e.allowedByPolicy)
+      .sort((a, b) => bytewise(a.name, b.name));
+    out.push(...listed.map((e) => ({ system: server.system, name: e.name })));
+  }
+  return out;
+}
+
+/** The visible entries after the address filter, as the qualified names the list is ordered and paged by. */
+export const listedNames = (filter, entries) => applyPrimitiveFilter(filter, entries).map((e) => `${e.system}__${e.name}`);
+
+/**
  * CC-180: whether a server counts as available for one tools/list. The read of its tools/list (taken from the cache within
  * the TTL, or made now) must end with a valid result within the timeout. A timeout, a connection or TLS error, a status other
  * than 200, a body that is not a JSON-RPC result of tools/list and a result that does not match the schema all make the server
@@ -57,8 +85,12 @@ export function routeCall(name, knownSystems) {
  * tools/list (filter applied) is not what it was. A tool counts as changed when its name, its risk or, if given, its
  * definitionHash differs. Kept as the reference for M6.
  */
-export function listChangedNotification(filter, before, after) {
-  const entries = (tools) => applyFilter(filter, tools).map((t) => `${t.name} ${t.risk} ${t.definitionHash ?? ''}`);
+export function listChangedNotification(filter, before, after, primitives = false) {
+  // CC-259: resources, templates and prompts follow the rules of tools/list_changed; an entry is { system, name, definitionHash? } and
+  // the address filter is the one of primitivesVisible.
+  const entries = primitives
+    ? (list) => applyPrimitiveFilter(filter, list).map((e) => `${e.system}__${e.name} ${e.definitionHash ?? ''}`)
+    : (tools) => applyFilter(filter, tools).map((t) => `${t.name} ${t.risk} ${t.definitionHash ?? ''}`);
   const a = entries(before);
   const b = entries(after);
   return a.length !== b.length || a.some((entry, i) => entry !== b[i]);
@@ -138,13 +170,13 @@ const mac = (sub, payload) => createHmac('sha256', CURSOR_TEST_KEY).update(`${su
  * the gateway may build its cursors differently as long as it refuses what this function refuses. The vectors pin only
  * the outcome.
  */
-export function issueCursor({ sub, canonicalFilter, afterName, iat }) {
-  const payload = Buffer.from(JSON.stringify({ afterName, filter: canonicalFilter, iat })).toString('base64url');
+export function issueCursor({ sub, canonicalFilter, afterName, iat, kind = 'tools' }) {
+  const payload = Buffer.from(JSON.stringify({ afterName, filter: canonicalFilter, iat, kind })).toString('base64url');
   return `${payload}.${mac(sub, payload).toString('base64url')}`;
 }
 
-/** The same answer, -32602, for every cause: malformed, changed, expired, issued to another user or for another filter. */
-export function readCursor(cursor, { sub, canonicalFilter, now }) {
+/** The same answer, -32602, for every cause: malformed, changed, expired, issued to another user, for another filter or for another list. */
+export function readCursor(cursor, { sub, canonicalFilter, now, kind = 'tools' }) {
   const invalid = { error: { code: -32602, message: 'Invalid cursor' } };
   if (typeof cursor !== 'string') return invalid;
   const [payload, tag, ...rest] = cursor.split('.');
@@ -160,6 +192,8 @@ export function readCursor(cursor, { sub, canonicalFilter, now }) {
   }
   if (typeof position?.iat !== 'number' || now < position.iat || now - position.iat > CURSOR_LIFETIME_SECONDS) return invalid;
   if (position.filter !== canonicalFilter || typeof position.afterName !== 'string') return invalid;
+  // CC-259: a cursor of another list (tools, resources, templates, prompts) is as bad as a damaged one.
+  if (position.kind !== kind) return invalid;
   return { afterName: position.afterName };
 }
 

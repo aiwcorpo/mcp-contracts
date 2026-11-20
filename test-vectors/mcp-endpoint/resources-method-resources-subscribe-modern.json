@@ -1,0 +1,16 @@
+{
+  "description": "resources/subscribe is not supported: -32601, HTTP 404.",
+  "kind": "method",
+  "input": {
+    "method": "resources/subscribe",
+    "era": "modern"
+  },
+  "expected": {
+    "handled": false,
+    "error": {
+      "code": -32601,
+      "message": "Method not found"
+    },
+    "httpStatus": 404
+  }
+}

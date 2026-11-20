@@ -1,0 +1,25 @@
+{
+  "description": "A segment that starts with a dot is not valid for the type, however it is written.",
+  "kind": "template",
+  "input": {
+    "template": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+    "variables": [
+      {
+        "name": "projectPath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "ref",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "filePath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      }
+    ],
+    "uri": "gitlab://project/grp%2Fapp/blob/main/%2E%2E%2Fx"
+  },
+  "expected": {
+    "match": false
+  }
+}

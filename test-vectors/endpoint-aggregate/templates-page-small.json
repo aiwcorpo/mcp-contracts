@@ -1,0 +1,33 @@
+{
+  "description": "Templates are paged too.",
+  "kind": "page",
+  "input": {
+    "tools": [
+      {
+        "name": "servicedesk__tpl_000"
+      },
+      {
+        "name": "servicedesk__tpl_001"
+      },
+      {
+        "name": "servicedesk__tpl_002"
+      },
+      {
+        "name": "servicedesk__tpl_003"
+      },
+      {
+        "name": "servicedesk__tpl_004"
+      }
+    ],
+    "afterName": null,
+    "pageSize": 2
+  },
+  "expected": {
+    "tools": [
+      "servicedesk__tpl_000",
+      "servicedesk__tpl_001"
+    ],
+    "nextCursorAfter": "servicedesk__tpl_001"
+  },
+  "list": "templates"
+}

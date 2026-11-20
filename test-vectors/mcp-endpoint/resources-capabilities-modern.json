@@ -1,0 +1,22 @@
+{
+  "description": "Declared in server/discover whatever the registry holds; completions never.",
+  "kind": "capabilities",
+  "input": {
+    "era": "modern"
+  },
+  "expected": {
+    "declaredIn": "server/discover",
+    "capabilities": {
+      "tools": {
+        "listChanged": true
+      },
+      "resources": {
+        "subscribe": false,
+        "listChanged": true
+      },
+      "prompts": {
+        "listChanged": true
+      }
+    }
+  }
+}

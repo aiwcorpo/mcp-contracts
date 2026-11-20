@@ -1,0 +1,17 @@
+{
+  "description": "A switch of another server does not concern it.",
+  "kind": "primitive",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-jira"
+      }
+    ],
+    "serverId": "mcp-servicedesk",
+    "event": "read"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

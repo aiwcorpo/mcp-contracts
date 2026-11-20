@@ -1,0 +1,14 @@
+{
+  "description": "The broker has no manifest: without the configuration that confirms a broker version of 8.0.0 or more the gateway does not call it.",
+  "kind": "emission",
+  "input": {
+    "emission": {
+      "receiver": "broker"
+    }
+  },
+  "expected": {
+    "emit": false,
+    "errorCode": "upstream_unavailable",
+    "auditReason": "contracts_version_unsupported"
+  }
+}

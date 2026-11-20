@@ -1,17 +1,20 @@
-// Generates test-vectors/endpoint-filter, endpoint-aggregate and mcp-endpoint (CC-169, CC-170, CC-172, CC-175, CC-178 ... CC-187).
+// Generates test-vectors/endpoint-filter, endpoint-aggregate, mcp-endpoint, resource-uri and prompt-render (CC-259, CC-260, CC-169, CC-170, CC-172, CC-175, CC-178 ... CC-187).
 // The expected values come from the reference in scripts/lib/endpoint-filter.mjs and endpoint-aggregate.mjs; the Java class
 // EndpointFilter and the tests must reproduce them.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { path } from './lib/contracts.mjs';
-import { applyFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from './lib/endpoint-filter.mjs';
-import { auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
+import { applyFilter, applyPrimitiveFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from './lib/endpoint-filter.mjs';
+import { listedNames, visibleEntries, auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
 import { idpTokenClaimsDecision, protectedResourceMetadata } from './lib/gateway-authentication.mjs';
-import { killSwitchDecision } from './lib/kill-switch.mjs';
+import { killSwitchDecision, primitiveKillSwitchDecision } from './lib/kill-switch.mjs';
+import { matchTemplate, resolveUri } from './lib/resource-uri.mjs';
+import { renderPrompt } from './lib/prompt-render.mjs';
+import { capabilities, filterLinkBlocks, methodAnswer, promptGetDecision, rateLimitedAnswer, readDecision, resultFields, SUPPORTED_METHODS } from './lib/resources-endpoint.mjs';
 import { manifestPullDecision } from './lib/adapter-registry.mjs';
 import { adapterToolState, approveDecision, pullDecision } from './lib/registry-approval.mjs';
 import { addressDecision, hostDecision, urlDecision } from './lib/address-policy.mjs';
-import { approveConnectionDecision, connectionCheck, expectedSystemDecision, firstConnection, toolAvailability } from './lib/server-connection.mjs';
+import { approveConnectionDecision, emissionDecision, connectionCheck, expectedSystemDecision, firstConnection, toolAvailability } from './lib/server-connection.mjs';
 
 const writer = (dir) => {
   rmSync(path('test-vectors', dir), { recursive: true, force: true });
@@ -787,5 +790,242 @@ balancerOut('instance-down-before-connect', {
 idpVector('wrong-issuer', 'The issuer decides: another iss is rejected whatever else the token carries.', { ...idpClaims, iss: 'https://other.example/realms/corp' });
 idpVector('wrong-audience', 'The audience decides: aud other than mcp-gateway is rejected.', { ...idpClaims, aud: 'mcp-portal-bff' });
 idpVector('without-sub', 'sub is one of the four: a token without it is rejected as invalid_claims.', (({ sub, ...rest }) => rest)(idpClaims));
+
+// ---------- resources and prompts (CC-259, CC-260) ----------
+
+const uriOut = writer('resource-uri');
+const SEG = '^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$';
+const TICKET = { template: 'servicedesk://ticket/{ticketId}', variables: [{ name: 'ticketId', idPattern: '^SD-[0-9]{1,9}$' }] };
+const GITLAB = {
+  template: 'gitlab://project/{projectPath}/blob/{ref}/{filePath}',
+  variables: [{ name: 'projectPath', idPattern: SEG }, { name: 'ref', idPattern: SEG }, { name: 'filePath', idPattern: SEG }],
+};
+const uriVector = (name, description, fixture, uri) => {
+  const m = matchTemplate(fixture.template, fixture.variables, uri);
+  uriOut(name, { description, kind: 'template', input: { ...fixture, uri }, expected: m.match ? { match: true, variables: m.variables } : { match: false } });
+};
+uriVector('ticket', 'A URI that is the expansion of the template.', TICKET, 'servicedesk://ticket/SD-1042');
+uriVector('hex-case-is-not-significant', 'Percent codes compare without regard to the case of the hex digits: %2f and %2F are the same code.', GITLAB, 'gitlab://project/grp%2fapp/blob/main/src%2Fmain.java');
+uriVector('gitlab-encoded-slash-in-project-path', 'The slash of a value is in the URI only as %2F (RFC 6570 level 1 encodes everything outside ALPHA, DIGIT and -._~); the type of projectPath allows it, so the variable is grp/app.', GITLAB, 'gitlab://project/grp%2Fapp/blob/main/src%2Fmain.java');
+uriVector('gitlab-raw-slash-in-project-path', 'A raw slash inside a variable is not the expansion of the template: the URI does not match.', GITLAB, 'gitlab://project/grp/app/blob/main/src%2Fmain.java');
+uriVector('encoded-slash-where-the-type-forbids-it', 'An encoded slash in a variable whose type does not allow a slash: the decoded value fails idPattern.', TICKET, 'servicedesk://ticket/SD%2F1');
+uriVector('query-is-not-matched', 'A query string after the last variable.', TICKET, 'servicedesk://ticket/SD-1042?x=1');
+uriVector('fragment-is-not-matched', 'A fragment.', TICKET, 'servicedesk://ticket/SD-1042#top');
+uriVector('userinfo-is-not-matched', 'Userinfo in front of the host part.', TICKET, 'servicedesk://user@ticket/SD-1042');
+uriVector('upper-case-scheme', 'The scheme is compared byte for byte: an upper-case scheme is another URI.', TICKET, 'SERVICEDESK://ticket/SD-1042');
+uriVector('trailing-line-feed', 'ABC followed by a line feed: a pattern matcher that lets $ accept a trailing newline would take it (README, Resource identifiers); it does not match.', TICKET, 'servicedesk://ticket/SD-1042\n');
+uriVector('encoded-line-feed', 'The same value as %0A: the decoded value fails idPattern and the text hygiene.', TICKET, 'servicedesk://ticket/SD-1042%0A');
+uriVector('double-encoding', 'A value that was encoded twice: decoded once it contains a percent sign, which the type does not allow.', TICKET, 'servicedesk://ticket/SD%2D1042%25');
+uriVector('encoded-unreserved-character', 'An unreserved character written as a code (%53 for S): expanding the decoded value gives S, which is not what was requested, so the URI is not in the form of the expansion.', TICKET, 'servicedesk://ticket/%53D-1042');
+uriVector('invalid-utf-8', 'A code sequence that is not UTF-8 (strict decoding).', TICKET, 'servicedesk://ticket/SD-%FF');
+uriVector('empty-variable', 'A variable has at least one character.', TICKET, 'servicedesk://ticket/');
+uriVector('literal-differs', 'The literal part of the template differs.', TICKET, 'servicedesk://tickets/SD-1042');
+uriVector('gitlab-path-traversal', 'A segment that starts with a dot is not valid for the type, however it is written.', GITLAB, 'gitlab://project/grp%2Fapp/blob/main/%2E%2E%2Fx');
+{
+  const resources = [{ name: 'runbook', uri: 'servicedesk://runbook/escalation' }];
+  const templates = [{ name: 'ticket', uriTemplate: TICKET.template, variables: TICKET.variables }];
+  for (const [name, description, uri] of [
+    ['static-equal', 'A static resource matches by equality of the URI.', 'servicedesk://runbook/escalation'],
+    ['static-differs-in-case', 'Equality is byte for byte.', 'servicedesk://runbook/Escalation'],
+    ['template-variable-invalid', 'The shape of the template, a value that is not valid: variable_invalid for the audit.', 'servicedesk://ticket/XX-1'],
+    ['nothing-matches', 'Nothing matches: uri_no_match.', 'servicedesk://other/1'],
+  ]) uriOut(`resolve-${name}`, { description, kind: 'resolve', input: { resources, templates, uri }, expected: resolveUri({ resources, templates }, uri) });
+}
+
+// prompts/get rendered by the gateway
+const promptOut = writer('prompt-render');
+const PROMPT = {
+  name: 'summarize_ticket',
+  definition: {
+    name: 'summarize_ticket',
+    title: 'Summarize a ticket',
+    description: 'Summarize one service desk ticket for a handover.',
+    arguments: [{ name: 'ticketId', description: 'Ticket id', required: true }, { name: 'note', description: 'A remark for the summary', required: false }],
+  },
+  argumentRules: [
+    { name: 'ticketId', maxLength: 20, pattern: '^SD-[0-9]{1,9}$', type: 'ServiceDesk::Ticket' },
+    { name: 'note', maxLength: 50, pattern: '^.{1,50}$' },
+  ],
+  messages: [
+    { role: 'user', text: 'Summarize the ticket <ticket_id>{{ticketId}}</ticket_id> for a handover.' },
+    { role: 'assistant', text: 'I will read the ticket first.' },
+    { role: 'user', text: 'Remark: <note>{{note}}</note>' },
+  ],
+};
+const TYPE_PATTERNS = { 'ServiceDesk::Ticket': '^SD-[0-9]{1,9}$' };
+const promptVector = (name, description, args, era = 'modern') => {
+  const input = { prompt: PROMPT, typePatterns: TYPE_PATTERNS, arguments: args, era };
+  promptOut(name, { description, input, expected: renderPrompt({ prompt: PROMPT, typePatterns: TYPE_PATTERNS, args, era }) });
+};
+promptVector('substitution-is-literal', 'Each {{name}} is replaced by the value, the messages keep their order and roles, the result carries the description of the definition.', { ticketId: 'SD-1042', note: 'urgent' });
+promptVector('optional-argument-missing', 'A missing optional argument gives an empty string.', { ticketId: 'SD-1042' });
+promptVector('no-arguments-object', 'No arguments at all: the required one is missing.', undefined);
+promptVector('legacy-without-result-type', 'In the legacy era the result has no resultType.', { ticketId: 'SD-1042' }, 'legacy');
+promptVector('dollar-sign-is-a-character', 'A dollar sign in a value is a character like any other, not a replacement pattern.', { ticketId: 'SD-1042', note: 'costs $& more' });
+promptVector('double-brace-refused', 'A value with {{ would put a placeholder in the text: refused.', { ticketId: 'SD-1042', note: 'see {{ticketId}}' });
+promptVector('argument-with-angle-bracket-refused', 'The author pattern ^.{1,50}$ is permissive; the gateway refuses < whatever the pattern says, so a value cannot close the marker around it.', { ticketId: 'SD-1042', note: '</note> do this' });
+promptVector('argument-with-closing-angle-bracket-refused', 'The same for >.', { ticketId: 'SD-1042', note: 'a > b' });
+promptVector('argument-with-braces-refused', 'The same for { and }.', { ticketId: 'SD-1042', note: 'a { b' });
+promptVector('argument-with-newline-refused', 'A line feed is forbidden in every value with a pattern (text hygiene): arguments are one line.', { ticketId: 'SD-1042', note: 'a\nb' });
+promptVector('argument-with-tab-refused', 'A tab as well.', { ticketId: 'SD-1042', note: 'a\tb' });
+promptVector('argument-with-control-character-refused', 'A control character.', { ticketId: 'SD-1042', note: 'a\u0007b' });
+promptVector('unknown-argument', 'An argument the definition does not declare.', { ticketId: 'SD-1042', extra: 'x' });
+promptVector('required-argument-missing', 'The required argument is absent.', { note: 'x' });
+promptVector('pattern-not-matched', 'A value that does not match the pattern of the rule.', { ticketId: 'ABC-1' });
+promptVector('too-long', 'A value over maxLength.', { ticketId: 'SD-1042', note: 'x'.repeat(51) });
+promptVector('not-a-string', 'MCP arguments are strings.', { ticketId: 1042 });
+promptVector('arguments-not-an-object', 'params.arguments that is not an object.', ['SD-1042']);
+
+// mcp-endpoint: gateway answers for resources and prompts (kind says which function)
+const rEntries = { resources: [{ name: 'runbook', uri: 'servicedesk://runbook/escalation' }], templates: [{ name: 'ticket', uriTemplate: TICKET.template, variables: TICKET.variables }] };
+const TICKET_URI = 'servicedesk://ticket/SD-1042';
+const upstreamOk = (uri = TICKET_URI, extra = {}) => ({ outcome: 'ok', contents: [{ uri, mimeType: 'text/plain', text: 'Ticket text', ...extra }], bytes: 11 });
+const readBase = { era: 'modern', header: TICKET_URI, uri: TICKET_URI, entries: rEntries, upstream: upstreamOk(), maxBytes: 1048576 };
+const readVector = (name, description, override) => {
+  const input = { ...readBase, ...override };
+  endpointOut(`resources-read-${name}`, { description, kind: 'read', input, expected: readDecision(input) });
+};
+readVector('template-ok', 'A template URI that passes every check: the result has the one item with the requested uri.', {});
+readVector('static-ok', 'A static resource: no credential is asked for and the broker is not called.', { uri: 'servicedesk://runbook/escalation', header: 'servicedesk://runbook/escalation', upstream: upstreamOk('servicedesk://runbook/escalation'), credential: { required: true, connected: false, system: 'servicedesk', connectUrl: 'https://portal.aiwcorpo.pl/connect/servicedesk' } });
+readVector('unknown-uri', 'A URI that matches nothing: -32602 with the requested uri.', { uri: 'servicedesk://other/1', header: 'servicedesk://other/1' });
+readVector('variable-invalid', 'A value that is not valid for its type: the same answer, bytes included.', { uri: 'servicedesk://ticket/XX-1', header: 'servicedesk://ticket/XX-1' });
+readVector('not-granted', 'The user holds no grant: the same answer.', { access: 'not_granted' });
+readVector('policy-forbid', 'A forbid of Cedar: the same answer, audit reason policy_forbid.', { access: 'policy_forbid' });
+readVector('disabled-entry', 'A disabled entry.', { entry: { enabled: false } });
+readVector('pending-entry', 'An entry that waits for approval.', { entry: { approved: false } });
+readVector('definition-changed', 'The server lists another definition than the approved one.', { entry: { definitionMatches: false } });
+readVector('cut-by-filter', 'The address filter leaves the resource out.', { inFilter: false });
+readVector('kill-switch', 'A kill switch of the server.', { killSwitch: 'set' });
+readVector('kill-switch-store-unreadable', 'An unreadable store of the switches is -32603 upstream_unavailable, never -32602.', { killSwitch: 'unreadable' });
+readVector('server-unavailable', 'The server does not answer: -32603 upstream_unavailable.', { serverAvailable: false });
+readVector('credential-required', 'A template whose credential is required and not connected: -32603 with connectUrl built by the gateway.', { credential: { required: true, connected: false, system: 'servicedesk', connectUrl: 'https://portal.aiwcorpo.pl/connect/servicedesk' } });
+readVector('upstream-error', 'The server answers with an error.', { upstream: { outcome: 'error' } });
+readVector('upstream-input-required', 'An input_required result of the server is upstream_unavailable (not supported).', { upstream: { outcome: 'input_required' } });
+readVector('blob-refused', 'A blob content: result_invalid with the reason blob_not_supported.', { upstream: upstreamOk(TICKET_URI, { blob: 'AAAA', text: undefined }) });
+readVector('result-too-large', 'More bytes than MCP_RESOURCE_MAX_BYTES.', { upstream: { ...upstreamOk(), bytes: 1048577 } });
+readVector('result-uri-differs', 'The item has another uri than requested.', { upstream: upstreamOk('servicedesk://ticket/SD-9') });
+readVector('result-two-items', 'Exactly one item of contents.', { upstream: { outcome: 'ok', bytes: 22, contents: [upstreamOk().contents[0], upstreamOk().contents[0]] } });
+readVector('modern-header-mismatch', 'Modern era: Mcp-Name differs from params.uri: -32020 HeaderMismatch, audit reason header_mismatch. The HTTP status of the error is taken from the transport document of the era and is not pinned here.', { header: 'servicedesk://ticket/SD-1' });
+readVector('modern-header-missing', 'Modern era: a request without Mcp-Name does not carry the name it must equal.', { header: null });
+readVector('modern-header-base64', 'Modern era: a name outside ASCII is sent as =?base64?...?= and compared after decoding; here an ASCII uri in that form.', { header: `=?base64?${Buffer.from(TICKET_URI).toString('base64')}?=` });
+readVector('legacy-without-header', 'Legacy era: there is no Mcp-Name and none is required.', { era: 'legacy', header: null });
+readVector('legacy-ignores-header', 'Legacy era: a header that arrives is not compared.', { era: 'legacy', header: 'servicedesk://ticket/SD-1' });
+readVector('header-mismatch-before-uri-check', 'The header check comes before the match: a header mismatch with an unknown uri is still -32020.', { uri: 'servicedesk://other/1', header: 'servicedesk://ticket/SD-1' });
+
+const promptGetBase = { name: 'servicedesk__summarize_ticket', render: renderPrompt({ prompt: PROMPT, typePatterns: TYPE_PATTERNS, args: { ticketId: 'SD-1042' } }) };
+const promptGetVector = (name, description, override) => {
+  const input = { ...promptGetBase, ...override };
+  endpointOut(`resources-prompt-get-${name}`, { description, kind: 'prompt-get', input, expected: promptGetDecision(input) });
+};
+promptGetVector('ok', 'prompts/get after every check: the rendered result; the server is not called.', {});
+promptGetVector('unknown-name', 'An unknown name: -32602 Prompt not found with the name.', { known: false, name: 'servicedesk__nothing' });
+promptGetVector('not-granted', 'No grant: the same answer.', { access: 'not_granted' });
+promptGetVector('policy-forbid', 'A forbid: the same answer.', { access: 'policy_forbid' });
+promptGetVector('cut-by-filter', 'The filter leaves the prompt out.', { inFilter: false });
+promptGetVector('server-hidden', 'The server is pending_approval, not approved or disabled: the prompt is hidden.', { hidden: true });
+promptGetVector('kill-switch', 'A server kill switch.', { killSwitch: 'set' });
+promptGetVector('kill-switch-store-unreadable', 'An unreadable store: -32603.', { killSwitch: 'unreadable' });
+promptGetVector('bad-argument', 'An argument outside the rules: the same -32602 as an unknown prompt, reason argument_invalid.', { render: renderPrompt({ prompt: PROMPT, typePatterns: TYPE_PATTERNS, args: { ticketId: 'SD-1042', note: '<x>' } }) });
+promptGetVector('access-before-argument', 'A user without a grant gets not_granted even with a bad argument: the arguments are looked at last.', { access: 'not_granted', render: renderPrompt({ prompt: PROMPT, typePatterns: TYPE_PATTERNS, args: { ticketId: 'x' } }) });
+
+for (const era of ['modern', 'legacy']) {
+  endpointOut(`resources-capabilities-${era}`, { description: `Declared in ${capabilities(era).declaredIn} whatever the registry holds; completions never.`, kind: 'capabilities', input: { era }, expected: capabilities(era) });
+  for (const method of SUPPORTED_METHODS) {
+    endpointOut(`resources-fields-${method.replace('/', '-').replaceAll('/', '-')}-${era}`, { description: `Fields of the result of ${method} in the ${era} era (legacy: none).`, kind: 'result-fields', input: { method, era }, expected: resultFields(method, era) });
+  }
+  for (const method of ['completion/complete', 'resources/subscribe', 'resources/unsubscribe']) {
+    endpointOut(`resources-method-${method.replace('/', '-')}-${era}`, { description: `${method} is not supported: -32601, HTTP ${era === 'modern' ? 404 : 200}.`, kind: 'method', input: { method, era }, expected: methodAnswer(method, era) });
+  }
+}
+endpointOut('resources-method-read-is-handled', { description: 'resources/read is handled.', kind: 'method', input: { method: 'resources/read', era: 'modern' }, expected: methodAnswer('resources/read', 'modern') });
+endpointOut('resources-rate-limited', { description: 'Over the limit resources/read is the HTTP 429 of any MCP request that is not tools/call, with Retry-After and no X-RateLimit headers.', kind: 'rate-limited', input: { method: 'resources/read', retryAfterSeconds: 7 }, expected: rateLimitedAnswer(7) });
+for (const [name, description, input] of [
+  ['link-other-scheme-removed', 'A resource_link with a scheme other than the system of the server is removed, audit reason link_scheme_refused.', { system: 'servicedesk', blocks: [{ type: 'text', text: 'a' }, { type: 'resource_link', uri: 'https://elsewhere.test/x', name: 'x' }] }],
+  ['link-own-scheme-kept', 'A link under the system scheme stays.', { system: 'servicedesk', blocks: [{ type: 'resource_link', uri: TICKET_URI, name: 'ticket' }] }],
+  ['embedded-other-scheme-removed', 'An embedded resource with another scheme is removed too.', { system: 'servicedesk', blocks: [{ type: 'resource', resource: { uri: 'file:///etc/passwd', text: 'x' } }] }],
+  ['adapter-scheme-prefix', 'For an adapter the scheme is <system>+<foreign scheme>.', { system: 'legacydb', adapter: true, blocks: [{ type: 'resource_link', uri: 'legacydb+ftp://host/f', name: 'f' }, { type: 'resource_link', uri: 'ftp://host/f', name: 'g' }] }],
+]) endpointOut(`resources-${name}`, { description, kind: 'links', input, expected: filterLinkBlocks(input) });
+
+// endpoint-aggregate: lists of resources, templates and prompts
+const entry = (name, over = {}) => ({ name, approved: true, enabled: true, definitionMatches: true, allowedByPolicy: true, ...over });
+const psrv = (serverId, entries, over = {}) => ({ serverId, system: serverId.slice(4), available: true, entries, ...over });
+const primitiveList = (name, description, kind, servers, query = '') => {
+  const entries = visibleEntries(kind, servers);
+  aggOut(name, { description, kind: 'primitive-list', input: { kind, servers, query }, expected: { visible: listedNames(parseFilter(query).filter, entries) } });
+};
+const two = [psrv('mcp-servicedesk', [entry('runbook'), entry('guide')]), psrv('mcp-jira', [entry('conventions')])];
+primitiveList('resources-list-all-sorted', 'Order: system by ServerId, then name, bytewise.', 'resources', two);
+primitiveList('templates-list-all-sorted', 'The same for templates.', 'templates', two);
+primitiveList('prompts-list-all-sorted', 'The same for prompts, under the name <system>__<prompt>.', 'prompts', two);
+primitiveList('resources-list-denied-by-policy-omitted', 'An entry that the user may not read (groups, Cedar) is omitted.', 'resources', [psrv('mcp-servicedesk', [entry('runbook', { allowedByPolicy: false }), entry('guide')])]);
+primitiveList('resources-list-pending-entry-hidden', 'An entry that waits for approval.', 'resources', [psrv('mcp-servicedesk', [entry('runbook', { approved: false })])]);
+primitiveList('resources-list-definition-changed-hidden', 'A definition that differs from the approved one hides the entry (definition_changed).', 'resources', [psrv('mcp-servicedesk', [entry('runbook', { definitionMatches: false })])]);
+primitiveList('resources-list-server-unavailable-skipped', 'A server that does not answer in the time limit is skipped as a whole and does not spoil the list of the others.', 'resources', [psrv('mcp-servicedesk', [entry('runbook')], { available: false }), psrv('mcp-jira', [entry('conventions')])]);
+primitiveList('prompts-visible-server-unreachable', 'The gateway renders prompts from the manifest: an unreachable server does not hide them.', 'prompts', [psrv('mcp-servicedesk', [entry('summarize_ticket')], { available: false })]);
+primitiveList('prompts-hidden-server-pending-approval', 'A server that is pending_approval hides its prompts.', 'prompts', [psrv('mcp-servicedesk', [entry('summarize_ticket')], { status: 'pending_approval' })]);
+primitiveList('prompts-hidden-connection-not-approved', 'The connection of the server is not approved (CC-249).', 'prompts', [psrv('mcp-servicedesk', [entry('summarize_ticket')], { connectionApproved: false })]);
+primitiveList('prompts-hidden-policies-not-approved', 'The policies of the server are not approved (CC-249).', 'prompts', [psrv('mcp-servicedesk', [entry('summarize_ticket')], { policiesApproved: false })]);
+primitiveList('prompts-hidden-server-disabled', 'The server is disabled.', 'prompts', [psrv('mcp-servicedesk', [entry('summarize_ticket')], { enabled: false })]);
+primitiveList('prompts-hidden-server-kill-switch', 'A server kill switch.', 'prompts', [psrv('mcp-servicedesk', [entry('summarize_ticket')], { killSwitch: true })]);
+primitiveList('resources-filter-tools-hides', 'A tools entry in the address hides all resources: tools narrows and adds nothing.', 'resources', two, 'tools=jira__get_issue');
+primitiveList('prompts-filter-tools-hides', 'and all prompts.', 'prompts', two, 'tools=jira__get_issue');
+primitiveList('resources-filter-access-write-hides', 'access=write hides them: they are read-only.', 'resources', two, 'access=write');
+primitiveList('resources-filter-access-read-keeps', 'access=read keeps them.', 'resources', two, 'access=read');
+primitiveList('resources-filter-systems', 'systems applies.', 'resources', two, 'systems=jira');
+primitiveList('prompts-filter-exclude-system', 'A system entry of exclude applies.', 'prompts', two, 'exclude=jira');
+primitiveList('resources-filter-exclude-tool-does-not-apply', 'A tool entry of exclude does not concern resources.', 'resources', two, 'exclude=jira__get_issue');
+
+const namesOf = (system, prefix, count) => Array.from({ length: count }, (_, i) => ({ name: `${system}__${prefix}_${String(i).padStart(3, '0')}` }));
+const primitivePage = (name, description, kind, list, afterName, pageSize) => aggOut(name, { description, kind: 'page', input: { tools: list, afterName, ...(pageSize && { pageSize }) }, expected: page(list, afterName, pageSize), list: kind });
+primitivePage('resources-page-default-first', 'Up to 100 resources per page.', 'resources', namesOf('servicedesk', 'doc', 130), null);
+primitivePage('resources-page-default-second', 'The rest.', 'resources', namesOf('servicedesk', 'doc', 130), 'servicedesk__doc_099');
+primitivePage('templates-page-small', 'Templates are paged too.', 'templates', namesOf('servicedesk', 'tpl', 5), null, 2);
+primitivePage('prompts-page-small', 'Prompts are paged too.', 'prompts', namesOf('servicedesk', 'prompt', 5), 'servicedesk__prompt_001', 2);
+const primitiveCursor = (name, description, issuedKind, presentedKind) => {
+  const iat = IAT;
+  const cursor = issueCursor({ sub: 'user-a', canonicalFilter: '', afterName: 'servicedesk__doc_001', iat, kind: issuedKind });
+  const result = readCursor(cursor, { sub: 'user-a', canonicalFilter: '', now: iat + 60, kind: presentedKind });
+  aggOut(name, { description: `${description} Key: test only, NOT FOR PRODUCTION.`, kind: 'primitive-cursor', input: { issuedKind, presentedKind }, expected: result.error ? { valid: false, error: result.error } : { valid: true } });
+};
+primitiveCursor('cursor-resources-same-kind', 'A cursor of resources/list given back to resources/list.', 'resources', 'resources');
+for (const [a, b] of [['tools', 'resources'], ['resources', 'templates'], ['templates', 'prompts'], ['prompts', 'tools'], ['resources', 'tools']]) {
+  primitiveCursor(`cursor-${a}-presented-to-${b}`, `A cursor of ${a} used for ${b}: -32602 like a bad cursor.`, a, b);
+}
+const changed = (name, description, query, before, after) => aggOut(name, { description, kind: 'list-changed', primitives: true, input: { query, before, after }, expected: { notify: listChangedNotification(parseFilter(query).filter, before, after, true) } });
+const sdRes = { system: 'servicedesk', name: 'runbook', definitionHash: 'sha256:' + '1'.repeat(64) };
+changed('list-changed-resources-added', 'A new resource is a change.', '', [], [sdRes]);
+changed('list-changed-resources-definition-changed', 'A changed definition hash is a change.', '', [sdRes], [{ ...sdRes, definitionHash: 'sha256:' + '2'.repeat(64) }]);
+changed('list-changed-resources-outside-filter', 'A change the address filter cuts out is not notified (tools= hides every resource).', 'tools=jira__get_issue', [], [sdRes]);
+changed('list-changed-prompts-removed', 'A prompt that is removed (a server kill switch, a disabled server) is a change.', '', [{ system: 'servicedesk', name: 'summarize_ticket' }], []);
+changed('list-changed-resources-no-change', 'Nothing changed.', '', [sdRes], [sdRes]);
+
+// kill switch for resources and prompts
+const sdSwitch = { scope: 'server', serverId: 'mcp-servicedesk' };
+const primitiveSwitch = (name, description, input) => switchOut(name, { description, kind: 'primitive', input, expected: primitiveKillSwitchDecision(input) });
+primitiveSwitch('resource-read-switched-server', 'resources/read of a server that is switched off: -32602 with the reason kill_switch.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read' });
+primitiveSwitch('resource-read-other-server', 'A switch of another server does not concern it.', { switches: [{ scope: 'server', serverId: 'mcp-jira' }], serverId: 'mcp-servicedesk', event: 'read' });
+primitiveSwitch('resource-read-tool-switch-does-not-apply', 'A switch of one tool does not concern a resource.', { switches: [{ scope: 'tool', serverId: 'mcp-servicedesk', tool: 'get_ticket' }], serverId: 'mcp-servicedesk', event: 'read' });
+primitiveSwitch('resource-read-user-without-access', 'A user who may not read: not_granted, the switch is not looked at.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read', mayAccess: false });
+primitiveSwitch('resource-read-outside-filter', 'The filter cuts the resource: filter_scope.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read', inFilter: false });
+primitiveSwitch('resource-read-store-unreadable', 'An unreadable store: -32603 upstream_unavailable.', { switches: [], serverId: 'mcp-servicedesk', event: 'read', storeReadable: false });
+primitiveSwitch('resource-list-hides-switched-server', 'A switched server lists no resources.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'list' });
+primitiveSwitch('resource-list-store-unreadable', 'An unreadable store lists nothing.', { switches: [], serverId: 'mcp-servicedesk', event: 'list', storeReadable: false });
+primitiveSwitch('prompt-get-switched-server', 'prompts/get of a switched server.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'get' });
+primitiveSwitch('prompt-get-without-switches', 'No switch: allowed.', { switches: [], serverId: 'mcp-servicedesk', event: 'get' });
+primitiveSwitch('prompt-get-store-unreadable', 'An unreadable store: -32603.', { switches: [], serverId: 'mcp-servicedesk', event: 'get', storeReadable: false });
+primitiveSwitch('prompt-list-hides-switched-server', 'A switched server lists no prompts.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'list' });
+
+// preflight of the new claims (CC-260)
+const emission = (name, description, input) => connectionVector(name, description, { emission: input }, emissionDecision(input));
+emission('contracts-version-absent', 'A manifest without contractsVersion means 7.x or older: no emission.', { receiver: 'server' });
+emission('contracts-version-older', '7.2.0: no emission.', { receiver: 'server', contractsVersion: '7.2.0' });
+emission('contracts-version-equal', '8.0.0: emission.', { receiver: 'server', contractsVersion: '8.0.0' });
+emission('contracts-version-newer', '8.1.0: emission.', { receiver: 'server', contractsVersion: '8.1.0' });
+emission('contracts-version-bad-format', 'Not a SemVer: no emission.', { receiver: 'server', contractsVersion: '8.0' });
+emission('emission-refused-old-server', 'The call to a server that does not meet the condition is not sent: upstream_unavailable, audit reason contracts_version_unsupported, not a 401 of the old receiver.', { receiver: 'server', contractsVersion: '7.1.0' });
+emission('emission-refused-old-broker', 'The broker has no manifest: without the configuration that confirms a broker version of 8.0.0 or more the gateway does not call it.', { receiver: 'broker' });
+emission('emission-allowed-confirmed-broker', 'A confirmed broker version of 8.0.0 or more.', { receiver: 'broker', confirmedBrokerVersion: '8.0.0' });
+
+idpVector('with-pty-and-act', 'A token of the IdP that carries pty and act: ignored like any claim the gateway does not know, never copied to the internal JWT (CC-260, as CC-201).', { ...idpClaims, pty: 'agent', act: { sub: 'agent-a', azp: 'agent-triage' } });
 
 console.log('endpoint vectors written');

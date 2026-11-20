@@ -1,0 +1,16 @@
+{
+  "description": "completion/complete is not supported: -32601, HTTP 200.",
+  "kind": "method",
+  "input": {
+    "method": "completion/complete",
+    "era": "legacy"
+  },
+  "expected": {
+    "handled": false,
+    "error": {
+      "code": -32601,
+      "message": "Method not found"
+    },
+    "httpStatus": 200
+  }
+}

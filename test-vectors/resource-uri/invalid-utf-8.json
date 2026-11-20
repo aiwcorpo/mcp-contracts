@@ -1,0 +1,17 @@
+{
+  "description": "A code sequence that is not UTF-8 (strict decoding).",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "servicedesk://ticket/SD-%FF"
+  },
+  "expected": {
+    "match": false
+  }
+}

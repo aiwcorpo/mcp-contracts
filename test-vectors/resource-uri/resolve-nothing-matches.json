@@ -1,0 +1,29 @@
+{
+  "description": "Nothing matches: uri_no_match.",
+  "kind": "resolve",
+  "input": {
+    "resources": [
+      {
+        "name": "runbook",
+        "uri": "servicedesk://runbook/escalation"
+      }
+    ],
+    "templates": [
+      {
+        "name": "ticket",
+        "uriTemplate": "servicedesk://ticket/{ticketId}",
+        "variables": [
+          {
+            "name": "ticketId",
+            "idPattern": "^SD-[0-9]{1,9}$"
+          }
+        ]
+      }
+    ],
+    "uri": "servicedesk://other/1"
+  },
+  "expected": {
+    "kind": null,
+    "reason": "uri_no_match"
+  }
+}

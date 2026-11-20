@@ -1,0 +1,56 @@
+{
+  "description": "The server lists another definition than the approved one.",
+  "kind": "read",
+  "input": {
+    "era": "modern",
+    "header": "servicedesk://ticket/SD-1042",
+    "uri": "servicedesk://ticket/SD-1042",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "ok",
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        }
+      ],
+      "bytes": 11
+    },
+    "maxBytes": 1048576,
+    "entry": {
+      "definitionMatches": false
+    }
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Resource not found",
+      "data": {
+        "uri": "servicedesk://ticket/SD-1042"
+      }
+    },
+    "auditReason": "definition_changed",
+    "step": 6
+  }
+}

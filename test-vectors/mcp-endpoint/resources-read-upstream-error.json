@@ -1,0 +1,45 @@
+{
+  "description": "The server answers with an error.",
+  "kind": "read",
+  "input": {
+    "era": "modern",
+    "header": "servicedesk://ticket/SD-1042",
+    "uri": "servicedesk://ticket/SD-1042",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "error"
+    },
+    "maxBytes": 1048576
+  },
+  "expected": {
+    "outcome": "error",
+    "error": {
+      "code": -32603,
+      "message": "Internal error",
+      "data": {
+        "error": "upstream_unavailable"
+      }
+    },
+    "auditReason": "upstream_unavailable",
+    "step": 9
+  }
+}

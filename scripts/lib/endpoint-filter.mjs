@@ -108,6 +108,22 @@ export function applyFilter(filter, tools) {
   });
 }
 
+/**
+ * CC-259: whether the filter leaves the resources and prompts of one system visible. They are read-only system entries: `systems`
+ * and a system entry of `exclude` apply; a `tools` entry hides all of them (`tools` narrows and adds nothing, CC-170); `access=write`
+ * hides them and `access=read` keeps them; tool entries of `exclude` do not concern them.
+ */
+export function primitivesVisible(filter, system) {
+  if (filter.tools) return false;
+  if (filter.systems && !filter.systems.includes(system)) return false;
+  if (filter.access === 'write') return false;
+  if (filter.exclude && filter.exclude.includes(system)) return false;
+  return true;
+}
+
+/** `entries` is [{ system, name }]; the part of them that the filter leaves, in order. */
+export const applyPrimitiveFilter = (filter, entries) => entries.filter((entry) => primitivesVisible(filter, entry.system));
+
 /** CC-172: the filter of a later request of a session must equal the one of initialize, after normalization. */
 export function sessionMatches(initializeQuery, requestQuery) {
   return parseFilter(initializeQuery).canonical === parseFilter(requestQuery).canonical;

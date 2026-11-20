@@ -1,0 +1,20 @@
+{
+  "description": "A user who may not read: not_granted, the switch is not looked at.",
+  "kind": "primitive",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "serverId": "mcp-servicedesk",
+    "event": "read",
+    "mayAccess": false
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": -32602,
+    "auditReason": "not_granted"
+  }
+}

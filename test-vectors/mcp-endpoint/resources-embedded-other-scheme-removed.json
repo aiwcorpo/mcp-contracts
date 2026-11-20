@@ -1,0 +1,20 @@
+{
+  "description": "An embedded resource with another scheme is removed too.",
+  "kind": "links",
+  "input": {
+    "system": "servicedesk",
+    "blocks": [
+      {
+        "type": "resource",
+        "resource": {
+          "uri": "file:///etc/passwd",
+          "text": "x"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [],
+    "auditReason": "link_scheme_refused"
+  }
+}

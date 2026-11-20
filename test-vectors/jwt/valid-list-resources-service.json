@@ -1,0 +1,40 @@
+{
+  "description": "resources/templates/list without a session: the service variant is accepted for the resource lists like for tools/list.",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLXNlcnZpY2VkZXNrIiwidXNlIjoiY2FsbCIsInN1YiI6InN5c3RlbTptY3AtZ2F0ZXdheSIsImdycCI6W10sInJpZCI6IjAxOTJkMWIyLTdjM2EtN2Q0ZS04ZjEwLTJhM2I0YzVkNmU4MCIsInBydiI6NDEsImlhdCI6MTc5MzAxNjAwMCwiZXhwIjoxNzkzMDE2MDYwLCJqdGkiOiIwMTkyZDFiMi03YzNhLTdmMDAtOWExMS0wMDAwMDAwMDAzMDMifQ.AIYK6sPB-IFtIPCw3FD4jq3MXMzwKT6BPD7DzYvghpY_0E5MyBe9lSeyHz6m-cXkyzXOxl0d9-JEAULsOWoheA",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-servicedesk",
+    "use": "call",
+    "sub": "system:mcp-gateway",
+    "grp": [],
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80",
+    "prv": 41,
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000303"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-servicedesk",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "jsonrpc",
+    "method": "resources/templates/list",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80"
+  },
+  "expected": {
+    "valid": true,
+    "httpStatus": 200
+  }
+}

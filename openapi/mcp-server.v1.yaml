@@ -30,7 +30,7 @@ info:
     | Endpoint | `use` | JWT variant |
     | --- | --- | --- |
     | `POST /.well-known/mcp-policy-data` | `policy-data` | service |
-    | the MCP endpoint (`initialize`, `server/discover`, `tools/list`, `ping`, `tools/call`, streams, notifications) | `call` | as in C2 |
+    | the MCP endpoint (`initialize`, `server/discover`, `tools/list`, `resources/list`, `resources/templates/list`, `resources/read`, `ping`, `tools/call`, streams, notifications) | `call` | as in C2 |
 
     A token of one purpose is never accepted for another: a `call` token cannot replace policy data, and a `policy-data` token cannot call a tool. There is no
     purpose `manifest`: a token with `use: manifest` is `invalid_claims`. Test vectors: `test-vectors/jwt/purpose-*`, `test-vectors/jwt/valid-manifest-without-token`.
@@ -39,7 +39,7 @@ info:
     address and then connects with a standard HTTP client. The `Host` header carries the name of the server's address, as for any HTTP client, and a
     self-signed certificate is not matched against any `Host` by the server. A server does not depend on the `Host` header.
 
-    **The gate of policy data (fail-closed).** A server evaluates a `tools/call` only with policy data that is at least as new as `prv` of the token
+    **The gate of policy data (fail-closed).** A server evaluates a `tools/call` and, since 8.0.0, a `resources/read` (CC-259) only with policy data that is at least as new as `prv` of the token
     and only when its own policies are the approved ones (README, "Policy data gate"). Which refusal the server returns:
 
     - the server holds no policy data, or `prv` is greater than the `revision` it holds: `409` with the body `PolicyDataStale`
@@ -273,8 +273,11 @@ paths:
       description: |
         The path is the path of `internalUrl` (`/mcp` here); the endpoint speaks MCP (Streamable HTTP) and is not described by this document, except for the answers that the
         gateway acts on. The token has the purpose `call`. Besides `401` (a token that fails C2, including `wrong_purpose`), a `tools/call` can be refused with
-        `409 policy_data_stale`, see "The gate of policy data" above: the gateway pushes its policy data and repeats the call once. Any other refusal of the gate is an MCP
+        `409 policy_data_stale` (a `resources/read` too, CC-259), see "The gate of policy data" above: the gateway pushes its policy data and repeats the call once. Any other refusal of the gate is an MCP
         answer with the error `upstream_unavailable` (C10) and is not retried.
+        Resources (CC-259): the server serves `resources/list`, `resources/templates/list` and `resources/read` here. `resources/read` carries the claim `resource` equal to
+        `params.uri` and no `tool`; the lists carry neither. The result of `resources/read` is exactly one item of `contents` with `uri` equal to the requested one and the
+        field `text`; a `blob` is refused. The gateway renders prompts itself and never sends `prompts/*` to a server.
         A server may report `step_up_required`, `credential_required` or `confirmation_required` (only the shape with `registerUrl`) in a `tools/call` result, but
         never chooses a link (CC-253): the gateway drops `stepUpUrl`, `connectUrl`, `registerUrl` and `previewUrl` from the server and builds each from its own portal
         address (for `credential_required` with the system of the called tool), as for `connectUrl` of the broker (CC-105). A `confirmation_required` from a server with
@@ -298,6 +301,13 @@ paths:
                     name: get_issue
                     arguments:
                       issueKey: ABC-123
+              resources_read:
+                value:
+                  jsonrpc: '2.0'
+                  id: 2
+                  method: resources/read
+                  params:
+                    uri: servicedesk://ticket/SD-1042
       responses:
         '200':
           description: The MCP answer (a JSON-RPC response or an event stream); not described here.
@@ -317,7 +327,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':
-          description: The server holds no policy data, or older than `prv` of the token. Nothing was executed.
+          description: The server holds no policy data, or older than `prv` of the token, at `tools/call` or `resources/read`. Nothing was executed.
           content:
             application/json:
               schema:

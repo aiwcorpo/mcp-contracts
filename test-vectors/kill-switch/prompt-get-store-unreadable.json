@@ -1,0 +1,16 @@
+{
+  "description": "An unreadable store: -32603.",
+  "kind": "primitive",
+  "input": {
+    "switches": [],
+    "serverId": "mcp-servicedesk",
+    "event": "get",
+    "storeReadable": false
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": -32603,
+    "error": "upstream_unavailable",
+    "auditReason": "upstream_unavailable"
+  }
+}

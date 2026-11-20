@@ -1,0 +1,30 @@
+{
+  "description": "For an adapter the scheme is <system>+<foreign scheme>.",
+  "kind": "links",
+  "input": {
+    "system": "legacydb",
+    "adapter": true,
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "legacydb+ftp://host/f",
+        "name": "f"
+      },
+      {
+        "type": "resource_link",
+        "uri": "ftp://host/f",
+        "name": "g"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "legacydb+ftp://host/f",
+        "name": "f"
+      }
+    ],
+    "auditReason": "link_scheme_refused"
+  }
+}

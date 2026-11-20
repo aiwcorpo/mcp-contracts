@@ -1,0 +1,25 @@
+{
+  "description": "A changed definition hash is a change.",
+  "kind": "list-changed",
+  "primitives": true,
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "system": "servicedesk",
+        "name": "runbook",
+        "definitionHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ],
+    "after": [
+      {
+        "system": "servicedesk",
+        "name": "runbook",
+        "definitionHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    ]
+  },
+  "expected": {
+    "notify": true
+  }
+}

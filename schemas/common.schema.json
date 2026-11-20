@@ -31,6 +31,12 @@
       "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
       "maxLength": 100
     },
+    "ResourceUri": {
+      "description": "URI of a resource as the client sees it (CC-258, CC-260): the scheme is the SystemId of the server, for an adapter <system>+<foreign scheme>; ASCII only, a character outside ASCII is percent-encoded in UTF-8 by the client. The claim resource of the internal JWT and params.uri of resources/read carry it.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]{1,30}(?:\\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,2000}$",
+      "maxLength": 2100
+    },
     "EndpointFilterQuery": {
       "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter, no leading or trailing ampersand. Entries of systems are system ids, entries of tools are qualified tool names (<system>__<tool>, one double underscore), entries of exclude are either. Reference: scripts/lib/endpoint-filter.mjs. Sorting, absence of duplicates and the limits (at most 5 entries in systems, 100 in tools, 100 in exclude, 512 bytes in all) cannot be written as a pattern; the reference parser checks them and the vectors pin them (CC-186). Appears without the leading '?'.",
       "type": "string",

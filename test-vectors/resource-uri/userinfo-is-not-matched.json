@@ -1,0 +1,17 @@
+{
+  "description": "Userinfo in front of the host part.",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "servicedesk://user@ticket/SD-1042"
+  },
+  "expected": {
+    "match": false
+  }
+}
