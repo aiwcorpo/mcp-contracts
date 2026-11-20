@@ -1,5 +1,6 @@
 {
   "description": "The owner of an agent suspends it without the administrator group; the policy data are raised and pushed.",
+  "kind": "agent-switch",
   "input": {
     "event": "put",
     "callerSub": "owner-1",

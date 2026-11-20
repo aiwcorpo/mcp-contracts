@@ -1236,7 +1236,12 @@ list of active ones is `GET /admin/v1/kill-switches`. In the portal: `PUT`/`DELE
 
 A server switch also hides the resources and prompts of the server and makes `resources/read` and `prompts/get` the one `-32602` answer with the
 reason `kill_switch`, after `mayRead` and the filter like for tools; an unreadable store is `-32603` `upstream_unavailable` and lists nothing (CC-259,
-vectors `kill-switch/resource-*`, `prompt-*`). Switches of single resources and prompts are not part of this change.
+vectors `kill-switch/resource-*`, `prompt-*`). Switches of single resources and prompts follow in the CC-265 paragraph below.
+
+Vector formats in `kill-switch/`, told apart by the top-level `kind` of the file: no `kind` is the switch of a tool (`input.tool`, expected
+`errorCode` as a string such as `tool_disabled`); `primitive-switch` is the decision for a resource or a prompt (`input.target`, one
+shape for server scope and entry scope, expected `jsonRpcCode`, `-32602` or `-32603`); `agent-switch` is the switch of an agent
+(`input.callerSub`, expected HTTP `status`). A runner picks the verifier by `kind` and fails on an unknown value.
 
 System and server mean the same here (`mcp-<system>`). Vectors `kill-switch/`.
 
@@ -1310,6 +1315,7 @@ An autonomous agent is a client of the IdP with its own service account. The pla
   flow could have created a connection after the first one).
 - **Audit trail:** every `purge` call (broker and gateway) leaves one `admin_change` event with the reason `user_purged`, also when
   there was nothing to delete and for an unknown `sub` (the `204` response is the same); plus per-connection events.
+- **Agents (CC-266).** The `purge` of an owner suspends the owner's agents (audit reason `agent_owner_purged`). As for every suspension, only an administrator lifts it, with a fresh MFA.
 - **Cleanup of unused connections.** After a period without use (broker configuration, 180 days by default) the broker removes the
   connection; the audit is `connection_change` with the reason `unused_cleanup`. Before that the portal marks them as expiring (no
   reminders).
@@ -1324,7 +1330,7 @@ The limit values are component configuration, not contract. The contract says on
   does not reach the server or the broker. **Other MCP requests** (`initialize`, `tools/list`, ...): HTTP `429` with `Retry-After`
   (seconds, at least 1) and the body `{"error":"rate_limited","message":...,"retryAfterSeconds":n}`, without `WWW-Authenticate` (the
   client should wait, not log in again, as in CC-124). There are no `X-RateLimit-*` headers anywhere: the settings are not
-  disclosed. Vectors: `gateway-authentication/rate-limited*.json`. `resources/*` and `prompts/*` (CC-259) are such requests: over the limit they are the same `429`, with the audit reason `rate_limited_*`.
+  disclosed. Vectors: `gateway-authentication/rate-limited*.json`. An agent (CC-266) is limited per agent and per pair (agent, tool) on top of these; the values are configuration (120 and 30 per minute are proposed), the answer is the same `429` or `rate_limited` as above, and only the audit reason differs (`rate_limited_agent`). `resources/*` and `prompts/*` (CC-259) are such requests: over the limit they are the same `429`, with the audit reason `rate_limited_*`.
 - **Audit:** `tool_call` (for `tools/call`) or `policy_decision` with `decision: deny`, `outcome: denied`, `errorCode:
   rate_limited` and the reason `rate_limited_user`, `rate_limited_client` or `rate_limited_tool` (for an agent also `rate_limited_agent`, CC-264; the client does not learn which
   limit, the administrator does). The gateway may aggregate the excess as in CC-125. In `activity/calls` the row has the result
@@ -1569,42 +1575,44 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 
 | Directory | Count | What it checks |
 | --- | --- | --- |
-| `jwt/` | 92 | the C2 receiver: 29 valid (one of them the manifest without a token), 63 rejections (11 of them about `resource`, `pty` and `act`, CC-260), 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
-| `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
-| `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
+| `jwt/` | 95 | the C2 receiver: 31 valid (one of them the manifest without a token), 64 rejections (12 of them about `resource`, `pty` and `act`, CC-260), 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
+| `manifests/` | 153 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
+| `definition-hash/` | 22 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
 | `audit-events/` | 167 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), resource reads, prompts and agent principals (CC-264), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
-| `policy-data-gate/` | 15 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
-| `policy-data-push/` | 11 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
+| `policy-data-gate/` | 21 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
+| `policy-data-push/` | 23 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
 | `address-refusal/` | 70 | loopback, link-local, `169.254.169.254`, unspecified, multicast and limited broadcast in IPv4 and IPv6, the metadata addresses fd00:ec2::254, 100.100.100.200 and 192.0.0.192 (also in 6to4 and as inet_aton literals), configured refusals (`MCP_SERVER_REFUSED_ADDRESSES`), and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, check before each connection (CC-249) |
 | `server-connection/` | 36 | first connection with every tool pending (`READ_ONLY` too), tool availability, `ca` renewal versus `pinned` change, approval of a connection (CC-249) |
 | `certificate-fingerprint/` | 12 | SHA-256 over the DER of real certificates (`sha256:<lower-case hex>`), PEM re-wrapping, wrong inputs, the format (CC-249); random keys, `scripts/generate-certificate-vectors.mjs` is not part of `generate:vectors` |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |
 | `return-paths/` | 35 | `returnPath` of C4/C12 (CC-032); since 3.0.0 without the prefixes `/api`, `/s`, `/v`, `/.well-known`, since 5.0.0 also `/mcp` (CC-169; `/f/` is free) and without `.`/`..` segments and the semicolon, which servers read as a path parameter (CC-099) |
-| `entity-builder/` | 54 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
-| `policy-decisions/` | 44 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
+| `entity-builder/` | 73 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
+| `policy-decisions/` | 63 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
 | `result-filter/` | 5 | result filtering and query limiting (CC-036) |
-| `resource-checks/` | 5 | every value of every `resourceRef` evaluated (CC-061) |
-| `resource-ids/` | 14 | `idPattern` and `scopePattern` of the declarations, including the former built-in systems (CC-056, CC-074) |
+| `resource-checks/` | 7 | every value of every `resourceRef` evaluated (CC-061) |
+| `resource-ids/` | 16 | `idPattern` and `scopePattern` of the declarations, including the former built-in systems (CC-056, CC-074) |
 | `untrusted-text/` | 8 | the shape of `UntrustedText` (CC-072) |
 | `confirmation-binding/` | 77 | first call and retry with a code: the pending call, one `DESTRUCTIVE` operation, mapping of the broker result (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | the broker Authenticator: RFC 6238, the window, one-time use of a step, the 5/15 min block, the daily limit, registration, the `otpauth` URI (CC-092, CC-126); the seed comes from RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | the forbidden set in arguments, identifiers and mention filters, and replacement in system text (CC-121, CC-122) |
-| `activity-calls/` | 57 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
+| `activity-calls/` | 67 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
 | `gateway-authentication-decision/` | 12 | choosing the reason and the 401/503 status from the key copy state, `kid` and refresh (CC-124) |
 | `activity-cursor/` | 9 | the `/activity/calls` cursor: HMAC, binding to `sub`, 15 min validity (CC-095); a test key, NOT FOR PRODUCTION |
-| `gateway-authentication/` | 22 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
+| `gateway-authentication/` | 37 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request (CC-083, CC-113) |
 | `query-rendering/` | 26 | server queries from a structure: JQL and CQL with hostile values, the OpenSearch index pattern and name resolution (CC-160) |
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
 | `endpoint-filter/` | 119 | the `/mcp` query filter (CC-170, CC-172, CC-178, CC-184): syntax and normalization, the `/s/` route, the visible set (also a risk outside the set), `tools/call` under a filter and with tool, server and account state, session binding and the order of checks, the `400` body; Java runs `parse`, `route`, `apply`, `call`, `session` |
 | `endpoint-aggregate/` | 114 | the `/mcp` list as an intersection, order, routing by prefix, server availability and the time limit (CC-180), pages and the `tools/list` cursor (CC-181), `list_changed`, `/v/` as `404` (CC-169, CC-177) |
 | `mcp-endpoint/` | 78 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182); the 60 files `resources-*` (with a `kind`) are the answers of the gateway for resources and prompts: capabilities, result fields per era, methods, the order of the checks of `resources/read` and `prompts/get`, the one `-32602`, `-32020`, links (CC-259) |
-| `kill-switch/` | 30 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
+| `kill-switch/` | 44 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
+| `agent-clients/` | 10 | the agent registry: validation of `create` and `update` (`agent_group_not_allowed`, `max_risk_not_allowed`, duplicate), `owner=me`, the whole list needs the administrator group (CC-266) |
+| `broker-eligibility/` | 15 | what the broker answers for an agent or a delegated principal per credential type, `agentsAllowed` and `resolve` with `resource` (CC-261) |
 | `balancer-errors/` | 3 | the balancer's `502` after an instance dies mid-request, the constant text about an unknown result (CC-204) |
-| `adapter-registry/` | 9 | what a pulled manifest leaves in the registry: adapter mode derived from `source`, pending with `source: manifest` or `adapter`, a source that disagrees, a read at runtime (CC-206, CC-249) |
-| `registry-approval/` | 28 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206); `pull-*`: what a pulled manifest does with one tool, nothing approved, a `READ_ONLY` one included (CC-249) |
+| `adapter-registry/` | 12 | what a pulled manifest leaves in the registry: adapter mode derived from `source`, pending with `source: manifest` or `adapter`, a source that disagrees, a read at runtime (CC-206, CC-249) |
+| `registry-approval/` | 56 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206); `pull-*`: what a pulled manifest does with one tool, nothing approved, a `READ_ONLY` one included (CC-249) |
 | `idp-token-claims/` | 9 | IdP token claims: `vs` and `vsc` ignored, not copied into the internal JWT (CC-201) |
 | `oauth-metadata/` | 6 | the protected resource metadata document: `resource` without a query, a query ignored, `/v/` as `404` (CC-171, CC-187) |
 | `resource-uri/` | 21 | matching a requested URI to a URI template of RFC 6570 level 1 and to static resources: one decoding, byte equality of the expansion, `%2F`, hex case, query, fragment, userinfo, scheme case, `ABC\n` (CC-259) |
@@ -1624,8 +1632,8 @@ Formats:
 - **Resources and prompts (8.0.0):** `resource-uri/` has `kind` `template` (`template`, `variables` with `idPattern`, `uri` -> `{match, variables}`) or
   `resolve` (static resources and templates -> the entry or the audit reason); `prompt-render/` has `prompt` (the manifest entry), `typePatterns`,
   `arguments`, `era` -> `{result}` or `{error, reason}`; the files `mcp-endpoint/resources-*` and the new kinds of `endpoint-aggregate/`
-  (`primitive-list`, `primitive-cursor`, `page`, `list-changed` with `primitives`) and `kill-switch/` (`kind: primitive`) say in `kind` which function
-  of `scripts/lib/resources-endpoint.mjs`, `endpoint-aggregate.mjs` or `kill-switch.mjs` produces `expected`. Files without a `kind` in `mcp-endpoint/`
+  (`primitive-list`, `primitive-cursor`, `page`, `list-changed` with `primitives`) and `kill-switch/` (`kind` `primitive-switch` or `agent-switch`, no `kind` is the tool switch) say in `kind` which function
+  of `scripts/lib/resources-endpoint.mjs`, `endpoint-aggregate.mjs`, `kill-switch.mjs` or `agents.mjs` produces `expected`. Files without a `kind` in `mcp-endpoint/`
   are the BFF answers.
 - **The rest:** `description`, input data and `expected`; described in `cedar/entity-builder.md` (Cedar) and in the tests
   `test/*.test.mjs`, which are also the reference verifiers.

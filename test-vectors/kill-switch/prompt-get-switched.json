@@ -1,5 +1,6 @@
 {
   "description": "prompts/get of a switched prompt is -32602, audited as kill_switch.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

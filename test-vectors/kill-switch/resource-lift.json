@@ -1,5 +1,6 @@
 {
   "description": "Lifting the switch of a resource leaves the switch of its server and of the prompts.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

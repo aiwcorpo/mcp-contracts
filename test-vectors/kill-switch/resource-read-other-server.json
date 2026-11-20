@@ -1,6 +1,6 @@
 {
   "description": "A switch of another server does not concern it.",
-  "kind": "primitive",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {
@@ -8,7 +8,11 @@
         "serverId": "mcp-jira"
       }
     ],
-    "serverId": "mcp-servicedesk",
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
     "event": "read"
   },
   "expected": {

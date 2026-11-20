@@ -3729,7 +3729,7 @@ components:
       additionalProperties: false
     ActivityCall:
       type: object
-      description: One call of a client. Since 8.0.0 a row can also be the read of a resource or the get of a prompt (CC-265, CC-264), and then it has no `tool`. A client generated from an earlier contract treats `tool` as required and breaks on such a row, so the portal is released before the first emission of the new claims.
+      description: One call of a client. Since 8.0.0 a row can also be the read of a resource or the get of a prompt (CC-265, CC-264), and then it has no `tool`. `tool` is required for kind tool (and when `kind` is absent) and must be absent for the other kinds. A client generated from an earlier contract treats `tool` as required and breaks on such a row, so the portal is released before the first emission of the new claims.
       required: [requestId, ts, result]
       properties:
         kind:
@@ -3737,6 +3737,9 @@ components:
           enum: [tool, resource, prompt]
           default: tool
           description: What was called. Absent means tool. `tool` is present for kind tool and absent for the others; `resource` (the identifier of the resource read) is present for kind resource.
+        resourceTemplate:
+          description: Present for kind resource, the name of the resource or resource template that answered the read (same field as in the audit event, CC-264).
+          $ref: '../schemas/common.schema.json#/$defs/ResourceName'
         prompt:
           description: Present for kind prompt, the name the client used.
           $ref: '../schemas/common.schema.json#/$defs/QualifiedPromptName'
@@ -3778,6 +3781,16 @@ components:
           oneOf:
             - $ref: '../schemas/common.schema.json#/$defs/ErrorCode'
             - type: 'null'
+      if:
+        required: [kind]
+        properties:
+          kind:
+            enum: [resource, prompt]
+      then:
+        not:
+          required: [tool]
+      else:
+        required: [tool]
       additionalProperties: false
     AgentClientFields:
       type: object

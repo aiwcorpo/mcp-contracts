@@ -1,5 +1,6 @@
 {
   "description": "The owner cannot lift the suspension, also with a fresh MFA.",
+  "kind": "agent-switch",
   "input": {
     "event": "lift",
     "callerSub": "owner-1",

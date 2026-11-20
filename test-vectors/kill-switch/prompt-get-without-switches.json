@@ -1,10 +1,14 @@
 {
   "description": "No switch: allowed.",
-  "kind": "primitive",
+  "kind": "primitive-switch",
   "input": {
     "switches": [],
-    "serverId": "mcp-servicedesk",
-    "event": "get"
+    "target": {
+      "kind": "prompt",
+      "serverId": "mcp-servicedesk",
+      "name": "summarize_ticket"
+    },
+    "event": "read"
   },
   "expected": {
     "allowed": true

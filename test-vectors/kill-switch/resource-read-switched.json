@@ -1,5 +1,6 @@
 {
   "description": "A read of a resource that is switched off is -32602 like every other refusal (CC-259), audited as kill_switch.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

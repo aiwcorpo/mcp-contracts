@@ -418,6 +418,15 @@ await add('act-extra-field', 'act has exactly sub and azp.', {
 await add('act-without-pty', 'act without pty.', {
   token: await sign(userClaims({ act: { sub: AGENT_SUB, azp: 'agent-triage' }, jti: jtiOf(321) }), 'test-gateway-jwt-a'),
   request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('broker-resolve-agent-valid', 'An autonomous agent token at broker resolve: a valid user-variant token with pty agent and a tool; whether the credential type is allowed for an agent is decided by the broker (broker-eligibility/, CC-261).', {
+  token: await sign(userClaims({ sub: AGENT_SUB, usr: 'service-account-agent-triage', azp: 'agent-triage', pty: 'agent', grp: ['mcp-jira-read'], aud: 'mcp-credential-broker', jti: jtiOf(322) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+await add('broker-resolve-agent-resource', 'An agent token at broker resolve for resources/read: pty agent with resource instead of tool.', {
+  token: await sign(userWithoutTool({ sub: AGENT_SUB, usr: 'service-account-agent-triage', azp: 'agent-triage', pty: 'agent', grp: ['mcp-jira-read'], aud: 'mcp-credential-broker', resource: TICKET_URI, jti: jtiOf(323) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+await add('broker-resolve-delegated-without-act', 'pty delegated without act at broker resolve: invalid_claims, so the broker answers 401 (CC-261).', {
+  token: await sign(userClaims({ pty: 'delegated', aud: 'mcp-credential-broker', jti: jtiOf(324) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'invalid_claims' });
 fresh = false;
 
 mkdirSync(path('test-vectors', 'jwt'), { recursive: true });

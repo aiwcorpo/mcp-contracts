@@ -1,5 +1,6 @@
 {
   "description": "A user who may not read the resource gets not_granted, never kill_switch: the switch is looked at after authorization.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

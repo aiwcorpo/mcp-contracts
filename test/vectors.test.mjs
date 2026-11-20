@@ -15,7 +15,7 @@ import { gatewayAuthenticationResponse, idpTokenClaimsDecision, keyDecision, pro
 import { applyFilter, applyPrimitiveFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from '../scripts/lib/endpoint-filter.mjs';
 import { listedNames, visibleEntries, auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
-import { killSwitchDecision, primitiveKillSwitchDecision, primitiveSwitchDecision } from '../scripts/lib/kill-switch.mjs';
+import { killSwitchDecision, primitiveSwitchDecision } from '../scripts/lib/kill-switch.mjs';
 import { matchTemplate, resolveUri } from '../scripts/lib/resource-uri.mjs';
 import { renderPrompt } from '../scripts/lib/prompt-render.mjs';
 import { capabilities, filterLinkBlocks, methodAnswer, promptGetDecision, rateLimitedAnswer, readDecision, resultFields } from '../scripts/lib/resources-endpoint.mjs';
@@ -152,6 +152,7 @@ test('policy data push vectors: replacement rule and the push-and-retry of the g
   for (const { name, data } of vectors) {
     if ('agents' in data.input) {
       assert.deepEqual(policyDataBodyFor(data.input), data.expected, name);
+      assert.equal(data.expected.includesAllowedAgentClients, emissionDecision({ receiver: 'server', contractsVersion: data.input.contractsVersion }).emit, `${name}: same condition as the emission of claims (CC-266)`);
       if (!data.expected.includesAllowedAgentClients) assert.ok(!('allowedAgentClients' in data.expected), `${name}: the field is left out, not sent empty`);
       continue;
     }
@@ -636,7 +637,8 @@ test('kill-switch vectors: a switched tool is refused, hidden and stays off unti
   const vectors = listJson('test-vectors', 'kill-switch');
   assert.ok(vectors.length >= 12);
   for (const { name, data } of vectors) {
-    const decide = data.kind === 'primitive' ? primitiveKillSwitchDecision : 'target' in data.input ? primitiveSwitchDecision : 'callerSub' in data.input ? agentSwitchDecision : killSwitchDecision;
+    const decide = { undefined: killSwitchDecision, 'primitive-switch': primitiveSwitchDecision, 'agent-switch': agentSwitchDecision }[data.kind];
+    assert.ok(decide, `${name}: unknown kind ${data.kind}`);
     assert.deepEqual(decide(data.input), data.expected, name);
   }
   const byName = Object.fromEntries(vectors.map((v) => [v.name, v.data.expected]));

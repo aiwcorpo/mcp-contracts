@@ -1,9 +1,13 @@
 {
   "description": "An unreadable store lists nothing.",
-  "kind": "primitive",
+  "kind": "primitive-switch",
   "input": {
     "switches": [],
-    "serverId": "mcp-servicedesk",
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
     "event": "list",
     "storeReadable": false
   },

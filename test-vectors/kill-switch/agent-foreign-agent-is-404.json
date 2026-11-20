@@ -1,5 +1,6 @@
 {
   "description": "The agent of another person does not exist for a caller without the group.",
+  "kind": "agent-switch",
   "input": {
     "event": "put",
     "callerSub": "someone-else",

@@ -1,5 +1,6 @@
 {
   "description": "An unreadable store of switches is -32603 for prompts/get too.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [],
     "target": {

@@ -1,0 +1,19 @@
+{
+  "description": "contractsVersion 8.0.0-rc.1 is lower than 8.0.0, as for the emission of claims (CC-260): the field is left out.",
+  "input": {
+    "contractsVersion": "8.0.0-rc.1",
+    "agents": [
+      {
+        "clientId": "agent-reports",
+        "status": "active"
+      },
+      {
+        "clientId": "agent-sleeper",
+        "status": "suspended"
+      }
+    ]
+  },
+  "expected": {
+    "includesAllowedAgentClients": false
+  }
+}

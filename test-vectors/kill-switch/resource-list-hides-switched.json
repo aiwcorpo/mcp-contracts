@@ -1,5 +1,6 @@
 {
   "description": "A switched resource is absent from resources/list.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

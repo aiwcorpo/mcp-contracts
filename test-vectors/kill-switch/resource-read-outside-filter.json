@@ -1,5 +1,6 @@
 {
   "description": "A switched resource that the filter of the address leaves out: filter_scope.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

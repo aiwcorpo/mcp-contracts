@@ -1,0 +1,50 @@
+{
+  "description": "pty delegated without act at broker resolve: invalid_claims, so the broker answers 401 (CC-261).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwidXNlIjoiY2FsbCIsInN1YiI6IjZmMWMyYTllLTRkNGItNGM1MS05YTUzLTFlMGYwYzdkMmIxMSIsInVzciI6Imprb3dhbHNraSIsImdycCI6WyJtY3AtamlyYS1yZWFkIiwibWNwLWppcmEtd3JpdGUiLCJtY3AtamlyYS1wcm9qLUFCQyJdLCJhenAiOiJjbGF1ZGUtY29kZSIsInRvb2wiOiJnZXRfaXNzdWUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMzI0IiwicHR5IjoiZGVsZWdhdGVkIn0.vragguqNgKfftRj0W_8mj2sftLHiptsU-P-RWq8XmPSWYn6FxtK49PeHfumM9b15hPNRpKcfTIK1CV_2jVY_Vw",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-credential-broker",
+    "use": "call",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "usr": "jkowalski",
+    "grp": [
+      "mcp-jira-read",
+      "mcp-jira-write",
+      "mcp-jira-proj-ABC"
+    ],
+    "azp": "claude-code",
+    "tool": "get_issue",
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "prv": 41,
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000324",
+    "pty": "delegated"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-credential-broker",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "http",
+    "method": "POST",
+    "path": "/v1/credentials/resolve",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+  },
+  "expected": {
+    "valid": false,
+    "httpStatus": 401,
+    "reason": "invalid_claims"
+  }
+}

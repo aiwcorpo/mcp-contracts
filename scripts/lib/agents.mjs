@@ -1,6 +1,8 @@
 // Reference rules for the agent registry (CC-261, CC-266). Used by the vectors in test-vectors/agent-clients, gateway-authentication
 // (agent-*), kill-switch (agent-*), policy-data-push and policy-data-gate; the gateway, the broker and the starter implement the same rules.
 
+import { atLeast, CLAIMS_RELEASE } from './server-connection.mjs';
+
 const RISK_ORDER = { READ_ONLY: 0, UPDATE: 1, DESTRUCTIVE: 2 };
 const AGENT_TOKEN_MAX_LIFETIME_SECONDS = 300;
 const AGENT_ID = /^agent-[a-z][a-z0-9]*(-[a-z0-9]+)*$/u;
@@ -74,18 +76,12 @@ export function agentSwitchDecision({ event, callerSub, isAdmin, freshMfa = fals
   return { status: 204, raisesPolicyDataRevision: true };
 }
 
-const atLeast8 = (version) => {
-  if (version === undefined) return false;
-  const [major] = version.split('.').map(Number);
-  return major >= 8;
-};
-
 /**
  * The body of the policy data push for one server (CC-266). allowedAgentClients goes only to a server whose approved manifest has
- * contractsVersion 8.0.0 or higher, and is left out altogether, not sent as an empty array, for any other (PolicyData is closed).
+ * contractsVersion 8.0.0 or higher under the same comparison as the emission of claims (CC-260: a pre-release of 8.0.0 or a malformed version is not enough), and is left out altogether, not sent as an empty array, for any other (PolicyData is closed).
  */
 export function policyDataBodyFor({ contractsVersion, agents }) {
-  if (!atLeast8(contractsVersion)) return { includesAllowedAgentClients: false };
+  if (!atLeast(contractsVersion, CLAIMS_RELEASE)) return { includesAllowedAgentClients: false };
   return { includesAllowedAgentClients: true, allowedAgentClients: agents.filter((a) => a.status === 'active').map((a) => a.clientId).sort() };
 }
 

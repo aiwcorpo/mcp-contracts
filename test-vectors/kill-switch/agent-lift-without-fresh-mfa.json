@@ -1,5 +1,6 @@
 {
   "description": "Lifting without a fresh MFA is 401 step_up_required, checked first.",
+  "kind": "agent-switch",
   "input": {
     "event": "lift",
     "callerSub": "admin-1",

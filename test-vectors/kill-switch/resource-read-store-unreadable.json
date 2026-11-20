@@ -1,5 +1,6 @@
 {
   "description": "An unreadable store of switches is -32603 upstream_unavailable, not -32602 (fail-closed).",
+  "kind": "primitive-switch",
   "input": {
     "switches": [],
     "target": {

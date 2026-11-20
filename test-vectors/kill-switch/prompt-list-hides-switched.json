@@ -1,5 +1,6 @@
 {
   "description": "A switched prompt is absent from prompts/list.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

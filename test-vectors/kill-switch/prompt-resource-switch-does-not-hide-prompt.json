@@ -1,5 +1,6 @@
 {
   "description": "A switch of a resource named like a prompt does not touch the prompt: the scopes are separate.",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {

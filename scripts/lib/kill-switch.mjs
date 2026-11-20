@@ -41,26 +41,8 @@ export function killSwitchDecision({ switches, tool, event, storeReadable = true
 }
 
 /**
- * CC-259: what a server switch does to resources and prompts. Only a switch of scope server concerns them here (switches of single
- * entries are not part of this change). `event` is read (resources/read), get (prompts/get) or list (resources/list,
- * resources/templates/list, prompts/list). The switch is a state of the entry like the others: it is looked at only for a user who may
- * read or get the entry (`mayAccess`) and whose filter leaves it (`inFilter`), so everyone else gets the one -32602 answer and learns
- * nothing. An unreadable store is -32603 upstream_unavailable for anyone who gets that far, and lists nothing.
- */
-export function primitiveKillSwitchDecision({ switches, serverId, event, storeReadable = true, mayAccess = true, inFilter = true }) {
-  if (event === 'list') return { listed: storeReadable && !switches.some((s) => s.scope === 'server' && s.serverId === serverId) };
-  if (event !== 'read' && event !== 'get') throw new Error(`unknown event ${event}`);
-  const refuse = (auditReason) => ({ allowed: false, errorCode: -32602, auditReason });
-  if (!mayAccess) return refuse('not_granted');
-  if (!inFilter) return refuse('filter_scope');
-  if (!storeReadable) return { allowed: false, errorCode: -32603, error: 'upstream_unavailable', auditReason: 'upstream_unavailable' };
-  if (switches.some((s) => s.scope === 'server' && s.serverId === serverId)) return refuse('kill_switch');
-  return { allowed: true };
-}
-
-/**
  * The switch of a resource (a static resource or a resource template) or of a prompt (CC-265). `target` is { kind: resource | prompt, serverId, name };
- * the switch of the whole server hides them too. For the client the refusal is -32602 with the same body as every other refusal (CC-259), the
+ * the switch of the whole server hides them too (CC-259). `read` is resources/read and prompts/get. For the client the refusal is -32602 with the same body as every other refusal (CC-259), the
  * unreadable store is -32603 upstream_unavailable. As for tools the switch is looked at after authorization and the filter of the address.
  * events: read (resources/read, prompts/get), list, lift.
  */

@@ -1,5 +1,6 @@
 {
   "description": "An administrator with a fresh MFA lifts the suspension of an agent they do not own.",
+  "kind": "agent-switch",
   "input": {
     "event": "lift",
     "callerSub": "admin-1",

@@ -77,7 +77,7 @@ export const CLAIMS_RELEASE = '8.0.0';
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 /** SemVer precedence without pre-release handling beyond "lower than the release": true when `version` is at least `release`; false for a missing or malformed version. */
-function atLeast(version, release) {
+export function atLeast(version, release) {
   if (typeof version !== 'string' || !SEMVER.test(version)) return false;
   const [a, b] = [version, release].map((v) => v.split(/[-+]/)[0].split('.').map(Number));
   for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];

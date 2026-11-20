@@ -1,6 +1,6 @@
 {
   "description": "A switched server lists no resources.",
-  "kind": "primitive",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {
@@ -8,7 +8,11 @@
         "serverId": "mcp-servicedesk"
       }
     ],
-    "serverId": "mcp-servicedesk",
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
     "event": "list"
   },
   "expected": {

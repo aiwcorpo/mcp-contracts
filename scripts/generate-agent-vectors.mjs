@@ -80,6 +80,8 @@ const write = (dir, name, value) => {
   dataBody('allowed-agent-clients-empty-array', 'No active agent: a server of 8.0.0 or higher gets an empty array.', { contractsVersion: '8.1.0', agents: [] });
   dataBody('old-server-without-allowed-agent-clients', 'A server whose manifest has no contractsVersion gets a push without the field (not an empty array), so a human call is not refused with 409 policy_data_stale.', { agents: activeAgents });
   dataBody('allowed-agent-clients-server-7x', 'contractsVersion 7.2.0: the field is left out.', { contractsVersion: '7.2.0', agents: activeAgents });
+  dataBody('allowed-agent-clients-prerelease', 'contractsVersion 8.0.0-rc.1 is lower than 8.0.0, as for the emission of claims (CC-260): the field is left out.', { contractsVersion: '8.0.0-rc.1', agents: activeAgents });
+  dataBody('allowed-agent-clients-malformed-version', 'A contractsVersion that is not SemVer (8.0): the field is left out, as claims are not emitted.', { contractsVersion: '8.0', agents: activeAgents });
 
   const azp = (name, description, input) => write('policy-data-gate', `${name}.json`, { description, input, expected: serverAzpDecision(input) });
   azp('agent-azp-in-allowed-clients-refused', 'The azp of an agent token that is listed only in allowedClients is refused: an agent is accepted only from allowedAgentClients.', { pty: 'agent', azp: 'agent-reports', allowedClients: ['agent-reports'], allowedAgentClients: [] });

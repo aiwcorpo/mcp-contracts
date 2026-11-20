@@ -1,6 +1,6 @@
 {
   "description": "A switch of one tool does not concern a resource.",
-  "kind": "primitive",
+  "kind": "primitive-switch",
   "input": {
     "switches": [
       {
@@ -9,7 +9,11 @@
         "tool": "get_ticket"
       }
     ],
-    "serverId": "mcp-servicedesk",
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
     "event": "read"
   },
   "expected": {
