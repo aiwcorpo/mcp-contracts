@@ -34,6 +34,10 @@ class PolicyDataGateTest {
     void gateMatchesJavaScript(Path file) throws Exception {
         JsonNode v = JSON.readTree(file.toFile());
         JsonNode in = v.get("input");
+        // Vectors of the agent registry (CC-266) check the azp lists and the revision rule of the gateway, not this gate; the starter runs them.
+        if (!in.has("ownHash")) {
+            return;
+        }
         PolicyDataGate.Decision d = PolicyDataGate.decide(in.get("ownHash").asText(), data(in.get("held")),
                 in.get("prv").isNull() ? OptionalLong.empty() : OptionalLong.of(in.get("prv").asLong()));
         assertEquals("continue".equals(v.get("expected").get("decision").asText()), d.allowed(), file::toString);

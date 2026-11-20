@@ -1,0 +1,11 @@
+{
+  "description": "A resource that left the manifest is removed from the registry.",
+  "input": {
+    "approved": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "submitted": null
+  },
+  "expected": {
+    "removed": true,
+    "status": null
+  }
+}

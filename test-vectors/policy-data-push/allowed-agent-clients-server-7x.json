@@ -1,0 +1,19 @@
+{
+  "description": "contractsVersion 7.2.0: the field is left out.",
+  "input": {
+    "contractsVersion": "7.2.0",
+    "agents": [
+      {
+        "clientId": "agent-reports",
+        "status": "active"
+      },
+      {
+        "clientId": "agent-sleeper",
+        "status": "suspended"
+      }
+    ]
+  },
+  "expected": {
+    "includesAllowedAgentClients": false
+  }
+}

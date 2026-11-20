@@ -10,7 +10,9 @@ info:
     - portal BFF: mTLS (CN=mcp-portal-bff) and the user's token exchanged in the IdP for aud=mcp-gateway-admin.
       All "current user" semantics use `sub` of that token.
     - offboarding (IGA/HR webhook, helpdesk): mTLS with CN=mcp-offboarding, no token (user purge, CC-155).
-    - admin operations additionally require group mcp-platform-admin in the user's token.
+    - admin operations additionally require group mcp-platform-admin in the user's token. The exceptions are the operations on the agent registry
+      (CC-266) that the owner of an agent may use: `listAgentClients` with `owner=me`, `getAgentClient` and `putAgentClientKillSwitch` for an agent whose
+      `ownerSub` equals the `sub` of the token.
 
     Tool names in this API are client-visible names `<system>__<tool>`, except under
     `/admin/v1/registry/servers/{serverId}/tools/{tool}` where `{tool}` is the server-side name from the manifest.
@@ -110,8 +112,8 @@ info:
 
     **Fresh MFA (7.0.0).** The gateway itself checks the freshness of the admin token: `auth_time` not older than 300 seconds AND proof of MFA in the token: `acr` in a list of MFA levels or `amr` containing one of `mfa`, `otp`, `hwk`, `totp` (both lists are configuration of the receiver); `auth_time` alone is not enough, because a fresh password-only login passes it. A token without either proof is not fresh, and the answer is `401 step_up_required`
     (the BFF asks for the step-up first, but the gateway never relies on that). It applies to the operations that widen access or
-    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `approveServerConnection`, `deleteServer`, `deleteServerKillSwitch`, `deleteToolKillSwitch`, `approveTool` when the body has `acceptRiskLowering: true` (a plain approval needs no fresh MFA) and
-    `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check). Putting a kill switch needs none: an incident does not wait for a second factor. A refused call is audited as `admin_change` with reason `step_up_required`, outcome `denied`.
+    change where traffic goes: `approveServerPolicies`, `putScopeMapping`, `deleteOverride`, `putOverride` when it replaces an override (`If-Match`: a weaker text widens access like a delete; a create with `If-None-Match: *` needs no fresh MFA), `createServer`, `approveServerConnection`, `deleteServer`, `deleteServerKillSwitch`, `deleteToolKillSwitch`, `deleteResourceKillSwitch`, `deletePromptKillSwitch`, `deleteAgentClientKillSwitch`, `createAgentClient`, `updateAgentClient`, `recordAgentClientKeyRotation`, `deleteAgentClient` (CC-265, CC-266), `approveTool` when the body has `acceptRiskLowering: true` (a plain approval needs no fresh MFA) and
+    `updateServer` unless the body only sets `enabled: false` (taking a server out of service is never blocked by the check). Putting a kill switch needs none (the switch of a resource, of a prompt and the suspension of an agent included): an incident does not wait for a second factor. A refused call is audited as `admin_change` with reason `step_up_required`, outcome `denied`.
 
     **Malformed input (7.0.0).** Malformed input is `400 invalid_request`: an `If-Match` or `If-None-Match` that is not a well-formed value, and a path id that does not match its pattern (never `404`). A well-formed id that names nothing is `404` (a delete of a system that has none is `204`), and a well-formed `If-Match` that is stale is `412`.
 
@@ -130,6 +132,7 @@ tags:
   - name: activity
   - name: confirmations
   - name: policy
+  - name: agents
   - name: admin
 paths:
   /admin/v1/catalog:
@@ -1000,9 +1003,9 @@ paths:
       operationId: listKillSwitches
       x-allowed-client-cn:
         - mcp-portal-bff
-      summary: Active emergency switches of servers and tools (group mcp-platform-admin, CC-194).
+      summary: Active emergency switches of servers, tools, resources, prompts and agents (group mcp-platform-admin, CC-194, CC-265, CC-266).
       description: |
-        One entry per switch that is on. A tool that is disabled for another reason (pending approval, configuration) is not listed here;
+        One entry per switch that is on; the switches of agents are listed apart in `agentSwitches`. A tool that is disabled for another reason (pending approval, configuration) is not listed here;
         the catalog shows it with `disabled` true and `disabledBy`.
       security:
         - mtls: []
@@ -1170,6 +1173,815 @@ paths:
       responses:
         "204":
           description: The switch is off.
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/KillSwitchStoreUnavailable"
+  /admin/v1/registry/servers/{serverId}/resources/{name}/pending:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/ResourceName"
+    get:
+      tags:
+        - registry
+      operationId: getPendingResource
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approved and pending entry of a static resource, for a diff (admin, CC-265).
+      description: |
+        Same shape and meaning as `getPendingTool` for the entries of C6 added by CC-258; `{name}` is the server-side name from the manifest.
+        A pulled manifest approves nothing: every new or changed entry is `pending_approval`, so the diff is always available for it.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: Pending change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingEntry"
+              examples:
+                new_entry:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: howto
+                      definition:
+                        name: howto
+                        title: Handling guide
+                        description: How the service desk queues are handled.
+                        uri: servicedesk://docs/howto
+                        mimeType: text/markdown
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingVersion: 1.1.0
+                    source: manifest
+                    approvedInVersion: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/registry/servers/{serverId}/resources/{name}/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/ResourceName"
+    post:
+      tags:
+        - registry
+      operationId: approveResource
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approve the pending definition of a static resource (group mcp-platform-admin, CC-265).
+      description: |
+        The body is `{definitionHash}`, which must equal the current `pendingHash`, otherwise `409 hash_mismatch` and nothing changes. A static resource has no risk,
+        no action and no risk floor: a body with `risk`, `action` or `acceptRiskLowering` is `422 manifest_rejected` with the reason `classification_not_allowed`.
+        A definition whose names or texts hold a character of the forbidden set of the text hygiene rule is never approved
+        (`422 manifest_rejected` without `reason`, audited as `admin_change` with reason `hidden_characters`, as in CC-250); the check comes after the hash comparison.
+        An entry with source `adapter` is approved the same way, and that approval is its classification (D7): a read has no risk, so `risk`, `action` and
+        `acceptRiskLowering` are refused exactly as for any other entry.
+        Like a plain approval of a tool it needs no fresh MFA. The audit event is `admin_change` with reason `definition_approved`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveRequest"
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+      responses:
+        "204":
+          description: Approved.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: definitionHash differs from the current pendingHash (the definition changed again).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        "422":
+          description: The body carries a classification, or the definition holds a hidden character (no reason); it is not approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestRejected"
+              examples:
+                classification_not_allowed:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_not_allowed
+                    message: a static resource has no risk and no action
+  /admin/v1/registry/servers/{serverId}/resource-templates/{name}/pending:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/ResourceName"
+    get:
+      tags:
+        - registry
+      operationId: getPendingResourceTemplate
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approved and pending entry of a resource template, for a diff (admin, CC-265).
+      description: |
+        Same shape and meaning as `getPendingTool` for the entries of C6 added by CC-258; `{name}` is the server-side name from the manifest.
+        A pulled manifest approves nothing: every new or changed entry is `pending_approval`, so the diff is always available for it.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: Pending change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingEntry"
+              examples:
+                new_entry:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: ticket
+                      definition:
+                        name: ticket
+                        title: Ticket
+                        description: One ticket of the service desk.
+                        uriTemplate: servicedesk://ticket/{ticketId}
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingVersion: 1.1.0
+                    source: manifest
+                    approvedInVersion: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/registry/servers/{serverId}/resource-templates/{name}/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/ResourceName"
+    post:
+      tags:
+        - registry
+      operationId: approveResourceTemplate
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approve the pending definition of a resource template (group mcp-platform-admin, CC-265).
+      description: |
+        The body is `{definitionHash}`, which must equal the current `pendingHash`, otherwise `409 hash_mismatch` and nothing changes. A resource template has no risk,
+        no action and no risk floor: a body with `risk`, `action` or `acceptRiskLowering` is `422 manifest_rejected` with the reason `classification_not_allowed`.
+        A definition whose names or texts hold a character of the forbidden set of the text hygiene rule is never approved
+        (`422 manifest_rejected` without `reason`, audited as `admin_change` with reason `hidden_characters`, as in CC-250); the check comes after the hash comparison.
+        An entry with source `adapter` is approved the same way, and that approval is its classification (D7): a read has no risk, so `risk`, `action` and
+        `acceptRiskLowering` are refused exactly as for any other entry.
+        Like a plain approval of a tool it needs no fresh MFA. The audit event is `admin_change` with reason `definition_approved`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveRequest"
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+      responses:
+        "204":
+          description: Approved.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: definitionHash differs from the current pendingHash (the definition changed again).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        "422":
+          description: The body carries a classification, or the definition holds a hidden character (no reason); it is not approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestRejected"
+              examples:
+                classification_not_allowed:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_not_allowed
+                    message: a resource template has no risk and no action
+  /admin/v1/registry/servers/{serverId}/prompts/{name}/pending:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/PromptName"
+    get:
+      tags:
+        - registry
+      operationId: getPendingPrompt
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approved and pending entry of a prompt, for a diff (admin, CC-265).
+      description: |
+        Same shape and meaning as `getPendingTool` for the entries of C6 added by CC-258; `{name}` is the server-side name from the manifest.
+        A pulled manifest approves nothing: every new or changed entry is `pending_approval`, so the diff is always available for it. The `messages` of a prompt are part of the entry and of its hash, so a changed text of the prompt shows in the diff and hides the prompt until it is approved again.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: Pending change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingEntry"
+              examples:
+                new_entry:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: summarize_ticket
+                      definition:
+                        name: summarize_ticket
+                        title: Summarize a ticket
+                        description: Summary of one ticket.
+                        arguments:
+                          - name: ticketId
+                            required: true
+                      messages:
+                        - role: user
+                          text: Summarize <ticket_id>{{ticketId}}</ticket_id>.
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingVersion: 1.1.0
+                    source: manifest
+                    approvedInVersion: null
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/registry/servers/{serverId}/prompts/{name}/approve:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/PromptName"
+    post:
+      tags:
+        - registry
+      operationId: approvePrompt
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Approve the pending definition of a prompt (group mcp-platform-admin, CC-265).
+      description: |
+        The body is `{definitionHash}`, which must equal the current `pendingHash`, otherwise `409 hash_mismatch` and nothing changes. A prompt has no risk,
+        no action and no risk floor: a body with `risk`, `action` or `acceptRiskLowering` is `422 manifest_rejected` with the reason `classification_not_allowed`.
+        A definition whose names or texts (the `messages` of a prompt included) hold a character of the forbidden set of the text hygiene rule is never approved
+        (`422 manifest_rejected` without `reason`, audited as `admin_change` with reason `hidden_characters`, as in CC-250); the check comes after the hash comparison.
+        A prompt never has source `adapter`: the manifest of an adapter may not carry prompts (CC-258).
+        Like a plain approval of a tool it needs no fresh MFA. The audit event is `admin_change` with reason `definition_approved`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveRequest"
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+      responses:
+        "204":
+          description: Approved.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: definitionHash differs from the current pendingHash (the definition changed again).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        "422":
+          description: The body carries a classification, or the definition holds a hidden character (no reason); it is not approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestRejected"
+              examples:
+                classification_not_allowed:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_not_allowed
+                    message: a prompt has no risk and no action
+  /admin/v1/registry/servers/{serverId}/resources/{name}/kill-switch:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/ResourceName"
+    put:
+      tags:
+        - registry
+      operationId: putResourceKillSwitch
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Switch off one resource (group mcp-platform-admin, CC-265).
+      description: |
+        Same rules as `putToolKillSwitch` (CC-194): stored durably, on every gateway instance within 5 seconds of the `204`, fail-closed, a switch belongs to the
+        address and not to the manifest, a repeated `PUT` only changes the reason, no fresh MFA, audit `admin_change` with reason `kill_switch_set`. The name is the one of a static resource or of a resource template (they share one name space), so one switch covers either.
+        For a client the resource is then not found: `-32602` (CC-259), like every other refusal to read or get it, and it is absent from the list. A store of switches that
+        cannot be read is `-32603` `upstream_unavailable`, never `-32602`. `PUT` for a name the registry does not know is `404`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KillSwitchRequest"
+            examples:
+              incident:
+                value:
+                  reason: Content is wrong after the migration
+      responses:
+        "204":
+          description: The switch is on.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/KillSwitchStoreUnavailable"
+    delete:
+      tags:
+        - registry
+      operationId: deleteResourceKillSwitch
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Lift the switch of a resource (group mcp-platform-admin, CC-265).
+      description: |
+        Idempotent: `204` also when the switch was not on. Needs a fresh MFA (`401 step_up_required`, checked before the address is looked at), like the lift of any other
+        switch (CC-250). A switch of the whole server stays on when this one is lifted. Audited as `admin_change` with reason `kill_switch_cleared`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: The switch is off.
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/KillSwitchStoreUnavailable"
+  /admin/v1/registry/servers/{serverId}/prompts/{name}/kill-switch:
+    parameters:
+      - $ref: "#/components/parameters/ServerId"
+      - $ref: "#/components/parameters/PromptName"
+    put:
+      tags:
+        - registry
+      operationId: putPromptKillSwitch
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Switch off one prompt (group mcp-platform-admin, CC-265).
+      description: |
+        Same rules as `putToolKillSwitch` (CC-194): stored durably, on every gateway instance within 5 seconds of the `204`, fail-closed, a switch belongs to the
+        address and not to the manifest, a repeated `PUT` only changes the reason, no fresh MFA, audit `admin_change` with reason `kill_switch_set`. 
+        For a client the prompt is then not found: `-32602` (CC-259), like every other refusal to read or get it, and it is absent from the list. A store of switches that
+        cannot be read is `-32603` `upstream_unavailable`, never `-32602`. `PUT` for a name the registry does not know is `404`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KillSwitchRequest"
+            examples:
+              incident:
+                value:
+                  reason: Content is wrong after the migration
+      responses:
+        "204":
+          description: The switch is on.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/KillSwitchStoreUnavailable"
+    delete:
+      tags:
+        - registry
+      operationId: deletePromptKillSwitch
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Lift the switch of a prompt (group mcp-platform-admin, CC-265).
+      description: |
+        Idempotent: `204` also when the switch was not on. Needs a fresh MFA (`401 step_up_required`, checked before the address is looked at), like the lift of any other
+        switch (CC-250). A switch of the whole server stays on when this one is lifted. Audited as `admin_change` with reason `kill_switch_cleared`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: The switch is off.
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/KillSwitchStoreUnavailable"
+  /admin/v1/agent-clients:
+    get:
+      tags:
+        - agents
+      operationId: listAgentClients
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Agents of the registry (group mcp-platform-admin), or the agents of the caller with `owner=me` (CC-266).
+      description: |
+        Without `owner` the list is the whole registry and needs the group `mcp-platform-admin`; a caller without it gets `403`. With `owner=me` the list holds the
+        agents whose `ownerSub` equals the `sub` of the token, and the group is not needed (an owner sees what they own, nothing else). Ordered by `clientId`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      parameters:
+        - name: owner
+          in: query
+          required: false
+          description: "`me` returns the agents of the caller; no other value exists."
+          schema:
+            type: string
+            const: me
+      responses:
+        "200":
+          description: The agents.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 1000
+                items:
+                  $ref: "#/components/schemas/AgentClient"
+              examples:
+                one_agent:
+                  value:
+                    - clientId: agent-reports
+                      serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                      ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                      status: active
+                      maxRisk: READ_ONLY
+                      allowedGroups:
+                        - mcp-jira-read
+                      delegationAllowed: false
+                      createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      createdAt: 2026-11-20T09:00:00Z
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - agents
+      operationId: createAgentClient
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Register an agent (group mcp-platform-admin, fresh MFA, CC-266).
+      description: |
+        The client of the agent in the IdP is created by an administrator beforehand (the IdP procedure is outside the contracts); the gateway stores the entry and does not
+        check the IdP. `clientId` equals the `client_id` in the IdP and `serviceAccountSub` is the `sub` of its service account (a UUID, not `preferred_username`, which is `service-account-agent-...`).
+        Fresh MFA (`401 step_up_required`, see Fresh MFA). Creating an agent raises the revision of the policy data and pushes it to the servers that have `contractsVersion` 8.0.0 or higher.
+        `201` with the agent (`status: active`); `409 agent_exists` for a `clientId` that exists; `422 agent_rejected` with the reason `agent_group_not_allowed` (an entry of `allowedGroups` with the
+        suffix `-destructive`, or `mcp-platform-admin`) or `max_risk_not_allowed` (`DESTRUCTIVE`, which no agent may have: Cedar forbids it, CC-263). Audit `admin_change` with reason `agent_created`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentClientCreateRequest"
+            examples:
+              reports:
+                value:
+                  clientId: agent-reports
+                  serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                  ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                  allowedGroups:
+                    - mcp-jira-read
+      responses:
+        "201":
+          description: The agent was registered.
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentClient"
+              examples:
+                reports:
+                  value:
+                    clientId: agent-reports
+                    serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                    ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                    status: active
+                    maxRisk: READ_ONLY
+                    allowedGroups:
+                      - mcp-jira-read
+                    delegationAllowed: false
+                    createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    createdAt: 2026-11-20T09:00:00Z
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: An agent with this `clientId` exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                agent_exists:
+                  value:
+                    error: agent_exists
+        "422":
+          $ref: "#/components/responses/AgentRejected"
+  /admin/v1/agent-clients/{clientId}:
+    parameters:
+      - $ref: "#/components/parameters/AgentClientId"
+    get:
+      tags:
+        - agents
+      operationId: getAgentClient
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: One agent of the registry (group mcp-platform-admin, or its owner, CC-266).
+      description: The owner of the agent (`sub` equal to `ownerSub`) may read it; for anyone else without the group the agent does not exist (`404 not_found_or_denied`, invariant 8).
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "200":
+          description: The agent.
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentClient"
+              examples:
+                suspended:
+                  value:
+                    clientId: agent-reports
+                    serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                    ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                    status: suspended
+                    maxRisk: READ_ONLY
+                    allowedGroups:
+                      - mcp-jira-read
+                    delegationAllowed: false
+                    createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    createdAt: 2026-11-20T09:00:00Z
+                    suspendedBy: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                    suspendedAt: 2026-11-21T14:30:00Z
+                    suspendReason: Unexpected volume of calls
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - agents
+      operationId: updateAgentClient
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Change an agent (group mcp-platform-admin, fresh MFA, CC-266).
+      description: |
+        Only the fields in the body change: `maxRisk`, `allowedGroups`, `delegationAllowed`, `ownerSub`. `clientId` and `serviceAccountSub` never change (register the agent again).
+        `If-Match` is the `ETag` of the agent that was edited, as for `updateServer`. Every change needs a fresh MFA (`401 step_up_required`). The same rules as on create
+        apply (`422 agent_rejected`). A change of `allowedGroups` takes effect on the next request of the agent: the gateway intersects `grp` of the token with it before it builds C2 and Cedar.
+      security:
+        - mtls: []
+          bffUserToken: []
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentClientPatch"
+            examples:
+              raise_to_update:
+                value:
+                  maxRisk: UPDATE
+      responses:
+        "200":
+          description: The agent after the change.
+          headers:
+            ETag:
+              $ref: "#/components/headers/DocumentETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentClient"
+              examples:
+                update:
+                  value:
+                    clientId: agent-reports
+                    serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                    ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                    status: active
+                    maxRisk: UPDATE
+                    allowedGroups:
+                      - mcp-jira-read
+                    delegationAllowed: false
+                    createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                    createdAt: 2026-11-20T09:00:00Z
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/AgentRejected"
+        "428":
+          $ref: "#/components/responses/PreconditionRequired"
+    delete:
+      tags:
+        - agents
+      operationId: deleteAgentClient
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Remove an agent from the registry (group mcp-platform-admin, fresh MFA, CC-266).
+      description: |
+        Removes the entry and its switch; the next request with its token is refused (`401 agent_not_registered`) and the policy data of the servers are pushed again without its `azp`.
+        Tokens already issued live until `exp` (at most 300 s for an agent) and there is no introspection, which is why the gateway, not the IdP, refuses them. Idempotent: `204` also when there was no such agent.
+        Audit `admin_change` with reason `agent_deleted`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: Removed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/v1/agent-clients/{clientId}/key-rotated:
+    parameters:
+      - $ref: "#/components/parameters/AgentClientId"
+    post:
+      tags:
+        - agents
+      operationId: recordAgentClientKeyRotation
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Record that the key of the agent was rotated in the IdP (group mcp-platform-admin, fresh MFA, CC-266).
+      description: Sets `keyRotatedAt` to the time of the call. The gateway does not see the key and does not check the IdP; this is a record kept by the administrator. Audit `admin_change` with reason `agent_key_rotated`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: Recorded.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/StepUpOrUnauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/v1/agent-clients/{clientId}/kill-switch:
+    parameters:
+      - $ref: "#/components/parameters/AgentClientId"
+    put:
+      tags:
+        - agents
+      operationId: putAgentClientKillSwitch
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Suspend an agent (group mcp-platform-admin, or the owner of the agent, CC-266).
+      description: |
+        Same rules as the other emergency switches (CC-194): no fresh MFA, effective within 5 seconds on every gateway instance, stored durably, fail-closed. The agent becomes `suspended`
+        and every request with its token is refused with the reason `agent_suspended`: `access_denied` for `tools/call`, `-32602` for resources and prompts. The owner of the agent
+        (`sub` of the token equal to `ownerSub`) may suspend it without the group; for anyone else without the group the agent does not exist (`404 not_found_or_denied`). Suspending raises the revision of the policy data and pushes it to the servers.
+        Audit `admin_change` with reason `kill_switch_set`; the text of `reason` stays in the registry (`suspendReason`).
+      security:
+        - mtls: []
+          bffUserToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KillSwitchRequest"
+            examples:
+              incident:
+                value:
+                  reason: Unexpected volume of calls
+      responses:
+        "204":
+          description: The agent is suspended.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/KillSwitchStoreUnavailable"
+    delete:
+      tags:
+        - agents
+      operationId: deleteAgentClientKillSwitch
+      x-allowed-client-cn:
+        - mcp-portal-bff
+      summary: Resume a suspended agent (group mcp-platform-admin, fresh MFA, CC-266).
+      description: |
+        Only an administrator can lift the suspension, also for an agent they do not own; the owner cannot. Fresh MFA (`401 step_up_required`, checked before the address is looked at).
+        Idempotent. Raises the revision of the policy data. Audit `admin_change` with reason `kill_switch_cleared`.
+      security:
+        - mtls: []
+          bffUserToken: []
+      responses:
+        "204":
+          description: The agent is active again.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/StepUpOrUnauthenticated"
         "403":
@@ -2393,6 +3205,29 @@ components:
       schema:
         $ref: "#/components/schemas/ToolName"
       example: update_issue
+    ResourceName:
+      name: name
+      in: path
+      required: true
+      description: Server-side name of a static resource or a resource template, from the manifest (CC-258).
+      schema:
+        $ref: "#/components/schemas/ResourceName"
+      example: ticket
+    PromptName:
+      name: name
+      in: path
+      required: true
+      description: Server-side name of a prompt, from the manifest (CC-258).
+      schema:
+        $ref: "#/components/schemas/PromptName"
+      example: summarize_ticket
+    AgentClientId:
+      name: clientId
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/AgentClientId"
+      example: agent-reports
     ConfirmationId:
       name: confirmationId
       in: path
@@ -2493,6 +3328,22 @@ components:
                 error: server_rejected
                 reason: tls_mode_not_allowed
                 message: the certificate does not validate as ca for the host
+    AgentRejected:
+      description: The agent cannot be registered or changed as asked (CC-266).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AgentRejected"
+          examples:
+            agent_group_not_allowed:
+              value:
+                error: agent_rejected
+                reason: agent_group_not_allowed
+                message: mcp-jira-destructive cannot be granted to an agent
+            max_risk_not_allowed:
+              value:
+                error: agent_rejected
+                reason: max_risk_not_allowed
     KillSwitchStoreUnavailable:
       description: The gateway cannot read or store the emergency switches (fail-closed). A switch is never reported as on when it could not be stored; a call that needs the state of the switches is refused as upstream_unavailable.
       headers:
@@ -2589,13 +3440,45 @@ components:
           enum:
             - server
             - tool
+            - resource
+            - prompt
+          description: resource and prompt were added in 8.0.0 (CC-265); a client generated from an earlier contract does not know them, which is why the portal is released before the first emission of the new claims.
         serverId:
           $ref: "#/components/schemas/ServerId"
         tool:
           description: Present exactly when scope is tool.
           $ref: "#/components/schemas/ToolName"
+        resource:
+          description: Present exactly when scope is resource; the name of a static resource or of a resource template.
+          $ref: "#/components/schemas/ResourceName"
+        prompt:
+          description: Present exactly when scope is prompt.
+          $ref: "#/components/schemas/PromptName"
         setBy:
           description: sub of the administrator who put the switch.
+          type: string
+          minLength: 1
+          maxLength: 255
+        setAt:
+          $ref: "#/components/schemas/Timestamp"
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+      additionalProperties: false
+    AgentSwitch:
+      type: object
+      description: The suspension of an agent (CC-266).
+      required:
+        - clientId
+        - setBy
+        - setAt
+        - reason
+      properties:
+        clientId:
+          $ref: "#/components/schemas/AgentClientId"
+        setBy:
+          description: sub of the administrator or of the owner who suspended the agent.
           type: string
           minLength: 1
           maxLength: 255
@@ -2615,6 +3498,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/KillSwitch"
+        agentSwitches:
+          description: Switches of agents, oldest first (CC-266). Absent when the gateway has none.
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentSwitch"
       additionalProperties: false
     DisabledBy:
       type: string
@@ -2686,6 +3574,70 @@ components:
           default: false
           description: "True when every call needs a confirmation (C11): risk UPDATE or DESTRUCTIVE (CC-257). Computed by the gateway (CC-081)."
       additionalProperties: false
+    CatalogPrimitiveFields:
+      type: object
+      description: Fields that the catalog entries of resources, resource templates and prompts share (CC-265). `access` and `requiredEntitlements` follow the gateway policy for read_resource and get_prompt (CC-262). Resources and prompts are read only, so there is no risk and no confirmation.
+      required:
+        - description
+        - access
+        - requiredEntitlements
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        access:
+          $ref: "#/components/schemas/Access"
+        requiredEntitlements:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/GroupName"
+        disabled:
+          type: boolean
+          default: false
+        disabledBy:
+          $ref: "#/components/schemas/DisabledBy"
+    CatalogResource:
+      allOf:
+        - $ref: "#/components/schemas/CatalogPrimitiveFields"
+      type: object
+      required:
+        - name
+        - uri
+      description: A static resource of an approved manifest.
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        uri:
+          $ref: "#/components/schemas/ResourceUri"
+      unevaluatedProperties: false
+    CatalogResourceTemplate:
+      allOf:
+        - $ref: "#/components/schemas/CatalogPrimitiveFields"
+      type: object
+      required:
+        - name
+        - uriTemplate
+      description: A resource template of an approved manifest.
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        uriTemplate:
+          $ref: "#/components/schemas/ResourceUriTemplate"
+      unevaluatedProperties: false
+    CatalogPrompt:
+      allOf:
+        - $ref: "#/components/schemas/CatalogPrimitiveFields"
+      type: object
+      required:
+        - name
+      description: A prompt of an approved manifest, under the name the client sees.
+      properties:
+        name:
+          $ref: "#/components/schemas/QualifiedPromptName"
+      unevaluatedProperties: false
     CatalogServer:
       type: object
       required:
@@ -2704,6 +3656,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CatalogTool"
+        resources:
+          description: Static resources of the approved manifest (CC-265). Absent when the server has none.
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogResource"
+        resourceTemplates:
+          description: Resource templates of the approved manifest (CC-265). Absent when the server has none.
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogResourceTemplate"
+        prompts:
+          description: Prompts of the approved manifest (CC-265). Absent when the server has none. The text of the messages is not part of the catalog.
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogPrompt"
       additionalProperties: false
     Catalog:
       type: object
@@ -2760,6 +3727,100 @@ components:
             - $ref: "#/components/schemas/SemVer"
             - type: "null"
       unevaluatedProperties: false
+    RegistryEntryApproval:
+      type: object
+      description: Approval state that a registry entry of a resource, a resource template or a prompt carries, as RegistryTool does for a tool (CC-265).
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/RegistryToolStatus"
+        change:
+          type: string
+          enum:
+            - new
+            - changed
+          description: Present exactly when status is pending_approval.
+        source:
+          type: string
+          enum:
+            - manifest
+            - adapter
+          description: Present exactly when status is pending_approval. adapter is an entry of the manifest of an adapter (resources and templates only), approved by an administrator and never automatically.
+        approvedInVersion:
+          description: Version of the manifest at which the approved entry was approved; null for a new entry. Absent only for an entry whose version was not recorded.
+          oneOf:
+            - $ref: "#/components/schemas/SemVer"
+            - type: "null"
+    RegistryResource:
+      description: A static resource of the manifest (CC-258) with its approval status. `definition` is the McpResourceDefinition of C6.
+      allOf:
+        - $ref: "#/components/schemas/RegistryEntryApproval"
+      type: object
+      required:
+        - name
+        - definition
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        definition:
+          type: object
+        additionalGroup:
+          type: string
+        definitionHash:
+          $ref: "#/components/schemas/DefinitionHash"
+      unevaluatedProperties: false
+    RegistryResourceTemplate:
+      description: A resource template of the manifest (CC-258) with its approval status. `definition` is the McpResourceTemplateDefinition of C6, `variables` bind each variable to a resource type.
+      allOf:
+        - $ref: "#/components/schemas/RegistryEntryApproval"
+      type: object
+      required:
+        - name
+        - definition
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/ResourceName"
+        definition:
+          type: object
+        variables:
+          type: array
+          items:
+            type: object
+        additionalGroup:
+          type: string
+        definitionHash:
+          $ref: "#/components/schemas/DefinitionHash"
+      unevaluatedProperties: false
+    RegistryPrompt:
+      description: A prompt of the manifest (CC-258) with its approval status. `messages` are part of the entry and of its hash.
+      allOf:
+        - $ref: "#/components/schemas/RegistryEntryApproval"
+      type: object
+      required:
+        - name
+        - definition
+        - definitionHash
+      properties:
+        name:
+          $ref: "#/components/schemas/PromptName"
+        definition:
+          type: object
+        argumentRules:
+          type: array
+          items:
+            type: object
+        messages:
+          type: array
+          items:
+            type: object
+        additionalGroup:
+          type: string
+        definitionHash:
+          $ref: "#/components/schemas/DefinitionHash"
+      unevaluatedProperties: false
     RegistryServer:
       type: object
       required:
@@ -2794,6 +3855,49 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RegistryTool"
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistryResource"
+        resourceTemplates:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistryResourceTemplate"
+        prompts:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegistryPrompt"
+      additionalProperties: false
+    PendingEntry:
+      type: object
+      description: Approved and pending entry of a resource, a resource template or a prompt (CC-265), for a diff. The entries have the shape of the manifest entry of that kind (CC-258); for a prompt the `messages` before and after are in them.
+      required:
+        - approvedEntry
+        - pendingEntry
+        - pendingHash
+        - pendingVersion
+        - source
+      properties:
+        approvedInVersion:
+          oneOf:
+            - $ref: "#/components/schemas/SemVer"
+            - type: "null"
+        pendingVersion:
+          $ref: "#/components/schemas/SemVer"
+        source:
+          type: string
+          enum:
+            - manifest
+            - adapter
+        approvedEntry:
+          description: Currently approved entry; null for a new one.
+          oneOf:
+            - type: object
+            - type: "null"
+        pendingEntry:
+          type: object
+        pendingHash:
+          $ref: "#/components/schemas/DefinitionHash"
       additionalProperties: false
     PendingTool:
       type: object
@@ -2855,12 +3959,23 @@ components:
       additionalProperties: false
     ActivityCall:
       type: object
+      description: One call of a client. Since 8.0.0 a row can also be the read of a resource or the get of a prompt (CC-265, CC-264), and then it has no `tool`. A client generated from an earlier contract treats `tool` as required and breaks on such a row, so the portal is released before the first emission of the new claims.
       required:
         - requestId
         - ts
-        - tool
         - result
       properties:
+        kind:
+          type: string
+          enum:
+            - tool
+            - resource
+            - prompt
+          default: tool
+          description: What was called. Absent means tool. `tool` is present for kind tool and absent for the others; `resource` (the identifier of the resource read) is present for kind resource.
+        prompt:
+          description: Present for kind prompt, the name the client used.
+          $ref: "#/components/schemas/QualifiedPromptName"
         requestId:
           description: requestId of the first request of the call (the one that created a pending confirmation, if any).
           $ref: "#/components/schemas/RequestId"
@@ -2886,7 +4001,8 @@ components:
           pattern: ^[a-z][a-z0-9_]*$
           maxLength: 64
           description: |
-            Final state of the call. Known values: ok, error, denied_not_granted, denied_filter_scope, denied_policy,
+            Final state of the call. The refusals of an agent by the registry (the reasons agent_max_risk, agent_suspended and principal_not_eligible, CC-266, CC-261) are denied_not_granted.
+            Known values: ok, error, denied_not_granted, denied_filter_scope, denied_policy,
             tool_disabled, credential_required, rate_limited, step_up_required, confirmation_pending, confirmed,
             expired, confirmation_failed, superseded, blocked_by_pending, cancelled. A client must show an unknown value as a generic label.
         wrongCodeCount:
@@ -2898,6 +4014,152 @@ components:
           oneOf:
             - $ref: "#/components/schemas/ErrorCode"
             - type: "null"
+      additionalProperties: false
+    AgentClientFields:
+      type: object
+      description: Settings of an agent that an administrator can set (CC-266).
+      properties:
+        maxRisk:
+          type: string
+          enum:
+            - READ_ONLY
+            - UPDATE
+          default: READ_ONLY
+          description: Highest risk of a tool the agent can see and call; the gateway enforces it as part of `mayCall` (a tool above it is `not_found_or_denied`, reason `agent_max_risk`). DESTRUCTIVE does not exist for an agent. UPDATE still needs a confirmation that an agent cannot give, so such a call ends as `access_denied` with the reason `principal_not_eligible` (CC-261). Resources and prompts are read only and maxRisk does not limit them.
+        allowedGroups:
+          description: "Ceiling of the groups of the agent: the gateway intersects `grp` of the token with it before it builds C2 and Cedar (autonomous and delegated mode). An element with the suffix `-destructive`, or `mcp-platform-admin`, is `422 agent_group_not_allowed`."
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/GroupName"
+        delegationAllowed:
+          type: boolean
+          default: false
+          description: Whether the agent may act for a human (stage T2).
+        ownerSub:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: sub of the person responsible for the agent. The owner can suspend it.
+    AgentClient:
+      description: An agent of the registry, a robot identity (CC-266).
+      allOf:
+        - $ref: "#/components/schemas/AgentClientFields"
+      type: object
+      required:
+        - clientId
+        - serviceAccountSub
+        - ownerSub
+        - status
+        - maxRisk
+        - allowedGroups
+        - delegationAllowed
+        - createdBy
+        - createdAt
+      properties:
+        clientId:
+          $ref: "#/components/schemas/AgentClientId"
+        serviceAccountSub:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^(?!system:).+$
+          description: sub of the service account of the client in the IdP (a UUID there), not its `preferred_username` (`service-account-agent-...`, which is `usr`). Never starts with `system:` (internal-jwt.schema.json).
+        status:
+          type: string
+          enum:
+            - active
+            - suspended
+          description: Follows from the kill switch of the agent.
+        maxRisk:
+          type: string
+          enum:
+            - READ_ONLY
+            - UPDATE
+        createdBy:
+          type: string
+          minLength: 1
+          maxLength: 255
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        keyRotatedAt:
+          $ref: "#/components/schemas/Timestamp"
+        suspendedBy:
+          type: string
+          minLength: 1
+          maxLength: 255
+        suspendedAt:
+          $ref: "#/components/schemas/Timestamp"
+        suspendReason:
+          type: string
+          minLength: 1
+          maxLength: 200
+      unevaluatedProperties: false
+    AgentClientCreateRequest:
+      type: object
+      required:
+        - clientId
+        - serviceAccountSub
+        - ownerSub
+      properties:
+        clientId:
+          $ref: "#/components/schemas/AgentClientId"
+        serviceAccountSub:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: ^(?!system:).+$
+        ownerSub:
+          type: string
+          minLength: 1
+          maxLength: 255
+        maxRisk:
+          description: Default READ_ONLY. DESTRUCTIVE is accepted by the schema only so that it can be refused with `422 max_risk_not_allowed`.
+          $ref: "#/components/schemas/Risk"
+        allowedGroups:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/GroupName"
+        delegationAllowed:
+          type: boolean
+      additionalProperties: false
+    AgentClientPatch:
+      type: object
+      minProperties: 1
+      properties:
+        maxRisk:
+          description: DESTRUCTIVE is accepted by the schema only so that it can be refused with `422 max_risk_not_allowed`.
+          $ref: "#/components/schemas/Risk"
+        allowedGroups:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/GroupName"
+        delegationAllowed:
+          type: boolean
+        ownerSub:
+          type: string
+          minLength: 1
+          maxLength: 255
+      additionalProperties: false
+    AgentRejected:
+      type: object
+      description: 422 of registering or changing an agent. Known reasons are agent_group_not_allowed (an element of allowedGroups with the suffix -destructive, or mcp-platform-admin) and max_risk_not_allowed (DESTRUCTIVE). A client must show an unknown value as a generic message.
+      required:
+        - error
+      properties:
+        error:
+          const: agent_rejected
+        reason:
+          type: string
+          pattern: ^[a-z][a-z0-9_]*$
+        message:
+          type: string
+          maxLength: 500
       additionalProperties: false
     ConfirmationArgument:
       type: object
@@ -3479,6 +4741,26 @@ components:
       type: string
       pattern: ^mcp-[A-Za-z0-9][A-Za-z0-9._-]*$
       maxLength: 255
+    ResourceName:
+      description: Server-side name of a static resource or a resource template of the manifest (without the gateway prefix), CC-258. Same pattern and limit as ToolName; resources and templates of one server share one name space.
+      type: string
+      pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 64
+    ResourceUri:
+      description: "URI of a static resource as the client sees it, CC-258: the scheme is the SystemId of the server (an adapter: <system>+<foreign scheme>), the rest is printable ASCII."
+      type: string
+      pattern: ^[a-z][a-z0-9]{1,30}(?:\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,2000}$
+      maxLength: 2100
+    ResourceUriTemplate:
+      description: URI template (RFC 6570 level 1) of a resource template, CC-258. The syntax of the expressions is checked by a semantic rule of the manifest.
+      type: string
+      pattern: ^[a-z][a-z0-9]{1,30}(?:\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,1000}$
+      maxLength: 1100
+    QualifiedPromptName:
+      description: "Prompt name as seen by MCP clients, in C5 and C12: <system>__<prompt>, with the system pattern of SystemId (CC-258)."
+      type: string
+      pattern: ^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 100
     DefinitionHash:
       description: sha256:<hex> over the RFC 8785 canonical JSON described in C6 (see test-vectors/definition-hash).
       type: string
@@ -3567,6 +4849,11 @@ components:
       type: string
       format: date-time
       pattern: Z$
+    PromptName:
+      description: Server-side name of a prompt of the manifest (without the gateway prefix), CC-258. Same pattern and limit as ToolName.
+      type: string
+      pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      maxLength: 64
     ToolEntry:
       description: Manifest entry of one tool. Every tool that accepts a resource identifier MUST declare resourceRefs (C6).
       type: object
@@ -3668,6 +4955,11 @@ components:
       description: Opaque, unguessable id of a pending confirmation (C11); used in URL paths and as the key of the portal preview.
       type: string
       pattern: ^[A-Za-z0-9_-]{16,128}$
+    AgentClientId:
+      description: "Identity of an autonomous agent in the registry of the gateway (CC-266): the client_id of the agent in the IdP, always with the agent- prefix."
+      type: string
+      pattern: ^agent-[a-z][a-z0-9]*(-[a-z0-9]+)*$
+      maxLength: 64
     ResourceScopeId:
       description: "Id of a ResourceScope (C7): <Type>/<local part>, where the type is declared by a registered server and the local part matches its scopePattern (checked by the gateway against the registry, not by this pattern). ASCII only."
       type: string

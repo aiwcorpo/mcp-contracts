@@ -1,0 +1,14 @@
+{
+  "description": "The manifest of an adapter with a prompt is refused and the registry keeps what it has: a prompt of a foreign author under the name of the platform is an injection channel.",
+  "input": {
+    "serverMode": "adapter",
+    "manifestSource": "adapter",
+    "tools": [],
+    "prompts": 1
+  },
+  "expected": {
+    "stored": false,
+    "lastError": "manifest_invalid",
+    "manifestReason": "prompts-valid"
+  }
+}

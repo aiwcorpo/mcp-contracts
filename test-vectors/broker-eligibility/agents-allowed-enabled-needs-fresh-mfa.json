@@ -1,0 +1,22 @@
+{
+  "description": "Turning agentsAllowed on needs a fresh MFA.",
+  "input": {
+    "before": {
+      "supportedTypes": [
+        "service-account"
+      ],
+      "agentsAllowed": false
+    },
+    "after": {
+      "supportedTypes": [
+        "service-account"
+      ],
+      "agentsAllowed": true
+    },
+    "othersChanged": false
+  },
+  "expected": {
+    "status": 200,
+    "freshMfaRequired": true
+  }
+}

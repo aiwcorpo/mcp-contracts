@@ -1,0 +1,17 @@
+{
+  "description": "risk in the approval of a resource of an adapter is 422 classification_not_allowed.",
+  "input": {
+    "entry": {
+      "source": "adapter",
+      "hashMatches": true
+    },
+    "body": {
+      "risk": "READ_ONLY"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "manifest_rejected",
+    "reason": "classification_not_allowed"
+  }
+}

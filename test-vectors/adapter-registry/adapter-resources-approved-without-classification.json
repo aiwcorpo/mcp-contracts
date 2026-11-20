@@ -1,0 +1,14 @@
+{
+  "description": "A resource of an adapter is approved with the hash only: the approval is its classification (D7), a read has no risk and no action.",
+  "input": {
+    "entry": {
+      "source": "adapter",
+      "hashMatches": true
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 204,
+    "auditReason": "definition_approved"
+  }
+}

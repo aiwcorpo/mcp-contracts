@@ -1,0 +1,212 @@
+{
+  "mappings": [
+    {
+      "name": "createAgentClient without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 201 reports",
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "ETag": "\"Zx8Tq2LmWk93vNpA\"",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "clientId": "agent-reports",
+          "serviceAccountSub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+          "ownerSub": "3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11",
+          "status": "active",
+          "maxRisk": "READ_ONLY",
+          "allowedGroups": [
+            "mcp-jira-read"
+          ],
+          "delegationAllowed": false,
+          "createdBy": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+          "createdAt": "2026-11-20T09:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 401 step_up_required",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "step_up_required"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 409 agent_exists",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=agent_exists($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "agent_exists"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 422 agent_group_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=agent_group_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "agent_rejected",
+          "reason": "agent_group_not_allowed",
+          "message": "mcp-jira-destructive cannot be granted to an agent"
+        }
+      }
+    },
+    {
+      "name": "createAgentClient 422 max_risk_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/agent-clients",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=max_risk_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "agent_rejected",
+          "reason": "max_risk_not_allowed"
+        }
+      }
+    }
+  ]
+}

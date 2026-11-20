@@ -1,0 +1,14 @@
+{
+  "description": "Lifting without a fresh MFA is 401 step_up_required, checked first.",
+  "input": {
+    "event": "lift",
+    "callerSub": "admin-1",
+    "isAdmin": true,
+    "freshMfa": false,
+    "ownerSub": "owner-1"
+  },
+  "expected": {
+    "status": 401,
+    "error": "step_up_required"
+  }
+}

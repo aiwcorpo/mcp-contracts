@@ -1,0 +1,14 @@
+{
+  "description": "maxRisk UPDATE lets an UPDATE tool pass the ceiling, but an agent has no authenticator: no confirmation is created and the answer is access_denied with principal_not_eligible.",
+  "input": {
+    "maxRisk": "UPDATE",
+    "toolRisk": "UPDATE",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "access_denied",
+    "auditReason": "principal_not_eligible",
+    "confirmationCreated": false
+  }
+}

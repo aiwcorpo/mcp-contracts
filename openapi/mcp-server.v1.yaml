@@ -236,6 +236,17 @@ paths:
                   overrides:
                     - id: override-no-claude-ai
                       text: 'forbid (principal, action, resource) when { context.client == "claude-ai" };'
+              for_a_server_with_agents:
+                summary: Server whose manifest has contractsVersion 8.0.0 or higher (CC-266)
+                value:
+                  revision: 43
+                  approvedPoliciesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                  scopeMapping:
+                    - group: mcp-jira-proj-ABC
+                      scopes: [Jira::Project/ABC]
+                  allowedClients: [claude-code, claude-ai]
+                  allowedAgentClients: [agent-reports]
+                  overrides: []
       responses:
         '200':
           description: Processed. `accepted` is false when the revision was not newer than the one held.
@@ -542,6 +553,21 @@ components:
           items:
             type: string
             pattern: '^[A-Za-z0-9._-]{1,128}$'
+        allowedAgentClients:
+          description: |
+            Values of `azp` of the autonomous agents that may call, the active entries of the agent registry of the gateway (CC-266);
+            checked in code before Cedar, like `allowedClients`. May be empty. A server takes the `azp` of a token without `pty` only
+            from `allowedClients`, and the `azp` of a token with `pty` agent or delegated only from `allowedAgentClients`: a human cannot
+            use the `azp` of an agent and an agent cannot use that of a human client. The object is closed, so the gateway sends the field only to a server whose
+            approved manifest has `contractsVersion` 8.0.0 or higher (the same condition as the emission of the claims `resource`, `pty` and `act`,
+            CC-260) and leaves it out altogether, not as an empty array, for any other server; otherwise an older server would refuse
+            the push and every call of a human would end as `409 policy_data_stale`. Creating, deleting, suspending and resuming an agent raises
+            `revision` and pushes the data; a server learns of it at the first push, within 60 s at the latest, and the gateway
+            refuses the calls of a suspended agent at once.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/AgentClientId'
         overrides:
           description: Overrides that target this server or all servers.
           type: array

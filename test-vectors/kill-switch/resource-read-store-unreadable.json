@@ -1,0 +1,18 @@
+{
+  "description": "An unreadable store of switches is -32603 upstream_unavailable, not -32602 (fail-closed).",
+  "input": {
+    "switches": [],
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
+    "event": "read",
+    "storeReadable": false
+  },
+  "expected": {
+    "allowed": false,
+    "jsonRpcCode": -32603,
+    "auditReason": "upstream_unavailable"
+  }
+}

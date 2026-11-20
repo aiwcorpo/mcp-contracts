@@ -1,0 +1,13 @@
+{
+  "description": "An administrator with a fresh MFA lifts the suspension of an agent they do not own.",
+  "input": {
+    "event": "lift",
+    "callerSub": "admin-1",
+    "isAdmin": true,
+    "freshMfa": true,
+    "ownerSub": "owner-1"
+  },
+  "expected": {
+    "status": 204
+  }
+}

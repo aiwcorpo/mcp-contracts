@@ -1,0 +1,17 @@
+{
+  "description": "acceptRiskLowering has no meaning for a prompt and is refused the same way.",
+  "input": {
+    "entry": {
+      "source": "manifest",
+      "hashMatches": true
+    },
+    "body": {
+      "acceptRiskLowering": true
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "manifest_rejected",
+    "reason": "classification_not_allowed"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "description": "The azp of an agent token that is listed only in allowedClients is refused: an agent is accepted only from allowedAgentClients.",
+  "input": {
+    "pty": "agent",
+    "azp": "agent-reports",
+    "allowedClients": [
+      "agent-reports"
+    ],
+    "allowedAgentClients": []
+  },
+  "expected": {
+    "decision": "deny",
+    "reason": "client_not_allowed"
+  }
+}

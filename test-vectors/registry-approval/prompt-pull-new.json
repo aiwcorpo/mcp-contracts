@@ -1,0 +1,12 @@
+{
+  "description": "A new prompt in a pulled manifest is pending, never approved by the pull.",
+  "input": {
+    "approved": null,
+    "submitted": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "expected": {
+    "removed": false,
+    "status": "pending_approval",
+    "change": "new"
+  }
+}

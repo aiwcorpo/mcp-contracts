@@ -31,6 +31,42 @@
       "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
       "maxLength": 100
     },
+    "ResourceName": {
+      "description": "Server-side name of a static resource or a resource template of the manifest (without the gateway prefix), CC-258. Same pattern and limit as ToolName; resources and templates of one server share one name space.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "PromptName": {
+      "description": "Server-side name of a prompt of the manifest (without the gateway prefix), CC-258. Same pattern and limit as ToolName.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "QualifiedPromptName": {
+      "description": "Prompt name as seen by MCP clients, in C5 and C12: <system>__<prompt>, with the system pattern of SystemId (CC-258).",
+      "type": "string",
+      "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "ResourceUri": {
+      "description": "URI of a static resource as the client sees it, CC-258: the scheme is the SystemId of the server (an adapter: <system>+<foreign scheme>), the rest is printable ASCII.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]{1,30}(?:\\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,2000}$",
+      "maxLength": 2100
+    },
+    "ResourceUriTemplate": {
+      "description": "URI template (RFC 6570 level 1) of a resource template, CC-258. The syntax of the expressions is checked by a semantic rule of the manifest.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]{1,30}(?:\\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,1000}$",
+      "maxLength": 1100
+    },
+    "AgentClientId": {
+      "description": "Identity of an autonomous agent in the registry of the gateway (CC-266): the client_id of the agent in the IdP, always with the agent- prefix.",
+      "type": "string",
+      "pattern": "^agent-[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
     "EndpointFilterQuery": {
       "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter, no leading or trailing ampersand. Entries of systems are system ids, entries of tools are qualified tool names (<system>__<tool>, one double underscore), entries of exclude are either. Reference: scripts/lib/endpoint-filter.mjs. Sorting, absence of duplicates and the limits (at most 5 entries in systems, 100 in tools, 100 in exclude, 512 bytes in all) cannot be written as a pattern; the reference parser checks them and the vectors pin them (CC-186). Appears without the leading '?'.",
       "type": "string",

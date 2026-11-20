@@ -1,0 +1,21 @@
+{
+  "description": "The switch of one resource leaves the others alone.",
+  "input": {
+    "switches": [
+      {
+        "scope": "resource",
+        "serverId": "mcp-servicedesk",
+        "resource": "ticket"
+      }
+    ],
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "howto"
+    },
+    "event": "read"
+  },
+  "expected": {
+    "allowed": true
+  }
+}

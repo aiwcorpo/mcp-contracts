@@ -1,0 +1,11 @@
+{
+  "description": "Suspending an agent raises the revision of the policy data (max of previous + 1 and the epoch milliseconds) and pushes it.",
+  "input": {
+    "previous": 41,
+    "nowMs": 1795000000000
+  },
+  "expected": {
+    "revision": 1795000000000,
+    "pushed": true
+  }
+}

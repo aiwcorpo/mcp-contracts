@@ -1,0 +1,23 @@
+{
+  "description": "pty delegated without act: 401 invalid_claims.",
+  "input": {
+    "operation": "resolve",
+    "claims": {
+      "pty": "delegated",
+      "tool": "get_issue"
+    },
+    "system": {
+      "supportedTypes": [
+        "user-secret",
+        "user-oauth",
+        "token-exchange"
+      ],
+      "agentsAllowed": false
+    },
+    "credentialType": "user-secret"
+  },
+  "expected": {
+    "status": 401,
+    "error": "invalid_claims"
+  }
+}

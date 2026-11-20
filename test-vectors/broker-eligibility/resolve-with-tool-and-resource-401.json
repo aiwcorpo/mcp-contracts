@@ -1,0 +1,23 @@
+{
+  "description": "A token with both tool and resource: 401 invalid_claims.",
+  "input": {
+    "operation": "resolve",
+    "claims": {
+      "tool": "get_issue",
+      "resource": "servicedesk://ticket/T-1"
+    },
+    "system": {
+      "supportedTypes": [
+        "user-secret",
+        "user-oauth",
+        "token-exchange"
+      ],
+      "agentsAllowed": false
+    },
+    "credentialType": "user-secret"
+  },
+  "expected": {
+    "status": 401,
+    "error": "invalid_claims"
+  }
+}
