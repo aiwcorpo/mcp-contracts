@@ -1,0 +1,11 @@
+{
+  "description": "A previous revision at or above the clock still rises by one.",
+  "input": {
+    "previous": 1795000000000,
+    "nowMs": 1795000000000
+  },
+  "expected": {
+    "revision": 1795000000001,
+    "pushed": true
+  }
+}

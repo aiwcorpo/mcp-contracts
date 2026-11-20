@@ -1,0 +1,13 @@
+{
+  "description": "prompt is the qualified name <system>__<prompt>.",
+  "value": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e01",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "kind": "prompt",
+    "prompt": "summarize_ticket",
+    "result": "ok"
+  },
+  "expected": {
+    "valid": false
+  }
+}

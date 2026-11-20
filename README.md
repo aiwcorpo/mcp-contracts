@@ -1240,6 +1240,58 @@ vectors `kill-switch/resource-*`, `prompt-*`). Switches of single resources and 
 
 System and server mean the same here (`mcp-<system>`). Vectors `kill-switch/`.
 
+**Resources, prompts and agents (8.0.0, CC-265, CC-266).** `KillSwitch.scope` also takes `resource` and `prompt`, with the field `resource`
+(a static resource or a resource template, they share one name space) or `prompt` present exactly for that scope. Operations
+`putResourceKillSwitch`, `deleteResourceKillSwitch`, `putPromptKillSwitch` and `deletePromptKillSwitch` on
+`/admin/v1/registry/servers/{serverId}/{resources|prompts}/{name}/kill-switch` (portal: the same under `/api/v1/admin/...`). The semantics
+are those above (5 s, fail-closed, no fresh MFA to set, fresh MFA to lift); what the client sees is `-32602` (CC-259), and an unreadable store
+is `-32603`. The suspension of an agent is the kill switch of the agent registry (`PUT`/`DELETE` on `/admin/v1/agent-clients/{clientId}/kill-switch`,
+listed in `agentSwitches`): the owner of the agent may put it, only an administrator may lift it, and another person's agent is
+`404 not_found_or_denied`. Vectors `kill-switch/resource-*`, `prompt-*`, `agent-*`.
+
+
+**Resources, resource templates and prompts (8.0.0, CC-265).** The entries that CC-258 adds to the manifest are pinned the same way, with pairs of operations
+per kind: `getPendingResource` / `approveResource` (`.../resources/{name}/pending|approve`), `getPendingResourceTemplate` / `approveResourceTemplate`
+(`.../resource-templates/{name}/...`) and `getPendingPrompt` / `approvePrompt` (`.../prompts/{name}/...`), mirrored by the BFF under `/api/v1/admin/registry/...`.
+A pulled manifest approves nothing: every new or changed entry is `pending_approval`, a changed `messages` of a prompt changes its hash and hides the prompt until
+it is approved again, and an entry that leaves the manifest is removed. `approve*` takes `{definitionHash}`; `risk`, `action` or `acceptRiskLowering` is
+`422 manifest_rejected` with the reason `classification_not_allowed`, a hash that is not the `pendingHash` is `409`, a forbidden character (text hygiene) is `422`. No fresh MFA.
+`RegistryServer` gets `resources`, `resourceTemplates` and `prompts`, the catalog gets the same lists per server (and the portal tabs `resources` and `prompts`), and
+`ActivityCall` has `kind` (`tool`, `resource`, `prompt`) with `tool` present only for kind `tool`. Vectors `registry-approval/resource-*`, `resource-template-*`, `prompt-*`.
+
+## Agents (robot identity) (CC-261, CC-265, CC-266)
+
+An autonomous agent is a client of the IdP with its own service account. The platform knows it from an entry in the registry of the gateway
+(C5 `/admin/v1/agent-clients`), not from `MCP_ALLOWED_CLIENTS`. The claims the servers and the broker read (`pty`, `act`, `resource`) are CC-260.
+
+- **Registry entry (`AgentClient`).** `clientId` (`agent-...`, equal to `client_id` in the IdP), `serviceAccountSub` (the `sub` of the service account, not
+  `preferred_username`), `ownerSub`, `status` (`active` or `suspended`, from the kill switch), `maxRisk` (`READ_ONLY` by default, `UPDATE`; never
+  `DESTRUCTIVE`), `allowedGroups` (a ceiling of groups: the gateway intersects `grp` of the token with it; the suffix `-destructive` and
+  `mcp-platform-admin` are `422 agent_group_not_allowed`), `delegationAllowed`. The administrator creates the client in the IdP first; the gateway
+  stores the entry and does not check the IdP. Create, change, key rotation record, delete and lifting a suspension need a fresh MFA; suspending does not.
+  `GET /admin/v1/agent-clients?owner=me` returns the agents of the caller and needs no administrator group.
+- **`maxRisk`.** The gateway hides and refuses a tool whose risk is above `maxRisk` as part of `mayCall`: `not_found_or_denied`, audit reason
+  `agent_max_risk`, never `access_denied`. With `maxRisk: UPDATE` an `UPDATE` tool passes this check, but a confirmation needs the authenticator, which an agent does not have:
+  the gateway creates no confirmation and answers `access_denied` with the reason `principal_not_eligible`. Resources and prompts are read only and `maxRisk` does not limit them.
+  In the activity rows the reasons `agent_max_risk`, `agent_suspended` and `principal_not_eligible` are `denied_not_granted`.
+- **Who is an agent.** After `iss`, `aud` and `exp`, a token is an agent when `azp` is an active registry entry, `sub` equals `serviceAccountSub`, the IdP claim
+  `principal_type` is `agent` and `exp - iat` is at most 300 s. A known `azp` without the marker, an `azp` with the marker outside the registry, a different `sub`
+  and a longer lifetime are `401` (reasons `agent_not_registered`, `agent_token_lifetime`). A suspended agent is refused with `agent_suspended` (`access_denied` for
+  `tools/call`, `-32602` for resources and prompts). An unreadable registry refuses agents (fail-closed); humans are not affected. The purge of an owner suspends
+  the owner's agents (`agent_owner_purged`). Limits per agent are configuration (proposed 120 per minute per agent, 30 per tool): `429` with the reason `rate_limited_agent`.
+- **Servers (`allowedAgentClients`).** The policy data (C14) carry the active agents' `azp` in `allowedAgentClients`. A server takes `azp` of a token without `pty`
+  only from `allowedClients`, and of a token with `pty` agent or delegated only from `allowedAgentClients`. The gateway sends the field only to a server whose approved
+  manifest has `contractsVersion` 8.0.0 or higher and omits it entirely (not an empty array) for any other, because `PolicyData` is closed and an older server would
+  refuse the push, ending every human call as `409 policy_data_stale`. Creating, deleting, suspending and resuming an agent raises the revision and pushes the data.
+  Vectors `policy-data-push/allowed-agent-clients-*`, `old-server-without-allowed-agent-clients`, `policy-data-gate/agent-*`.
+- **Broker (`principal_not_eligible`, `agentsAllowed`).** For `pty: agent` the broker resolves only `service-account` (for a system with `agentsAllowed: true`) and
+  `token-exchange`; `user-oauth`, `user-secret` and a `service-account` without the flag are `403 principal_not_eligible` before the secret store, the connection
+  database or the IdP is touched. The authenticator operations (`GET /v1/authenticator`, `verify`, `invalidate-codes`) are `403 principal_not_eligible` for an agent.
+  `pty: delegated` needs `act` (otherwise `401 invalid_claims`) and works by the `sub` of the human. `resolveCredential` takes a token with `resource` instead of `tool`, exactly one of them.
+  `agentsAllowed` is a field of the system (`false` by default, only with `service-account`, otherwise `422 agents_allowed_without_service_account`); turning it on needs a fresh MFA,
+  turning it off alone does not. With it on, an agent and a human on the shared account are indistinguishable in the target system; accountability is in the audit.
+  The gateway maps `principal_not_eligible` to the C10 `access_denied` without `requiredEntitlements`. Vectors `broker-eligibility/`.
+
 ## Retention and offboarding (CC-134, CC-155)
 
 - **Two layers.** The portal activity table (`/activity`, `/activity/calls`) is component configuration, 30 days by default (not a

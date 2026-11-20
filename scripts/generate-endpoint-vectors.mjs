@@ -7,12 +7,13 @@ import { applyFilter, applyPrimitiveFilter, callDecision, checkRoute, InvalidFil
 import { listedNames, visibleEntries, auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, PAGE_SIZE, readCursor, routeCall, serverAvailable, visibleTools } from './lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from './lib/mcp-endpoint.mjs';
 import { idpTokenClaimsDecision, protectedResourceMetadata } from './lib/gateway-authentication.mjs';
-import { killSwitchDecision, primitiveKillSwitchDecision } from './lib/kill-switch.mjs';
+import { killSwitchDecision, primitiveKillSwitchDecision, primitiveSwitchDecision } from './lib/kill-switch.mjs';
+import { agentSwitchDecision } from './lib/agents.mjs';
 import { matchTemplate, resolveUri } from './lib/resource-uri.mjs';
 import { renderPrompt } from './lib/prompt-render.mjs';
 import { capabilities, filterLinkBlocks, methodAnswer, promptGetDecision, rateLimitedAnswer, readDecision, resultFields, SUPPORTED_METHODS } from './lib/resources-endpoint.mjs';
 import { manifestPullDecision } from './lib/adapter-registry.mjs';
-import { adapterToolState, approveDecision, pullDecision } from './lib/registry-approval.mjs';
+import { adapterToolState, approveDecision, approvePrimitiveDecision, pullDecision, pullPrimitiveDecision } from './lib/registry-approval.mjs';
 import { addressDecision, hostDecision, urlDecision } from './lib/address-policy.mjs';
 import { approveConnectionDecision, emissionDecision, connectionCheck, expectedSystemDecision, firstConnection, toolAvailability } from './lib/server-connection.mjs';
 
@@ -562,6 +563,31 @@ switchVectorFull('call-outside-filter', 'A switched tool the filter of the addre
 switchVectorFull('lift-switch-of-removed-tool', 'A switch belongs to the address, not to the manifest: the switch of a tool that left the manifest can be lifted (204) like any other (CC-206).', { switches: [{ scope: 'tool', serverId: 'mcp-jira', tool: 'removed_tool' }], tool: 'jira__removed_tool', event: 'lift-tool' });
 switchVector('lift-server', 'Lifting the switch of a server leaves the switches of single tools.', { switches: [jiraTool, { scope: 'server', serverId: 'mcp-jira' }], tool: 'jira__update_issue', event: 'lift-server' });
 
+// Resources, prompts and agents (CC-265, CC-266).
+const primitiveSwitch = (name, description, input) => switchOut(name, { description, input, expected: primitiveSwitchDecision(input) });
+const ticketResource = { scope: 'resource', serverId: 'mcp-servicedesk', resource: 'ticket' };
+const summaryPrompt = { scope: 'prompt', serverId: 'mcp-servicedesk', prompt: 'summarize_ticket' };
+const ticketTarget = { kind: 'resource', serverId: 'mcp-servicedesk', name: 'ticket' };
+const promptTarget = { kind: 'prompt', serverId: 'mcp-servicedesk', name: 'summarize_ticket' };
+primitiveSwitch('resource-read-switched', 'A read of a resource that is switched off is -32602 like every other refusal (CC-259), audited as kill_switch.', { switches: [ticketResource], target: ticketTarget, event: 'read' });
+primitiveSwitch('resource-read-other-resource', 'The switch of one resource leaves the others alone.', { switches: [ticketResource], target: { ...ticketTarget, name: 'howto' }, event: 'read' });
+primitiveSwitch('resource-read-server-switch', 'The switch of the whole server hides its resources too.', { switches: [{ scope: 'server', serverId: 'mcp-servicedesk' }], target: ticketTarget, event: 'read' });
+primitiveSwitch('resource-read-user-without-access', 'A user who may not read the resource gets not_granted, never kill_switch: the switch is looked at after authorization.', { switches: [ticketResource], target: ticketTarget, event: 'read', mayAccess: false });
+primitiveSwitch('resource-read-outside-filter', 'A switched resource that the filter of the address leaves out: filter_scope.', { switches: [ticketResource], target: ticketTarget, event: 'read', inFilter: false });
+primitiveSwitch('resource-read-store-unreadable', 'An unreadable store of switches is -32603 upstream_unavailable, not -32602 (fail-closed).', { switches: [], target: ticketTarget, event: 'read', storeReadable: false });
+primitiveSwitch('resource-list-hides-switched', 'A switched resource is absent from resources/list.', { switches: [ticketResource], target: ticketTarget, event: 'list' });
+primitiveSwitch('resource-lift', 'Lifting the switch of a resource leaves the switch of its server and of the prompts.', { switches: [ticketResource, summaryPrompt, { scope: 'server', serverId: 'mcp-servicedesk' }], target: ticketTarget, event: 'lift' });
+primitiveSwitch('prompt-get-switched', 'prompts/get of a switched prompt is -32602, audited as kill_switch.', { switches: [summaryPrompt], target: promptTarget, event: 'read' });
+primitiveSwitch('prompt-get-store-unreadable', 'An unreadable store of switches is -32603 for prompts/get too.', { switches: [], target: promptTarget, event: 'read', storeReadable: false });
+primitiveSwitch('prompt-list-hides-switched', 'A switched prompt is absent from prompts/list.', { switches: [summaryPrompt], target: promptTarget, event: 'list' });
+primitiveSwitch('prompt-resource-switch-does-not-hide-prompt', 'A switch of a resource named like a prompt does not touch the prompt: the scopes are separate.', { switches: [{ scope: 'resource', serverId: 'mcp-servicedesk', resource: 'summarize_ticket' }], target: promptTarget, event: 'list' });
+const agentSwitch = (name, description, input) => switchOut(name, { description, input, expected: agentSwitchDecision(input) });
+agentSwitch('agent-owner-sets', 'The owner of an agent suspends it without the administrator group; the policy data are raised and pushed.', { event: 'put', callerSub: 'owner-1', isAdmin: false, ownerSub: 'owner-1' });
+agentSwitch('agent-owner-cannot-lift', 'The owner cannot lift the suspension, also with a fresh MFA.', { event: 'lift', callerSub: 'owner-1', isAdmin: false, freshMfa: true, ownerSub: 'owner-1' });
+agentSwitch('agent-foreign-agent-is-404', 'The agent of another person does not exist for a caller without the group.', { event: 'put', callerSub: 'someone-else', isAdmin: false, ownerSub: 'owner-1' });
+agentSwitch('agent-admin-lifts', 'An administrator with a fresh MFA lifts the suspension of an agent they do not own.', { event: 'lift', callerSub: 'admin-1', isAdmin: true, freshMfa: true, ownerSub: 'owner-1' });
+agentSwitch('agent-lift-without-fresh-mfa', 'Lifting without a fresh MFA is 401 step_up_required, checked first.', { event: 'lift', callerSub: 'admin-1', isAdmin: true, freshMfa: false, ownerSub: 'owner-1' });
+
 // ---------- manifests pulled from servers, also behind an adapter (CC-193, CC-206, CC-249) ----------
 
 const adapterOut = writer('adapter-registry');
@@ -585,6 +611,11 @@ adapterVector('runtime-read-in-adapter-mode', 'A difference found when the gatew
   { serverMode: 'adapter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
 adapterVector('runtime-read-in-starter-mode', 'The same read for a server on the starter makes a pending entry with source server (CC-162).',
   { serverMode: 'starter', runtimeRead: true, tools: [{ name: 'update_issue', risk: 'UPDATE', state: 'changed' }] });
+
+const adapterPrimitive = (name, description, input, expected) => adapterOut(name, { description, input, expected });
+adapterPrimitive('adapter-resources-approved-without-classification', 'A resource of an adapter is approved with the hash only: the approval is its classification (D7), a read has no risk and no action.', { entry: { source: 'adapter', hashMatches: true }, body: {} }, approvePrimitiveDecision({ entry: { source: 'adapter', hashMatches: true }, body: {} }));
+adapterPrimitive('adapter-resources-with-risk-refused', 'risk in the approval of a resource of an adapter is 422 classification_not_allowed.', { entry: { source: 'adapter', hashMatches: true }, body: { risk: 'READ_ONLY' } }, approvePrimitiveDecision({ entry: { source: 'adapter', hashMatches: true }, body: { risk: 'READ_ONLY' } }));
+adapterPrimitive('adapter-prompts-refused', 'The manifest of an adapter with a prompt is refused and the registry keeps what it has: a prompt of a foreign author under the name of the platform is an injection channel.', { serverMode: 'adapter', manifestSource: 'adapter', tools: [], prompts: 1 }, manifestPullDecision({ serverMode: 'adapter', manifestSource: 'adapter', tools: [], prompts: 1 }));
 
 const approvalOut = writer('registry-approval');
 const approvalVector = (name, description, input) => approvalOut(name, { description, input, expected: approveDecision(input) });
@@ -620,6 +651,23 @@ pullOut('pull-risk-not-lowered', 'The same risk as the floor: pending as a chang
 approvalOut('unclassified-adapter-tool-is-hidden', { description: 'A tool of an adapter that is not classified and approved is hidden and refused as tool_disabled (fail-closed).', input: { classified: false }, expected: adapterToolState({ classified: false }) });
 approvalOut('stored-update-classification-is-hidden', { description: 'A classification UPDATE or DESTRUCTIVE of an adapter entry, stored before 6.3.0 (CC-227), is not valid: the tool is hidden and refused as tool_disabled until an administrator approves it again as READ_ONLY.', input: { classified: true, risk: 'UPDATE' }, expected: adapterToolState({ classified: true, risk: 'UPDATE' }) });
 approvalOut('classified-adapter-tool-is-listed', { description: 'Once classified and approved the tool follows the usual rules.', input: { classified: true }, expected: adapterToolState({ classified: true }) });
+
+const H1 = H('1');
+const primitiveApprove = (name, description, input) => approvalOut(name, { description, input, expected: approvePrimitiveDecision(input) });
+const primitivePull = (name, description, input) => approvalOut(name, { description, input, expected: pullPrimitiveDecision(input) });
+for (const kind of ['resource', 'resource-template', 'prompt']) {
+  const noun = kind.replace('-', ' ');
+  primitivePull(`${kind}-pull-new`, `A new ${noun} in a pulled manifest is pending, never approved by the pull.`, { approved: null, submitted: H('a') });
+  primitivePull(`${kind}-pull-changed`, `A changed ${noun} is pending again.`, { approved: H('a'), submitted: H('b') });
+  primitivePull(`${kind}-pull-unchanged`, `An unchanged ${noun} stays approved.`, { approved: H('a'), submitted: H('a') });
+  primitivePull(`${kind}-pull-removed`, `A ${noun} that left the manifest is removed from the registry.`, { approved: H('a'), submitted: null });
+  primitiveApprove(`${kind}-approve`, `Approval of a ${noun} with the current hash: 204, no fresh MFA.`, { entry: { source: 'manifest', hashMatches: true }, body: {} });
+  primitiveApprove(`${kind}-approve-wrong-hash`, `A hash that is not the pendingHash is 409 and changes nothing.`, { entry: { source: 'manifest', hashMatches: false }, body: {} });
+  primitiveApprove(`${kind}-approve-with-risk`, `risk in the approval of a ${noun} is 422 classification_not_allowed.`, { entry: { source: 'manifest', hashMatches: true }, body: { risk: 'READ_ONLY', action: 'read' } });
+  primitiveApprove(`${kind}-approve-accept-risk-lowering`, `acceptRiskLowering has no meaning for a ${noun} and is refused the same way.`, { entry: { source: 'manifest', hashMatches: true }, body: { acceptRiskLowering: true } });
+  primitiveApprove(`${kind}-approve-hidden-characters`, `A definition with a forbidden character is never approved (CC-250).`, { entry: { source: 'manifest', hashMatches: true, hiddenCharacters: true }, body: {} });
+}
+primitivePull('prompt-messages-changed-hides-prompt', 'A changed messages text of a prompt is another hash: the prompt is pending, and hidden from prompts/list and prompts/get, until approved again.', { approved: H1, submitted: H('2') });
 
 // ---------- address refusal (CC-249) ----------
 
@@ -1001,19 +1049,19 @@ changed('list-changed-resources-no-change', 'Nothing changed.', '', [sdRes], [sd
 
 // kill switch for resources and prompts
 const sdSwitch = { scope: 'server', serverId: 'mcp-servicedesk' };
-const primitiveSwitch = (name, description, input) => switchOut(name, { description, kind: 'primitive', input, expected: primitiveKillSwitchDecision(input) });
-primitiveSwitch('resource-read-switched-server', 'resources/read of a server that is switched off: -32602 with the reason kill_switch.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read' });
-primitiveSwitch('resource-read-other-server', 'A switch of another server does not concern it.', { switches: [{ scope: 'server', serverId: 'mcp-jira' }], serverId: 'mcp-servicedesk', event: 'read' });
-primitiveSwitch('resource-read-tool-switch-does-not-apply', 'A switch of one tool does not concern a resource.', { switches: [{ scope: 'tool', serverId: 'mcp-servicedesk', tool: 'get_ticket' }], serverId: 'mcp-servicedesk', event: 'read' });
-primitiveSwitch('resource-read-user-without-access', 'A user who may not read: not_granted, the switch is not looked at.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read', mayAccess: false });
-primitiveSwitch('resource-read-outside-filter', 'The filter cuts the resource: filter_scope.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read', inFilter: false });
-primitiveSwitch('resource-read-store-unreadable', 'An unreadable store: -32603 upstream_unavailable.', { switches: [], serverId: 'mcp-servicedesk', event: 'read', storeReadable: false });
-primitiveSwitch('resource-list-hides-switched-server', 'A switched server lists no resources.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'list' });
-primitiveSwitch('resource-list-store-unreadable', 'An unreadable store lists nothing.', { switches: [], serverId: 'mcp-servicedesk', event: 'list', storeReadable: false });
-primitiveSwitch('prompt-get-switched-server', 'prompts/get of a switched server.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'get' });
-primitiveSwitch('prompt-get-without-switches', 'No switch: allowed.', { switches: [], serverId: 'mcp-servicedesk', event: 'get' });
-primitiveSwitch('prompt-get-store-unreadable', 'An unreadable store: -32603.', { switches: [], serverId: 'mcp-servicedesk', event: 'get', storeReadable: false });
-primitiveSwitch('prompt-list-hides-switched-server', 'A switched server lists no prompts.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'list' });
+const serverPrimitiveSwitch = (name, description, input) => switchOut(name, { description, kind: 'primitive', input, expected: primitiveKillSwitchDecision(input) });
+serverPrimitiveSwitch('resource-read-switched-server', 'resources/read of a server that is switched off: -32602 with the reason kill_switch.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read' });
+serverPrimitiveSwitch('resource-read-other-server', 'A switch of another server does not concern it.', { switches: [{ scope: 'server', serverId: 'mcp-jira' }], serverId: 'mcp-servicedesk', event: 'read' });
+serverPrimitiveSwitch('resource-read-tool-switch-does-not-apply', 'A switch of one tool does not concern a resource.', { switches: [{ scope: 'tool', serverId: 'mcp-servicedesk', tool: 'get_ticket' }], serverId: 'mcp-servicedesk', event: 'read' });
+serverPrimitiveSwitch('resource-read-user-without-access-server-switch', 'A user who may not read: not_granted, the switch is not looked at.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read', mayAccess: false });
+serverPrimitiveSwitch('resource-read-outside-filter-server-switch', 'The filter cuts the resource: filter_scope.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'read', inFilter: false });
+serverPrimitiveSwitch('resource-read-store-unreadable-server-switch', 'An unreadable store: -32603 upstream_unavailable.', { switches: [], serverId: 'mcp-servicedesk', event: 'read', storeReadable: false });
+serverPrimitiveSwitch('resource-list-hides-switched-server', 'A switched server lists no resources.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'list' });
+serverPrimitiveSwitch('resource-list-store-unreadable', 'An unreadable store lists nothing.', { switches: [], serverId: 'mcp-servicedesk', event: 'list', storeReadable: false });
+serverPrimitiveSwitch('prompt-get-switched-server', 'prompts/get of a switched server.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'get' });
+serverPrimitiveSwitch('prompt-get-without-switches', 'No switch: allowed.', { switches: [], serverId: 'mcp-servicedesk', event: 'get' });
+serverPrimitiveSwitch('prompt-get-store-unreadable-server-switch', 'An unreadable store: -32603.', { switches: [], serverId: 'mcp-servicedesk', event: 'get', storeReadable: false });
+serverPrimitiveSwitch('prompt-list-hides-switched-server', 'A switched server lists no prompts.', { switches: [sdSwitch], serverId: 'mcp-servicedesk', event: 'list' });
 
 // preflight of the new claims (CC-260)
 const emission = (name, description, input) => connectionVector(name, description, { emission: input }, emissionDecision(input));

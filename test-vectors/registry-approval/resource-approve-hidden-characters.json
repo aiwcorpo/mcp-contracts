@@ -1,0 +1,16 @@
+{
+  "description": "A definition with a forbidden character is never approved (CC-250).",
+  "input": {
+    "entry": {
+      "source": "manifest",
+      "hashMatches": true,
+      "hiddenCharacters": true
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 422,
+    "error": "manifest_rejected",
+    "auditReason": "hidden_characters"
+  }
+}

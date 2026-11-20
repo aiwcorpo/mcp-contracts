@@ -1,0 +1,22 @@
+{
+  "description": "A replace that only turns agentsAllowed off needs no fresh MFA.",
+  "input": {
+    "before": {
+      "supportedTypes": [
+        "service-account"
+      ],
+      "agentsAllowed": true
+    },
+    "after": {
+      "supportedTypes": [
+        "service-account"
+      ],
+      "agentsAllowed": false
+    },
+    "othersChanged": false
+  },
+  "expected": {
+    "status": 200,
+    "freshMfaRequired": false
+  }
+}

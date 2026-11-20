@@ -1,0 +1,16 @@
+{
+  "description": "The azp of an agent token listed in allowedAgentClients passes.",
+  "input": {
+    "pty": "agent",
+    "azp": "agent-reports",
+    "allowedClients": [
+      "claude-code"
+    ],
+    "allowedAgentClients": [
+      "agent-reports"
+    ]
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

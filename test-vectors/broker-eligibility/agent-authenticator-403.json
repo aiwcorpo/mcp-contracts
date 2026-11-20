@@ -1,0 +1,20 @@
+{
+  "description": "An agent has no authenticator: 403 principal_not_eligible.",
+  "input": {
+    "operation": "authenticator",
+    "claims": {
+      "pty": "agent",
+      "tool": "update_issue"
+    },
+    "system": {
+      "supportedTypes": [
+        "service-account"
+      ],
+      "agentsAllowed": false
+    }
+  },
+  "expected": {
+    "status": 403,
+    "error": "principal_not_eligible"
+  }
+}

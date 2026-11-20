@@ -49,3 +49,28 @@ export function adapterToolState({ classified, risk = 'READ_ONLY' }) {
   // not classified until an administrator approves it again as a read.
   return classified && risk === 'READ_ONLY' ? { listed: true } : { listed: false, errorCode: 'tool_disabled', auditReason: 'tool_disabled' };
 }
+
+/**
+ * Approval of a resource, a resource template or a prompt (CC-265). `entry` is { source: manifest | adapter, hashMatches, hiddenCharacters? };
+ * `body` is the ApproveRequest without definitionHash. No kind has a classification, so risk, action and acceptRiskLowering are 422
+ * classification_not_allowed, also for an entry of an adapter (the approval itself is its classification, D7). The hash is compared first, the hidden
+ * characters next, as for a tool (CC-250).
+ */
+export function approvePrimitiveDecision({ entry, body = {} }) {
+  if (!entry.hashMatches) return { status: 409, error: 'hash_mismatch' };
+  if (entry.hiddenCharacters === true) return { status: 422, error: 'manifest_rejected', auditReason: 'hidden_characters' };
+  if (body.risk !== undefined || body.action !== undefined || body.acceptRiskLowering !== undefined) return { status: 422, error: 'manifest_rejected', reason: 'classification_not_allowed' };
+  return { status: 204, auditReason: 'definition_approved' };
+}
+
+/**
+ * What a pulled manifest does to the entries of one kind (CC-265). `approved` and `submitted` are the definitionHash of the entry, or null when
+ * there is none. Nothing is approved by a pull; an entry that leaves the manifest is removed. A prompt whose messages changed has another hash,
+ * so it is pending (and hidden) until approved again.
+ */
+export function pullPrimitiveDecision({ approved, submitted }) {
+  if (submitted === null) return { removed: approved !== null, status: null };
+  if (approved === null) return { removed: false, status: 'pending_approval', change: 'new' };
+  if (approved === submitted) return { removed: false, status: 'approved' };
+  return { removed: false, status: 'pending_approval', change: 'changed' };
+}

@@ -1,0 +1,32 @@
+{
+  "description": "The registry replaces MCP_ALLOWED_CLIENTS for the azp of an agent: an active entry is accepted although the azp is not in the list of human clients.",
+  "input": {
+    "token": {
+      "azp": "agent-reports",
+      "sub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+      "principalType": "agent",
+      "iat": 1000,
+      "exp": 1300
+    },
+    "registry": [
+      {
+        "clientId": "agent-reports",
+        "serviceAccountSub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+        "status": "active"
+      },
+      {
+        "clientId": "agent-sleeper",
+        "serviceAccountSub": "0b3a9d52-6a3c-4d06-8e1c-4f5a7f1e9c33",
+        "status": "suspended"
+      }
+    ],
+    "allowedClients": [
+      "claude-code"
+    ]
+  },
+  "expected": {
+    "principal": "agent",
+    "decision": "continue",
+    "clientId": "agent-reports"
+  }
+}

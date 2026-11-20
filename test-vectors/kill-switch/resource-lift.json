@@ -1,0 +1,40 @@
+{
+  "description": "Lifting the switch of a resource leaves the switch of its server and of the prompts.",
+  "input": {
+    "switches": [
+      {
+        "scope": "resource",
+        "serverId": "mcp-servicedesk",
+        "resource": "ticket"
+      },
+      {
+        "scope": "prompt",
+        "serverId": "mcp-servicedesk",
+        "prompt": "summarize_ticket"
+      },
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
+    "event": "lift"
+  },
+  "expected": {
+    "switches": [
+      {
+        "scope": "prompt",
+        "serverId": "mcp-servicedesk",
+        "prompt": "summarize_ticket"
+      },
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ]
+  }
+}

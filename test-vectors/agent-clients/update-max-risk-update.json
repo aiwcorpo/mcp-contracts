@@ -1,0 +1,12 @@
+{
+  "description": "Raising maxRisk to UPDATE is allowed.",
+  "input": {
+    "operation": "update",
+    "body": {
+      "maxRisk": "UPDATE"
+    }
+  },
+  "expected": {
+    "status": 200
+  }
+}

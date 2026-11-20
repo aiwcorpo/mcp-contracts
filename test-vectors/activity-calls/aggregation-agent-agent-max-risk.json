@@ -1,0 +1,31 @@
+{
+  "description": "A refusal of an agent with the reason agent_max_risk: the row is denied_not_granted (CC-266, CC-261).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.000Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e71",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+      "client": "agent-reports",
+      "event": "tool_call",
+      "server": "mcp-jira",
+      "tool": "update_issue",
+      "risk": "UPDATE",
+      "decision": "deny",
+      "reason": "agent_max_risk",
+      "outcome": "denied",
+      "errorCode": "not_found_or_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e71",
+    "ts": "2026-10-26T20:00:00.000Z",
+    "client": "agent-reports",
+    "tool": "jira__update_issue",
+    "risk": "UPDATE",
+    "result": "denied_not_granted",
+    "errorCode": "not_found_or_denied"
+  }
+}

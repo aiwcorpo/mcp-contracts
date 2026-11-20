@@ -1,0 +1,11 @@
+{
+  "description": "The same tool is absent from tools/list.",
+  "input": {
+    "maxRisk": "READ_ONLY",
+    "toolRisk": "UPDATE",
+    "event": "list"
+  },
+  "expected": {
+    "listed": false
+  }
+}

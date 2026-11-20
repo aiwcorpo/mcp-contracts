@@ -15,12 +15,14 @@ import { gatewayAuthenticationResponse, idpTokenClaimsDecision, keyDecision, pro
 import { applyFilter, applyPrimitiveFilter, callDecision, checkRoute, InvalidFilter, parseFilter, sessionDecision, sessionMatches, streamOpenDecision } from '../scripts/lib/endpoint-filter.mjs';
 import { listedNames, visibleEntries, auditThrottle, issueCursor, listChangedNotification, listChangedSequence, listChangedStateless, page, readCursor, routeCall, serverAvailable, visibleTools } from '../scripts/lib/endpoint-aggregate.mjs';
 import { composeQuery, mcpEndpoint } from '../scripts/lib/mcp-endpoint.mjs';
-import { killSwitchDecision, primitiveKillSwitchDecision } from '../scripts/lib/kill-switch.mjs';
+import { killSwitchDecision, primitiveKillSwitchDecision, primitiveSwitchDecision } from '../scripts/lib/kill-switch.mjs';
 import { matchTemplate, resolveUri } from '../scripts/lib/resource-uri.mjs';
 import { renderPrompt } from '../scripts/lib/prompt-render.mjs';
 import { capabilities, filterLinkBlocks, methodAnswer, promptGetDecision, rateLimitedAnswer, readDecision, resultFields } from '../scripts/lib/resources-endpoint.mjs';
+import { agentSwitchDecision, agentToolDecision, agentWriteDecision, classifyCaller, listAgentsDecision, policyDataBodyFor, revisionAfterChange, serverAzpDecision } from '../scripts/lib/agents.mjs';
+import { agentsAllowedWrite, brokerEligibility } from '../scripts/lib/broker-eligibility.mjs';
 import { manifestPullDecision } from '../scripts/lib/adapter-registry.mjs';
-import { adapterToolState, approveDecision, pullDecision } from '../scripts/lib/registry-approval.mjs';
+import { adapterToolState, approveDecision, approvePrimitiveDecision, pullDecision, pullPrimitiveDecision } from '../scripts/lib/registry-approval.mjs';
 import { addressDecision, hostDecision, urlDecision } from '../scripts/lib/address-policy.mjs';
 import { approveConnectionDecision, emissionDecision, connectionCheck, expectedSystemDecision, firstConnection, toolAvailability } from '../scripts/lib/server-connection.mjs';
 
@@ -131,6 +133,8 @@ test('policy data gate vectors: a server evaluates only approved policies with d
   const vectors = listJson('test-vectors', 'policy-data-gate');
   assert.ok(vectors.some((v) => v.data.expected.decision === 'continue') && vectors.some((v) => v.data.expected.decision === 'deny'));
   for (const { name, data } of vectors) {
+    if ('previous' in data.input) { assert.deepEqual(revisionAfterChange(data.input), data.expected, name); assert.ok(data.expected.revision > data.input.previous, name); continue; }
+    if ('allowedAgentClients' in data.input) { assert.deepEqual(serverAzpDecision(data.input), data.expected, name); continue; }
     assert.deepEqual(policyDataGate(data.input), data.expected, name);
     if (data.expected.decision === 'deny') {
       // Only a server that is behind asks the gateway to push; every other refusal is final.
@@ -146,6 +150,11 @@ test('policy data push vectors: replacement rule and the push-and-retry of the g
   const vectors = listJson('test-vectors', 'policy-data-push');
   assert.ok(vectors.length >= 9);
   for (const { name, data } of vectors) {
+    if ('agents' in data.input) {
+      assert.deepEqual(policyDataBodyFor(data.input), data.expected, name);
+      if (!data.expected.includesAllowedAgentClients) assert.ok(!('allowedAgentClients' in data.expected), `${name}: the field is left out, not sent empty`);
+      continue;
+    }
     const actual = 'offered' in data.input ? pushDecision(data.input) : 'bodyRevision' in data.input ? pushBodyCheck(data.input) : 'ack' in data.input ? ackOutcome(data.input) : gatewayCall(data.input);
     assert.deepEqual(actual, data.expected, name);
     // One push and one repeat at most: there is no third attempt.
@@ -356,6 +365,8 @@ test('gateway answers to rejected and unavailable authentication (CC-124)', () =
   assert.ok(vectors.some((v) => v.data.expected.status === 401) && vectors.some((v) => v.data.expected.status === 503));
   const validateError = schemaValidator(ajv, 'tool-error.schema.json');
   for (const { name, data } of vectors) {
+    if ('token' in data.input) { assert.deepEqual(classifyCaller(data.input), data.expected, name); continue; }
+    if ('toolRisk' in data.input) { assert.deepEqual(agentToolDecision(data.input), data.expected, name); continue; }
     assert.deepEqual(gatewayAuthenticationResponse(data.input), data.expected, name);
     assert.ok(validateError(data.expected.body), `${name}: body is a C10 error`);
     for (const header of data.expected.absentHeaders) assert.equal(data.expected.headers[header], undefined, `${name}: ${header} absent`);
@@ -624,7 +635,10 @@ test('the Cedar schema has neither virtualServer nor vsScopes (CC-173)', () => {
 test('kill-switch vectors: a switched tool is refused, hidden and stays off until its own lift (CC-194)', () => {
   const vectors = listJson('test-vectors', 'kill-switch');
   assert.ok(vectors.length >= 12);
-  for (const { name, data } of vectors) assert.deepEqual(data.kind === 'primitive' ? primitiveKillSwitchDecision(data.input) : killSwitchDecision(data.input), data.expected, name);
+  for (const { name, data } of vectors) {
+    const decide = data.kind === 'primitive' ? primitiveKillSwitchDecision : 'target' in data.input ? primitiveSwitchDecision : 'callerSub' in data.input ? agentSwitchDecision : killSwitchDecision;
+    assert.deepEqual(decide(data.input), data.expected, name);
+  }
   const byName = Object.fromEntries(vectors.map((v) => [v.name, v.data.expected]));
   assert.equal(byName['call-switched-tool.json'].auditReason, 'kill_switch');
   assert.equal(byName['call-switched-tool.json'].errorCode, 'tool_disabled');
@@ -673,6 +687,7 @@ test('pulled manifests: mode, source and what stays pending, nothing approved by
   const vectors = listJson('test-vectors', 'adapter-registry');
   assert.ok(vectors.length >= 8);
   for (const { name, data } of vectors) {
+    if ('entry' in data.input) { assert.deepEqual(approvePrimitiveDecision(data.input), data.expected, name); continue; }
     assert.deepEqual(manifestPullDecision(data.input), data.expected, name);
     if (data.expected.stored !== false) assert.deepEqual(data.expected.approvedByPull, [], `${name}: nothing is approved by a pull`);
   }
@@ -683,6 +698,8 @@ test('approval with a classification of an adapter tool (CC-193, CC-206)', () =>
   const reasons = new Set(vectors.map((v) => v.data.expected.reason).filter(Boolean));
   assert.deepEqual([...reasons].sort(), ['classification_inconsistent', 'classification_not_allowed', 'classification_required', 'risk_lowered']);
   for (const { name, data } of vectors) {
+    if (data.input.entry?.hashMatches !== undefined) { assert.deepEqual(approvePrimitiveDecision(data.input), data.expected, name); continue; }
+    if (typeof data.input.submitted === 'string' || data.input.submitted === null) { assert.deepEqual(pullPrimitiveDecision(data.input), data.expected, name); continue; }
     assert.deepEqual('entry' in data.input ? approveDecision(data.input) : 'submitted' in data.input ? pullDecision(data.input) : adapterToolState(data.input), data.expected, name);
   }
 });
@@ -771,4 +788,35 @@ test('the filter leaves resources and prompts by systems, exclude and access, an
   assert.deepEqual(names('systems=jira'), ['jira']);
   assert.deepEqual(names('exclude=jira'), ['servicedesk']);
   assert.deepEqual(names('exclude=jira__get_issue'), ['jira', 'servicedesk']);
+});
+
+test('broker eligibility vectors: what the broker answers for an agent and a delegated principal (CC-261)', () => {
+  const vectors = listJson('test-vectors', 'broker-eligibility');
+  assert.ok(vectors.length >= 12);
+  for (const { name, data } of vectors) {
+    const actual = 'operation' in data.input ? brokerEligibility(data.input) : agentsAllowedWrite(data.input);
+    assert.deepEqual(actual, data.expected, name);
+    if (data.expected.error === 'principal_not_eligible') assert.equal(data.expected.status, 403, name);
+  }
+});
+
+test('agent registry vectors: validation, owner view and the lists of the policy data (CC-266)', () => {
+  const vectors = listJson('test-vectors', 'agent-clients');
+  assert.ok(vectors.length >= 8);
+  for (const { name, data } of vectors) {
+    const actual = 'owner' in data.input || 'agents' in data.input ? listAgentsDecision(data.input) : agentWriteDecision(data.input);
+    assert.deepEqual(actual, data.expected, name);
+  }
+});
+
+test('ids of agents, resources and prompts in common.schema.json (CC-258, CC-266)', () => {
+  const agent = schemaValidator(ajv, 'common.schema.json#/$defs/AgentClientId');
+  for (const ok of ['agent-reports', 'agent-a1-b2']) assert.ok(agent(ok), ok);
+  for (const bad of ['reports', 'agent-', 'agent-Reports', 'agent--x', 'agent-x_y', `agent-${'a'.repeat(60)}`]) assert.ok(!agent(bad), bad);
+  const prompt = schemaValidator(ajv, 'common.schema.json#/$defs/QualifiedPromptName');
+  assert.ok(prompt('servicedesk__summarize_ticket'));
+  assert.ok(!prompt('summarize_ticket') && !prompt('gateway__x'));
+  const resource = schemaValidator(ajv, 'common.schema.json#/$defs/ResourceUri');
+  assert.ok(resource('servicedesk://ticket/T-1') && resource('jira+rest://x'));
+  assert.ok(!resource('Servicedesk://x') && !resource('servicedesk://') && !resource('servicedesk://a\nb'));
 });

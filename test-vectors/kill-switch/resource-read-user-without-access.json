@@ -1,20 +1,24 @@
 {
-  "description": "A user who may not read: not_granted, the switch is not looked at.",
-  "kind": "primitive",
+  "description": "A user who may not read the resource gets not_granted, never kill_switch: the switch is looked at after authorization.",
   "input": {
     "switches": [
       {
-        "scope": "server",
-        "serverId": "mcp-servicedesk"
+        "scope": "resource",
+        "serverId": "mcp-servicedesk",
+        "resource": "ticket"
       }
     ],
-    "serverId": "mcp-servicedesk",
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
     "event": "read",
     "mayAccess": false
   },
   "expected": {
     "allowed": false,
-    "errorCode": -32602,
+    "jsonRpcCode": -32602,
     "auditReason": "not_granted"
   }
 }

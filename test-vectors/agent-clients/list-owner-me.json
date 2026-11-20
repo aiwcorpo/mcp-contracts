@@ -1,0 +1,24 @@
+{
+  "description": "owner=me returns only the agents of the caller and needs no group.",
+  "input": {
+    "owner": "me",
+    "isAdmin": false,
+    "callerSub": "owner-1",
+    "agents": [
+      {
+        "clientId": "agent-reports",
+        "ownerSub": "owner-1"
+      },
+      {
+        "clientId": "agent-billing",
+        "ownerSub": "owner-2"
+      }
+    ]
+  },
+  "expected": {
+    "status": 200,
+    "clientIds": [
+      "agent-reports"
+    ]
+  }
+}

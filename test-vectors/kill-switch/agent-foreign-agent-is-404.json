@@ -1,0 +1,13 @@
+{
+  "description": "The agent of another person does not exist for a caller without the group.",
+  "input": {
+    "event": "put",
+    "callerSub": "someone-else",
+    "isAdmin": false,
+    "ownerSub": "owner-1"
+  },
+  "expected": {
+    "status": 404,
+    "error": "not_found_or_denied"
+  }
+}

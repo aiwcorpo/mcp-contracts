@@ -1,0 +1,136 @@
+{
+  "mappings": [
+    {
+      "name": "getPendingResourceTemplate without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/resource-templates/{name}/pending",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getPendingResourceTemplate 200 new_entry",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/resource-templates/{name}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "approvedEntry": null,
+          "pendingEntry": {
+            "name": "ticket",
+            "definition": {
+              "name": "ticket",
+              "title": "Ticket",
+              "description": "One ticket of the service desk.",
+              "uriTemplate": "servicedesk://ticket/{ticketId}"
+            }
+          },
+          "pendingHash": "sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe",
+          "pendingVersion": "1.1.0",
+          "source": "manifest",
+          "approvedInVersion": null
+        }
+      }
+    },
+    {
+      "name": "getPendingResourceTemplate 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/resource-templates/{name}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "getPendingResourceTemplate 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/resource-templates/{name}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "getPendingResourceTemplate 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/resource-templates/{name}/pending",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    }
+  ]
+}

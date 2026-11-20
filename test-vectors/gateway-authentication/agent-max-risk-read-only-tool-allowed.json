@@ -1,0 +1,11 @@
+{
+  "description": "A READ_ONLY tool passes for an agent of any ceiling.",
+  "input": {
+    "maxRisk": "READ_ONLY",
+    "toolRisk": "READ_ONLY",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": true
+  }
+}
