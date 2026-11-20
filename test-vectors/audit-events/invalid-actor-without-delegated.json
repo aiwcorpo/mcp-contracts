@@ -1,0 +1,20 @@
+{
+  "description": "actorSub needs principalType delegated (CC-264).",
+  "expected": {
+    "valid": false
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "tool_call",
+    "sub": "9a4e7c10-2b5d-4f38-b6a1-0d8c3e5f7a22",
+    "username": "service-account-agent-nightly",
+    "client": "agent-nightly",
+    "principalType": "agent",
+    "actorSub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "server": "mcp-jira",
+    "tool": "get_issue"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "description": "An administrator registered an agent; the owner goes to agentOwner (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "admin_change",
+    "sub": "3b0d6f2e-91c4-4d7a-8a52-6c1e4f7a9d10",
+    "username": "a.admin",
+    "agentOwner": "4c7d1e90-5a2b-4e63-8f14-b2a9d0c6e358",
+    "reason": "agent_registered",
+    "outcome": "ok"
+  }
+}

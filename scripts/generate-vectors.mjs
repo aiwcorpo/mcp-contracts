@@ -1254,6 +1254,71 @@ audit('valid-resource-id-with-slash-and-space', 'resource.id keeps the system al
   ...auditBase, component: 'server', componentId: 'mcp-gitlab', event: 'policy_decision', resource: { type: 'GitLab::Project', id: 'team-a/my app' },
 }, true);
 
+// CC-264: resources, prompts and agents
+{
+  const userSub = '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11';
+  const agentSub = '9a4e7c10-2b5d-4f38-b6a1-0d8c3e5f7a22';
+  const ownerSub = '4c7d1e90-5a2b-4e63-8f14-b2a9d0c6e358';
+  const gw = { ...auditBase, component: 'gateway', componentId: 'mcp-gateway' };
+  const user = { sub: userSub, username: 'jkowalski', client: 'claude-code' };
+  const agent = { sub: agentSub, username: 'service-account-agent-nightly', client: 'agent-nightly', principalType: 'agent' };
+  const read = { ...gw, event: 'resource_read', ...user, server: 'mcp-jira' };
+  const readOk = { resourceTemplate: 'issue', resource: { type: 'Jira::Issue', id: 'ABC-123' }, decision: 'allow', policyRevision: 41, outcome: 'ok', errorCode: null, latencyMs: 31, contentBytes: 2048, contentSha256: 'sha256:' + 'a7'.repeat(32) };
+  const get = { ...gw, event: 'prompt_get', ...user, server: 'mcp-jira' };
+  const deny = (reason, errorCode, outcome = 'denied') => ({ decision: 'deny', reason, policyRevision: 41, outcome, errorCode });
+
+  audit('gateway-resource-read-allowed', 'Gateway, allowed read of a resource: the template name and the entity of the first variable, never the URI, plus the size and hash of the content (CC-264).', { ...read, filter: 'systems=jira', ...readOk }, true);
+  audit('gateway-resource-read-uri-no-match', 'A URI that matches no approved resource or template (CC-264).', { ...read, ...deny('uri_no_match', 'invalid_argument', 'error'), latencyMs: 3 }, true);
+  audit('gateway-resource-read-result-too-large', 'The answer of the server exceeded the size limit (CC-264).', { ...read, resourceTemplate: 'issue', resource: { type: 'Jira::Issue', id: 'ABC-123' }, ...deny('result_too_large', 'internal_error', 'error'), latencyMs: 87 }, true);
+  audit('gateway-resource-read-header-mismatch', 'The headers of the answer do not match the request (CC-264).', { ...read, resourceTemplate: 'issue', resource: { type: 'Jira::Issue', id: 'ABC-123' }, ...deny('header_mismatch', 'internal_error', 'error'), latencyMs: 12 }, true);
+  audit('gateway-prompt-get-allowed', 'Gateway built a prompt: argsLength is the only trace of the arguments, definitionHash the approved entry (CC-264).', { ...get, prompt: 'triage_issue', decision: 'allow', policyRevision: 41, outcome: 'ok', errorCode: null, latencyMs: 5, argsLength: 64, definitionHash: 'sha256:' + 'b8'.repeat(32) }, true);
+  audit('gateway-prompt-get-argument-invalid', 'An argument of the prompt failed its check (CC-264).', { ...get, prompt: 'triage_issue', ...deny('argument_invalid', 'invalid_argument', 'error'), latencyMs: 2, argsLength: 30 }, true);
+  audit('gateway-link-scheme-refused', 'A resource link with a scheme the gateway does not follow (CC-264).', { ...read, resourceTemplate: 'issue', resource: { type: 'Jira::Issue', id: 'ABC-123' }, ...deny('link_scheme_refused', 'internal_error', 'error'), latencyMs: 20 }, true);
+  audit('server-resource-read-allowed', 'A server records the read of a resource it served (CC-264).', { ...read, component: 'server', componentId: 'mcp-jira', ...readOk }, true);
+  audit('gateway-agent-tool-call', 'Tool call of an agent: principalType agent, and the owner of the agent (CC-264).', {
+    ...gw, event: 'tool_call', ...agent, agentOwner: ownerSub, server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', decision: 'allow', policyRevision: 41, credentialType: 'user-secret', outcome: 'ok', errorCode: null, latencyMs: 40, argsLength: 90,
+  }, true);
+  audit('gateway-agent-suspended', 'A suspended agent is refused (CC-264).', {
+    ...gw, event: 'policy_decision', ...agent, server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', ...deny('agent_suspended', 'not_found_or_denied'), argsLength: 20,
+  }, true);
+  audit('gateway-agent-max-risk', 'A call above the maximum risk of the agent (CC-264).', {
+    ...gw, event: 'policy_decision', ...agent, server: 'mcp-jira', tool: 'delete_issue', risk: 'DESTRUCTIVE', ...deny('agent_max_risk', 'not_found_or_denied'), argsLength: 20,
+  }, true);
+  audit('gateway-agent-not-registered', 'A token of an unknown agent: event authentication, no principalType, the token is not trusted yet (CC-264).', {
+    ...gw, event: 'authentication', decision: 'deny', reason: 'agent_not_registered', outcome: 'denied', errorCode: 'unauthenticated',
+  }, true);
+  audit('gateway-delegated-tool-call', 'An agent acting for a user: sub is the user, actorSub and actorClient the agent (CC-264).', {
+    ...gw, event: 'tool_call', ...user, principalType: 'delegated', actorSub: agentSub, actorClient: 'agent-nightly', server: 'mcp-jira', tool: 'get_issue', risk: 'READ_ONLY', decision: 'allow', policyRevision: 41, credentialType: 'user-secret', outcome: 'ok', errorCode: null, latencyMs: 44, argsLength: 90,
+  }, true);
+  audit('broker-resolve-agent-not-eligible', 'The broker refused a credential for an agent that may not use the system (CC-264).', {
+    ...auditBase, component: 'broker', componentId: 'mcp-credential-broker', event: 'credential_resolve', sub: agentSub, principalType: 'agent', server: 'mcp-jira', credentialType: 'user-secret', reason: 'principal_not_eligible', outcome: 'denied',
+  }, true);
+  audit('gateway-agent-registered', 'An administrator registered an agent; the owner goes to agentOwner (CC-264).', {
+    ...gw, event: 'admin_change', sub: adminSub, username: 'a.admin', agentOwner: ownerSub, reason: 'agent_registered', outcome: 'ok',
+  }, true);
+  audit('gateway-agent-key-rotated', 'The key of an agent was rotated (CC-264).', {
+    ...gw, event: 'admin_change', sub: adminSub, username: 'a.admin', agentOwner: ownerSub, reason: 'agent_key_rotated', outcome: 'ok',
+  }, true);
+  audit('gateway-contracts-version-unsupported', 'The receiver has not accepted the contracts version of the call, so the gateway does not send it (CC-264, CC-260).', {
+    ...read, resourceTemplate: 'issue', resource: { type: 'Jira::Issue', id: 'ABC-123' }, ...deny('contracts_version_unsupported', 'upstream_unavailable', 'error'), latencyMs: 1,
+  }, true);
+
+  audit('invalid-resource-read-with-uri', 'The URI of a resource is never audited: no field can carry it (CC-264).', { ...read, ...readOk, uri: 'jira://issues/ABC-123' }, false);
+  audit('invalid-resource-read-with-content', 'The content of a resource is never audited (CC-264).', { ...read, ...readOk, content: 'text of the issue' }, false);
+  audit('invalid-actor-without-delegated', 'actorSub needs principalType delegated (CC-264).', {
+    ...gw, event: 'tool_call', ...agent, actorSub: userSub, server: 'mcp-jira', tool: 'get_issue',
+  }, false);
+  audit('invalid-agent-owner-on-user', 'agentOwner on a human call that is not an admin_change (CC-264).', {
+    ...gw, event: 'tool_call', ...user, agentOwner: ownerSub, server: 'mcp-jira', tool: 'get_issue',
+  }, false);
+  audit('invalid-authentication-with-principal-type', 'principalType comes from an unverified token and is not allowed in event authentication (CC-264).', {
+    ...gw, event: 'authentication', reason: 'agent_not_registered', outcome: 'denied', principalType: 'agent',
+  }, false);
+  audit('invalid-principal-type-user', 'A human is not written: principalType user is not a value (CC-264).', {
+    ...gw, event: 'tool_call', ...user, principalType: 'user', server: 'mcp-jira', tool: 'get_issue',
+  }, false);
+}
+
 // ---------- ReturnPath (C4, C12, CC-032) ----------
 
 const returnPath = (name, description, value, valid) => write('return-paths', `${name}.json`, { description, value, expected: { valid } });

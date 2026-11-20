@@ -1,0 +1,26 @@
+{
+  "description": "A call above the maximum risk of the agent (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "policy_decision",
+    "sub": "9a4e7c10-2b5d-4f38-b6a1-0d8c3e5f7a22",
+    "username": "service-account-agent-nightly",
+    "client": "agent-nightly",
+    "principalType": "agent",
+    "server": "mcp-jira",
+    "tool": "delete_issue",
+    "risk": "DESTRUCTIVE",
+    "decision": "deny",
+    "reason": "agent_max_risk",
+    "policyRevision": 41,
+    "outcome": "denied",
+    "errorCode": "not_found_or_denied",
+    "argsLength": 20
+  }
+}
