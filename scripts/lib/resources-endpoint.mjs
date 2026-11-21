@@ -50,13 +50,17 @@ export function mcpNameValue(header) {
  * Order of the checks of resources/read (CC-259). The token is checked before (a 401 never gets here). Input:
  *   era, header (the Mcp-Name value or null), uri, entries { resources, templates } (approved, with variables and idPattern),
  *   access: allowed | not_granted | policy_forbid   (registry entry in any state, then Cedar read_resource at resource level),
- *   inFilter, entry { approved, enabled, definitionMatches }, killSwitch: none | set | unreadable, serverAvailable,
+ *   inFilter, entry { approved, enabled, definitionMatches }, killSwitch: none | set | unreadable (of the server or of the resource),
+ *   server { status, connectionApproved, policiesApproved, enabled } (as in visibleEntries; the defaults are the healthy values), serverAvailable,
  *   credential { required, connected, connectUrl, system } (templates only; a static resource never calls the broker),
  *   upstream { outcome: ok | error | input_required, contents, bytes }, maxBytes.
- * Steps 3 to 6 end in -32602 (D5); a header mismatch is -32020 in the modern era only.
+ * Steps 3 to 6 end in -32602 (D5); a header mismatch is -32020 in the modern era only. Step 6 looks at the state of the server before the one
+ * of the entry, as prompts/get does: a server that is pending_approval, whose connection or policies are not approved (CC-249) or that is
+ * disabled gets the same -32602 as a missing resource, before any call of the server or the broker; an unreachable server (step 7) stays
+ * -32603.
  */
 export function readDecision(input) {
-  const { era, header, uri, entries, access = 'allowed', inFilter = true, entry = {}, killSwitch = 'none', serverAvailable = true, credential, upstream, maxBytes } = input;
+  const { era, header, uri, entries, access = 'allowed', inFilter = true, entry = {}, killSwitch = 'none', server = {}, serverAvailable = true, credential, upstream, maxBytes } = input;
   const denied = (auditReason, step) => ({ outcome: 'denied', error: resourceNotFound(uri), auditReason, step });
   const failed = (error, auditReason, step) => ({ outcome: 'error', error, auditReason, step });
   if (era === 'modern' && (header === null || header === undefined || mcpNameValue(header) !== uri)) {
@@ -70,6 +74,8 @@ export function readDecision(input) {
   const state = { approved: true, enabled: true, definitionMatches: true, ...entry };
   if (killSwitch === 'unreadable') return failed(upstreamUnavailable(), 'upstream_unavailable', 6);
   if (killSwitch === 'set') return denied('kill_switch', 6);
+  const { status = 'approved', connectionApproved = true, policiesApproved = true, enabled = true } = server;
+  if (status !== 'approved' || !connectionApproved || !policiesApproved || !enabled) return denied('not_granted', 6);
   if (!state.approved || !state.enabled) return denied('not_granted', 6);
   if (!state.definitionMatches) return denied('definition_changed', 6);
   if (!serverAvailable) return failed(upstreamUnavailable(), 'upstream_unavailable', 7);
@@ -107,12 +113,17 @@ export function promptGetDecision({ name, known = true, access = 'allowed', inFi
 /**
  * Blocks of a tools/call or resources/read result that point at a URI: a resource_link or an embedded resource whose scheme is not
  * the system of the server (an adapter: <system>+<foreign scheme>) is removed, with the audit reason link_scheme_refused. `blocks`
- * is [{ type, uri? , resource?: { uri } }].
+ * is [{ type, uri? , resource?: { uri } }]. The scheme is read as RFC 3986 says (ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) before the first
+ * colon) and compared exactly, case included (as in the URI match of resources/read); a URI without a scheme is refused.
  */
 export function filterLinkBlocks({ system, adapter = false, blocks }) {
+  const schemeOf = (uri) => (typeof uri === 'string' ? /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(uri)?.[1] : undefined);
   const schemeOk = (uri) => {
-    const scheme = typeof uri === 'string' ? uri.slice(0, uri.indexOf('://')) : '';
-    return adapter ? scheme.startsWith(`${system}+`) : scheme === system;
+    const scheme = schemeOf(uri);
+    if (scheme === undefined) return false;
+    if (!adapter) return scheme === system;
+    const foreign = scheme.startsWith(`${system}+`) ? scheme.slice(system.length + 1) : undefined;
+    return foreign !== undefined && schemeOf(`${foreign}:`) === foreign;
   };
   const kept = [];
   let refused = false;

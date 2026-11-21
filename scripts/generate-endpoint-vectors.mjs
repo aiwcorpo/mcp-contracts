@@ -944,6 +944,11 @@ readVector('pending-entry', 'An entry that waits for approval.', { entry: { appr
 readVector('definition-changed', 'The server lists another definition than the approved one.', { entry: { definitionMatches: false } });
 readVector('cut-by-filter', 'The address filter leaves the resource out.', { inFilter: false });
 readVector('kill-switch', 'A kill switch of the server.', { killSwitch: 'set' });
+readVector('server-kill-switch', 'A kill switch of the server whose resource is read, the server otherwise approved: -32602 kill_switch before any call.', { killSwitch: 'set', server: { status: 'approved' } });
+readVector('server-pending', 'The server is pending_approval: its resources are hidden whatever the state of the entry.', { server: { status: 'pending_approval' } });
+readVector('server-connection-not-approved', 'The connection of the server (CC-249) is not approved.', { server: { connectionApproved: false } });
+readVector('server-policies-not-approved', 'The policies of the server (CC-249) are not approved.', { server: { policiesApproved: false } });
+readVector('server-disabled', 'A server with enabled: false.', { server: { enabled: false } });
 readVector('kill-switch-store-unreadable', 'An unreadable store of the switches is -32603 upstream_unavailable, never -32602.', { killSwitch: 'unreadable' });
 readVector('server-unavailable', 'The server does not answer: -32603 upstream_unavailable.', { serverAvailable: false });
 readVector('credential-required', 'A template whose credential is required and not connected: -32603 with connectUrl built by the gateway.', { credential: { required: true, connected: false, system: 'servicedesk', connectUrl: 'https://portal.aiwcorpo.pl/connect/servicedesk' } });
@@ -992,6 +997,11 @@ for (const [name, description, input] of [
   ['link-own-scheme-kept', 'A link under the system scheme stays.', { system: 'servicedesk', blocks: [{ type: 'resource_link', uri: TICKET_URI, name: 'ticket' }] }],
   ['embedded-other-scheme-removed', 'An embedded resource with another scheme is removed too.', { system: 'servicedesk', blocks: [{ type: 'resource', resource: { uri: 'file:///etc/passwd', text: 'x' } }] }],
   ['adapter-scheme-prefix', 'For an adapter the scheme is <system>+<foreign scheme>.', { system: 'legacydb', adapter: true, blocks: [{ type: 'resource_link', uri: 'legacydb+ftp://host/f', name: 'f' }, { type: 'resource_link', uri: 'ftp://host/f', name: 'g' }] }],
+  ['link-without-scheme', 'A link without a scheme is refused, and so is a string with no colon at all.', { system: 'servicedesk', blocks: [{ type: 'resource_link', uri: 'ticket/SD-1042', name: 'a' }, { type: 'resource_link', uri: '//servicedesk/ticket', name: 'b' }, { type: 'resource', resource: { uri: 'servicedesk', text: 'x' } }] }],
+  ['link-scheme-only-a-prefix', 'A scheme that only starts with the system is another scheme.', { system: 'servicedesk', blocks: [{ type: 'resource_link', uri: 'servicedeskX://ticket/SD-1042', name: 'a' }, { type: 'resource_link', uri: 'servicedesk+x://ticket/SD-1042', name: 'b' }] }],
+  ['link-upper-case-scheme', 'The scheme is compared as written (README, matching a URI): SERVICEDESK is not servicedesk.', { system: 'servicedesk', blocks: [{ type: 'resource_link', uri: 'SERVICEDESK://ticket/SD-1042', name: 'a' }, { type: 'resource_link', uri: 'ServiceDesk://ticket/SD-1042', name: 'b' }] }],
+  ['adapter-scheme-prefix-only', 'For an adapter the system part must be followed by + and a valid scheme: jiraX://, jira+ alone and jira+1x are refused.', { system: 'jira', adapter: true, blocks: [{ type: 'resource_link', uri: 'jiraX://host/f', name: 'a' }, { type: 'resource_link', uri: 'jira+://host/f', name: 'b' }, { type: 'resource_link', uri: 'jira+1x://host/f', name: 'c' }, { type: 'resource_link', uri: 'jira+ftp://host/f', name: 'd' }] }],
+  ['adapter-upper-case-scheme', 'Upper case in the system part is refused for an adapter too.', { system: 'jira', adapter: true, blocks: [{ type: 'resource_link', uri: 'JIRA+ftp://host/f', name: 'a' }, { type: 'resource_link', uri: 'Jira+ftp://host/f', name: 'b' }] }],
 ]) endpointOut(`resources-${name}`, { description, kind: 'links', input, expected: filterLinkBlocks(input) });
 
 // endpoint-aggregate: lists of resources, templates and prompts

@@ -1,0 +1,24 @@
+{
+  "description": "Upper case in the system part is refused for an adapter too.",
+  "kind": "links",
+  "input": {
+    "system": "jira",
+    "adapter": true,
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "JIRA+ftp://host/f",
+        "name": "a"
+      },
+      {
+        "type": "resource_link",
+        "uri": "Jira+ftp://host/f",
+        "name": "b"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [],
+    "auditReason": "link_scheme_refused"
+  }
+}

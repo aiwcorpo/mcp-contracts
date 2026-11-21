@@ -1,0 +1,30 @@
+{
+  "description": "A link without a scheme is refused, and so is a string with no colon at all.",
+  "kind": "links",
+  "input": {
+    "system": "servicedesk",
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "ticket/SD-1042",
+        "name": "a"
+      },
+      {
+        "type": "resource_link",
+        "uri": "//servicedesk/ticket",
+        "name": "b"
+      },
+      {
+        "type": "resource",
+        "resource": {
+          "uri": "servicedesk",
+          "text": "x"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [],
+    "auditReason": "link_scheme_refused"
+  }
+}

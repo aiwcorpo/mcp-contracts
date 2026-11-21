@@ -483,8 +483,9 @@ do not concern them. Reference `primitivesVisible` in `scripts/lib/endpoint-filt
 3. The URI matches an approved template or static resource (below).
 4. `mayRead`: a registry entry (in any state) and the Cedar decision `read_resource` at resource level (CC-262).
 5. The address filter.
-6. The state of the entry: pending, hash mismatch, kill switch. An unreadable store of the switches is `-32603` `upstream_unavailable`, not `-32602`
-   (as in CC-178).
+6. The state: kill switch (of the server or of the resource), then the state of the server (`pending_approval`, connection or policies not approved
+   (CC-249), `enabled: false`, as for `prompts/get` and the lists), then the state of the entry (pending, hash mismatch). All of them are `-32602` before
+   any call of the server or the broker. An unreadable store of the switches is `-32603` `upstream_unavailable`, not `-32602` (as in CC-178).
 7. The server is available.
 8. The credential from the broker for a template, according to `credential.required` (a static resource never calls the broker).
 9. The call of the server with the claim `resource` (CC-260).
@@ -523,7 +524,9 @@ field `text`. A `blob` is refused (`result_invalid`, audit reason `blob_not_supp
 configuration) is `-32603` and the reason `result_too_large`. The content is untrusted data (D2): the server removes forbidden characters (text
 hygiene) and the gateway checks the shape without rewriting the text. In results of `tools/call` and `resources/read` the gateway removes
 `resource_link` blocks and embedded resources whose URI scheme is not the `system` of the server (an adapter: `<system>+<foreign scheme>`), with
-the audit reason `link_scheme_refused`. This changes the existing behaviour of tool results. Vectors `mcp-endpoint/resources-link-*`.
+the audit reason `link_scheme_refused`. The scheme is the part of the URI before the first colon and must match `^[A-Za-z][A-Za-z0-9+.-]*` (RFC 3986);
+it is compared byte for byte, case included, so `SERVICEDESK://` is not `servicedesk://`, `servicedeskX://` is not `servicedesk://`, and a URI with no scheme
+is refused. For an adapter the scheme is `<system>+<scheme>` with a valid `<scheme>` after the plus. This changes the existing behaviour of tool results. Vectors `mcp-endpoint/resources-link-*`.
 
 **Server side (C14).** A server serves `resources/list`, `resources/templates/list` and `resources/read` at `internalUrl`. The token has `use: call`:
 `resources/read` carries the claim `resource` equal to `params.uri`, the lists carry neither `tool` nor `resource`. The policy data gate covers
@@ -1606,7 +1609,7 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
 | `endpoint-filter/` | 119 | the `/mcp` query filter (CC-170, CC-172, CC-178, CC-184): syntax and normalization, the `/s/` route, the visible set (also a risk outside the set), `tools/call` under a filter and with tool, server and account state, session binding and the order of checks, the `400` body; Java runs `parse`, `route`, `apply`, `call`, `session` |
 | `endpoint-aggregate/` | 114 | the `/mcp` list as an intersection, order, routing by prefix, server availability and the time limit (CC-180), pages and the `tools/list` cursor (CC-181), `list_changed`, `/v/` as `404` (CC-169, CC-177) |
-| `mcp-endpoint/` | 78 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182); the 60 files `resources-*` (with a `kind`) are the answers of the gateway for resources and prompts: capabilities, result fields per era, methods, the order of the checks of `resources/read` and `prompts/get`, the one `-32602`, `-32020`, links (CC-259) |
+| `mcp-endpoint/` | 88 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182); the 70 files `resources-*` (with a `kind`) are the answers of the gateway for resources and prompts: capabilities, result fields per era, methods, the order of the checks of `resources/read` and `prompts/get`, the one `-32602`, `-32020`, links (CC-259) |
 | `kill-switch/` | 44 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
 | `agent-clients/` | 10 | the agent registry: validation of `create` and `update` (`agent_group_not_allowed`, `max_risk_not_allowed`, duplicate), `owner=me`, the whole list needs the administrator group (CC-266) |
 | `broker-eligibility/` | 15 | what the broker answers for an agent or a delegated principal per credential type, `agentsAllowed` and `resolve` with `resource` (CC-261) |
