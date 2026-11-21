@@ -1,0 +1,60 @@
+{
+  "description": "An adapter may list resources and templates: the scheme is <system>+<foreign scheme>, template variables carry maxLength and a pattern instead of a type, no additionalGroup (CC-258).",
+  "expected": {
+    "valid": true
+  },
+  "manifest": {
+    "serverId": "mcp-jira",
+    "version": "0.4.0",
+    "contractsVersion": "8.0.0",
+    "system": "jira",
+    "source": "adapter",
+    "internalUrl": "https://mcp-jira.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth",
+        "user-secret"
+      ]
+    },
+    "resourceTypes": [],
+    "tools": [],
+    "resources": [
+      {
+        "name": "field_guide",
+        "definition": {
+          "name": "field_guide",
+          "title": "Field guide",
+          "description": "Which Jira fields the teams use.",
+          "uri": "jira+file:///docs/fields.md",
+          "mimeType": "text/markdown"
+        },
+        "definitionHash": "sha256:f1bb4fbdd7d854726972a47924dc9fdeccf50d23510189393d90bba153f56c61"
+      }
+    ],
+    "resourceTemplates": [
+      {
+        "name": "attachment",
+        "definition": {
+          "name": "attachment",
+          "title": "Attachment",
+          "description": "One attachment of an issue.",
+          "uriTemplate": "jira+file:///issues/{issueKey}/attachments/{attachmentId}"
+        },
+        "variables": [
+          {
+            "name": "issueKey",
+            "maxLength": 32,
+            "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"
+          },
+          {
+            "name": "attachmentId",
+            "maxLength": 20,
+            "pattern": "^[0-9]{1,20}$"
+          }
+        ],
+        "definitionHash": "sha256:b3e927bbfce54b7d08c175bc4b7b684db8a73c6b45245a9e10a56fa406d62e81"
+      }
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "description": "The marker agent on an azp that is not in the registry: 401 agent_not_registered.",
+  "input": {
+    "token": {
+      "azp": "agent-unknown",
+      "sub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+      "principalType": "agent",
+      "iat": 1000,
+      "exp": 1300
+    },
+    "registry": [
+      {
+        "clientId": "agent-reports",
+        "serviceAccountSub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+        "status": "active"
+      },
+      {
+        "clientId": "agent-sleeper",
+        "serviceAccountSub": "0b3a9d52-6a3c-4d06-8e1c-4f5a7f1e9c33",
+        "status": "suspended"
+      }
+    ]
+  },
+  "expected": {
+    "principal": "agent",
+    "decision": "deny",
+    "status": 401,
+    "reason": "agent_not_registered"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "description": "A confirmed broker version of 8.0.0 or more.",
+  "kind": "emission",
+  "input": {
+    "emission": {
+      "receiver": "broker",
+      "confirmedBrokerVersion": "8.0.0"
+    }
+  },
+  "expected": {
+    "emit": true
+  }
+}

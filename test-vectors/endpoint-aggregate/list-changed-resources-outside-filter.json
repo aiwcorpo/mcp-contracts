@@ -1,0 +1,19 @@
+{
+  "description": "A change the address filter cuts out is not notified (tools= hides every resource).",
+  "kind": "list-changed",
+  "primitives": true,
+  "input": {
+    "query": "tools=jira__get_issue",
+    "before": [],
+    "after": [
+      {
+        "system": "servicedesk",
+        "name": "runbook",
+        "definitionHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "expected": {
+    "notify": false
+  }
+}

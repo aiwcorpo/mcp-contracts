@@ -1,0 +1,24 @@
+{
+  "description": "An agent with a user-oauth system: 403 principal_not_eligible, no credential_required.",
+  "input": {
+    "operation": "resolve",
+    "claims": {
+      "pty": "agent",
+      "tool": "get_issue"
+    },
+    "system": {
+      "supportedTypes": [
+        "user-secret",
+        "user-oauth",
+        "token-exchange"
+      ],
+      "agentsAllowed": false
+    },
+    "credentialType": "user-oauth"
+  },
+  "expected": {
+    "status": 403,
+    "error": "principal_not_eligible",
+    "touchedStore": false
+  }
+}

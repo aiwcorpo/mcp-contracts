@@ -1,0 +1,28 @@
+{
+  "description": "The connection of the server is not approved (CC-249).",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "prompts",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "summarize_ticket",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ],
+        "connectionApproved": false
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "description": "An entry that waits for approval.",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "resources",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "runbook",
+            "approved": false,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": []
+  }
+}

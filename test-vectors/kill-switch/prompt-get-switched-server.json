@@ -1,0 +1,23 @@
+{
+  "description": "prompts/get of a switched server.",
+  "kind": "primitive-switch",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "target": {
+      "kind": "prompt",
+      "serverId": "mcp-servicedesk",
+      "name": "summarize_ticket"
+    },
+    "event": "read"
+  },
+  "expected": {
+    "allowed": false,
+    "jsonRpcCode": -32602,
+    "auditReason": "kill_switch"
+  }
+}

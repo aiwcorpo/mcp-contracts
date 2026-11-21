@@ -74,6 +74,7 @@
     "context": {
       "client": "claude-code",
       "credentialType": "user-oauth",
+      "principalType": "user",
       "refs": []
     }
   },

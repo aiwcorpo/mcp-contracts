@@ -1,0 +1,130 @@
+{
+  "description": "A valueOnly type cannot be the type of a resourceRef: there is no entity to build.",
+  "expected": {
+    "valid": false,
+    "rule": "resource-types-valid"
+  },
+  "manifest": {
+    "serverId": "mcp-gitlab",
+    "version": "1.1.0",
+    "contractsVersion": "8.0.0",
+    "system": "gitlab",
+    "internalUrl": "https://mcp-gitlab.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "user-oauth",
+        "user-secret"
+      ]
+    },
+    "resourceTypes": [
+      {
+        "type": "GitLab::Group",
+        "attributes": [
+          "path",
+          "classification",
+          "inheritedClassification"
+        ],
+        "idPattern": "^[A-Za-z0-9](?:[._/-][A-Za-z0-9]|[A-Za-z0-9])*$",
+        "scopePattern": "^[A-Za-z0-9](?:[._/-][A-Za-z0-9]|[A-Za-z0-9])*$",
+        "classification": {
+          "attribute": "classification",
+          "kind": "set",
+          "required": false
+        }
+      },
+      {
+        "type": "GitLab::Project",
+        "attributes": [
+          "path",
+          "classification",
+          "inheritedClassification"
+        ],
+        "parent": "GitLab::Group",
+        "parentAttribute": "group",
+        "idPattern": "^[A-Za-z0-9](?:[._-][A-Za-z0-9]|[A-Za-z0-9])*/[A-Za-z0-9](?:[._/-][A-Za-z0-9]|[A-Za-z0-9])*$",
+        "classification": {
+          "attribute": "classification",
+          "kind": "set",
+          "required": false
+        }
+      },
+      {
+        "type": "GitLab::Ref",
+        "valueOnly": true,
+        "idPattern": "^[A-Za-z0-9_](?:[./-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "type": "GitLab::FilePath",
+        "valueOnly": true,
+        "idPattern": "^[A-Za-z0-9_](?:[./-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      }
+    ],
+    "tools": [
+      {
+        "name": "get_file",
+        "risk": "READ_ONLY",
+        "action": "read",
+        "resourceRefs": [
+          {
+            "argument": "filePath",
+            "type": "GitLab::FilePath"
+          }
+        ],
+        "definition": {
+          "name": "get_file",
+          "title": "Get file",
+          "description": "Returns one file of the default repository.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "filePath": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_./-]+$",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "filePath"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "definitionHash": "sha256:4cb9996db57c4b598c9e7d365a2bd0aa23a3bd295906c83e2f94314642097c22"
+      }
+    ],
+    "resourceTemplates": [
+      {
+        "name": "blob",
+        "definition": {
+          "name": "blob",
+          "title": "File",
+          "description": "One file of a repository at a ref.",
+          "uriTemplate": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+          "mimeType": "text/plain"
+        },
+        "variables": [
+          {
+            "name": "projectPath",
+            "type": "GitLab::Project"
+          },
+          {
+            "name": "ref",
+            "type": "GitLab::Ref"
+          },
+          {
+            "name": "filePath",
+            "type": "GitLab::FilePath"
+          }
+        ],
+        "definitionHash": "sha256:8ef4db0eded0a6ca487f4f9dac3d928deff16f832bd119b296738ebc793a4a12"
+      }
+    ],
+    "policies": {
+      "namespace": "GitLab",
+      "schema": "// Reference fragment, not a policy of the platform: the schema of a GitLab server in the form the platform requires.\n\nnamespace GitLab {\n  // classification: topics of the group or project itself, normalized by the builder; optional (CC-057).\n  // inheritedClassification (CC-129): union of the normalized classification of ALL ancestor groups. Topics are not\n  // inherited in GitLab, so a restricted group protects its subtree only through this attribute. The server computes it\n  // from the ancestor groups it resolved (and normalizes it like classification: trim, ASCII lower case) and refuses a\n  // resource when the ancestor data is incomplete (fail-closed). The builder does not know it.\n  entity Group {\n    path: String,\n    classification?: Set<String>,\n    inheritedClassification: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n  entity Project in [Group] {\n    path: String,\n    group: Group,\n    classification?: Set<String>,\n    inheritedClassification: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n\n  action \"read\", \"update\", \"delete\", \"admin\" appliesTo {\n    principal: [User],\n    resource: [Group, Project],\n    context: RequestContext,\n  };\n}\n",
+      "files": []
+    },
+    "policiesHash": "sha256:88a853c29a5cb2ee1573c21f1724d0b9447616419a206ae8c7ea6d981e25bc78"
+  }
+}

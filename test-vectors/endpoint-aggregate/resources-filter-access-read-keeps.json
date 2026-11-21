@@ -1,0 +1,52 @@
+{
+  "description": "access=read keeps them.",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "resources",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "runbook",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          },
+          {
+            "name": "guide",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      },
+      {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "available": true,
+        "entries": [
+          {
+            "name": "conventions",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ],
+    "query": "access=read"
+  },
+  "expected": {
+    "visible": [
+      "jira__conventions",
+      "servicedesk__guide",
+      "servicedesk__runbook"
+    ]
+  }
+}

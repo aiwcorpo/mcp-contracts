@@ -1,0 +1,15 @@
+{
+  "description": "A cursor of resources used for tools: -32602 like a bad cursor. Key: test only, NOT FOR PRODUCTION.",
+  "kind": "primitive-cursor",
+  "input": {
+    "issuedKind": "resources",
+    "presentedKind": "tools"
+  },
+  "expected": {
+    "valid": false,
+    "error": {
+      "code": -32602,
+      "message": "Invalid cursor"
+    }
+  }
+}

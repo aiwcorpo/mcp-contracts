@@ -1,0 +1,12 @@
+{
+  "description": "The list methods are not evaluated against policy data by the server.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": null,
+    "prv": 41,
+    "method": "resources/list"
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

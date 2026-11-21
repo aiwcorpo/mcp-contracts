@@ -1,0 +1,18 @@
+{
+  "description": "A server whose manifest has no contractsVersion gets a push without the field (not an empty array), so a human call is not refused with 409 policy_data_stale.",
+  "input": {
+    "agents": [
+      {
+        "clientId": "agent-reports",
+        "status": "active"
+      },
+      {
+        "clientId": "agent-sleeper",
+        "status": "suspended"
+      }
+    ]
+  },
+  "expected": {
+    "includesAllowedAgentClients": false
+  }
+}

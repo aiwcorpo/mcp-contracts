@@ -2,10 +2,14 @@
 // is at least as new as the revision in the token and only for policies that the gateway has approved. `held` is the policy data the
 // server holds, as it read it from the last push: { revision, approvedPoliciesHash?, overridesValid } or null when it holds none;
 // `prv` is the revision claim of the internal JWT (null when absent). The server never fetches data itself.
+// Since 8.0.0 the gate also covers resources/read (CC-259).
 // A server that is behind answers 409 policy_data_stale before it does anything else with the request, which tells the gateway to push
 // and repeat the call once. Every other refusal is the unavailable error of the server (C10 upstream_unavailable), never access_denied,
 // and never an evaluation with older data.
-export function policyDataGate({ ownHash, held, prv }) {
+export function policyDataGate({ ownHash, held, prv, method = 'tools/call' }) {
+  // CC-259: the gate covers tools/call and resources/read. prompts/get never reaches a server (the gateway renders it), and the lists
+  // are not evaluated against policy data by the server.
+  if (method !== 'tools/call' && method !== 'resources/read') return { decision: 'continue' };
   if (held === null || (prv !== null && prv > held.revision)) {
     return { decision: 'deny', errorCode: 'policy_data_stale', reason: 'policy_data_stale', httpStatus: 409, gatewayAction: 'push_and_retry_once' };
   }

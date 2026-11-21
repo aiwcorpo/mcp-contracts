@@ -1,0 +1,17 @@
+{
+  "description": "The scheme is compared byte for byte: an upper-case scheme is another URI.",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "SERVICEDESK://ticket/SD-1042"
+  },
+  "expected": {
+    "match": false
+  }
+}

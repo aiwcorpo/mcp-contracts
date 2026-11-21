@@ -5,15 +5,17 @@
  * `source` of the first manifest (`manifestSource`: adapter, or null for a starter manifest). A later manifest whose source disagrees with
  * the stored mode is refused like any invalid manifest and changes nothing (manifest_invalid, adapter_source_mismatch).
  * `tools` is [{ name, risk (the risk the entry would have as a starter entry), state: new | changed | unchanged | removed }].
- * `runtimeRead` true is the difference the gateway finds when it reads tools/list of a running server (not a manifest pull).
+ * `prompts` is the number of prompts in the manifest. `runtimeRead` true is the difference the gateway finds when it reads tools/list of a running server (not a manifest pull).
  * Nothing is approved by a pull or by a read: every new or changed tool is pending, a READ_ONLY one included (CC-249).
  */
-export function manifestPullDecision({ serverMode = null, manifestSource = null, tools = [], runtimeRead = false }) {
+export function manifestPullDecision({ serverMode = null, manifestSource = null, tools = [], runtimeRead = false, prompts = 0 }) {
   if (runtimeRead) return pending(tools, serverMode === 'adapter' ? 'adapter' : 'server');
   const sourceMode = manifestSource === 'adapter' ? 'adapter' : 'starter';
   if (serverMode !== null && serverMode !== sourceMode) {
     return { stored: false, lastError: 'manifest_invalid', manifestReason: 'adapter_source_mismatch' };
   }
+  // CC-258, CC-265: a prompt of a foreign author under the name of the platform is an injection channel, so the manifest of an adapter has none.
+  if (sourceMode === 'adapter' && prompts > 0) return { stored: false, lastError: 'manifest_invalid', manifestReason: 'prompts-valid' };
   // A tool missing from the manifest of an adapter is removed with its classification (CC-207): when it returns it is new and unclassified.
   if (sourceMode === 'adapter') return { stored: true, adapter: true, ...pending(tools, 'adapter'), removed: removed(tools), classificationLost: removed(tools) };
   return { stored: true, adapter: false, ...pending(tools, 'manifest'), removed: removed(tools) };

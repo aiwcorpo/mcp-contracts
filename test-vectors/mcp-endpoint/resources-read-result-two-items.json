@@ -1,0 +1,58 @@
+{
+  "description": "Exactly one item of contents.",
+  "kind": "read",
+  "input": {
+    "era": "modern",
+    "header": "servicedesk://ticket/SD-1042",
+    "uri": "servicedesk://ticket/SD-1042",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "ok",
+      "bytes": 22,
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        },
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        }
+      ]
+    },
+    "maxBytes": 1048576
+  },
+  "expected": {
+    "outcome": "error",
+    "error": {
+      "code": -32603,
+      "message": "Internal error",
+      "data": {
+        "error": "upstream_unavailable"
+      }
+    },
+    "auditReason": "result_invalid",
+    "step": 10
+  }
+}

@@ -72,7 +72,7 @@
   "scripts": {
     "generate": "node scripts/bundle-openapi.mjs && node scripts/generate-mocks.mjs",
     "generate:mocks": "node scripts/generate-mocks.mjs",
-    "generate:vectors": "node scripts/generate-vectors.mjs && node scripts/generate-totp-vectors.mjs && node scripts/generate-text-hygiene-vectors.mjs && node scripts/generate-cursor-vectors.mjs && node scripts/generate-endpoint-vectors.mjs",
+    "generate:vectors": "node scripts/generate-vectors.mjs && node scripts/generate-totp-vectors.mjs && node scripts/generate-text-hygiene-vectors.mjs && node scripts/generate-cursor-vectors.mjs && node scripts/generate-endpoint-vectors.mjs && node scripts/generate-agent-vectors.mjs",
     "generate:cedar": "node scripts/generate-cedar-vectors.mjs",
     "build": "node scripts/build-npm.mjs",
     "lint:openapi": "spectral lint --fail-severity=warn openapi/*.yaml openapi/bundled/*.yaml",

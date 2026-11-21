@@ -250,6 +250,14 @@ when a server is added or removed, a manifest changes or the administrator write
 (`ScopeMapping.of` to validate a document, `ScopeMapping.ofRegistered` to evaluate (skips an invalid scope on its own and reports it in `ignored()`), `ScopeMapping.fromJson` for the `scopeMapping`
 of the policy data). `Scopes.pathPrefixes` and `Scopes.dashPrefixes` are helpers for the server that derives `scopes` of a resource.
 
+**Resources, prompts and principal type (8.0.0).** `builder.forResourceRead(caller, ResourceDescriptor, values)` and
+`builder.forPromptGet(caller, PromptDescriptor)` build `Action::"read_resource"` on `McpResource` and `Action::"get_prompt"` on
+`McpPrompt` (CC-262); `Caller.withPrincipalType("agent")` and `withActor(sub)` fill `context.principalType` (always present, `user` by
+default) and `context.actor` (only with `delegated`; otherwise `internal_error`) (CC-263). A `valueOnly` declaration
+(`ResourceTypeDeclaration.valueOnly()`) stays in `ResourceTypes.declarations()` and validates ids, while `entityDeclarations()`
+(what fragments, `PlatformServerPolicies` and requests are built from) leaves it out; it is refused as a `resourceRef` type and as a
+resolved resource (`internal_error`).
+
 **API compatibility (CC-039):** the public records (`Caller`, `ToolDescriptor`, `ResourceRef`, `ResolvedResource`,
 `ResourceTypeDeclaration`, `CedarRequest`, `QueryConstraint`) and the cedar-java types in signatures are part of the API. Adding
 a record component, or moving to a new major version of cedar-java, is a new major version of the library.
@@ -324,15 +332,31 @@ Each IGA adapter chooses the requester identifier from configuration (for exampl
 `preferred_username`); a missing claim in `Requester` is an adapter error and a refusal (fail-closed). The shapes of
 `AccessRequest` and `RequestResult`: CC-024.
 
-## Frozen Cedar schema (7.0 line)
+## Frozen Cedar schema (8.0 line)
 
 `cedar/mcp.cedarschema` is the base schema, in the empty namespace. Every server's fragment is appended to its text and validated
 against the result, so the file is frozen byte for byte within a major line, including the header comment and LF line endings:
 a change of one byte could make a fragment that validated yesterday fail today. The tests (Node and Java) compare the SHA-256 of
-the file (`.gitattributes` enforces LF). SHA-256 of the 7.0.0 schema: `6340b0f5704c5d865aac9ec4e3e16cfcbdd2cfe6a4748377db7abcad7d8518b1`.
-It names no system, server or resource type; it has `ResourceScope`, `UserGroup`, `User` (with one flat `scopes` set), `Tool` (with
-`requiredGroup`), `RequestContext` (`refs` is a set of `ResourceScope`) and the action `call`. The previous bytes
-(`51d71b2d...`, 5.0.0 ... 6.3.2) are not valid on this line, and policy bundles no longer exist.
+the file (`.gitattributes` enforces LF). SHA-256 of the 8.0.0 schema: `a9adfc9d55519c7d8da31a5666a7e4d56f07724f41b31f84eec3285ea1917ed8`.
+It names no system, server or resource type; it has `ResourceScope`, `UserGroup`, `User` (with one flat `scopes` set), `Tool`
+(with `requiredGroup`), `McpResource` and `McpPrompt` (CC-262: `server`, `name`, `requiredGroup`, `additionalGroup?`, and
+`uriTemplate` for a resource), `RequestContext` (`refs` is a set of `ResourceScope`; CC-263 adds the optional `principalType`,
+`actor`) and the actions `call` on `Tool`, `read_resource` on `McpResource` and `get_prompt` on `McpPrompt`. The previous bytes
+(`6340b0f5...`, 7.0.0 ... 7.x; `51d71b2d...`, 5.0.0 ... 6.3.2) are not valid on this line, and policy bundles no longer exist.
+The `policiesHash` of a server does not change with the base schema (it covers `policies` and `resourceTypes` only), but the
+gateway and the starter must compose the fragments with the 8.0 schema to get one text.
+
+The second part of a resource type of a server (`Notes::<Name>`) is never one of `User`, `UserGroup`, `ResourceScope`, `Tool`,
+`McpResource`, `McpPrompt`, `RequestContext`: such a type would shadow a type of the base schema. The manifest rule
+`resource-type-name-reserved` refuses it, so check the manifests of registered servers before the gateway moves to 8.0.
+
+Platform policies of `cedar/platform` (decided by the gateway, never by a server): `call-by-group` and `call-additional-group`,
+`call-write-outside-scope`, `read-resource-by-group` and `read-resource-additional-group` (`platform-read-resource-*`),
+`get-prompt-by-group` and `get-prompt-additional-group` (`platform-get-prompt-*`), and `agent-no-destructive`
+(`platform-call-agent-no-destructive`, `platform-call-destructive-without-principal-type`): a DESTRUCTIVE tool is called only with
+`context.principalType == "user"`; `agent` and `delegated` are refused, and so is a request without `principalType`. A fragment
+policy may not mention `McpResource`, `McpPrompt`, `read_resource` or `get_prompt`; a gateway override must be a `forbid` on one of
+the pairs `call` / `Tool`, `read_resource` / `McpResource`, `get_prompt` / `McpPrompt`.
 
 ## Resource identifiers
 
@@ -350,16 +374,39 @@ Rules for the JWT variants (CC-030, CC-033, CC-038, CC-069, CC-070):
 | Request | Variant | `tool` |
 | --- | --- | --- |
 | `tools/call` (also a retry with `inputResponses` after an `InputRequiredResult`, MRTR) | user | required, `== params.name`, a new JWT for every retry |
+| `resources/read` (CC-260) | user | forbidden; `resource` required, `== params.uri` |
 | `initialize`, `server/discover`, `tools/list`, `ping` | user or service | forbidden |
+| `resources/list`, `resources/templates/list` (CC-260) | user, or service outside a session | forbidden; no `resource` either |
 | server `GET /.well-known/mcp-manifest` (the gateway pulls the manifest, C14) | none: served without a token | none |
 | server `POST /.well-known/mcp-policy-data` (the gateway pushes policy data, C14) | service only, `use: policy-data` | forbidden |
 | `subscriptions/listen`, `notifications/*`, JSON-RPC responses, `GET`/`DELETE` on the MCP endpoint | user only | forbidden |
-| broker `POST /v1/credentials/resolve` | user only | required |
+| broker `POST /v1/credentials/resolve` | user only | exactly one of `tool` and `resource` (`resource` for the resolve that serves `resources/read`, CC-260) |
 | broker `GET /v1/authenticator`, `POST /v1/authenticator/verify`, `POST /v1/authenticator/invalidate-codes` (from the gateway, CC-092, CC-128) | user only | required (the tool being confirmed; for `invalidate-codes`, the tool of the operation that causes the burn) |
 | broker `GET /v1/systems` | user or service | forbidden |
 
 The service variant is used only without a session (statelessly): all requests within a session, including
 `notifications/initialized` and `notifications/cancelled`, use the user variant (CC-070).
+
+**Claims `resource`, `pty` and `act` (CC-260, 8.0.0).** All three are optional claims of the user variant (`UserBase`); the service variant stays
+closed and carries none of them, and `use` stays `call | policy-data`.
+- `resource` is a `ResourceUri` (`common.schema.json`), the URI itself and not the name of a template. It is present exactly at
+  `resources/read` (and at the broker `resolve` that serves it) and the receiver requires `resource == params.uri`, as it does for
+  `tool` and `params.name`: a server does not accept a token issued for another URI. At most one of `tool` and `resource` (a schema rule),
+  and the broker `resolve` carries exactly one. `initialize`, `server/discover`, `ping`, the lists and the streams carry neither. There is no
+  claim for prompts: the gateway renders them itself and calls no server (see "Resources and prompts"). The sidecar of an adapter gets
+  `resource` for `resources/read` without a classification (`mcp_risk` and `mcp_action` belong to `tools/call`).
+- `pty` is `agent` or `delegated`; absent means a human, and that absent form is the only one (`user` is invalid), so every existing vector
+  stays as it is. For `pty: agent`, `sub` is the `sub` of the service account in the IdP (a UUID kept in the registry), `usr` its
+  `preferred_username` (`service-account-agent-...`), `azp` the client `agent-<slug>`, `grp` the groups after the intersection with the
+  ceiling of the registry, and `mfa` is absent.
+- `act` is the object `{sub, azp}` (both strings of 1 to 255 characters, nothing else), present exactly when `pty` is `delegated`. The
+  delegated mode is defined now so that receivers need one release, not two; the gateway does not emit it before stage T2.
+- The names `mcp_risk` and `mcp_action` (CC-226) do not collide with `act`. Claims of the IdP token are never copied (vector
+  `idp-token-claims/with-pty-and-act`).
+Vectors: `jwt/valid-resource-read`, `valid-list-resources-user`, `valid-list-resources-service`, `valid-agent-pty`,
+`valid-delegated-pty-act`, `valid-broker-resolve-resource`, and the rejections `resource-*`, `service-variant-with-resource`, `pty-*`, `act-*`.
+The reasons of the reference receiver for the three checks that are not in the schema are `resource_missing`, `resource_not_allowed` and
+`resource_mismatch` (HTTP 401 like every claims failure).
 
 **Purpose of a token, `use` (CC-249).** Every internal JWT carries `use`: `call` or `policy-data`, and a receiver refuses a token whose
 purpose is not the one of the endpoint, with `401` and the reason `wrong_purpose`, whatever else is valid (signature, `aud`, `exp`, `jti`):
@@ -386,6 +433,114 @@ than it holds does not evaluate the call and answers `409 policy_data_stale`; th
 C11: in the MCP 2026-07-28 era, the "elicitation URL" confirmation channel is an `InputRequiredResult` with an elicitation
 request in URL mode, and the retried `tools/call` carries `inputResponses`. Elicitation may only open `previewUrl`; the human
 types the code in the client (CC-091, 3.0.0).
+
+## Resources and prompts (C14, README, CC-259)
+
+Since 8.0.0 the gateway answers `resources/list`, `resources/templates/list`, `resources/read`, `prompts/list` and `prompts/get`. Everything
+else of these families keeps the answer it had: `resources/subscribe` and `resources/unsubscribe`, the `resourceSubscriptions` filter of
+`subscriptions/listen`, `notifications/resources/updated`, `completion/complete`, `InputRequiredResult` from `resources/read` (a result
+`input_required` from a server is `upstream_unavailable`), sampling, roots (D15) and elicitation (D16) get `-32601`, HTTP `404` in the modern
+era and `200` in the legacy one. The two eras are the MCP revisions 2026-07-28 (modern) and 2025-11-25 (legacy). Reference:
+`scripts/lib/resources-endpoint.mjs`, `resource-uri.mjs`, `prompt-render.mjs`.
+
+**Capabilities.** Declared always, whatever the registry holds (an empty list is valid, and a client connected earlier keeps its signal):
+`resources: {subscribe: false, listChanged: true}` and `prompts: {listChanged: true}`; `completions` never. Modern: in `server/discover`;
+legacy: in `initialize`.
+
+**Fields of the results (modern era only; legacy has none of them).**
+
+| Method | `resultType` | `ttlMs` | `cacheScope` |
+| --- | --- | --- | --- |
+| `resources/list`, `resources/templates/list`, `prompts/list` | `complete` | `60000` | `private` |
+| `resources/read` | `complete` | `0` | `private` |
+| `prompts/get` | `complete` | none | none |
+
+`private` always: every answer depends on the authorization of the request. `prompts/get` is not a `CacheableResult` and carries only
+`resultType`, `description` and `messages`. Vectors `mcp-endpoint/resources-capabilities-*`, `resources-fields-*`, `resources-method-*`.
+
+**Lists.** The gateway builds all three lists from approved registry entries and never passes a list of a server on. Resources are the
+static ones, templates the templates, prompts are named `<system>__<prompt>`. An entry is listed when the user's groups and the Cedar decision
+allow it (`mcp-<system>-read`, `additionalGroup`), the entry is approved and enabled, no kill switch of the server is set and the address filter
+leaves it. The gateway reads the resource lists of a server (service variant) only to compare them with the approved definition, like
+`tools/list`; a mismatch hides the entry (reason `definition_changed`), and a server that does not answer within the limit is skipped without
+spoiling the list. Prompts are data of the manifest, so a change is a new hash and a pending state, and they follow the state of the server like
+tools: hidden (and `prompts/get` is `-32602`) while the server is `pending_approval`, its connection or policies are not approved (CC-249),
+`enabled` is `false` or a server kill switch is set. An `unreachable` server does not hide them, because the gateway renders them without it.
+All three lists are paged: up to 100 entries per page, `nextCursor` an HMAC bound to `sub`, to the normalized filter and to the kind of the list,
+valid 15 minutes. A cursor of another kind (`tools`, `resources`, `templates`, `prompts`) is `-32602` like a bad cursor. The order is system by
+`ServerId`, then name, bytewise. Vectors `endpoint-aggregate/resources-*`, `templates-*`, `prompts-*`, `cursor-*-presented-to-*`.
+
+**Filter (CC-170 rules for these entries).** `systems` and a system entry of `exclude` apply. When the address has `tools`, resources and prompts
+are hidden (`tools` narrows and adds nothing). `access=write` hides them (they are read-only), `access=read` keeps them. Tool entries of `exclude`
+do not concern them. Reference `primitivesVisible` in `scripts/lib/endpoint-filter.mjs`; vectors `endpoint-aggregate/*-filter-*`.
+
+**`resources/read`: order of the checks.**
+1. The token (`401`).
+2. Modern era only: the header `Mcp-Name` equals `params.uri` (a value outside ASCII is sent as `=?base64?<base64 of UTF-8>?=` and compared after
+   decoding). A difference, or a missing header, is the JSON-RPC error `-32020` (`HeaderMismatch`) and the audit reason `header_mismatch`. In the
+   legacy era there is no such header and none is required. The HTTP status of `-32020` is that of the transport document of the era; the
+   vectors pin the JSON-RPC error only.
+3. The URI matches an approved template or static resource (below).
+4. `mayRead`: a registry entry (in any state) and the Cedar decision `read_resource` at resource level (CC-262).
+5. The address filter.
+6. The state: kill switch (of the server or of the resource), then the state of the server (`pending_approval`, connection or policies not approved
+   (CC-249), `enabled: false`, as for `prompts/get` and the lists), then the state of the entry (pending, hash mismatch). All of them are `-32602` before
+   any call of the server or the broker. An unreadable store of the switches is `-32603` `upstream_unavailable`, not `-32602` (as in CC-178).
+7. The server is available.
+8. The credential from the broker for a template, according to `credential.required` (a static resource never calls the broker).
+9. The call of the server with the claim `resource` (CC-260).
+10. The check of the result.
+Steps 3 to 6 end in `-32602`; the audit reasons are `uri_no_match`, `variable_invalid`, `not_granted`, `policy_forbid`, `filter_scope`,
+`kill_switch`, `definition_changed`. Vectors `mcp-endpoint/resources-read-*`, `kill-switch/resource-*`.
+
+**Matching a URI to a template (RFC 6570 level 1).** The expansion of `{name}` percent-encodes every character outside `ALPHA`, `DIGIT`, `-`, `.`,
+`_`, `~`, so the slash of a value is in the URI only as `%2F`. The gateway decodes each variable exactly once (strict UTF-8), checks the
+`idPattern` of its type and the text hygiene, expands the template with the decoded values and requires the result to equal the requested URI
+byte for byte, up to the case of the hex digits in percent codes. Otherwise the URI does not match: a query, a fragment, userinfo, an upper-case
+scheme, an encoded slash in a variable whose type does not allow one, a double encoding, an unreserved character written as a code. A server uses
+the same algorithm and does not decode a value a second time. Vectors `resource-uri/` (`%2F` in `projectPath`, hex case, `ABC\n`).
+
+**Errors.** A URI that matches no template, a variable outside `idPattern`, a missing resource, no permission, a disabled or pending entry, a kill
+switch and the filter are one answer: the code `-32602`, the message `Resource not found`, `data: {"uri": <requested URI>}`, the same bytes in
+every case (a vector compares them). The code is the same in both eras; a legacy client accepts `-32002` next to `-32602`. `prompts/get`:
+`-32602`, `Prompt not found`, `data: {"name": <requested name>}`, also for an unknown, a missing required or a rejected argument (audit reasons
+`argument_invalid`, `not_granted`, `policy_forbid`, `filter_scope`, `kill_switch`). Errors after authorization: `-32603` with
+`data: {"error": "upstream_unavailable"}` (server unavailable, result rejected, unreadable store of the switches) and, when the account has no
+connection, `-32603` with `data: {"error": "credential_required", "system": <id>, "connectUrl": <link built by the gateway>}`. Over the rate limit:
+HTTP `429` with `Retry-After` and `{"error":"rate_limited",...}` as for any MCP request that is not `tools/call` ("Rate limits"), reason
+`rate_limited_*`.
+
+**`prompts/get`: the gateway renders the result.** After `mayGet` (Cedar `get_prompt`), the filter and the state of the entry, the gateway checks the
+arguments against `argumentRules` (`maxLength`, `pattern`, `type`). A value also passes the text hygiene and must not contain `<`, `>`, `{` or `}`
+whatever the pattern of the author says (a violation is `-32602`, reason `argument_invalid`); TAB, LF and CR are forbidden as in every value with a
+`pattern`, so arguments are one line. An unknown or a missing required argument is `-32602`. The result comes from the approved `messages`: each
+`{{name}}` is replaced literally by the value (an absent optional argument gives an empty string), every message is `content.type: text`, and
+`description` is `definition.description`. The server is not called; there is no credential, no claim and no `policy_data_stale` gate for this
+method. The author puts markers around an argument (`<ticket_id>{{ticketId}}</ticket_id>`). Vectors `prompt-render/`,
+`mcp-endpoint/resources-prompt-get-*`.
+
+**Result of `resources/read` and `resource_link`.** A server returns exactly one item of `contents` with `uri` equal to the requested one and the
+field `text`. A `blob` is refused (`result_invalid`, audit reason `blob_not_supported`); a total size above `MCP_RESOURCE_MAX_BYTES` (gateway
+configuration) is `-32603` and the reason `result_too_large`. The content is untrusted data (D2): the server removes forbidden characters (text
+hygiene) and the gateway checks the shape without rewriting the text. In results of `tools/call` and `resources/read` the gateway removes
+`resource_link` blocks and embedded resources whose URI scheme is not the `system` of the server (an adapter: `<system>+<foreign scheme>`), with
+the audit reason `link_scheme_refused`. The scheme is the part of the URI before the first colon and must match `^[A-Za-z][A-Za-z0-9+.-]*` (RFC 3986);
+it is compared byte for byte, case included, so `SERVICEDESK://` is not `servicedesk://`, `servicedeskX://` is not `servicedesk://`, and a URI with no scheme
+is refused. For an adapter the scheme is `<system>+<scheme>` with a valid `<scheme>` after the plus. This changes the existing behaviour of tool results. Vectors `mcp-endpoint/resources-link-*`.
+
+**Server side (C14).** A server serves `resources/list`, `resources/templates/list` and `resources/read` at `internalUrl`. The token has `use: call`:
+`resources/read` carries the claim `resource` equal to `params.uri`, the lists carry neither `tool` nor `resource`. The policy data gate covers
+`resources/read` as well (`409 policy_data_stale` before any work, "Policy data gate"). The server evaluates `read` on the entities resolved for
+the variables that have an entity. The only way to serve `resources/read` and `completion/complete` on a server is the wrapper of the starter
+(audit, Cedar, size limit, gate); from its release a server declares neither `completions` nor `logging` and `resources.subscribe` is `false`.
+Until then servers keep the defaults (empty lists, `resources/read` is `-32002`), the gateway does not forward these methods and does not read the
+capabilities of a server, and the gap of the starter classifier (these methods are `OTHER`, without the gate) is an accepted residual risk, not a
+safe state. Prompts never touch a server.
+
+**`list_changed`.** `notifications/resources/list_changed` and `notifications/prompts/list_changed` follow the rules of `tools/list_changed`
+(1 s window, delay up to 5 s, triggers: approval, disabling, kill switch, a definition change, removal, a change of groups or of the policy data
+revision, availability of the server). In the modern era only on the `subscriptions/listen` stream after the client asked for them. Vectors
+`endpoint-aggregate/list-changed-resources-*`, `list-changed-prompts-*`.
 
 ## TOTP code confirmations (C11, since 3.0.0)
 
@@ -621,7 +776,7 @@ itself always happens (CC-190, CC-191). Vectors `endpoint-aggregate/audit-thrott
 limited by the 512 bytes of the whole query, not by a hundred tools: after `tools=` 506 bytes remain, which is 16 names of 30
 characters (31 of 15); a larger selection is expressed with `systems` and `exclude` (CC-185). The filter only narrows: it never
 grants, and a client can omit or change it, so it is not a security boundary. Reference: `scripts/lib/endpoint-filter.mjs`, the
-Java class `pl.aiwcorpo.mcp.manifest.EndpointFilter` (module `mcp-manifest`), vectors `test-vectors/endpoint-filter/`.
+Java class `pl.aiwcorpo.mcp.manifest.EndpointFilter` (module `mcp-manifest`), vectors `test-vectors/endpoint-filter/`. Since 8.0.0 the filter also decides which resources and prompts are visible ("Resources and prompts"): `tools=` hides them, `access=write` hides them.
 
 **An IdP token with claims that do not exist (CC-201).** The gateway reads `iss`, `aud`, `sub`, `exp` and a few known claims from
 the client token and ignores the rest, including `vs` and `vsc` removed in 5.0.0: the token is accepted or rejected because of
@@ -660,7 +815,7 @@ filter, and permissions are decided by Cedar on every call. `GET` on `/mcp` and 
 DELETE` (after the token check) because the gateway does not expose a server stream (CC-179). Vectors: `endpoint-filter/session-*`
 and `session-order-*`.
 
-**Audit and activity (CC-174).** The gateway events `tool_call`, `policy_decision`, `confirmation` and `credential_resolve` have
+**Audit and activity (CC-174).** The gateway events `tool_call`, `policy_decision`, `confirmation`, `credential_resolve`, `resource_read` and `prompt_get` have
 the optional field `filter` (canonical form, at most 512 characters, only when the request had a filter); `authentication`,
 servers and the broker do not have it (correlation by `requestId`). `filter` entries have the syntax of system and tool names, but
 the client chooses them and nobody compares them with the platform's list (CC-186). The field `virtualServer` is gone from C8 and
@@ -922,8 +1077,8 @@ either side, no token to create, and no CI certificate. The server-facing interf
 
 The gateway pushes the policy data of a server to it (`POST /.well-known/mcp-policy-data`, body `PolicyData`: `revision`, `scopeMapping` reduced to the namespace of the server, `allowedClients`,
 `overrides` for this server or all servers, `approvedPoliciesHash`) after every change of the revision and periodically (at most every 60 s). The server never fetches anything. It replaces its data
-only with a strictly newer `revision` (equal or older: `200`, `accepted: false`; the gateway treats `accepted: false` with a revision above the one it pushed as a failed push). The token's `prv` is the revision of the body: a body with another `revision` is `400 invalid_request`. The data lives in memory, so a restarted server holds none. A `tools/call` is evaluated only through this gate
-(`scripts/lib/policy-data-gate.mjs`, Java twin `PolicyDataGate` in `mcp-manifest`):
+only with a strictly newer `revision` (equal or older: `200`, `accepted: false`; the gateway treats `accepted: false` with a revision above the one it pushed as a failed push). The token's `prv` is the revision of the body: a body with another `revision` is `400 invalid_request`. The data lives in memory, so a restarted server holds none. A `tools/call` and, since 8.0.0, a `resources/read` (CC-259) are evaluated only through this gate
+(`scripts/lib/policy-data-gate.mjs`, Java twin `PolicyDataGate` in `mcp-manifest`; `prompts/get` never reaches a server and has no gate):
 
 1. The server holds no data, or the `prv` of the token is greater than its `revision`: `409 {"error":"policy_data_stale","heldRevision":...,"requiredRevision":...}` before anything is executed.
    This wins over every other refusal: data that is behind decides nothing.
@@ -931,13 +1086,22 @@ only with a strictly newer `revision` (equal or older: `200`, `accepted: false`;
    its composed schema (`overrides_invalid`): the answer is `upstream_unavailable` (C10), final.
 3. Otherwise the call is evaluated.
 
-On `409 policy_data_stale` the gateway pushes its current data and repeats the `tools/call` **once** with a new token (new `jti`; the first token is spent). If the second answer is again `409`, or the push
+On `409 policy_data_stale` the gateway pushes its current data and repeats the `tools/call` or `resources/read` **once** with a new token (new `jti`; the first token is spent). If the second answer is again `409`, or the push
 fails, the client gets `upstream_unavailable`; any other refusal is not retried and triggers no push. Vectors: `policy-data-gate/` (the rule), `policy-data-push/` (the replacement rule and the gateway sequence).
 
-## Registry and definition pinning (CC-097, CC-133, CC-249)
+## Registry and definition pinning (CC-097, CC-133, CC-249, CC-258)
 
 For every tool the gateway keeps an approved definition (its fingerprint is `definitionHash`) and neither shows nor runs a tool
 whose current definition differs. Rules:
+
+0. **Resources, templates and prompts (8.0.0, CC-258).** They are pinned like tools. The hash is SHA-256 of the RFC 8785 form of a flat
+   object: `kind` (`resource`, `resourceTemplate` or `prompt`; the same content under another kind gives another hash), the members of
+   `definition` (resource: `name`, `title`, `description`, `uri`, `mimeType`, `annotations`; template: `uriTemplate` instead of `uri`;
+   prompt: `name`, `title`, `description`, `arguments`; a member outside the set is an error, as for tools), the entry fields
+   (`variables`; `argumentRules` and `messages`), `additionalGroup` when present, `system` and `credential`
+   (`scripts/lib/definition-hash.mjs` `primitiveHash`, `DefinitionHash.computePrimitive`, vectors `definition-hash/resource-*`,
+   `resource-template-*`, `prompt-*`). The text of a prompt reaches the model, so `messages` is pinned like the description of a tool.
+   The content of a resource is not pinned: only the definition and the URI template are.
 
 1. **Where the manifest comes from and who pulls it (CC-249).** The gateway pulls the manifest from the server itself (`GET /.well-known/mcp-manifest`, C14)
    when an administrator adds the server, on a refresh and in a runtime loop (at most every 60 s as an upper bound on staleness; an unreachable server may be retried sooner, the gateway uses 5 s); nothing is written to the registry by a
@@ -1073,7 +1237,68 @@ list of active ones is `GET /admin/v1/kill-switches`. In the portal: `PUT`/`DELE
   request stays in the registry and the portal, not in the event); refusals are `tool_call` deny with `reason: kill_switch`,
   `errorCode: tool_disabled`; the activity row `tool_disabled`.
 
+A server switch also hides the resources and prompts of the server and makes `resources/read` and `prompts/get` the one `-32602` answer with the
+reason `kill_switch`, after `mayRead` and the filter like for tools; an unreadable store is `-32603` `upstream_unavailable` and lists nothing (CC-259,
+vectors `kill-switch/resource-*`, `prompt-*`). Switches of single resources and prompts follow in the CC-265 paragraph below.
+
+Vector formats in `kill-switch/`, told apart by the top-level `kind` of the file: no `kind` is the switch of a tool (`input.tool`, expected
+`errorCode` as a string such as `tool_disabled`); `primitive-switch` is the decision for a resource or a prompt (`input.target`, one
+shape for server scope and entry scope, expected `jsonRpcCode`, `-32602` or `-32603`); `agent-switch` is the switch of an agent
+(`input.callerSub`, expected HTTP `status`). A runner picks the verifier by `kind` and fails on an unknown value.
+
 System and server mean the same here (`mcp-<system>`). Vectors `kill-switch/`.
+
+**Resources, prompts and agents (8.0.0, CC-265, CC-266).** `KillSwitch.scope` also takes `resource` and `prompt`, with the field `resource`
+(a static resource or a resource template, they share one name space) or `prompt` present exactly for that scope. Operations
+`putResourceKillSwitch`, `deleteResourceKillSwitch`, `putPromptKillSwitch` and `deletePromptKillSwitch` on
+`/admin/v1/registry/servers/{serverId}/{resources|prompts}/{name}/kill-switch` (portal: the same under `/api/v1/admin/...`). The semantics
+are those above (5 s, fail-closed, no fresh MFA to set, fresh MFA to lift); what the client sees is `-32602` (CC-259), and an unreadable store
+is `-32603`. The suspension of an agent is the kill switch of the agent registry (`PUT`/`DELETE` on `/admin/v1/agent-clients/{clientId}/kill-switch`,
+listed in `agentSwitches`): the owner of the agent may put it, only an administrator may lift it, and another person's agent is
+`404 not_found_or_denied`. Vectors `kill-switch/resource-*`, `prompt-*`, `agent-*`.
+
+
+**Resources, resource templates and prompts (8.0.0, CC-265).** The entries that CC-258 adds to the manifest are pinned the same way, with pairs of operations
+per kind: `getPendingResource` / `approveResource` (`.../resources/{name}/pending|approve`), `getPendingResourceTemplate` / `approveResourceTemplate`
+(`.../resource-templates/{name}/...`) and `getPendingPrompt` / `approvePrompt` (`.../prompts/{name}/...`), mirrored by the BFF under `/api/v1/admin/registry/...`.
+A pulled manifest approves nothing: every new or changed entry is `pending_approval`, a changed `messages` of a prompt changes its hash and hides the prompt until
+it is approved again, and an entry that leaves the manifest is removed. `approve*` takes `{definitionHash}`; `risk`, `action` or `acceptRiskLowering` is
+`422 manifest_rejected` with the reason `classification_not_allowed`, a hash that is not the `pendingHash` is `409`, a forbidden character (text hygiene) is `422`. No fresh MFA.
+`RegistryServer` gets `resources`, `resourceTemplates` and `prompts`, the catalog gets the same lists per server (and the portal tabs `resources` and `prompts`), and
+`ActivityCall` has `kind` (`tool`, `resource`, `prompt`) with `tool` present only for kind `tool`. Vectors `registry-approval/resource-*`, `resource-template-*`, `prompt-*`.
+
+## Agents (robot identity) (CC-261, CC-265, CC-266)
+
+An autonomous agent is a client of the IdP with its own service account. The platform knows it from an entry in the registry of the gateway
+(C5 `/admin/v1/agent-clients`), not from `MCP_ALLOWED_CLIENTS`. The claims the servers and the broker read (`pty`, `act`, `resource`) are CC-260.
+
+- **Registry entry (`AgentClient`).** `clientId` (`agent-...`, equal to `client_id` in the IdP), `serviceAccountSub` (the `sub` of the service account, not
+  `preferred_username`), `ownerSub`, `status` (`active` or `suspended`, from the kill switch), `maxRisk` (`READ_ONLY` by default, `UPDATE`; never
+  `DESTRUCTIVE`), `allowedGroups` (a ceiling of groups: the gateway intersects `grp` of the token with it; the suffix `-destructive` and
+  `mcp-platform-admin` are `422 agent_group_not_allowed`), `delegationAllowed`. The administrator creates the client in the IdP first; the gateway
+  stores the entry and does not check the IdP. Create, change, key rotation record, delete and lifting a suspension need a fresh MFA; suspending does not.
+  `GET /admin/v1/agent-clients?owner=me` returns the agents of the caller and needs no administrator group.
+- **`maxRisk`.** The gateway hides and refuses a tool whose risk is above `maxRisk` as part of `mayCall`: `not_found_or_denied`, audit reason
+  `agent_max_risk`, never `access_denied`. With `maxRisk: UPDATE` an `UPDATE` tool passes this check, but a confirmation needs the authenticator, which an agent does not have:
+  the gateway creates no confirmation and answers `access_denied` with the reason `principal_not_eligible`. Resources and prompts are read only and `maxRisk` does not limit them.
+  In the activity rows the reasons `agent_max_risk`, `agent_suspended` and `principal_not_eligible` are `denied_not_granted`.
+- **Who is an agent.** After `iss`, `aud` and `exp`, a token is an agent when `azp` is an active registry entry, `sub` equals `serviceAccountSub`, the IdP claim
+  `principal_type` is `agent` and `exp - iat` is at most 300 s. A known `azp` without the marker, an `azp` with the marker outside the registry, a different `sub`
+  and a longer lifetime are `401` (reasons `agent_not_registered`, `agent_token_lifetime`). A suspended agent is refused with `agent_suspended` (`access_denied` for
+  `tools/call`, `-32602` for resources and prompts). An unreadable registry refuses agents (fail-closed); humans are not affected. The purge of an owner suspends
+  the owner's agents (`agent_owner_purged`). Limits per agent are configuration (proposed 120 per minute per agent, 30 per tool): `429` with the reason `rate_limited_agent`.
+- **Servers (`allowedAgentClients`).** The policy data (C14) carry the active agents' `azp` in `allowedAgentClients`. A server takes `azp` of a token without `pty`
+  only from `allowedClients`, and of a token with `pty` agent or delegated only from `allowedAgentClients`. The gateway sends the field only to a server whose approved
+  manifest has `contractsVersion` 8.0.0 or higher and omits it entirely (not an empty array) for any other, because `PolicyData` is closed and an older server would
+  refuse the push, ending every human call as `409 policy_data_stale`. Creating, deleting, suspending and resuming an agent raises the revision and pushes the data.
+  Vectors `policy-data-push/allowed-agent-clients-*`, `old-server-without-allowed-agent-clients`, `policy-data-gate/agent-*`.
+- **Broker (`principal_not_eligible`, `agentsAllowed`).** For `pty: agent` the broker resolves only `service-account` (for a system with `agentsAllowed: true`) and
+  `token-exchange`; `user-oauth`, `user-secret` and a `service-account` without the flag are `403 principal_not_eligible` before the secret store, the connection
+  database or the IdP is touched. The authenticator operations (`GET /v1/authenticator`, `verify`, `invalidate-codes`) are `403 principal_not_eligible` for an agent.
+  `pty: delegated` needs `act` (otherwise `401 invalid_claims`) and works by the `sub` of the human. `resolveCredential` takes a token with `resource` instead of `tool`, exactly one of them.
+  `agentsAllowed` is a field of the system (`false` by default, only with `service-account`, otherwise `422 agents_allowed_without_service_account`); turning it on needs a fresh MFA,
+  turning it off alone does not. With it on, an agent and a human on the shared account are indistinguishable in the target system; accountability is in the audit.
+  The gateway maps `principal_not_eligible` to the C10 `access_denied` without `requiredEntitlements`. Vectors `broker-eligibility/`.
 
 ## Retention and offboarding (CC-134, CC-155)
 
@@ -1093,6 +1318,7 @@ System and server mean the same here (`mcp-<system>`). Vectors `kill-switch/`.
   flow could have created a connection after the first one).
 - **Audit trail:** every `purge` call (broker and gateway) leaves one `admin_change` event with the reason `user_purged`, also when
   there was nothing to delete and for an unknown `sub` (the `204` response is the same); plus per-connection events.
+- **Agents (CC-266).** The `purge` of an owner suspends the owner's agents (audit reason `agent_owner_purged`). As for every suspension, only an administrator lifts it, with a fresh MFA.
 - **Cleanup of unused connections.** After a period without use (broker configuration, 180 days by default) the broker removes the
   connection; the audit is `connection_change` with the reason `unused_cleanup`. Before that the portal marks them as expiring (no
   reminders).
@@ -1107,9 +1333,9 @@ The limit values are component configuration, not contract. The contract says on
   does not reach the server or the broker. **Other MCP requests** (`initialize`, `tools/list`, ...): HTTP `429` with `Retry-After`
   (seconds, at least 1) and the body `{"error":"rate_limited","message":...,"retryAfterSeconds":n}`, without `WWW-Authenticate` (the
   client should wait, not log in again, as in CC-124). There are no `X-RateLimit-*` headers anywhere: the settings are not
-  disclosed. Vectors: `gateway-authentication/rate-limited*.json`.
+  disclosed. Vectors: `gateway-authentication/rate-limited*.json`. An agent (CC-266) is limited per agent and per pair (agent, tool) on top of these; the values are configuration (120 and 30 per minute are proposed), the answer is the same `429` or `rate_limited` as above, and only the audit reason differs (`rate_limited_agent`). `resources/*` and `prompts/*` (CC-259) are such requests: over the limit they are the same `429`, with the audit reason `rate_limited_*`.
 - **Audit:** `tool_call` (for `tools/call`) or `policy_decision` with `decision: deny`, `outcome: denied`, `errorCode:
-  rate_limited` and the reason `rate_limited_user`, `rate_limited_client` or `rate_limited_tool` (the client does not learn which
+  rate_limited` and the reason `rate_limited_user`, `rate_limited_client` or `rate_limited_tool` (for an agent also `rate_limited_agent`, CC-264; the client does not learn which
   limit, the administrator does). The gateway may aggregate the excess as in CC-125. In `activity/calls` the row has the result
   `rate_limited` (filter group `denied`). The result of a row follows from the reason of the last event (CC-165): `rate_limited_*`
   -> `rate_limited`, `definition_changed` and `tool_not_served` -> `tool_disabled`, `exchange_denied` -> `denied_not_granted`, and
@@ -1208,6 +1434,38 @@ A receiver of requests without a correct token (a server through the starter, th
 counter `mcp_audit_authentication_suppressed_total{component,reason}` (a shared name). A request rejected with `400` or `413`
 before JWT verification is reached (a bad format, too large) is not an `authentication` event but enters the request counter, so
 as not to multiply reasons.
+
+## Audit of resources, prompts and agents (CC-264)
+
+C8 has two more events: `resource_read` (gateway and servers) and `prompt_get` (gateway only, because the gateway builds prompts).
+Both carry `decision`, `outcome`, `errorCode`, `latencyMs`, `sub`, `username`, `client` and `server` as `tool_call` does, and the
+optional `filter` of the gateway. The audit never holds a URI, the arguments of a prompt or any content.
+
+- **`resource_read`:** `resourceTemplate` (the name of the resource or template) and `resource` (`{type, id}` of the first
+  variable that is an entity, as the main resource of a `tool_call`, CC-098; never the full URI and never the value of a
+  `valueOnly` variable). On a successful read, `contentBytes` and `contentSha256` describe the content; the content itself is
+  not recorded. These two fields exist only on `resource_read`.
+- **`prompt_get`:** `prompt` (the name), `argsLength` as the only trace of the arguments, and `definitionHash` of the approved
+  entry from which the gateway built the result. `prompt` is also written on `admin_change` of a prompt definition, and
+  `resourceTemplate` on `admin_change` of a resource definition, in place of `tool`.
+- **Principal:** `principalType` is `agent` or `delegated`. Its absence means a human, and a human is never written, so a SIEM
+  sees the field only after the first agent exists. It may appear on every event with a `sub` from a verified token, also of
+  the broker and of servers, and never on `authentication` (the token is not trusted yet). `actorSub` and `actorClient` (the
+  agent behind a delegated call, `sub` being the user) exist only with `principalType: delegated`. `agentOwner` exists with
+  `principalType: agent` and on `admin_change` of the management of an agent.
+- **Reasons** (snake case, up to 64 characters). Reads and prompts: `uri_no_match`, `variable_invalid`, `argument_invalid`,
+  `header_mismatch`, `result_invalid`, `result_too_large`, `blob_not_supported`, `link_scheme_refused`,
+  `contracts_version_unsupported` (the receiver has not accepted the contracts version that carries the call, so the gateway
+  does not send it, CC-260), plus the existing `not_granted`, `policy_forbid`, `kill_switch`, `definition_changed`,
+  `filter_scope`, `rate_limited_*`, `upstream_unavailable` and `credential_required`. Agents: `agent_not_registered` and
+  `agent_token_lifetime` (on `authentication`, 401), `agent_suspended`, `agent_max_risk`, `principal_not_eligible` and
+  `rate_limited_agent` (a separate limit dimension; the value is configuration, see "Rate limits"). Management
+  (`admin_change`): `agent_registered`, `agent_updated`, `agent_key_rotated`, `agent_deleted`, `agent_kill_switch_set`,
+  `agent_kill_switch_cleared`, `agent_owner_purged`. Definitions: the existing `definition_submitted` and
+  `definition_approved` and the new `resource_removed` and `prompt_removed`.
+
+The new `event` values and reasons break a receiver that validates `event` strictly, so the SIEM schema is updated before the
+first agent exists. Vectors: `audit-events/*resource-read*`, `*prompt-get*`, `*agent*`, `*delegated*`, `*principal-type*`.
 
 ## Clarifications in 4.0.0
 
@@ -1320,44 +1578,48 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 
 | Directory | Count | What it checks |
 | --- | --- | --- |
-| `jwt/` | 75 | the C2 receiver: 23 valid (one of them the manifest without a token), 52 rejections, 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
-| `manifests/` | 110 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
-| `definition-hash/` | 13 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
-| `audit-events/` | 140 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), and the removed `virtualServer` and `virtual_server_change` as rejected |
+| `jwt/` | 95 | the C2 receiver: 31 valid (one of them the manifest without a token), 64 rejections (12 of them about `resource`, `pty` and `act`, CC-260), 9 of them about the purpose `use` (`purpose-*`: a call token at the policy-data endpoint and the reverse, a policy-data token at the MCP endpoint, `use: manifest` as an unknown value, a missing or unknown `use`, `jti` replay, wrong audience) (signature, `kid`, test key and a `kid` with the `dev-` prefix (CC-137), `alg`, `iss`, `aud`, `exp` with skew, `iat`, lifetime, `jti`, the service variant, presence and match of `tool`, `rid` != `X-Request-Id`, claims `vs`/`vsc` rejected as `invalid_claims` (CC-173), an IdP token, MCP 2026-07-28 methods, the service variant outside the list, broker `authenticator` calls with `tool`) |
+| `manifests/` | 153 | the C6 manifest: schema (including the required `title`), semantic rules, a closed and bounded `inputSchema`, a recomputed `definitionHash` |
+| `definition-hash/` | 22 | `definitionHash` (RFC 8785 + SHA-256), CC-004, CC-042 |
+| `audit-events/` | 167 | C8 events, including the ban on arguments, secrets, codes, seed and `otpauthUri`, control and bidi characters, rejected authentication (CC-071, CC-125), `authenticator`, the `filter` field (CC-174), resource reads, prompts and agent principals (CC-264), and the removed `virtualServer` and `virtual_server_change` as rejected |
 | `tool-errors/` | 33 | every C10 code plus rejected cases (two shapes of `confirmation_required`, `confirmation_superseded`, `confirmation_blocked`, `confirmation_cancelled`) |
 | `policies-hash/` | 5 | `policiesHash` of `policies` and `resourceTypes` of a manifest (RFC 8785 + SHA-256, CC-232) |
-| `policy-data-gate/` | 10 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
-| `policy-data-push/` | 11 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
+| `policy-data-gate/` | 21 | the rule that binds a server to approved policies and current policy data, with `policy_data_stale` for a server that is behind (CC-237, CC-249) |
+| `policy-data-push/` | 23 | the replacement rule of a push and the gateway sequence: push and one repeat, no third attempt, a refusal that is not retried (CC-249) |
 | `address-refusal/` | 70 | loopback, link-local, `169.254.169.254`, unspecified, multicast and limited broadcast in IPv4 and IPv6, the metadata addresses fd00:ec2::254, 100.100.100.200 and 192.0.0.192 (also in 6to4 and as inet_aton literals), configured refusals (`MCP_SERVER_REFUSED_ADDRESSES`), and behind IPv4-mapped, IPv4-compatible and NAT64 forms, URL literals, every resolved address, check before each connection (CC-249) |
-| `server-connection/` | 24 | first connection with every tool pending (`READ_ONLY` too), tool availability, `ca` renewal versus `pinned` change, approval of a connection (CC-249) |
+| `server-connection/` | 36 | first connection with every tool pending (`READ_ONLY` too), tool availability, `ca` renewal versus `pinned` change, approval of a connection (CC-249) |
 | `certificate-fingerprint/` | 12 | SHA-256 over the DER of real certificates (`sha256:<lower-case hex>`), PEM re-wrapping, wrong inputs, the format (CC-249); random keys, `scripts/generate-certificate-vectors.mjs` is not part of `generate:vectors` |
 | `fixtures/` | - | not vectors: the neutral Notes fragment (`notes/`: schema, `resource-types.json`, policies) and the scope mappings that the Cedar vectors run on; the Jira fragment is `cedar/examples/systems/jira` |
 | `return-paths/` | 35 | `returnPath` of C4/C12 (CC-032); since 3.0.0 without the prefixes `/api`, `/s`, `/v`, `/.well-known`, since 5.0.0 also `/mcp` (CC-169; `/f/` is free) and without `.`/`..` segments and the semicolon, which servers read as a path parameter (CC-099) |
-| `entity-builder/` | 54 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
-| `policy-decisions/` | 44 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
+| `entity-builder/` | 73 | builder input (with the declarations and the scope mapping) -> Cedar entities and context, errors included (CC-233) |
+| `policy-decisions/` | 63 | Cedar decisions: gateway vectors on `cedar/platform` and the example overrides, server vectors on the fragments of Jira and Notes, including the scope hierarchy and credential type |
 | `result-filter/` | 5 | result filtering and query limiting (CC-036) |
-| `resource-checks/` | 5 | every value of every `resourceRef` evaluated (CC-061) |
-| `resource-ids/` | 14 | `idPattern` and `scopePattern` of the declarations, including the former built-in systems (CC-056, CC-074) |
+| `resource-checks/` | 7 | every value of every `resourceRef` evaluated (CC-061) |
+| `resource-ids/` | 16 | `idPattern` and `scopePattern` of the declarations, including the former built-in systems (CC-056, CC-074) |
 | `untrusted-text/` | 8 | the shape of `UntrustedText` (CC-072) |
 | `confirmation-binding/` | 77 | first call and retry with a code: the pending call, one `DESTRUCTIVE` operation, mapping of the broker result (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | the broker Authenticator: RFC 6238, the window, one-time use of a step, the 5/15 min block, the daily limit, registration, the `otpauth` URI (CC-092, CC-126); the seed comes from RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | the forbidden set in arguments, identifiers and mention filters, and replacement in system text (CC-121, CC-122) |
-| `activity-calls/` | 57 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
+| `activity-calls/` | 67 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
 | `gateway-authentication-decision/` | 12 | choosing the reason and the 401/503 status from the key copy state, `kid` and refresh (CC-124) |
 | `activity-cursor/` | 9 | the `/activity/calls` cursor: HMAC, binding to `sub`, 15 min validity (CC-095); a test key, NOT FOR PRODUCTION |
-| `gateway-authentication/` | 22 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
+| `gateway-authentication/` | 37 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
 | `catalog-actions/` | 19 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request (CC-083, CC-113) |
 | `query-rendering/` | 26 | server queries from a structure: JQL and CQL with hostile values, the OpenSearch index pattern and name resolution (CC-160) |
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
 | `endpoint-filter/` | 119 | the `/mcp` query filter (CC-170, CC-172, CC-178, CC-184): syntax and normalization, the `/s/` route, the visible set (also a risk outside the set), `tools/call` under a filter and with tool, server and account state, session binding and the order of checks, the `400` body; Java runs `parse`, `route`, `apply`, `call`, `session` |
-| `endpoint-aggregate/` | 79 | the `/mcp` list as an intersection, order, routing by prefix, server availability and the time limit (CC-180), pages and the `tools/list` cursor (CC-181), `list_changed`, `/v/` as `404` (CC-169, CC-177) |
-| `mcp-endpoint/` | 18 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182) |
-| `kill-switch/` | 18 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
+| `endpoint-aggregate/` | 114 | the `/mcp` list as an intersection, order, routing by prefix, server availability and the time limit (CC-180), pages and the `tools/list` cursor (CC-181), `list_changed`, `/v/` as `404` (CC-169, CC-177) |
+| `mcp-endpoint/` | 88 | the BFF answer `GET /api/v1/me/mcp-endpoint`: the address, `clientConfigs`, `toolCount`, `400`, a query composed from decoded values (CC-175, CC-182); the 70 files `resources-*` (with a `kind`) are the answers of the gateway for resources and prompts: capabilities, result fields per era, methods, the order of the checks of `resources/read` and `prompts/get`, the one `-32602`, `-32020`, links (CC-259) |
+| `kill-switch/` | 44 | the kill switch: the `tool_disabled` refusal with the reason `kill_switch`, the list, confirmation, fail-closed on unreadable state, `approve` and `PUT` do not lift it, lifting per scope (CC-194) |
+| `agent-clients/` | 10 | the agent registry: validation of `create` and `update` (`agent_group_not_allowed`, `max_risk_not_allowed`, duplicate), `owner=me`, the whole list needs the administrator group (CC-266) |
+| `broker-eligibility/` | 15 | what the broker answers for an agent or a delegated principal per credential type, `agentsAllowed` and `resolve` with `resource` (CC-261) |
 | `balancer-errors/` | 3 | the balancer's `502` after an instance dies mid-request, the constant text about an unknown result (CC-204) |
-| `adapter-registry/` | 9 | what a pulled manifest leaves in the registry: adapter mode derived from `source`, pending with `source: manifest` or `adapter`, a source that disagrees, a read at runtime (CC-206, CC-249) |
-| `registry-approval/` | 28 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206); `pull-*`: what a pulled manifest does with one tool, nothing approved, a `READ_ONLY` one included (CC-249) |
-| `idp-token-claims/` | 8 | IdP token claims: `vs` and `vsc` ignored, not copied into the internal JWT (CC-201) |
+| `adapter-registry/` | 12 | what a pulled manifest leaves in the registry: adapter mode derived from `source`, pending with `source: manifest` or `adapter`, a source that disagrees, a read at runtime (CC-206, CC-249) |
+| `registry-approval/` | 56 | `approve` with an adapter tool classification, `classification_required`, `classification_not_allowed`, lowering (CC-193, CC-206); `pull-*`: what a pulled manifest does with one tool, nothing approved, a `READ_ONLY` one included (CC-249) |
+| `idp-token-claims/` | 9 | IdP token claims: `vs` and `vsc` ignored, not copied into the internal JWT (CC-201) |
 | `oauth-metadata/` | 6 | the protected resource metadata document: `resource` without a query, a query ignored, `/v/` as `404` (CC-171, CC-187) |
+| `resource-uri/` | 21 | matching a requested URI to a URI template of RFC 6570 level 1 and to static resources: one decoding, byte equality of the expansion, `%2F`, hex case, query, fragment, userinfo, scheme case, `ABC\n` (CC-259) |
+| `prompt-render/` | 18 | `prompts/get` rendered by the gateway: literal substitution, optional argument, refusal of `<`, `>`, `{`, `}` and line breaks whatever the pattern of the author, one `-32602` for every refusal (CC-259) |
 
 Formats:
 
@@ -1370,17 +1632,26 @@ Formats:
 - **Cedar vectors (7.0.0):** `resourceTypes` (a list of files with the declarations), `scopeMapping` (a file), `input`, `expected`;
   decisions also `policies` (`schema`: a fragment schema file or `null`, `policies`: directories with `.cedar` files); described in
   `cedar/entity-builder.md`, section 10.
+- **Resources and prompts (8.0.0):** `resource-uri/` has `kind` `template` (`template`, `variables` with `idPattern`, `uri` -> `{match, variables}`) or
+  `resolve` (static resources and templates -> the entry or the audit reason); `prompt-render/` has `prompt` (the manifest entry), `typePatterns`,
+  `arguments`, `era` -> `{result}` or `{error, reason}`; the files `mcp-endpoint/resources-*` and the new kinds of `endpoint-aggregate/`
+  (`primitive-list`, `primitive-cursor`, `page`, `list-changed` with `primitives`) and `kill-switch/` (`kind` `primitive-switch` or `agent-switch`, no `kind` is the tool switch) say in `kind` which function
+  of `scripts/lib/resources-endpoint.mjs`, `endpoint-aggregate.mjs`, `kill-switch.mjs` or `agents.mjs` produces `expected`. Files without a `kind` in `mcp-endpoint/`
+  are the BFF answers.
 - **The rest:** `description`, input data and `expected`; described in `cedar/entity-builder.md` (Cedar) and in the tests
   `test/*.test.mjs`, which are also the reference verifiers.
 
-## Identifiers in `common.schema.json` (CC-079, CC-229)
+## Identifiers in `common.schema.json` (CC-079, CC-229, CC-258)
 
 `SystemId` (`^[a-z][a-z0-9]{1,30}$`), `ServerId` (`^mcp-<SystemId>$`), `QualifiedToolName` (`<system>__<tool>`) and `ResourceType`
 (`^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$`, the namespace is the Cedar namespace of the server) are patterns, not
 enumerations; the four credential types stay an enumeration because they are protocol, not a list of systems. Until 6.3.2 this
 file also held the id patterns of the five systems (`JiraProjectKey` ... `ServiceDeskTicketId`, `ResourceIdPatterns`) for the
 `@ArgumentLimits(contractPattern = ...)` of the starter; they are gone, and a server takes the pattern of an argument from its own
-`resourceTypes[].idPattern`. `test/schemas.test.mjs` checks that no enumeration in the file names a system.
+`resourceTypes[].idPattern`. `test/schemas.test.mjs` checks that no enumeration in the file names a system. Since 8.0.0: `ResourceName` and `PromptName` (the pattern
+and the limit of `ToolName`), `QualifiedPromptName` (`<system>__<prompt>`), `ResourceUri` (scheme = system id, `<system>+<scheme>` for an
+adapter, ASCII, at most 2100 characters), `ResourceUriTemplate` (the same start, at most 1000 characters after `://`) and
+`UriVariableName`.
 
 ## Manifest semantic rules
 
@@ -1415,8 +1686,38 @@ Beyond the JSON Schema (`scripts/lib/manifest-rules.mjs`, CC-018), checked by th
     `policies` and `resourceTypes` (RFC 8785 + SHA-256, `scripts/lib/definition-hash.mjs` `policiesHash`) equals the declared one
     (`policies-hash-matches`). The schema requires `policies` and `policiesHash` together, for every manifest that is not an
     adapter's, and forbids them (and `resourceTypes` entries) in an adapter manifest.
+12. Resources, resource templates and prompts (8.0.0, CC-258). The root has `resources`, `resourceTemplates` and `prompts` (each at
+    most 100 entries) and `contractsVersion` (absent: 7.x or older; in no hash); `tools` stays required and may be empty, but at
+    least one of the four lists is not (schema). Rules: `resources-valid` and `resource-templates-valid` (`definition.name == name`;
+    adapter template variables carry an anchored `pattern` inside the pattern grammar), `prompts-valid` (unique names, a rule for
+    exactly the declared arguments, anchored patterns that compile), `resource-uri-scheme` (the scheme is `system`; an adapter has
+    `<system>+<scheme>`), `resource-names-unique` (resources and templates share one namespace of names, prompts have their own),
+    `resource-uri-unambiguous` (no two templates with one skeleton, where every variable is replaced by `{}`; no static resource that a
+    template matches, a variable standing for any non-empty text), `uri-template-level1` (only `{name}`: no operator `+ # . / ; ? &`, no
+    `*`, no `:`), `uri-variables-bound` (`variables` has one entry per variable, in order of first occurrence), `uri-template-entity-variable`
+    (a starter template has a variable whose type is not `valueOnly`; not checked for an adapter, which has no types) and
+    `prompt-placeholders-declared` (every `{{name}}` in `messages[].text` is an argument, no stray `{{` or `}}`). Every variable and
+    argument `type` is declared (`resource-types-declared`).
+13. A type with `valueOnly: true` has only `type` and `idPattern` (the schema refuses `attributes`, `parent`, `parentAttribute`,
+    `scopePattern`, `earlyScopeCheck` and `classification` next to it). It has no entity, so it is left out of the types that a
+    fragment schema must declare, and it may be the type of `variables[]` and `argumentRules[]` entries, never of a `resourceRefs[]`
+    entry (`resource-types-valid`). Resource types whose second part is a name of the base schema are refused
+    (`resource-type-name-reserved`, CC-262).
+14. `definitionHash` of a resource, a template and a prompt is recomputed like that of a tool ("Registry and definition pinning").
+    The text hygiene rule applies to names, titles, descriptions and message texts; the gateway checks it at approval (CC-250), the
+    rules of this section do not.
 
 ## Requirements for receivers
+
+- **Order of the 8.0.0 rollout (CC-260).** (1) the release of the contracts; (2) the gateway with the new manifest parser and registry, emission
+  switched off, and the SIEM receiver updated; (3) the receivers accept the new claims: broker, starter, template, adapter sidecar; (4) the
+  lockstep release of the servers (the manifest carries `contractsVersion`) and the portal release; (5) emission: the gateway sends `resource`,
+  `pty`, `act` and the `allowedAgentClients` field of the policy data to a server only when `contractsVersion` of its approved manifest is at least
+  the version of this release (SemVer comparison; absent means older), and to the broker only when the gateway configuration confirms a broker
+  version at least that release (the broker has no manifest, so this is a separate condition); (6) the first agent in the registry. To a receiver
+  that does not meet the condition the gateway sends no call: the client gets `upstream_unavailable` and the audit reason is
+  `contracts_version_unsupported`; the refusal before sending replaces the `401` of an old receiver. Reference `emissionDecision` in
+  `scripts/lib/server-connection.mjs`, vectors `server-connection/contracts-version-*`, `emission-*`.
 
 - C2 receivers reject keys with the identifier `test-*` and `dev-*` by default; `test-*` is enabled by an
   explicit setting (recommended name `allowTestKeys`) in tests and dev (CC-044), `dev-*` only by dev mode: the `devstack` profile

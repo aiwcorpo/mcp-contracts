@@ -1,0 +1,31 @@
+{
+  "description": "An additionalGroup of another system is internal_error, as for a tool.",
+  "level": "gateway-resource",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000006",
+      "usr": "notesreader",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code"
+    },
+    "resource": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "handbook",
+      "uriTemplate": "notes://docs/handbook",
+      "variables": [],
+      "additionalGroup": "mcp-jira-ops"
+    },
+    "values": {}
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

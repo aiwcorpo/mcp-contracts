@@ -1,4 +1,4 @@
-// Cedar base schema of the MCP platform (contract C7), mcp-contracts 7.0.0, empty namespace.
+// Cedar base schema of the MCP platform (contract C7), mcp-contracts 8.0.0, empty namespace.
 //
 // It names no system, server or resource type. Each MCP server brings a fragment with exactly one namespace of its
 // own (its resource types and its actions); the gateway and the starter compose this file with the fragment text
@@ -6,7 +6,8 @@
 // that may be missing is an optional attribute and policies must guard it with `has`.
 //
 // Two evaluations use the composed schema (C7):
-//   gateway: principal User, Action::"call", resource Tool, policies of cedar/platform plus emergency overrides
+//   gateway: principal User, Action::"call" on Tool, Action::"read_resource" on McpResource, Action::"get_prompt" on
+//            McpPrompt, policies of cedar/platform plus emergency overrides
 //   server:  principal User, <Ns>::Action::"read" | "update" | "delete" | "admin", resource = a type of the server
 //            namespace, the server's own policies only
 // How User.scopes, Tool.requiredGroup, context.refs and the scopes of a server resource are derived is specified in
@@ -42,20 +43,58 @@ entity Tool {
   additionalGroup?: UserGroup,
 };
 
+// Entity id = client-visible name <system>__<name> of a static resource or a resource template (C6). uriTemplate is the
+// template, and for a static resource the URI itself. requiredGroup is mcp-<system>-read; additionalGroup is the optional
+// group of the manifest entry and can only narrow. The second part of a resource type of a server (CC-262) is never
+// McpResource, McpPrompt or another name of this file.
+entity McpResource {
+  server: String,
+  name: String,
+  uriTemplate: String,
+  requiredGroup: UserGroup,
+  additionalGroup?: UserGroup,
+};
+
+// Entity id = <system>__<prompt> (C6). Prompts are data of the manifest; the gateway decides get_prompt and never asks the
+// server.
+entity McpPrompt {
+  server: String,
+  name: String,
+  requiredGroup: UserGroup,
+  additionalGroup?: UserGroup,
+};
+
 // credentialType: the type of the credential used for the call (user-oauth, user-secret, token-exchange or
 // service-account), from the configuration of the system. Optional in the model so that a caller of the builder that does
 // not know it can still build a request; policies guard it with `has`.
-// refs: ResourceScope ids "<Type>/<id>" built from the tool arguments whose resourceRef type is declared
+// refs: ResourceScope ids "<Type>/<id>" built from the tool arguments (or the template variables) whose type is declared
 // earlyScopeCheck. Always present at the gateway (may be empty).
+// principalType: "user", "agent" or "delegated" (CC-263). Optional in the model so that fragments and requests of a caller
+// that does not know it still validate; the gateway always gives it ("user" when the token has no pty), and policies guard
+// it with `has`. actor: act.sub of a delegated token, only with principalType "delegated".
 type RequestContext = {
   client: String,
   mfaAge?: Long,
   credentialType?: String,
   refs?: Set<ResourceScope>,
+  principalType?: String,
+  actor?: String,
 };
 
 action "call" appliesTo {
   principal: [User],
   resource: [Tool],
+  context: RequestContext,
+};
+
+action "read_resource" appliesTo {
+  principal: [User],
+  resource: [McpResource],
+  context: RequestContext,
+};
+
+action "get_prompt" appliesTo {
+  principal: [User],
+  resource: [McpPrompt],
   context: RequestContext,
 };

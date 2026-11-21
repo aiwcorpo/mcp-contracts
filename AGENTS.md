@@ -44,7 +44,7 @@ new tokens or certificates: their signatures and keys are random, so every file 
   existing vector is a major change (README, "Versioning (SemVer)").
 - `test-vectors/keys/`: test keys, private ones included on purpose (`NOT-FOR-PRODUCTION`). Do not regenerate or replace
   them; `generate-test-keys.mjs` refuses to overwrite.
-- `cedar/mcp.cedarschema`: frozen byte for byte within the 7.x line; tests compare its SHA-256 and `.gitattributes`
+- `cedar/mcp.cedarschema`: frozen byte for byte within the 8.x line; tests compare its SHA-256 and `.gitattributes`
   enforces LF.
 - `test/*.test.mjs`: node tests, also the reference verifiers of the vector formats. `java/*/src/test`: Java tests of the
   three modules (Cedar schema and policies, entity builder and decision vectors, manifest rules).

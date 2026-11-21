@@ -1,0 +1,23 @@
+{
+  "description": "The switch of the whole server hides its resources too.",
+  "kind": "primitive-switch",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
+    "event": "read"
+  },
+  "expected": {
+    "allowed": false,
+    "jsonRpcCode": -32602,
+    "auditReason": "kill_switch"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "description": "An argument outside the rules: the same -32602 as an unknown prompt, reason argument_invalid.",
+  "kind": "prompt-get",
+  "input": {
+    "name": "servicedesk__summarize_ticket",
+    "render": {
+      "error": {
+        "code": -32602,
+        "message": "Prompt not found",
+        "data": {
+          "name": "summarize_ticket"
+        }
+      },
+      "reason": "argument_invalid"
+    }
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Prompt not found",
+      "data": {
+        "name": "summarize_ticket"
+      }
+    },
+    "auditReason": "argument_invalid"
+  }
+}

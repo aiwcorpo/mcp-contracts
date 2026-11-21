@@ -1,0 +1,13 @@
+{
+  "description": "8.1.0: emission.",
+  "kind": "emission",
+  "input": {
+    "emission": {
+      "receiver": "server",
+      "contractsVersion": "8.1.0"
+    }
+  },
+  "expected": {
+    "emit": true
+  }
+}

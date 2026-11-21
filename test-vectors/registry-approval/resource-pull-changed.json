@@ -1,0 +1,12 @@
+{
+  "description": "A changed resource is pending again.",
+  "input": {
+    "approved": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "submitted": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "expected": {
+    "removed": false,
+    "status": "pending_approval",
+    "change": "changed"
+  }
+}

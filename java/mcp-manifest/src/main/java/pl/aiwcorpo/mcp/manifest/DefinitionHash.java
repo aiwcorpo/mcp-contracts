@@ -10,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -64,6 +66,64 @@ public final class DefinitionHash {
         copy.remove("risk");
         copy.remove("action");
         return copy;
+    }
+
+
+    private static final Map<String, List<String>> PRIMITIVE_MEMBERS = Map.of(
+            "resource", List.of("name", "title", "description", "uri", "mimeType", "annotations"),
+            "resourceTemplate", List.of("name", "title", "description", "uriTemplate", "mimeType", "annotations"),
+            "prompt", List.of("name", "title", "description", "arguments"));
+    private static final Map<String, List<String>> PRIMITIVE_ENTRY_FIELDS = Map.of(
+            "resource", List.of(), "resourceTemplate", List.of("variables"), "prompt", List.of("argumentRules", "messages"));
+
+    /**
+     * Canonical input of the hash of a resource, resource template or prompt (CC-258): kind, the members of the definition,
+     * the entry fields (variables, or argumentRules and messages), additionalGroup when present, system, credential.
+     *
+     * @param kind {@code resource}, {@code resourceTemplate} or {@code prompt}
+     * @param definitionJson the definition member of the entry
+     * @param entryJson the manifest entry (its variables, argumentRules, messages and additionalGroup are read)
+     */
+    public static String canonicalPrimitiveInput(String kind, String definitionJson, String entryJson, String system, String credentialJson) {
+        return CanonicalJson.canonicalize(primitiveObject(kind, read(definitionJson), read(entryJson), system, read(credentialJson)));
+    }
+
+    /** @return {@code sha256:<hex>} of {@link #canonicalPrimitiveInput} */
+    public static String computePrimitive(String kind, String definitionJson, String entryJson, String system, String credentialJson) {
+        return sha256(canonicalPrimitiveInput(kind, definitionJson, entryJson, system, credentialJson));
+    }
+
+    static String hashOfPrimitive(JsonNode manifest, String kind, JsonNode entry) {
+        return sha256(CanonicalJson.canonicalize(primitiveObject(kind, entry.get("definition"), entry, manifest.get("system").asText(),
+                manifest.get("credential"))));
+    }
+
+    private static ObjectNode primitiveObject(String kind, JsonNode definition, JsonNode entry, String system, JsonNode credential) {
+        List<String> allowed = PRIMITIVE_MEMBERS.get(kind);
+        if (allowed == null) {
+            throw new IllegalArgumentException("unknown kind: " + kind);
+        }
+        definition.fieldNames().forEachRemaining(member -> {
+            if (!allowed.contains(member)) {
+                throw new IllegalArgumentException("definition member not covered by definitionHash: " + member);
+            }
+        });
+        ObjectNode flat = JSON.createObjectNode();
+        flat.put("kind", kind);
+        for (String member : allowed) {
+            if (definition.has(member)) {
+                flat.set(member, definition.get(member));
+            }
+        }
+        for (String field : PRIMITIVE_ENTRY_FIELDS.get(kind)) {
+            flat.set(field, entry.get(field));
+        }
+        if (entry.has("additionalGroup")) {
+            flat.set("additionalGroup", entry.get("additionalGroup"));
+        }
+        flat.put("system", system);
+        flat.set("credential", credential);
+        return flat;
     }
 
     private static ObjectNode hashedObject(JsonNode definition, JsonNode entry, String system, JsonNode credential) {

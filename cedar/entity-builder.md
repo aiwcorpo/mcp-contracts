@@ -49,6 +49,13 @@ Każdy typ zasobu serwera ma wpis w `resourceTypes` manifestu (`schemas/server-m
 | `scopePattern` | zakotwiczone wyrażenie regularne lokalnej części id zakresu, który można przyznać; brak = typu nie da się przyznać w mapowaniu |
 | `earlyScopeCheck` | domyślnie `false`; gdy `true`, gateway wkłada id argumentu tego typu do `context.refs` (sekcja 5); tylko dla typów, których zakres jest dokładnym id, więc wymaga `scopePattern` |
 | `classification` | `{attribute, kind: "string"\|"set", required}`; atrybut, który builder normalizuje (sekcja 5) |
+| `valueOnly` | domyślnie `false`; `true` (od 8.0.0, CC-258): typ tylko ogranicza wartość (ścieżka pliku, ref), ma wyłącznie `type` i `idPattern`, nie ma encji, atrybutów ani zakresów; może być typem zmiennej szablonu zasobu i argumentu promptu, nigdy `resourceRef` |
+
+Typ `valueOnly` zostaje w `ResourceTypes.declarations()` (wartości sprawdza `isValidId`) i liczy się do przestrzeni nazw, ale nie
+ma encji: `entityDeclarations()` go pomija, więc nie trafia do schematu fragmentu, do polityk `PlatformServerPolicies` ani do
+encji żądania. Zasób rozwiązany typu `valueOnly` i `resourceRef` tego typu to `internal_error`. Drugi człon nazwy typu nie może być
+nazwą typu schematu bazowego (`User`, `UserGroup`, `ResourceScope`, `Tool`, `McpResource`, `McpPrompt`, `RequestContext`; reguła
+`resource-type-name-reserved`, CC-262).
 
 Wzorce piszemy we wspólnym podzbiorze wyrażeń regularnych Javy i ECMAScript (wektory generuje implementacja
 JavaScript, a wykonuje Java); dopasowanie dotyczy całego identyfikatora. Wartość z `\n` na końcu (`"ABC\n"`) nie
@@ -127,6 +134,14 @@ wyprowadzana; `ToolDescriptor.requiredGroup()`). `additionalGroup` to pole wpisu
 przed Cedar, a wektor `gw-unknown-tool-denied` pokazuje, że polityki też dają `deny`. O `call` decydują polityki platformy
 (sekcja 7), nie polityki serwerów.
 
+**Gateway, zasoby i prompty (od 8.0.0, CC-262):** `resources/read` to `Action::"read_resource"` na `McpResource::"<system>__<nazwa>"`
+z atrybutami `server`, `name`, `uriTemplate` (szablon, a dla zasobu statycznego sam URI), `requiredGroup` (`mcp-<system>-read`) i
+opcjonalnie `additionalGroup` (`ResourceDescriptor`, `builder.forResourceRead`); `prompts/get` to `Action::"get_prompt"` na
+`McpPrompt::"<system>__<nazwa>"` z `server`, `name`, `requiredGroup` i `additionalGroup` (`PromptDescriptor`, `builder.forPromptGet`).
+`context.refs` powstaje dla zmiennych szablonu o typie `earlyScopeCheck` tak jak dla argumentów narzędzia, a każda wartość zmiennej
+jest sprawdzana względem `idPattern` swojego typu (także `valueOnly`); dla promptu `refs` jest pustym zbiorem. Na serwerze
+`resources/read` to akcja `read` na encjach zmiennych z encją, bez nowych akcji we fragmencie.
+
 **Serwer:** `<Przestrzeń>::Action::"<tool.action>"` (przestrzeń typu zasobu, np. `Jira::Action::"update"`), zasób = encja
 rozwiązana przez resolver. Builder dokłada referencję do rodzica (`parentAttribute`; rodzic jest też w `parents` i jest osobną
 encją, a rodzic rodzica też) oraz `scopes`.
@@ -182,6 +197,8 @@ własnym wymaganym polem w schemacie fragmentu), a serwer odrzuca zasób (`inter
 | `mfaAge` | `mfa`, tylko gdy claim jest |
 | `credentialType` | typ poświadczenia użytego w wywołaniu, tylko gdy wywołujący builder go zna (CC-136); wartość spoza czterech typów to `internal_error` |
 | `refs` | zawsze (może być pusty zbiór) |
+| `principalType` | `user`, `agent` albo `delegated` (claim `pty`; brak claimu to `user`); zawsze, od 8.0.0 (CC-263); inna wartość to `internal_error` |
+| `actor` | `act.sub`, tylko przy `delegated`; `actor` przy innym typie podmiotu to `internal_error` |
 
 ### `context.refs`
 
@@ -227,7 +244,7 @@ fragment składają się i walidują w trybie strict; fragment nie deklaruje nic
 każdy typ encji ma `scopes: Set<ResourceScope>`; akcje tylko `read`, `update`, `delete`, `admin`, każda z `principal: [User]` i
 `context: RequestContext` (obcy typ podmiotu albo kontekstu dawałby dostęp do atrybutów, których platforma nie daje); polityki
 parsują się, mają `@id` (niezaczynające się od `platform-` ani `override-`), walidują się względem złożonego schematu (także bez ostrzeżeń "policy is impossible": `forbid`, który nigdy nie
-pasuje, to ciche otwarcie); żadna polityka nie wspomina `Action::"call"` ani `Tool`; typy encji fragmentu to dokładnie typy
+pasuje, to ciche otwarcie); żadna polityka nie wspomina `Action::"call"`, `read_resource`, `get_prompt`, `Tool`, `McpResource` ani `McpPrompt`; typy encji fragmentu to dokładnie typy
 zadeklarowane w `resourceTypes` tej przestrzeni, z zadeklarowanymi atrybutami i rodzicami (wymagany atrybut spoza deklaracji
 to błąd, bo builder go nie zbuduje). Odrzucenie przy rejestracji to `422 manifest_rejected` z `policies_invalid` albo
 `resource_types_invalid`.
@@ -240,7 +257,13 @@ i starter, `McpCedarSchema.platformPolicies()`) i nadpisaniami administratora:
 - `platform-call-by-group`: `permit`, gdy `principal in resource.requiredGroup`;
 - `platform-call-additional-group`: `forbid`, gdy `resource has additionalGroup && !(principal in resource.additionalGroup)`; narzędzie z dodatkową grupą (np. `mcp-opensearch-ops` dla narzędzi tylko dla operatorów) wymaga jej obok grupy wynikającej z ryzyka, więc dodatkowa grupa może tylko zawęzić dostęp (`mcp-opensearch-read` sam nie otwiera narzędzia);
 - `platform-call-write-outside-scope`: `forbid`, gdy `risk != "READ_ONLY"` i zbiór `context.refs` nie mieści się w `principal.scopes`;
-- `platform-call-write-without-refs`: `forbid` zapisu, gdy kontekst nie ma `refs` (gateway zawsze je daje; brak to odmowa, nie "nic do sprawdzenia").
+- `platform-call-write-without-refs`: `forbid` zapisu, gdy kontekst nie ma `refs` (gateway zawsze je daje; brak to odmowa, nie "nic do sprawdzenia");
+- `platform-read-resource-by-group` (`permit`, gdy `principal in resource.requiredGroup`) i `platform-read-resource-additional-group`
+  (`forbid` gdy `resource has additionalGroup && !(principal in resource.additionalGroup)`) dla `read_resource` na `McpResource`;
+  `platform-get-prompt-by-group` i `platform-get-prompt-additional-group` tak samo dla `get_prompt` na `McpPrompt` (CC-262). Nie ma
+  polityki zakresu: hierarchię sprawdza serwer przez `principal in resource.scopes`;
+- `platform-call-agent-no-destructive`: `forbid` DESTRUCTIVE, gdy `context has principalType && context.principalType != "user"`;
+  `platform-call-destructive-without-principal-type`: `forbid` DESTRUCTIVE, gdy kontekst nie ma `principalType` (CC-263).
 
 **Polityki serwerowe platformy (`PlatformServerPolicies.generate`/`texts`/`policySet`).** Starter zawsze ładuje obok fragmentu polityki
 wygenerowane z deklaracji, z identyfikatorami `platform-...`, więc fragment nie może ich pominąć ani osłabić: (1) dla każdego typu z
@@ -254,9 +277,9 @@ własnych reguł `restricted` ani reguły konta serwisowego.
 
 **Nadpisanie awaryjne** to jedna polityka `forbid` zapisana przez administratora (`PUT /admin/v1/policy/overrides/{id}`), z id
 `override-<nazwa>` i celem `gateway`, `all-servers` albo `serverId`
-(`PolicyFragments.validateOverride(id, text, OverrideTarget, fragmentSchemas)`): cel `gateway` musi być `action == Action::"call"` na
-`resource is Tool` (inaczej nie blokuje niczego); cel `serverId` waliduje się względem schematu bazowego ze fragmentem tego serwera, a
-`all-servers` względem fragmentu każdego zarejestrowanego serwera; oba nie mogą wspominać `Tool` ani `call`. Przykład:
+(`PolicyFragments.validateOverride(id, text, OverrideTarget, fragmentSchemas)`): cel `gateway` musi być `forbid` na jednej z par `Action::"call"` / `resource is Tool`, `Action::"read_resource"` / `resource is McpResource`,
+`Action::"get_prompt"` / `resource is McpPrompt` (inaczej nie blokuje niczego); cel `serverId` waliduje się względem schematu bazowego ze fragmentem tego serwera, a
+`all-servers` względem fragmentu każdego zarejestrowanego serwera; oba nie mogą wspominać `Tool`, `McpResource`, `McpPrompt`, `call`, `read_resource` ani `get_prompt`. Przykład:
 `cedar/examples/overrides/step-up.cedar` (zniszczenie wymaga świeżego MFA). Polityki serwera nigdy nie biorą udziału w decyzji
 gatewaya; nadpisania z celem `all-servers` albo `serverId` serwer dostaje w danych polityki i ocenia razem z własnymi.
 

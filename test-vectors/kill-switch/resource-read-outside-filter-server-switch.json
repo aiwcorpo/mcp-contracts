@@ -1,0 +1,24 @@
+{
+  "description": "The filter cuts the resource: filter_scope.",
+  "kind": "primitive-switch",
+  "input": {
+    "switches": [
+      {
+        "scope": "server",
+        "serverId": "mcp-servicedesk"
+      }
+    ],
+    "target": {
+      "kind": "resource",
+      "serverId": "mcp-servicedesk",
+      "name": "ticket"
+    },
+    "event": "read",
+    "inFilter": false
+  },
+  "expected": {
+    "allowed": false,
+    "jsonRpcCode": -32602,
+    "auditReason": "filter_scope"
+  }
+}

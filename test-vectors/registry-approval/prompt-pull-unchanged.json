@@ -1,0 +1,11 @@
+{
+  "description": "An unchanged prompt stays approved.",
+  "input": {
+    "approved": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "submitted": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "expected": {
+    "removed": false,
+    "status": "approved"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "description": "The type of a variable changed: the template needs approval again.",
+  "input": {
+    "kind": "resourceTemplate",
+    "definition": {
+      "name": "ticket",
+      "title": "Ticket",
+      "description": "One service desk ticket by id.",
+      "uriTemplate": "servicedesk://ticket/{ticketId}",
+      "mimeType": "application/json"
+    },
+    "entry": {
+      "variables": [
+        {
+          "name": "ticketId",
+          "type": "ServiceDesk::Queue"
+        }
+      ]
+    },
+    "server": {
+      "system": "servicedesk",
+      "credential": {
+        "required": true,
+        "acceptedTypes": [
+          "service-account"
+        ]
+      }
+    }
+  },
+  "canonical": "{\"credential\":{\"acceptedTypes\":[\"service-account\"],\"required\":true},\"description\":\"One service desk ticket by id.\",\"kind\":\"resourceTemplate\",\"mimeType\":\"application/json\",\"name\":\"ticket\",\"system\":\"servicedesk\",\"title\":\"Ticket\",\"uriTemplate\":\"servicedesk://ticket/{ticketId}\",\"variables\":[{\"name\":\"ticketId\",\"type\":\"ServiceDesk::Queue\"}]}",
+  "expected": "sha256:e8e9576c1874d1e79c6e6588236c5a1bbc682d395c77b7108033ffdabca6ab58",
+  "differsFrom": "resource-template-ticket.json"
+}

@@ -1,0 +1,22 @@
+{
+  "description": "A server whose manifest has contractsVersion 8.0.0 gets allowedAgentClients with the active agents only.",
+  "input": {
+    "contractsVersion": "8.0.0",
+    "agents": [
+      {
+        "clientId": "agent-reports",
+        "status": "active"
+      },
+      {
+        "clientId": "agent-sleeper",
+        "status": "suspended"
+      }
+    ]
+  },
+  "expected": {
+    "includesAllowedAgentClients": true,
+    "allowedAgentClients": [
+      "agent-reports"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "The literal part of the template differs.",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "servicedesk://tickets/SD-1042"
+  },
+  "expected": {
+    "match": false
+  }
+}

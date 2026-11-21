@@ -95,6 +95,32 @@
       }
     },
     {
+      "name": "invalidateAuthenticatorCodes 403 principal_not_eligible",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/v1/authenticator/invalidate-codes",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=principal_not_eligible($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "X-Request-Id": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "principal_not_eligible"
+        }
+      }
+    },
+    {
       "name": "invalidateAuthenticatorCodes 503 upstream_unavailable",
       "priority": 2,
       "request": {

@@ -1,0 +1,13 @@
+{
+  "description": "Fields of the result of resources/read in the modern era (legacy: none).",
+  "kind": "result-fields",
+  "input": {
+    "method": "resources/read",
+    "era": "modern"
+  },
+  "expected": {
+    "resultType": "complete",
+    "ttlMs": 0,
+    "cacheScope": "private"
+  }
+}

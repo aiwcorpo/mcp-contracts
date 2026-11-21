@@ -18,6 +18,8 @@ import java.util.Optional;
  * @param earlyScopeCheck whether the gateway puts the id of a tool argument of this type into {@code context.refs};
  *        only for types whose scope is the exact id
  * @param classification the attribute the builder normalizes, if any
+ * @param valueOnly the type only limits a value (a file path, a ref): it has no entity, no attributes, no scopes and may be
+ *        the type of a template variable or a prompt argument, never of a resourceRef (CC-258)
  */
 public record ResourceTypeDeclaration(
         String type,
@@ -27,7 +29,20 @@ public record ResourceTypeDeclaration(
         String idPattern,
         Optional<String> scopePattern,
         boolean earlyScopeCheck,
-        Optional<Classification> classification) {
+        Optional<Classification> classification,
+        boolean valueOnly) {
+
+    /** Declaration of a type with an entity (not {@code valueOnly}). */
+    public ResourceTypeDeclaration(String type, List<String> attributes, Optional<String> parent, Optional<String> parentAttribute,
+            String idPattern, Optional<String> scopePattern, boolean earlyScopeCheck, Optional<Classification> classification) {
+        this(type, attributes, parent, parentAttribute, idPattern, scopePattern, earlyScopeCheck, classification, false);
+    }
+
+    /** @return a type that only limits a value: just a type and an idPattern */
+    public static ResourceTypeDeclaration valueOnly(String type, String idPattern) {
+        return new ResourceTypeDeclaration(type, List.of(), Optional.empty(), Optional.empty(), idPattern, Optional.empty(), false,
+                Optional.empty(), true);
+    }
 
     /** Shape of a classification attribute. */
     public enum Kind {
@@ -60,6 +75,10 @@ public record ResourceTypeDeclaration(
         Objects.requireNonNull(idPattern, "idPattern");
         Objects.requireNonNull(scopePattern, "scopePattern");
         Objects.requireNonNull(classification, "classification");
+        if (valueOnly && (!attributes.isEmpty() || parent.isPresent() || parentAttribute.isPresent() || scopePattern.isPresent()
+                || earlyScopeCheck || classification.isPresent())) {
+            throw new IllegalArgumentException(type + ": a valueOnly type has only a type and an idPattern");
+        }
     }
 
     /** @return the part before {@code ::}, e.g. {@code Jira} */

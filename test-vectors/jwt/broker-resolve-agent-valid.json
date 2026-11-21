@@ -1,0 +1,47 @@
+{
+  "description": "An autonomous agent token at broker resolve: a valid user-variant token with pty agent and a tool; whether the credential type is allowed for an agent is decided by the broker (broker-eligibility/, CC-261).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWNyZWRlbnRpYWwtYnJva2VyIiwidXNlIjoiY2FsbCIsInN1YiI6IjNiMGY2YzUyLThmM2UtNGYwZS1iNmEyLTVkNWExZjBlOWMxMSIsInVzciI6InNlcnZpY2UtYWNjb3VudC1hZ2VudC10cmlhZ2UiLCJncnAiOlsibWNwLWppcmEtcmVhZCJdLCJhenAiOiJhZ2VudC10cmlhZ2UiLCJ0b29sIjoiZ2V0X2lzc3VlIiwicmlkIjoiMDE5MmQxYjItN2MzYS03ZDRlLThmMTAtMmEzYjRjNWQ2ZTdmIiwicHJ2Ijo0MSwiaWF0IjoxNzkzMDE2MDAwLCJleHAiOjE3OTMwMTYwNjAsImp0aSI6IjAxOTJkMWIyLTdjM2EtN2YwMC05YTExLTAwMDAwMDAwMDMyMiIsInB0eSI6ImFnZW50In0.MIeI7vnsHyvXrkNTKScG-_KysuDGgpFS3WQEsnL0AUsRVif8r4pdJT8N4yFd_myZ_B44gPd_HsOEeBuiR0e78g",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-credential-broker",
+    "use": "call",
+    "sub": "3b0f6c52-8f3e-4f0e-b6a2-5d5a1f0e9c11",
+    "usr": "service-account-agent-triage",
+    "grp": [
+      "mcp-jira-read"
+    ],
+    "azp": "agent-triage",
+    "tool": "get_issue",
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "prv": 41,
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000322",
+    "pty": "agent"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-credential-broker",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "http",
+    "method": "POST",
+    "path": "/v1/credentials/resolve",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+  },
+  "expected": {
+    "valid": true,
+    "httpStatus": 200
+  }
+}

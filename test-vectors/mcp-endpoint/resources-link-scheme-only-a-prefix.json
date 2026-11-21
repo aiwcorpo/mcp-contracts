@@ -1,0 +1,23 @@
+{
+  "description": "A scheme that only starts with the system is another scheme.",
+  "kind": "links",
+  "input": {
+    "system": "servicedesk",
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "servicedeskX://ticket/SD-1042",
+        "name": "a"
+      },
+      {
+        "type": "resource_link",
+        "uri": "servicedesk+x://ticket/SD-1042",
+        "name": "b"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [],
+    "auditReason": "link_scheme_refused"
+  }
+}

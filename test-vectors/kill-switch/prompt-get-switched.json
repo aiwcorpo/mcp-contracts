@@ -1,0 +1,24 @@
+{
+  "description": "prompts/get of a switched prompt is -32602, audited as kill_switch.",
+  "kind": "primitive-switch",
+  "input": {
+    "switches": [
+      {
+        "scope": "prompt",
+        "serverId": "mcp-servicedesk",
+        "prompt": "summarize_ticket"
+      }
+    ],
+    "target": {
+      "kind": "prompt",
+      "serverId": "mcp-servicedesk",
+      "name": "summarize_ticket"
+    },
+    "event": "read"
+  },
+  "expected": {
+    "allowed": false,
+    "jsonRpcCode": -32602,
+    "auditReason": "kill_switch"
+  }
+}

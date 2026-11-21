@@ -1,0 +1,29 @@
+{
+  "description": "A user without a grant gets not_granted even with a bad argument: the arguments are looked at last.",
+  "kind": "prompt-get",
+  "input": {
+    "name": "servicedesk__summarize_ticket",
+    "render": {
+      "error": {
+        "code": -32602,
+        "message": "Prompt not found",
+        "data": {
+          "name": "summarize_ticket"
+        }
+      },
+      "reason": "argument_invalid"
+    },
+    "access": "not_granted"
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Prompt not found",
+      "data": {
+        "name": "servicedesk__summarize_ticket"
+      }
+    },
+    "auditReason": "not_granted"
+  }
+}

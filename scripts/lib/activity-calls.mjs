@@ -15,6 +15,7 @@ const REASON_RESULT = {
   rate_limited_user: 'rate_limited', rate_limited_client: 'rate_limited', rate_limited_tool: 'rate_limited',
   definition_changed: 'tool_disabled', tool_not_served: 'tool_disabled', exchange_denied: 'denied_not_granted',
   kill_switch: 'tool_disabled',
+  agent_max_risk: 'denied_not_granted', agent_suspended: 'denied_not_granted', principal_not_eligible: 'denied_not_granted',
 };
 
 // CC-198: policy_forbid answered not_found_or_denied is a forbid at the tool level; the row of the user does not tell it from a missing

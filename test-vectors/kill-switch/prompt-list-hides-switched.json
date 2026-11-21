@@ -1,0 +1,22 @@
+{
+  "description": "A switched prompt is absent from prompts/list.",
+  "kind": "primitive-switch",
+  "input": {
+    "switches": [
+      {
+        "scope": "prompt",
+        "serverId": "mcp-servicedesk",
+        "prompt": "summarize_ticket"
+      }
+    ],
+    "target": {
+      "kind": "prompt",
+      "serverId": "mcp-servicedesk",
+      "name": "summarize_ticket"
+    },
+    "event": "list"
+  },
+  "expected": {
+    "listed": false
+  }
+}

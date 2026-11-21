@@ -1,0 +1,36 @@
+{
+  "description": "An entry that the user may not read (groups, Cedar) is omitted.",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "resources",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "runbook",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": false
+          },
+          {
+            "name": "guide",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": [
+      "servicedesk__guide"
+    ]
+  }
+}

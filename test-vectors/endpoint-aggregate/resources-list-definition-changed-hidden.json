@@ -1,0 +1,27 @@
+{
+  "description": "A definition that differs from the approved one hides the entry (definition_changed).",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "resources",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "runbook",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": false,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": []
+  }
+}

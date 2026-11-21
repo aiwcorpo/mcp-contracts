@@ -1,0 +1,15 @@
+{
+  "description": "The owner cannot lift the suspension, also with a fresh MFA.",
+  "kind": "agent-switch",
+  "input": {
+    "event": "lift",
+    "callerSub": "owner-1",
+    "isAdmin": false,
+    "freshMfa": true,
+    "ownerSub": "owner-1"
+  },
+  "expected": {
+    "status": 403,
+    "error": "access_denied"
+  }
+}

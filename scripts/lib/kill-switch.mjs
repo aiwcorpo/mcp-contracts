@@ -39,3 +39,23 @@ export function killSwitchDecision({ switches, tool, event, storeReadable = true
   if (event === 'approve' || event === 'register') return { switches };
   throw new Error(`unknown event ${event}`);
 }
+
+/**
+ * The switch of a resource (a static resource or a resource template) or of a prompt (CC-265). `target` is { kind: resource | prompt, serverId, name };
+ * the switch of the whole server hides them too (CC-259). `read` is resources/read and prompts/get. For the client the refusal is -32602 with the same body as every other refusal (CC-259), the
+ * unreadable store is -32603 upstream_unavailable. As for tools the switch is looked at after authorization and the filter of the address.
+ * events: read (resources/read, prompts/get), list, lift.
+ */
+export function primitiveSwitchDecision({ switches, target, event, storeReadable = true, mayAccess = true, inFilter = true }) {
+  const on = switches.some((s) => s.serverId === target.serverId && (s.scope === 'server' || (s.scope === target.kind && s[target.kind] === target.name)));
+  if (event === 'read') {
+    if (!mayAccess) return { allowed: false, jsonRpcCode: -32602, auditReason: 'not_granted' };
+    if (!inFilter) return { allowed: false, jsonRpcCode: -32602, auditReason: 'filter_scope' };
+    if (!storeReadable) return { allowed: false, jsonRpcCode: -32603, auditReason: 'upstream_unavailable' };
+    if (on) return { allowed: false, jsonRpcCode: -32602, auditReason: 'kill_switch' };
+    return { allowed: true };
+  }
+  if (event === 'list') return { listed: storeReadable && !on };
+  if (event === 'lift') return { switches: switches.filter((s) => !(s.scope === target.kind && s.serverId === target.serverId && s[target.kind] === target.name)) };
+  throw new Error(`unknown event ${event}`);
+}

@@ -1,0 +1,15 @@
+{
+  "description": "Not a SemVer: no emission.",
+  "kind": "emission",
+  "input": {
+    "emission": {
+      "receiver": "server",
+      "contractsVersion": "8.0"
+    }
+  },
+  "expected": {
+    "emit": false,
+    "errorCode": "upstream_unavailable",
+    "auditReason": "contracts_version_unsupported"
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "mappings": [
+    {
+      "name": "deleteAgentClient without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/agent-clients/{clientId}",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "deleteAgentClient 204 status-204",
+      "priority": 5,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/agent-clients/{clientId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "name": "deleteAgentClient 400 invalid_request",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/agent-clients/{clientId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=invalid_request($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "name": "deleteAgentClient 401 step_up_required",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/agent-clients/{clientId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=step_up_required($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "step_up_required"
+        }
+      }
+    },
+    {
+      "name": "deleteAgentClient 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "DELETE",
+        "urlPathTemplate": "/admin/v1/agent-clients/{clientId}",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    }
+  ]
+}

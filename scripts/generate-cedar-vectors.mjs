@@ -29,6 +29,9 @@ const SUB = {
   notesDestroyer: 'b1a7c0de-0000-4000-8000-000000000008',
   teamWriter: 'b1a7c0de-0000-4000-8000-000000000009',
   weatherReader: 'b1a7c0de-0000-4000-8000-00000000000a',
+  agent: 'b1a7c0de-0000-4000-8000-00000000000f',
+  delegated: 'b1a7c0de-0000-4000-8000-000000000010',
+  gitlabReader: 'b1a7c0de-0000-4000-8000-000000000011',
   confluenceReader: 'b1a7c0de-0000-4000-8000-00000000000b',
   gitlabWriter: 'b1a7c0de-0000-4000-8000-00000000000c',
   notesOps: 'b1a7c0de-0000-4000-8000-00000000000d',
@@ -47,6 +50,12 @@ const users = {
   notesOps: () => caller('notesOps', ['mcp-notes-read', 'mcp-notes-ops']),
   notesOpsOnly: () => caller('notesOpsOnly', ['mcp-notes-ops']),
   weatherReader: () => caller('weatherReader', ['mcp-weather-read']),
+  gitlabReader: () => caller('gitlabReader', ['mcp-gitlab-read']),
+  agentReader: () => caller('agent', ['mcp-jira-read'], { pty: 'agent' }),
+  agentDestroyer: (extra) => caller('agent', ['mcp-jira-read', 'mcp-jira-destructive', 'mcp-jira-proj-ABC'], { pty: 'agent', ...extra }),
+  agentNotesReader: () => caller('agent', ['mcp-notes-read'], { pty: 'agent' }),
+  delegatedDestroyer: (extra) => caller('delegated', ['mcp-jira-read', 'mcp-jira-destructive', 'mcp-jira-proj-ABC'],
+    { pty: 'delegated', act: { sub: 'b1a7c0de-0000-4000-8000-000000000012' }, ...extra }),
 };
 
 const tool = (system, name, risk, action, resourceRefs = []) => ({ serverId: `mcp-${system}`, system, name, risk, action, resourceRefs });
@@ -76,6 +85,18 @@ const tools = {
   getBackendInfo: { ...tool('notes', 'get_backend_info', 'READ_ONLY', 'read'), additionalGroup: 'mcp-notes-ops' },
   forecast: tool('weather', 'forecast', 'READ_ONLY', 'read'),
 };
+
+const resourceEntry = (system, name, uriTemplate, variables = [], extra = {}) => ({ serverId: `mcp-${system}`, system, name, uriTemplate, variables, ...extra });
+const promptEntry = (system, name, extra = {}) => ({ serverId: `mcp-${system}`, system, name, ...extra });
+const resources = {
+  noteTemplate: resourceEntry('notes', 'note_in_notebook', 'notes://notebook/{notebook}/note/{noteId}', [{ name: 'notebook', type: 'Notes::Notebook' }, { name: 'noteId', type: 'Notes::Note' }]),
+  staticDoc: resourceEntry('notes', 'handbook', 'notes://docs/handbook'),
+  blocked: resourceEntry('notes', 'internal_handbook', 'notes://docs/internal-handbook'),
+  folderTemplate: resourceEntry('notes', 'folder_by_path', 'notes://folder/{folderPath}', [{ name: 'folderPath', type: 'Notes::Folder' }]),
+  gitlabBlob: resourceEntry('gitlab', 'blob', 'gitlab://project/{projectPath}/blob/{ref}/{filePath}',
+    [{ name: 'projectPath', type: 'GitLab::Project' }, { name: 'ref', type: 'GitLab::Ref' }, { name: 'filePath', type: 'GitLab::FilePath' }]),
+};
+const prompts = { summarizeNote: promptEntry('notes', 'summarize_note') };
 
 const project = (key, category = '') => ({ type: 'Jira::Project', id: key, attrs: { key, category }, scopes: [`Jira::Project/${key}`] });
 const issue = (key, projectKey, category) => ({
@@ -184,6 +205,44 @@ builderVector('credential-type-service-account', 'service-account in the context
 builderVector('credential-type-unknown', 'A fifth credential type is internal_error.', 'gateway',
   { caller: users.notesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, credentialType: 'service_account' });
 
+builderVector('context-principal-type-user', 'A token without pty is a human: the gateway still gives context.principalType "user" (CC-263).', 'gateway',
+  { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('context-principal-type-agent', 'pty agent becomes context.principalType; the principal is still a User entity with the sub of the service account (CC-263).', 'gateway',
+  { caller: users.agentReader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('context-principal-type-delegated-with-actor', 'pty delegated with act.sub: context.principalType and context.actor (CC-263).', 'gateway',
+  { caller: users.delegatedDestroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('context-actor-without-delegated-rejected', 'An actor with a principal type other than delegated is internal_error (CC-263).', 'gateway',
+  { caller: caller('agent', ['mcp-jira-read'], { pty: 'agent', act: { sub: 'b1a7c0de-0000-4000-8000-000000000012' } }), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('context-principal-type-unknown', 'A principal type outside user, agent and delegated is internal_error (CC-263).', 'gateway',
+  { caller: caller('agent', ['mcp-jira-read'], { pty: 'robot' }), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } });
+builderVector('server-context-principal-type-agent', 'The server context carries principalType too: the starter takes it from pty (CC-263).', 'server',
+  { caller: users.agentNotesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, credentialType: 'user-oauth', resource: folder('team') });
+
+builderVector('resource-read-template', 'resources/read at the gateway: McpResource with the template, requiredGroup mcp-<system>-read; the notebook variable is an early-check type and reaches refs (CC-262).', 'gateway-resource',
+  { caller: users.notesReader(), resource: resources.noteTemplate, values: { notebook: 'alpha', noteId: '17' } });
+builderVector('resource-read-additional-group', 'A resource whose manifest entry names an additionalGroup: the McpResource entity carries it next to requiredGroup.', 'gateway-resource',
+  { caller: users.notesOps(), resource: { ...resources.staticDoc, additionalGroup: 'mcp-notes-ops' }, values: {} });
+builderVector('resource-read-static', 'A static resource: uriTemplate is the URI itself and there are no variables.', 'gateway-resource',
+  { caller: users.notesReader(), resource: resources.staticDoc, values: {} });
+builderVector('resource-read-additional-group-of-another-system', 'An additionalGroup of another system is internal_error, as for a tool.', 'gateway-resource',
+  { caller: users.notesReader(), resource: { ...resources.staticDoc, additionalGroup: 'mcp-jira-ops' }, values: {} });
+builderVector('resource-read-value-only-variables', 'A template whose variables have a type with an entity (projectPath) and valueOnly types (ref, filePath): every value is checked against its idPattern, none of them is early-check, refs is empty (CC-258).', 'gateway-resource',
+  { caller: users.gitlabReader(), resource: resources.gitlabBlob, values: { projectPath: 'team-a/app', ref: 'main', filePath: 'src/main.java' } },
+  { resourceTypes: [GITLAB], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('resource-read-value-only-variable-invalid', 'A value that does not match the idPattern of a valueOnly type is invalid_argument.', 'gateway-resource',
+  { caller: users.gitlabReader(), resource: resources.gitlabBlob, values: { projectPath: 'team-a/app', ref: 'main', filePath: '../secret' } },
+  { resourceTypes: [GITLAB], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('resource-ref-value-only-type-rejected', 'A valueOnly type is never the type of a resourceRef: there is no entity to build (CC-258).', 'gateway',
+  { caller: users.gitlabReader(), tool: tool('gitlab', 'get_file', 'READ_ONLY', 'read', [{ argument: 'filePath', type: 'GitLab::FilePath' }]), arguments: { filePath: 'src/main.java' } },
+  { resourceTypes: [GITLAB], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('resolved-resource-value-only-type-rejected', 'A resolver cannot return a resource of a valueOnly type: it has no entity.', 'server',
+  { caller: users.gitlabReader(), tool: tool('gitlab', 'get_file', 'READ_ONLY', 'read'), arguments: {}, credentialType: 'user-oauth', resource: { type: 'GitLab::Ref', id: 'main', attrs: {}, scopes: [] } },
+  { resourceTypes: [GITLAB], scopeMappingPath: MAPPING_EXAMPLE_SYSTEMS });
+builderVector('prompt-get', 'prompts/get at the gateway: McpPrompt with requiredGroup mcp-<system>-read and an empty refs (CC-262).', 'gateway-prompt',
+  { caller: users.notesReader(), prompt: prompts.summarizeNote });
+builderVector('prompt-get-additional-group', 'A prompt whose manifest entry names an additionalGroup carries it on the McpPrompt entity.', 'gateway-prompt',
+  { caller: users.notesOps(), prompt: { ...prompts.summarizeNote, additionalGroup: 'mcp-notes-ops' } });
+
 builderVector('server-jira-issue', 'Server: the issue, its project as parent entity and as attribute, scopes of the project from the resolver.', 'server',
   { caller: users.writer(), tool: tools.updateIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') });
 builderVector('server-jira-issue-moved', 'The project comes from the system, not from the key: ABC-1 now lives in HR.', 'server',
@@ -272,6 +331,7 @@ builderVector('mapping-example-systems', 'The scope mapping of the former built-
 outDir('policy-decisions');
 // platformServer: the policies that PlatformServerPolicies generates from the declarations of the namespace run next to the fragment.
 const JIRA_FRAGMENT = { namespace: 'Jira', schema: 'cedar/examples/systems/jira/schema.cedarschema', policies: ['cedar/examples/systems/jira'], platformServer: true };
+const NOTES_AGENT_FRAGMENT = { namespace: 'Notes', schema: 'test-vectors/fixtures/notes/schema.cedarschema', policies: ['test-vectors/fixtures/notes', 'test-vectors/fixtures/notes-agent'], platformServer: true };
 const NOTES_FRAGMENT = { namespace: 'Notes', schema: 'test-vectors/fixtures/notes/schema.cedarschema', policies: ['test-vectors/fixtures/notes'], platformServer: true };
 const GATEWAY_POLICIES = { schema: null, policies: ['cedar/platform', 'cedar/examples/overrides'] };
 let decisionCount = 0;
@@ -283,11 +343,14 @@ const decision = (name, description, level, rawInput, expected, { covers = [], a
   write('policy-decisions', name, {
     description,
     covers,
-    policies: policies ?? (level === 'gateway' ? GATEWAY_POLICIES : (input.resource.type.startsWith('Notes::') ? NOTES_FRAGMENT : JIRA_FRAGMENT)),
+    policies: policies ?? (level.startsWith('gateway') ? GATEWAY_POLICIES : (input.resource.type.startsWith('Notes::') ? NOTES_FRAGMENT : JIRA_FRAGMENT)),
     // How request and entities were produced; implementations can rebuild them from this input.
     builder: { level, resourceTypes: [JIRA, NOTES], scopeMapping: MAPPING, input, ...(adjustment && { adjustment }) },
-    request: { principal: built.principal, action: built.action, resource: built.resource, context: adjustment === 'remove-refs' ? Object.fromEntries(Object.entries(built.context).filter(([k]) => k !== 'refs')) : built.context },
-    entities: built.entities.filter((e) => adjustment !== 'remove-tool-entity' || e.uid.type !== 'Tool'),
+    request: {
+      principal: built.principal, action: built.action, resource: built.resource,
+      context: Object.fromEntries(Object.entries(built.context).filter(([k]) => !(adjustment === 'remove-refs' && k === 'refs') && !(adjustment === 'remove-principal-type' && k === 'principalType'))),
+    },
+    entities: built.entities.filter((e) => !((adjustment === 'remove-tool-entity' && e.uid.type === 'Tool') || (adjustment === 'remove-resource-entity' && e.uid.type === 'McpResource'))),
     expected,
   });
 };
@@ -346,6 +409,42 @@ decision('gw-notes-update-folder-not-early', 'Notes folder is not early-check (i
   { caller: users.notesWriter(), tool: tools.updateFolder, arguments: { folderPath: 'team/sub' } }, allow('platform-call-by-group'));
 decision('gw-system-unknown-to-everything', 'A system added at runtime and never mentioned in any file: allowed by its own group alone.', 'gateway',
   { caller: users.weatherReader(), tool: tools.forecast, arguments: {} }, allow('platform-call-by-group'));
+
+decision('gw-read-resource-allowed-by-group', 'Reader reads a resource template: the platform permit on read_resource applies, whatever the server (CC-262).', 'gateway-resource',
+  { caller: users.notesReader(), resource: resources.noteTemplate, values: { notebook: 'alpha', noteId: '17' } }, allow('platform-read-resource-by-group'));
+decision('gw-read-resource-denied-without-group', 'No mcp-notes-read: default deny, also for the group of another system.', 'gateway-resource',
+  { caller: users.weatherReader(), resource: resources.staticDoc, values: {} }, deny(), { covers: ['no_group'] });
+decision('gw-read-resource-denied-by-additional-group', 'The resource names mcp-notes-ops: the risk group alone does not open it, the additional group can only narrow.', 'gateway-resource',
+  { caller: users.notesReader(), resource: { ...resources.staticDoc, additionalGroup: 'mcp-notes-ops' }, values: {} }, deny('platform-read-resource-additional-group'), { covers: ['forbid_overrides_permit'] });
+decision('gw-read-resource-both-groups-allowed', 'Member of the read group and of the additional group reads the resource.', 'gateway-resource',
+  { caller: users.notesOps(), resource: { ...resources.staticDoc, additionalGroup: 'mcp-notes-ops' }, values: {} }, allow('platform-read-resource-by-group'));
+decision('gw-read-resource-override-forbid', 'An emergency override blocks one resource by name: the permit of the group does not help (CC-262).', 'gateway-resource',
+  { caller: users.notesReader(), resource: resources.blocked, values: {} }, deny('override-block-resource-internal-handbook'), { covers: ['forbid_overrides_permit'] });
+decision('gw-resource-unknown-entity-denied', 'A resource that is not in the registry has no McpResource entity: deny.', 'gateway-resource',
+  { caller: users.notesReader(), resource: resources.staticDoc, values: {} }, deny(), { covers: ['unknown_tool'], adjustment: 'remove-resource-entity' });
+decision('gw-get-prompt-allowed-by-group', 'Reader gets a prompt: the platform permit on get_prompt applies (CC-262).', 'gateway-prompt',
+  { caller: users.notesReader(), prompt: prompts.summarizeNote }, allow('platform-get-prompt-by-group'));
+decision('gw-get-prompt-denied-without-group', 'No mcp-notes-read: default deny.', 'gateway-prompt',
+  { caller: users.weatherReader(), prompt: prompts.summarizeNote }, deny(), { covers: ['no_group'] });
+decision('gw-get-prompt-denied-by-additional-group', 'The prompt names mcp-notes-ops: the risk group alone does not open it.', 'gateway-prompt',
+  { caller: users.notesReader(), prompt: { ...prompts.summarizeNote, additionalGroup: 'mcp-notes-ops' } }, deny('platform-get-prompt-additional-group'), { covers: ['forbid_overrides_permit'] });
+decision('gw-agent-destructive-denied', 'An agent with the destructive group and fresh MFA still cannot call a DESTRUCTIVE tool (CC-263).', 'gateway',
+  { caller: users.agentDestroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('platform-call-agent-no-destructive'), { covers: ['forbid_overrides_permit'] });
+decision('gw-agent-read-allowed', 'An agent calls a READ_ONLY tool by its group like a human.', 'gateway',
+  { caller: users.agentReader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'));
+decision('gw-user-destructive-allowed-with-group', 'A human with the destructive group and fresh MFA calls a DESTRUCTIVE tool (principalType user).', 'gateway',
+  { caller: users.destroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, allow('platform-call-by-group'));
+decision('gw-delegated-destructive-denied', 'A delegated principal is treated like an agent for DESTRUCTIVE tools until mode 2 is reviewed (CC-263).', 'gateway',
+  { caller: users.delegatedDestroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('platform-call-agent-no-destructive'), { covers: ['forbid_overrides_permit'] });
+decision('gw-destructive-without-principal-type-denied', 'A builder caller that left principalType out cannot turn the ban off: DESTRUCTIVE without it is denied (fail closed).', 'gateway',
+  { caller: users.destroyer({ mfa: 60 }), tool: tools.deleteIssue, arguments: { issueKey: 'ABC-1' } }, deny('platform-call-destructive-without-principal-type'),
+  { covers: ['forbid_overrides_permit'], adjustment: 'remove-principal-type' });
+decision('server-read-resource-typed-variable', 'Server, resources/read: read is evaluated on the entity of the variable that has one (the folder), by its scopes (D4, CC-262).', 'server',
+  { caller: users.notesReader(), tool: tool('notes', 'folder_by_path', 'READ_ONLY', 'read', [{ argument: 'folderPath', type: 'Notes::Folder' }]), arguments: { folderPath: 'team/sub' }, resource: folder('team/sub') },
+  allow('notes-read'));
+decision('server-agent-context-reaches-fragment', 'The server context carries principalType, so a policy of the fragment can tell an agent from a human (CC-263).', 'server',
+  { caller: users.agentNotesReader(), tool: tools.getFolder, arguments: { folderPath: 'team' }, resource: folder('team') },
+  deny('notes-agent-no-folder'), { covers: ['forbid_overrides_permit'], policies: NOTES_AGENT_FRAGMENT });
 
 decision('srv-jira-read-allowed', 'Server: reader reads an issue of an ordinary project.', 'server',
   { caller: users.reader(), tool: tools.getIssue, arguments: { issueKey: 'ABC-1' }, resource: issue('ABC-1', 'ABC', 'Software') }, allow('jira-read'));
@@ -459,6 +558,12 @@ resourceCheck('array-with-one-outside', 'Archive three folders; one of them is o
 resourceCheck('array-all-inside', 'Archive two folders, both inside the scope.',
   { caller: users.notesWriter(), tool: tools.archiveFolders, arguments: { folderPaths: ['team/a', 'team/sub/b'] } },
   [folder('team/a'), folder('team/sub/b')], true);
+resourceCheck('template-variable-inside-scope', 'resources/read of a template: the variable of the folder type is evaluated like a tool argument and the read is allowed (CC-262).',
+  { caller: users.notesWriter(), tool: tool('notes', 'folder_by_path', 'READ_ONLY', 'read', [{ argument: 'folderPath', type: 'Notes::Folder' }]), arguments: { folderPath: 'team/sub' } },
+  [folder('team/sub')], true);
+resourceCheck('template-variable-restricted-folder', 'The same template with a folder classified restricted: the platform forbid applies to the entity of the variable and the read is denied.',
+  { caller: users.notesWriter(), tool: tool('notes', 'folder_by_path', 'READ_ONLY', 'read', [{ argument: 'folderPath', type: 'Notes::Folder' }]), arguments: { folderPath: 'platform' } },
+  [folder('platform', ['restricted'])], false);
 decision('srv-transfer-target-outside-scope', 'Server, move_folder: the target folder platform is evaluated on its own and denied (CC-061).', 'server',
   { caller: users.notesWriter(), tool: tools.moveFolder, arguments: { folderPath: 'team/a', targetFolder: 'platform' }, resource: folder('platform') },
   deny(), { covers: ['scope_hierarchy', 'every_resource_ref'] });
@@ -483,6 +588,10 @@ ids('confluence-page', CONFLUENCE, 'Confluence::Page', 'resource', ['1', '1000',
 ids('gitlab-group', GITLAB, 'GitLab::Group', 'resource', ['team-a', 'team-a/sub', 'Team_A.v2', 'a'],
   ['team-a/', '/team-a', 'team-a//sub', 'team-a/../team-b', '-team', 'team-', 'team--a', 'team a', '.hidden', 'a'.repeat(1025)]);
 ids('gitlab-project', GITLAB, 'GitLab::Project', 'resource', ['team-a/app', 'team-a/sub/svc'], ['app', 'team-a/app/', 'team-a/../x', '/app']);
+const FILE_PATH_VALID = ['src/main.java', 'a', 'README.md', 'docs/v1.2/guide-1.md', '_config.yml', 'feature/x_y'];
+const FILE_PATH_INVALID = ['../x', 'a/../b', '.git/config', 'a//b', 'a/-x', '-x', 'a\\b', 'ABC\n', '', 'a/', '/a', 'a..b'];
+ids('gitlab-file-path', GITLAB, 'GitLab::FilePath', 'resource', FILE_PATH_VALID, FILE_PATH_INVALID);
+ids('gitlab-ref', GITLAB, 'GitLab::Ref', 'resource', ['main', 'v1.2.3', 'feature/login-fix', 'release/2026.11'], FILE_PATH_INVALID);
 ids('opensearch-index', OPENSEARCH, 'OpenSearch::Index', 'resource', ['logs-team-a-2026.10', 'logs', 'kibana_1', '0logs'],
   ['logs-team-a-x,secret-y', 'logs-team-a-*,*', 'logs-*', '_all', '-logs', 'Logs', 'remote:logs', '<logs-{now/d}>', 'logs team', '.', '..',
     '.security', '.kibana_1', '.opendistro_security', '.ds-logs-000001']);

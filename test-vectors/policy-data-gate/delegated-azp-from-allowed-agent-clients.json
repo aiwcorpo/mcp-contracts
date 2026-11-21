@@ -1,0 +1,16 @@
+{
+  "description": "A delegated token takes its azp from allowedAgentClients too.",
+  "input": {
+    "pty": "delegated",
+    "azp": "agent-reports",
+    "allowedClients": [
+      "claude-code"
+    ],
+    "allowedAgentClients": [
+      "agent-reports"
+    ]
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

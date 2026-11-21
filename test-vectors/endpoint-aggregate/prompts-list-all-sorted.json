@@ -1,0 +1,52 @@
+{
+  "description": "The same for prompts, under the name <system>__<prompt>.",
+  "kind": "primitive-list",
+  "input": {
+    "kind": "prompts",
+    "servers": [
+      {
+        "serverId": "mcp-servicedesk",
+        "system": "servicedesk",
+        "available": true,
+        "entries": [
+          {
+            "name": "runbook",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          },
+          {
+            "name": "guide",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      },
+      {
+        "serverId": "mcp-jira",
+        "system": "jira",
+        "available": true,
+        "entries": [
+          {
+            "name": "conventions",
+            "approved": true,
+            "enabled": true,
+            "definitionMatches": true,
+            "allowedByPolicy": true
+          }
+        ]
+      }
+    ],
+    "query": ""
+  },
+  "expected": {
+    "visible": [
+      "jira__conventions",
+      "servicedesk__guide",
+      "servicedesk__runbook"
+    ]
+  }
+}

@@ -16,4 +16,11 @@ class PatternGrammarTest {
         }
         assertNull(PatternGrammar.violation("^[a-z\\-]{1,8}\\.[0-9]$"));
     }
+
+    /** CC-258: the pattern of the GitLab ref and file path types. A separator class that shared "_" with the segment class would overlap. */
+    @Test
+    void pathPatternOfTheValueOnlyTypesPassesTheGrammar() {
+        assertNull(PatternGrammar.violation("^[A-Za-z0-9_](?:[./-][A-Za-z0-9_]|[A-Za-z0-9_])*$"));
+        assertEquals("alternatives in a quantified group overlap", PatternGrammar.violation("^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"));
+    }
 }

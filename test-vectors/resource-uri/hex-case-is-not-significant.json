@@ -1,0 +1,30 @@
+{
+  "description": "Percent codes compare without regard to the case of the hex digits: %2f and %2F are the same code.",
+  "kind": "template",
+  "input": {
+    "template": "gitlab://project/{projectPath}/blob/{ref}/{filePath}",
+    "variables": [
+      {
+        "name": "projectPath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "ref",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      },
+      {
+        "name": "filePath",
+        "idPattern": "^[A-Za-z0-9_](?:[._/-][A-Za-z0-9_]|[A-Za-z0-9_])*$"
+      }
+    ],
+    "uri": "gitlab://project/grp%2fapp/blob/main/src%2Fmain.java"
+  },
+  "expected": {
+    "match": true,
+    "variables": {
+      "projectPath": "grp/app",
+      "ref": "main",
+      "filePath": "src/main.java"
+    }
+  }
+}

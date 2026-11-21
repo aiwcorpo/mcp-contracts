@@ -3,7 +3,6 @@ package pl.aiwcorpo.mcp.cedar.entities;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * Approved registry entry of a tool (C5, C6).
@@ -26,8 +25,6 @@ public record ToolDescriptor(
         List<ResourceRef> resourceRefs,
         Optional<String> additionalGroup) {
 
-    private static final Set<String> RISK_SUFFIXES = Set.of("read", "write", "destructive");
-
     public ToolDescriptor {
         Objects.requireNonNull(serverId, "serverId");
         Objects.requireNonNull(system, "system");
@@ -36,14 +33,7 @@ public record ToolDescriptor(
         Objects.requireNonNull(action, "action");
         resourceRefs = List.copyOf(Objects.requireNonNull(resourceRefs, "resourceRefs"));
         Objects.requireNonNull(additionalGroup, "additionalGroup");
-        additionalGroup.ifPresent(group -> {
-            String prefix = "mcp-" + system + "-";
-            String suffix = group.startsWith(prefix) ? group.substring(prefix.length()) : "";
-            if (!suffix.matches("[a-z][a-z0-9-]{0,30}") || RISK_SUFFIXES.contains(suffix)) {
-                throw new EntityBuilderException(EntityBuilderException.Code.INTERNAL_ERROR,
-                        "additionalGroup must be mcp-" + system + "-<suffix> with a suffix other than read, write and destructive");
-            }
-        });
+        additionalGroup.ifPresent(group -> AdditionalGroups.check(system, group));
     }
 
     /** Tool without an additional group. */

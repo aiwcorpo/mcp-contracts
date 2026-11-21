@@ -1,0 +1,17 @@
+{
+  "description": "An encoded slash in a variable whose type does not allow a slash: the decoded value fails idPattern.",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "servicedesk://ticket/SD%2F1"
+  },
+  "expected": {
+    "match": false
+  }
+}
