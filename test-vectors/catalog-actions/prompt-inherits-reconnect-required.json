@@ -1,0 +1,24 @@
+{
+  "description": "A granted prompt of a server that needs a new connection gets reconnect and disconnect.",
+  "input": {
+    "status": "reconnect_required",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false,
+    "hasConnection": true,
+    "entry": {
+      "kind": "prompt",
+      "access": "granted",
+      "requiredEntitlements": []
+    }
+  },
+  "expected": {
+    "actions": [
+      "disconnect",
+      "reconnect"
+    ]
+  }
+}

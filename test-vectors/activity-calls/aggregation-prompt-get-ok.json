@@ -1,0 +1,32 @@
+{
+  "description": "A prompt_get that ended ok is a row of kind prompt named <system>__<prompt>, result ok; no tool (CC-264, CC-265).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e91",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "prompt_get",
+      "server": "mcp-jira",
+      "prompt": "triage_issue",
+      "decision": "allow",
+      "outcome": "ok",
+      "errorCode": null,
+      "latencyMs": 5,
+      "argsLength": 64,
+      "definitionHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e91",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "prompt",
+    "client": "claude-code",
+    "prompt": "jira__triage_issue",
+    "result": "ok",
+    "errorCode": null
+  }
+}

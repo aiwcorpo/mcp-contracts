@@ -1,0 +1,25 @@
+{
+  "description": "A denied resource of a connected server whose entitlements are known: only request_access of the server actions.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false,
+    "hasConnection": true,
+    "entry": {
+      "kind": "resource",
+      "access": "denied",
+      "requiredEntitlements": [
+        "mcp-jira-read"
+      ]
+    }
+  },
+  "expected": {
+    "actions": [
+      "request_access"
+    ]
+  }
+}

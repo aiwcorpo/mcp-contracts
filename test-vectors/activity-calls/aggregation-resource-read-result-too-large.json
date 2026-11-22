@@ -1,0 +1,38 @@
+{
+  "description": "A result over MCP_RESOURCE_MAX_BYTES is an error row with the errorCode of the event.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e88",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "resourceTemplate": "issue",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123"
+      },
+      "decision": "allow",
+      "reason": "result_too_large",
+      "outcome": "error",
+      "errorCode": "upstream_unavailable"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e88",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "resourceTemplate": "issue",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123"
+    },
+    "result": "error",
+    "errorCode": "upstream_unavailable"
+  }
+}

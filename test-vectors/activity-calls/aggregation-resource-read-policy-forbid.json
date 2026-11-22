@@ -1,0 +1,38 @@
+{
+  "description": "A Cedar forbid on a resource is denied_not_granted for the whole kind, whatever errorCode the event carries, so the row does not tell it from a missing grant.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "resourceTemplate": "issue",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123"
+      },
+      "decision": "deny",
+      "reason": "policy_forbid",
+      "outcome": "denied",
+      "errorCode": "access_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e84",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "resourceTemplate": "issue",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123"
+    },
+    "result": "denied_not_granted",
+    "errorCode": "access_denied"
+  }
+}

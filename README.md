@@ -1600,11 +1600,11 @@ handlers require an `X-XSRF-TOKEN` header equal to the `__Host-XSRF-TOKEN` cooki
 | `confirmation-binding/` | 77 | first call and retry with a code: the pending call, one `DESTRUCTIVE` operation, mapping of the broker result (CC-091, CC-126, CC-127) |
 | `totp/` | 46 | the broker Authenticator: RFC 6238, the window, one-time use of a step, the 5/15 min block, the daily limit, registration, the `otpauth` URI (CC-092, CC-126); the seed comes from RFC 6238, NOT FOR PRODUCTION |
 | `text-hygiene/` | 79 | the forbidden set in arguments, identifiers and mention filters, and replacement in system text (CC-121, CC-122) |
-| `activity-calls/` | 67 | `ActivityCall` and aggregating the events of one call into a row (CC-095) |
+| `activity-calls/` | 83 | `ActivityCall` and aggregating the events of one call into a row, including resource reads and prompt gets (CC-095, CC-265) |
 | `gateway-authentication-decision/` | 12 | choosing the reason and the 401/503 status from the key copy state, `kid` and refresh (CC-124) |
 | `activity-cursor/` | 9 | the `/activity/calls` cursor: HMAC, binding to `sub`, 15 min validity (CC-095); a test key, NOT FOR PRODUCTION |
 | `gateway-authentication/` | 37 | 401 with `resource_metadata` (also for `/mcp` with a filter and without a query in the challenge, CC-171), 503 without `WWW-Authenticate` and with `Retry-After` (CC-124), or 429 with `Retry-After` and the body `rate_limited` (CC-156) |
-| `catalog-actions/` | 19 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request (CC-083, CC-113) |
+| `catalog-actions/` | 39 | portal catalog actions per status, including `request_access` without `requiredEntitlements` and `view_request` with a pending request, and the inherited actions of resources and prompts (CC-083, CC-113, CC-265) |
 | `query-rendering/` | 26 | server queries from a structure: JQL and CQL with hostile values, the OpenSearch index pattern and name resolution (CC-160) |
 | `credential-type-header/` | 13 | the `X-MCP-Credential-Type` header versus server configuration: match, mismatch, missing, unknown value (CC-166) |
 | `endpoint-filter/` | 119 | the `/mcp` query filter (CC-170, CC-172, CC-178, CC-184): syntax and normalization, the `/s/` route, the visible set (also a risk outside the set), `tools/call` under a filter and with tool, server and account state, session binding and the order of checks, the `400` body; Java runs `parse`, `route`, `apply`, `call`, `session` |

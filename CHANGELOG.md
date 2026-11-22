@@ -16,7 +16,7 @@ Pakiet 1 przed wydaniem **major** 8.0.0 (CC-258 ... CC-266, wpisy zaakceptowane 
 - **CC-262 (C7):** Cedar: encje `McpResource` i `McpPrompt`, akcje `read_resource` i `get_prompt`, zarezerwowane nazwy typów (`resource-type-name-reserved`), polityki platformy i builder encji; nowy SHA-256 zamrożonego schematu.
 - **CC-263 (C7):** Cedar: atrybuty kontekstu `principalType` i `actor`, polityka `agent-no-destructive`; w każdym kontekście wektorów builder zawsze ustawia `principalType`.
 - **CC-264 (C8):** audyt: zdarzenia `resource_read` i `prompt_get`, pola `principalType`, `actorSub`, `actorClient`, `agentOwner`, `resourceTemplate`, `prompt`, `contentBytes`, `contentSha256` i nowe powody.
-- **CC-265 (C5, C12):** API administracyjne i portalu: zatwierdzanie zasobów, szablonów zasobów i promptów, wyłącznik awaryjny dla zasobu i promptu, katalog i aktywność z nowymi rodzajami.
+- **CC-265 (C5, C12):** API administracyjne i portalu: zatwierdzanie zasobów, szablonów zasobów i promptów, wyłącznik awaryjny dla zasobu i promptu, katalog i aktywność z nowymi rodzajami (reguła akcji katalogu dla zasobów i promptów, wiersze aktywności z `resource_read` i `prompt_get`).
 - **CC-266 (C5, C12, C14):** rejestr agentów (`agent-clients`), sufit ryzyka, wyłącznik agenta, `allowedAgentClients` w danych polityki serwera od `contractsVersion` 8.0.0.
 
 ## 7.2.0 - 2026-11-18

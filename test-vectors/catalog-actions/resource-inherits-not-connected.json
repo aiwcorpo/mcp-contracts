@@ -1,0 +1,24 @@
+{
+  "description": "A granted resource of a server that is not connected gets the connect actions of the server row.",
+  "input": {
+    "status": "not_connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": false,
+    "hasConnection": false,
+    "entry": {
+      "kind": "resource",
+      "access": "granted",
+      "requiredEntitlements": []
+    }
+  },
+  "expected": {
+    "actions": [
+      "add_secret",
+      "connect_oauth"
+    ]
+  }
+}

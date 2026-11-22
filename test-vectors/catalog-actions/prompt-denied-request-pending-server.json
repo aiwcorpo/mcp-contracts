@@ -1,0 +1,25 @@
+{
+  "description": "On a server with status request_pending a denied prompt shows view_request.",
+  "input": {
+    "status": "request_pending",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": null,
+    "someToolDenied": false,
+    "hasConnection": false,
+    "entry": {
+      "kind": "prompt",
+      "access": "denied",
+      "requiredEntitlements": [
+        "mcp-jira-read"
+      ]
+    }
+  },
+  "expected": {
+    "actions": [
+      "view_request"
+    ]
+  }
+}

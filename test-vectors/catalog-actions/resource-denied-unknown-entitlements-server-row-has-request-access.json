@@ -1,0 +1,21 @@
+{
+  "description": "The server row may offer request_access for a denied tool; the entry is judged by its own entitlements, so a denied resource without them gets none.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": true,
+    "hasConnection": true,
+    "entry": {
+      "kind": "resource",
+      "access": "denied",
+      "requiredEntitlements": []
+    }
+  },
+  "expected": {
+    "actions": []
+  }
+}

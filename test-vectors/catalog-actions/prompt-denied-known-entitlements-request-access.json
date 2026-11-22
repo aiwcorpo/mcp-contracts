@@ -1,0 +1,25 @@
+{
+  "description": "A denied prompt of a connected server whose entitlements are known: only request_access.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false,
+    "hasConnection": true,
+    "entry": {
+      "kind": "prompt",
+      "access": "denied",
+      "requiredEntitlements": [
+        "mcp-jira-read"
+      ]
+    }
+  },
+  "expected": {
+    "actions": [
+      "request_access"
+    ]
+  }
+}

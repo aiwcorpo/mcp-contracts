@@ -1,0 +1,31 @@
+{
+  "description": "A suspended agent getting a prompt: denied_not_granted.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e96",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "agent-reports",
+      "event": "prompt_get",
+      "server": "mcp-jira",
+      "principalType": "agent",
+      "prompt": "triage_issue",
+      "decision": "deny",
+      "reason": "agent_suspended",
+      "outcome": "denied",
+      "errorCode": "access_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e96",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "prompt",
+    "client": "agent-reports",
+    "prompt": "jira__triage_issue",
+    "result": "denied_not_granted",
+    "errorCode": "access_denied"
+  }
+}

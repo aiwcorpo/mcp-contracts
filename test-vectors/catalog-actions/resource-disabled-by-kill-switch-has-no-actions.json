@@ -1,0 +1,23 @@
+{
+  "description": "disabledBy does not matter: a resource under a kill switch has no actions either.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false,
+    "hasConnection": true,
+    "entry": {
+      "kind": "resource",
+      "access": "granted",
+      "requiredEntitlements": [],
+      "disabled": true,
+      "disabledBy": "kill_switch"
+    }
+  },
+  "expected": {
+    "actions": []
+  }
+}

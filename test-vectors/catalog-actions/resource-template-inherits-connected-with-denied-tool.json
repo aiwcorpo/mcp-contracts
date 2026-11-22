@@ -1,0 +1,25 @@
+{
+  "description": "The server row has request_access because of a denied tool; a granted template inherits the whole server result.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": true,
+    "hasConnection": true,
+    "entry": {
+      "kind": "resource-template",
+      "access": "granted",
+      "requiredEntitlements": []
+    }
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "request_access"
+    ]
+  }
+}

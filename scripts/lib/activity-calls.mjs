@@ -30,7 +30,37 @@ export function resultGroup(result) {
   return 'confirmation';
 }
 
+// CC-264, CC-265: a resource read or a prompt get is one gateway event without a confirmation flow, so its row comes from that
+// event alone. A refusal reaches the client as -32602 whatever its reason (CC-259), so policy_forbid is denied_not_granted here
+// whatever its errorCode (the tool-level rule of CC-198 applies to the whole kind), and the reasons of validation, of the
+// result and of the upstream (uri_no_match, argument_invalid, result_too_large, upstream_unavailable and the like) are plain
+// errors with the errorCode of the event. The row has no server field, so a prompt is named <system>__<prompt> like in
+// prompts/list.
+const PRIMITIVE_EVENTS = { resource_read: 'resource', prompt_get: 'prompt' };
+
+function aggregatePrimitiveCall(event) {
+  const kind = PRIMITIVE_EVENTS[event.event];
+  const row = { requestId: event.requestId, ts: event.ts, kind };
+  if (event.client) row.client = event.client;
+  if (event.filter) row.filter = event.filter;
+  if (kind === 'resource') {
+    if (event.resourceTemplate) row.resourceTemplate = event.resourceTemplate;
+    if (event.resource) row.resource = event.resource;
+  } else {
+    row.prompt = `${event.server.replace(/^mcp-/, '')}__${event.prompt}`;
+  }
+  if (event.outcome === 'ok') {
+    row.result = 'ok';
+    row.errorCode = null;
+  } else {
+    row.result = event.reason === 'policy_forbid' ? 'denied_not_granted' : (REASON_RESULT[event.reason] ?? 'error');
+    row.errorCode = event.errorCode ?? null;
+  }
+  return row;
+}
+
 export function aggregateCall(allEvents, now) {
+  if (allEvents[0] && PRIMITIVE_EVENTS[allEvents[0].event]) return aggregatePrimitiveCall(allEvents[0]);
   // Events after the first terminal one (for example more retries after the attempts ran out) do not change the row.
   const cut = allEvents.findIndex((e) => e.event === 'confirmation' && TERMINAL.has(e.reason));
   let events = cut < 0 ? allEvents : allEvents.slice(0, cut + 1);

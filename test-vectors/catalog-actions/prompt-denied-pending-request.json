@@ -1,0 +1,26 @@
+{
+  "description": "A pending request for the entitlement of the denied prompt shows view_request.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false,
+    "hasConnection": true,
+    "entry": {
+      "kind": "prompt",
+      "access": "denied",
+      "requiredEntitlements": [
+        "mcp-jira-read"
+      ],
+      "pendingRequest": true
+    }
+  },
+  "expected": {
+    "actions": [
+      "view_request"
+    ]
+  }
+}

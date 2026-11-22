@@ -1,0 +1,24 @@
+{
+  "description": "A granted prompt of a connected server has the actions of the server row.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "someToolDenied": false,
+    "hasConnection": true,
+    "entry": {
+      "kind": "prompt",
+      "access": "granted",
+      "requiredEntitlements": []
+    }
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect"
+    ]
+  }
+}
