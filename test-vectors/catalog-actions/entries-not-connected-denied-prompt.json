@@ -1,0 +1,32 @@
+{
+  "description": "A denied prompt does not add request_access outside the connected status, as for a denied tool.",
+  "input": {
+    "status": "not_connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": null,
+    "hasConnection": false,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "actions": [
+      "add_secret",
+      "connect_oauth"
+    ]
+  }
+}

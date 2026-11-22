@@ -7,7 +7,7 @@ import { createAjv, dereferenceOpenApi, formatErrors, listJson, path, readJson, 
 import { definitionHash, manifestEntryHash, manifestPrimitiveHash, policiesHash, primitiveHash } from '../scripts/lib/definition-hash.mjs';
 import { grammarViolation, manifestRuleViolations } from '../scripts/lib/manifest-rules.mjs';
 import { acceptRevision, ackOutcome, gatewayCall, policyDataGate, pushBodyCheck, pushDecision } from '../scripts/lib/policy-data-gate.mjs';
-import { catalogActions, catalogPrimitiveActions } from '../scripts/lib/catalog-actions.mjs';
+import { catalogActions, catalogActionsOfEntries, catalogStatus } from '../scripts/lib/catalog-actions.mjs';
 import { argumentsHash, firstCall, firstCallsInOrder, retriesInOrder, retry } from '../scripts/lib/confirmation.mjs';
 import { openCursor } from '../scripts/lib/activity-cursor.mjs';
 import { aggregateCall } from '../scripts/lib/activity-calls.mjs';
@@ -356,7 +356,8 @@ test('catalog action vectors (CC-083)', async () => {
   const vectors = listJson('test-vectors', 'catalog-actions');
   for (const status of statuses) assert.ok(vectors.some((v) => v.data.input.status === status), status);
   for (const { name, data } of vectors) {
-    assert.deepEqual((data.input.entry ? catalogPrimitiveActions : catalogActions)(data.input), data.expected.actions, name);
+    if (data.expected.status) { assert.equal(catalogStatus(data.input), data.expected.status, name); continue; }
+    assert.deepEqual((data.input.entries ? catalogActionsOfEntries : catalogActions)(data.input), data.expected.actions, name);
     for (const a of data.expected.actions) assert.ok(actions.has(a), `${name}: ${a}`);
   }
 });

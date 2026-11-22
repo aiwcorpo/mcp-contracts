@@ -26,20 +26,37 @@ export function catalogActions({ status, supportedTypes, connectionType, hasConn
   return out.sort();
 }
 
-// CC-265: a resource, a resource template or a prompt inherits the actions of its server row (the same result of
-// catalogActions, with the inputs of the server). Two exceptions, both from how a tool is treated: a disabled entry has
-// none, and an entry the user is denied (access denied) keeps only the actions that ask for access, counted for ITS
-// entitlements: request_access needs known requiredEntitlements, a pending request shows view_request. Whether the server
-// row gives such an action at all follows the status (connected, no_access, request_pending), so outside them the
-// result is empty, like for a denied tool of a not_connected server. `pendingRequest` is the entry's counterpart of
-// pendingRequestForDeniedTool.
-export function catalogPrimitiveActions({ entry, ...server }) {
-  if (entry.disabled === true) return [];
-  if (entry.access !== 'denied') return catalogActions(server);
-  return catalogActions({
-    ...server,
-    someToolDenied: true,
-    entitlementsKnown: (entry.requiredEntitlements ?? []).length > 0,
-    pendingRequestForDeniedTool: entry.pendingRequest === true,
-  }).filter((action) => action === 'request_access' || action === 'view_request');
+// CC-265: resources, resource templates and prompts have no actions of their own; an entry with access denied counts for the
+// server row like a denied tool. `entries` are the catalog entries of one server as {kind, access, requiredEntitlements,
+// disabled}, kind being tool, resource, resource-template or prompt. A disabled resource, template or prompt is not denied
+// (there is nothing to ask for until an administrator enables it); a tool counts as before, disabled or not, so inputs that only
+// involve tools give what catalogActions gave. `pendingEntitlements` are the entitlements of the user's pending requests (C13).
+const countsAsDenied = (entry) => entry.access === 'denied' && !(entry.kind !== 'tool' && entry.disabled === true);
+
+export function deniedEntryFlags(entries, pendingEntitlements = []) {
+  const denied = entries.filter(countsAsDenied);
+  return {
+    someToolDenied: denied.length > 0,
+    entitlementsKnown: denied.some((e) => (e.requiredEntitlements ?? []).length > 0),
+    pendingRequestForDeniedTool: denied.some((e) => (e.requiredEntitlements ?? []).some((g) => pendingEntitlements.includes(g))),
+  };
+}
+
+export const catalogActionsOfEntries = ({ entries, pendingEntitlements, ...server }) => catalogActions({ ...server, ...deniedEntryFlags(entries, pendingEntitlements) });
+
+// Status rules 1 and 2 of GET /api/v1/catalog (CC-021) with entries counted like tools: the server has no access when none of its
+// entries is granted (disabled does not change a grant), and a pending request for an entitlement of any of them makes it
+// request_pending. The rules 3 to 5 need the system and the connection.
+export function catalogStatus({ entries, pendingEntitlements = [], credentialDefaultType, connectionStatus }) {
+  if (!entries.some((e) => e.access === 'granted')) {
+    const needed = entries.flatMap((e) => e.requiredEntitlements ?? []);
+    return needed.some((g) => pendingEntitlements.includes(g)) ? 'request_pending' : 'no_access';
+  }
+  if (['service-account', 'token-exchange'].includes(credentialDefaultType)) return 'connected';
+  switch (connectionStatus) {
+    case 'connected': return 'connected';
+    case 'expiring': return 'expiring';
+    case 'expired': case 'revoked': case 'error': case 'needs_reconnect': return 'reconnect_required';
+    default: return 'not_connected';
+  }
 }

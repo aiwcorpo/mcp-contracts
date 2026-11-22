@@ -1,10 +1,10 @@
 {
-  "description": "A prompt the user is not granted: denied_not_granted.",
+  "description": "A prompt the user is not granted: denied_not_granted with not_found_or_denied.",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {
       "ts": "2026-10-26T20:00:00.123Z",
-      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e95",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6ea1",
       "component": "gateway",
       "componentId": "mcp-gateway",
       "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
@@ -19,7 +19,7 @@
     }
   ],
   "expected": {
-    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e95",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6ea1",
     "ts": "2026-10-26T20:00:00.123Z",
     "kind": "prompt",
     "client": "claude-code",

@@ -1,10 +1,10 @@
 {
-  "description": "A suspended agent reading a resource: reason agent_suspended, row denied_not_granted (CC-261, CC-266). The row has no field for the principal.",
+  "description": "A suspended agent reading a resource: reason agent_suspended, denied_not_granted with not_found_or_denied as in audit-events/gateway-agent-suspended (CC-261, CC-266). The row has no field for the principal.",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {
       "ts": "2026-10-26T20:00:00.123Z",
-      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e90",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e95",
       "component": "gateway",
       "componentId": "mcp-gateway",
       "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
@@ -16,16 +16,16 @@
       "decision": "deny",
       "reason": "agent_suspended",
       "outcome": "denied",
-      "errorCode": "access_denied"
+      "errorCode": "not_found_or_denied"
     }
   ],
   "expected": {
-    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e90",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e95",
     "ts": "2026-10-26T20:00:00.123Z",
     "kind": "resource",
     "client": "agent-reports",
     "resourceTemplate": "issue",
     "result": "denied_not_granted",
-    "errorCode": "access_denied"
+    "errorCode": "not_found_or_denied"
   }
 }

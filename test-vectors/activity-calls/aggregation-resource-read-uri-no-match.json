@@ -1,5 +1,5 @@
 {
-  "description": "A URI that matches no approved entry: the client gets -32602, the audit reason is uri_no_match with invalid_argument, the row is an error without a resource.",
+  "description": "A URI that matches no approved entry is answered like an unknown tool name: the row is denied_not_granted with not_found_or_denied, so it does not tell a missing resource from a forbidden one (CC-187, invariant 8). Decision of the owner, 2026-11-22.",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {
@@ -14,7 +14,7 @@
       "decision": "deny",
       "reason": "uri_no_match",
       "outcome": "error",
-      "errorCode": "invalid_argument"
+      "errorCode": "not_found_or_denied"
     }
   ],
   "expected": {
@@ -22,7 +22,7 @@
     "ts": "2026-10-26T20:00:00.123Z",
     "kind": "resource",
     "client": "claude-code",
-    "result": "error",
-    "errorCode": "invalid_argument"
+    "result": "denied_not_granted",
+    "errorCode": "not_found_or_denied"
   }
 }

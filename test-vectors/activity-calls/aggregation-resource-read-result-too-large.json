@@ -1,10 +1,10 @@
 {
-  "description": "A result over MCP_RESOURCE_MAX_BYTES is an error row with the errorCode of the event.",
+  "description": "A result above MCP_RESOURCE_MAX_BYTES is -32603 with upstream_unavailable (CC-259: a rejected result): an error row with that errorCode.",
   "now": "2026-10-26T20:00:30.000Z",
   "events": [
     {
       "ts": "2026-10-26T20:00:00.123Z",
-      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e88",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e89",
       "component": "gateway",
       "componentId": "mcp-gateway",
       "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
@@ -23,7 +23,7 @@
     }
   ],
   "expected": {
-    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e88",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e89",
     "ts": "2026-10-26T20:00:00.123Z",
     "kind": "resource",
     "client": "claude-code",

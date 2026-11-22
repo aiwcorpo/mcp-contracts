@@ -12,7 +12,7 @@ const TERMINAL = new Set(['user_confirmed', 'user_confirmed_no_preview', 'attemp
 const REASON_RESULT = {
   not_granted: 'denied_not_granted', filter_scope: 'denied_filter_scope', policy_forbid: 'denied_policy', tool_disabled: 'tool_disabled',
   credential_required: 'credential_required', rate_limited: 'rate_limited', step_up_required: 'step_up_required',
-  rate_limited_user: 'rate_limited', rate_limited_client: 'rate_limited', rate_limited_tool: 'rate_limited',
+  rate_limited_user: 'rate_limited', rate_limited_client: 'rate_limited', rate_limited_tool: 'rate_limited', rate_limited_agent: 'rate_limited',
   definition_changed: 'tool_disabled', tool_not_served: 'tool_disabled', exchange_denied: 'denied_not_granted',
   kill_switch: 'tool_disabled',
   agent_max_risk: 'denied_not_granted', agent_suspended: 'denied_not_granted', principal_not_eligible: 'denied_not_granted',
@@ -31,12 +31,19 @@ export function resultGroup(result) {
 }
 
 // CC-264, CC-265: a resource read or a prompt get is one gateway event without a confirmation flow, so its row comes from that
-// event alone. A refusal reaches the client as -32602 whatever its reason (CC-259), so policy_forbid is denied_not_granted here
-// whatever its errorCode (the tool-level rule of CC-198 applies to the whole kind), and the reasons of validation, of the
-// result and of the upstream (uri_no_match, argument_invalid, result_too_large, upstream_unavailable and the like) are plain
-// errors with the errorCode of the event. The row has no server field, so a prompt is named <system>__<prompt> like in
-// prompts/list.
+// event alone. The steps 3 to 6 of resources/read and the authorization of prompts/get end in the same -32602 whatever the reason
+// (CC-259, invariant 8 of CC-187), so the row must not tell them apart: every such reason carries errorCode not_found_or_denied,
+// whatever the event holds, and result follows the reason like for a tool (CC-165) with two additions: a URI that matches no entry
+// and a variable that fails its idPattern are denied_not_granted, as an unknown tool name is, and policy_forbid is
+// denied_not_granted (the tool-level rule of CC-198 applies to the whole kind). The other reasons (argument_invalid,
+// result_too_large, upstream_unavailable, credential_required, rate limits) are what the client was told: result from the table
+// or error, errorCode of the event. The row has no server field, so a prompt is named <system>__<prompt> like in prompts/list.
 const PRIMITIVE_EVENTS = { resource_read: 'resource', prompt_get: 'prompt' };
+const HIDDEN_RESULT = {
+  not_granted: 'denied_not_granted', policy_forbid: 'denied_not_granted', uri_no_match: 'denied_not_granted', variable_invalid: 'denied_not_granted',
+  filter_scope: 'denied_filter_scope', kill_switch: 'tool_disabled', definition_changed: 'tool_disabled',
+  agent_suspended: 'denied_not_granted', principal_not_eligible: 'denied_not_granted', agent_max_risk: 'denied_not_granted',
+};
 
 function aggregatePrimitiveCall(event) {
   const kind = PRIMITIVE_EVENTS[event.event];
@@ -52,8 +59,11 @@ function aggregatePrimitiveCall(event) {
   if (event.outcome === 'ok') {
     row.result = 'ok';
     row.errorCode = null;
+  } else if (HIDDEN_RESULT[event.reason]) {
+    row.result = HIDDEN_RESULT[event.reason];
+    row.errorCode = 'not_found_or_denied';
   } else {
-    row.result = event.reason === 'policy_forbid' ? 'denied_not_granted' : (REASON_RESULT[event.reason] ?? 'error');
+    row.result = REASON_RESULT[event.reason] ?? 'error';
     row.errorCode = event.errorCode ?? null;
   }
   return row;

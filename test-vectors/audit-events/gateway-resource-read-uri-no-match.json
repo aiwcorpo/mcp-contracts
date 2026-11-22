@@ -1,5 +1,5 @@
 {
-  "description": "A URI that matches no approved resource or template (CC-264).",
+  "description": "A URI that matches no approved resource or template: the client gets the same -32602 as for a forbidden one, so errorCode is not_found_or_denied like for an unknown tool name (CC-264, CC-187).",
   "expected": {
     "valid": true
   },
@@ -17,7 +17,7 @@
     "reason": "uri_no_match",
     "policyRevision": 41,
     "outcome": "error",
-    "errorCode": "invalid_argument",
+    "errorCode": "not_found_or_denied",
     "latencyMs": 3
   }
 }

@@ -1,0 +1,36 @@
+{
+  "description": "A pending request for the entitlement the denied prompt needs: view_request instead of request_access.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ],
+    "pendingEntitlements": [
+      "mcp-jira-read"
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "view_request"
+    ]
+  }
+}

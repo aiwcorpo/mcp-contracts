@@ -1,5 +1,5 @@
 {
-  "description": "The answer of the server exceeded the size limit (CC-264).",
+  "description": "The answer of the server exceeded the size limit: the call was allowed, the client gets -32603 upstream_unavailable (CC-259, CC-264).",
   "expected": {
     "valid": true
   },
@@ -18,11 +18,11 @@
       "type": "Jira::Issue",
       "id": "ABC-123"
     },
-    "decision": "deny",
+    "decision": "allow",
     "reason": "result_too_large",
     "policyRevision": 41,
     "outcome": "error",
-    "errorCode": "internal_error",
+    "errorCode": "upstream_unavailable",
     "latencyMs": 87
   }
 }

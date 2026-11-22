@@ -1,0 +1,34 @@
+{
+  "description": "A disabled resource is not counted as denied, whatever disabledBy.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "resource",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ],
+        "disabled": true,
+        "disabledBy": "kill_switch"
+      }
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect"
+    ]
+  }
+}

@@ -175,16 +175,16 @@ paths:
         Built from C5 catalog, C4 connections, C4 systems and C13 requests. Status per server
         (first matching rule wins, CC-021):
 
-        1. no tool of the server is granted and a request for one of its requiredEntitlements is pending: `request_pending`
-        2. no tool of the server is granted: `no_access`
+        1. no tool, resource, resource template or prompt of the server is granted and a request for one of their requiredEntitlements is pending: `request_pending`
+        2. none of them is granted: `no_access`
         3. the system's default credential type is `service-account` or `token-exchange` (nothing to connect): `connected`
         4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error`/`needs_reconnect` -> `reconnect_required`
         5. no connection: `not_connected`
 
         Actions per status (the BFF returns exactly these, CC-083). "Type" below is the type of the existing connection (`connection.type`) for `expiring` and `reconnect_required`, and `credential.supportedTypes` for `not_connected`:
 
-        - `connected`: `copy_link`, `disconnect` only when `connection` is not null (+ `request_access` when some tool of
-          the server is denied); a `service-account` or `token-exchange` system has no connection and no `disconnect`
+        - `connected`: `copy_link`, `disconnect` only when `connection` is not null (+ `request_access` when some tool, resource,
+          resource template or prompt of the server is denied); a `service-account` or `token-exchange` system has no connection and no `disconnect`
         - `expiring`: `copy_link`, `add_secret` (user-secret) or `reconnect` (user-oauth), `disconnect`
         - `reconnect_required`: `reconnect` (user-oauth) or `add_secret` (user-secret), `disconnect`
         - `not_connected`: `connect_oauth` and/or `add_secret`, one per type in `credential.supportedTypes`
@@ -198,6 +198,11 @@ paths:
         a denied tool (without them there is nothing to ask for, so `no_access` then has no action). When the user has a
         pending request for an entitlement that a denied tool needs, `view_request` is returned instead of
         `request_access`, also for a server whose status is `connected`.
+
+        Since 8.0.0 (CC-265) a resource, a resource template and a prompt count like a tool in all of the above: an entry with `access: denied`
+        is a denied tool for the server row (its `requiredEntitlements` count for `request_access` and for the pending request), and a granted
+        entry is a granted tool for rules 1 and 2. A disabled resource, template or prompt is not counted as denied; entries have no actions
+        of their own (vectors `catalog-actions/entries-*` and `status-*`).
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
         (CC-080).

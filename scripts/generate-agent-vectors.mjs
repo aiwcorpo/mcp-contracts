@@ -6,7 +6,7 @@ import { path } from './lib/contracts.mjs';
 import { agentToolDecision, agentWriteDecision, classifyCaller, listAgentsDecision, policyDataBodyFor, revisionAfterChange, serverAzpDecision } from './lib/agents.mjs';
 import { agentsAllowedWrite, brokerEligibility } from './lib/broker-eligibility.mjs';
 import { aggregateCall } from './lib/activity-calls.mjs';
-import { catalogPrimitiveActions } from './lib/catalog-actions.mjs';
+import { catalogActionsOfEntries, catalogStatus } from './lib/catalog-actions.mjs';
 
 const write = (dir, name, value) => {
   mkdirSync(path('test-vectors', dir), { recursive: true });
@@ -106,72 +106,107 @@ const write = (dir, name, value) => {
   }
 }
 
-// ---------- catalog actions of resources and prompts (CC-265) ----------
+// ---------- catalog actions and status with resources and prompts counted like tools (CC-265) ----------
+// The expected values are written out by hand from the rule of CC-265, not taken from the functions: the generator only checks that
+// the functions agree.
 {
   const both = ['user-oauth', 'user-secret'];
-  const server = (status, extra = {}) => ({ status, supportedTypes: both, connectionType: status === 'not_connected' ? null : 'user-oauth', someToolDenied: false, hasConnection: status !== 'not_connected', ...extra });
-  const granted = { access: 'granted', requiredEntitlements: [] };
-  const denied = { access: 'denied', requiredEntitlements: ['mcp-jira-read'] };
-  const vector = (name, description, input) => write('catalog-actions', `${name}.json`, { description, input, expected: { actions: catalogPrimitiveActions(input) } });
-  vector('resource-inherits-connected', 'A granted resource of a connected server has the actions of the server row (CC-265).', { ...server('connected'), entry: { kind: 'resource', ...granted } });
-  vector('resource-template-inherits-connected-with-denied-tool', 'The server row has request_access because of a denied tool; a granted template inherits the whole server result.', { ...server('connected', { someToolDenied: true }), entry: { kind: 'resource-template', ...granted } });
-  vector('resource-inherits-not-connected', 'A granted resource of a server that is not connected gets the connect actions of the server row.', { ...server('not_connected'), entry: { kind: 'resource', ...granted } });
-  vector('resource-inherits-reconnect-required', 'A granted resource of a server that needs a new connection gets reconnect and disconnect.', { ...server('reconnect_required'), entry: { kind: 'resource', ...granted } });
-  vector('prompt-inherits-connected', 'A granted prompt of a connected server has the actions of the server row.', { ...server('connected'), entry: { kind: 'prompt', ...granted } });
-  vector('prompt-inherits-not-connected', 'A granted prompt of a server that is not connected gets the connect actions of the server row.', { ...server('not_connected'), entry: { kind: 'prompt', ...granted } });
-  vector('prompt-inherits-reconnect-required', 'A granted prompt of a server that needs a new connection gets reconnect and disconnect.', { ...server('reconnect_required'), entry: { kind: 'prompt', ...granted } });
-  vector('resource-disabled-has-no-actions', 'A disabled resource has no actions, whatever the server status.', { ...server('connected'), entry: { kind: 'resource', ...granted, disabled: true, disabledBy: 'admin' } });
-  vector('resource-disabled-by-kill-switch-has-no-actions', 'disabledBy does not matter: a resource under a kill switch has no actions either.', { ...server('connected'), entry: { kind: 'resource', ...granted, disabled: true, disabledBy: 'kill_switch' } });
-  vector('prompt-disabled-has-no-actions', 'A disabled prompt has no actions, even when it is denied and the entitlements are known.', { ...server('connected'), entry: { kind: 'prompt', ...denied, disabled: true, disabledBy: 'pending_approval' } });
-  vector('resource-denied-known-entitlements-request-access', 'A denied resource of a connected server whose entitlements are known: only request_access of the server actions.', { ...server('connected'), entry: { kind: 'resource', ...denied } });
-  vector('resource-denied-unknown-entitlements', 'A denied resource without requiredEntitlements has nothing to ask for: no actions (CC-113).', { ...server('connected'), entry: { kind: 'resource', access: 'denied', requiredEntitlements: [] } });
-  vector('resource-denied-unknown-entitlements-server-row-has-request-access', 'The server row may offer request_access for a denied tool; the entry is judged by its own entitlements, so a denied resource without them gets none.', { ...server('connected', { someToolDenied: true }), entry: { kind: 'resource', access: 'denied', requiredEntitlements: [] } });
-  vector('resource-denied-pending-request', 'A pending request for the entitlement of the denied resource shows view_request instead of request_access.', { ...server('connected'), entry: { kind: 'resource', ...denied, pendingRequest: true } });
-  vector('resource-denied-not-connected', 'A denied resource of a server that is not connected has no request_access, like a denied tool (not-connected-denied-tool).', { ...server('not_connected'), entry: { kind: 'resource', ...denied } });
-  vector('prompt-denied-known-entitlements-request-access', 'A denied prompt of a connected server whose entitlements are known: only request_access.', { ...server('connected'), entry: { kind: 'prompt', ...denied } });
-  vector('prompt-denied-unknown-entitlements', 'A denied prompt without requiredEntitlements: no actions.', { ...server('connected'), entry: { kind: 'prompt', access: 'denied', requiredEntitlements: [] } });
-  vector('prompt-denied-pending-request', 'A pending request for the entitlement of the denied prompt shows view_request.', { ...server('connected'), entry: { kind: 'prompt', ...denied, pendingRequest: true } });
-  vector('prompt-denied-no-access-server', 'On a server with status no_access the denied prompt gets request_access when the entitlements are known.', { ...server('no_access', { connectionType: null, hasConnection: false }), entry: { kind: 'prompt', ...denied } });
-  vector('prompt-denied-request-pending-server', 'On a server with status request_pending a denied prompt shows view_request.', { ...server('request_pending', { connectionType: null, hasConnection: false }), entry: { kind: 'prompt', ...denied } });
+  const connected = { status: 'connected', supportedTypes: both, connectionType: 'user-oauth', hasConnection: true };
+  const tool = { kind: 'tool', access: 'granted', requiredEntitlements: [] };
+  const promptDenied = { kind: 'prompt', access: 'denied', requiredEntitlements: ['mcp-jira-read'] };
+  const vector = (name, description, input, actions) => {
+    if (JSON.stringify(catalogActionsOfEntries(input)) !== JSON.stringify(actions)) throw new Error(`catalog-actions/${name}: the reference function disagrees with the rule`);
+    write('catalog-actions', `${name}.json`, { description, input, expected: { actions } });
+  };
+  vector('entries-connected-denied-prompt-request-access', 'All tools granted and one prompt denied with known requiredEntitlements: the server row has request_access, as for a denied tool (CC-265).', { ...connected, entries: [tool, promptDenied] }, ['copy_link', 'disconnect', 'request_access']);
+  vector('entries-connected-denied-resource-request-access', 'A denied resource counts like a denied tool.', { ...connected, entries: [tool, { kind: 'resource', access: 'denied', requiredEntitlements: ['mcp-jira-read'] }] }, ['copy_link', 'disconnect', 'request_access']);
+  vector('entries-connected-denied-resource-template-request-access', 'A denied resource template counts like a denied tool.', { ...connected, entries: [tool, { kind: 'resource-template', access: 'denied', requiredEntitlements: ['mcp-jira-read'] }] }, ['copy_link', 'disconnect', 'request_access']);
+  vector('entries-connected-denied-prompt-request-pending', 'A pending request for the entitlement the denied prompt needs: view_request instead of request_access.', { ...connected, entries: [tool, promptDenied], pendingEntitlements: ['mcp-jira-read'] }, ['copy_link', 'disconnect', 'view_request']);
+  vector('entries-connected-denied-prompt-other-request-pending', 'A pending request for another entitlement does not replace request_access.', { ...connected, entries: [tool, promptDenied], pendingEntitlements: ['mcp-gitlab-read'] }, ['copy_link', 'disconnect', 'request_access']);
+  vector('entries-connected-denied-prompt-unknown-entitlements', 'A denied prompt without requiredEntitlements: nothing to ask for, no request_access (CC-113).', { ...connected, entries: [tool, { kind: 'prompt', access: 'denied', requiredEntitlements: [] }] }, ['copy_link', 'disconnect']);
+  vector('entries-connected-disabled-prompt-denied-no-effect', 'A disabled prompt is not counted as denied: the server row has no request_access.', { ...connected, entries: [tool, { ...promptDenied, disabled: true }] }, ['copy_link', 'disconnect']);
+  vector('entries-connected-disabled-resource-denied-no-effect', 'A disabled resource is not counted as denied, whatever disabledBy.', { ...connected, entries: [tool, { kind: 'resource', access: 'denied', requiredEntitlements: ['mcp-jira-read'], disabled: true, disabledBy: 'kill_switch' }] }, ['copy_link', 'disconnect']);
+  vector('entries-connected-granted-entries-only', 'Every tool and every entry granted: no request_access.', { ...connected, entries: [tool, { kind: 'resource', access: 'granted', requiredEntitlements: [] }, { kind: 'prompt', access: 'granted', requiredEntitlements: [] }] }, ['copy_link', 'disconnect']);
+  vector('entries-connected-denied-tool-and-disabled-denied-prompt', 'A denied tool still counts when a denied prompt is disabled; the entitlements come from the tool.', { ...connected, entries: [{ ...tool, access: 'denied', requiredEntitlements: ['mcp-jira-write'] }, { ...promptDenied, disabled: true }] }, ['copy_link', 'disconnect', 'request_access']);
+  vector('entries-not-connected-denied-prompt', 'A denied prompt does not add request_access outside the connected status, as for a denied tool.', { status: 'not_connected', supportedTypes: both, connectionType: null, hasConnection: false, entries: [tool, promptDenied] }, ['add_secret', 'connect_oauth']);
+  vector('entries-no-access-denied-prompt', 'Status no_access with a denied prompt of known entitlements: request_access.', { status: 'no_access', supportedTypes: both, connectionType: null, hasConnection: false, entries: [promptDenied] }, ['request_access']);
+
+  const state = (name, description, input, status) => {
+    if (catalogStatus(input) !== status) throw new Error(`catalog-actions/${name}: the reference function disagrees with the rule`);
+    write('catalog-actions', `${name}.json`, { description, input, expected: { status } });
+  };
+  const oauth = { credentialDefaultType: 'user-oauth', connectionStatus: 'connected' };
+  state('status-granted-prompt-only-is-not-no-access', 'No tool is granted but a prompt is: rule 2 does not apply, the status follows the connection (CC-265).', { entries: [{ ...tool, access: 'denied', requiredEntitlements: ['mcp-jira-write'] }, { kind: 'prompt', access: 'granted', requiredEntitlements: [] }], ...oauth }, 'connected');
+  state('status-granted-resource-only-not-connected', 'A granted resource is enough to leave no_access; with no connection the status is not_connected.', { entries: [{ kind: 'resource', access: 'granted', requiredEntitlements: [] }], credentialDefaultType: 'user-oauth', connectionStatus: null }, 'not_connected');
+  state('status-nothing-granted-no-access', 'No tool, resource, template or prompt is granted: no_access.', { entries: [{ ...tool, access: 'denied', requiredEntitlements: ['mcp-jira-write'] }, promptDenied], ...oauth }, 'no_access');
+  state('status-nothing-granted-prompt-request-pending', 'Nothing granted and a request pending for the entitlement of a denied prompt: request_pending.', { entries: [{ ...tool, access: 'denied', requiredEntitlements: [] }, promptDenied], pendingEntitlements: ['mcp-jira-read'], ...oauth }, 'request_pending');
+  state('status-granted-disabled-prompt-counts-as-granted', 'A disabled entry keeps its grant: access, not disabled, decides rules 1 and 2.', { entries: [{ ...tool, access: 'denied', requiredEntitlements: [] }, { kind: 'prompt', access: 'granted', requiredEntitlements: [], disabled: true }], ...oauth }, 'connected');
 }
 
 // ---------- activity rows of resource reads and prompt gets (CC-264, CC-265) ----------
+// result and errorCode are written out by hand from CC-259 (what the client was told), CC-165 (result per reason) and CC-187 (a
+// refusal of steps 3 to 6 is not_found_or_denied whatever its cause); the generator fails when aggregateCall disagrees.
 {
   const NOW = '2026-10-26T20:00:30.000Z';
   const SUB = '6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11';
   const event = (n, kind, extra) => ({ ts: '2026-10-26T20:00:00.123Z', requestId: `0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e${n}`, component: 'gateway', componentId: 'mcp-gateway', sub: SUB, client: 'claude-code', event: kind, server: 'mcp-jira', ...extra });
-  const aggregation = (name, description, events) => write('activity-calls', `aggregation-${name}.json`, { description, now: NOW, events, expected: aggregateCall(events, Date.parse(NOW) / 1000) });
   const resource = { type: 'Jira::Issue', id: 'ABC-123' };
+  const NOT_FOUND = 'not_found_or_denied';
+  const aggregation = (name, description, ev, result, errorCode) => {
+    const row = { requestId: ev.requestId, ts: ev.ts, kind: ev.event === 'resource_read' ? 'resource' : 'prompt' };
+    if (ev.client) row.client = ev.client;
+    if (ev.filter) row.filter = ev.filter;
+    if (ev.event === 'resource_read') {
+      if (ev.resourceTemplate) row.resourceTemplate = ev.resourceTemplate;
+      if (ev.resource) row.resource = ev.resource;
+    } else row.prompt = `jira__${ev.prompt}`;
+    const expected = { ...row, result, errorCode };
+    const events = [ev];
+    if (JSON.stringify(aggregateCall(events, Date.parse(NOW) / 1000)) !== JSON.stringify(expected)) throw new Error(`activity-calls/${name}: aggregateCall disagrees with the rule`);
+    write('activity-calls', `aggregation-${name}.json`, { description, now: NOW, events, expected });
+  };
+  const read = (n, extra) => event(n, 'resource_read', extra);
+  const get = (n, extra) => event(n, 'prompt_get', extra);
   aggregation('resource-read-ok', 'A resource_read that ended ok is a row of kind resource with the template and the entity of the audit event, result ok; no tool, no confirmation (CC-264, CC-265).',
-    [event('81', 'resource_read', { resourceTemplate: 'issue', resource, decision: 'allow', outcome: 'ok', errorCode: null, latencyMs: 31 })]);
-  aggregation('resource-read-uri-no-match', 'A URI that matches no approved entry: the client gets -32602, the audit reason is uri_no_match with invalid_argument, the row is an error without a resource.',
-    [event('82', 'resource_read', { decision: 'deny', reason: 'uri_no_match', outcome: 'error', errorCode: 'invalid_argument' })]);
-  aggregation('resource-read-not-granted', 'A resource the user is not granted answers the same -32602 as a missing one; the row is denied_not_granted (invariant 8).',
-    [event('83', 'resource_read', { resourceTemplate: 'issue', resource, decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('resource-read-policy-forbid', 'A Cedar forbid on a resource is denied_not_granted for the whole kind, whatever errorCode the event carries, so the row does not tell it from a missing grant.',
-    [event('84', 'resource_read', { resourceTemplate: 'issue', resource, decision: 'deny', reason: 'policy_forbid', outcome: 'denied', errorCode: 'access_denied' })]);
-  aggregation('resource-read-definition-changed', 'A definition that differs from the approved one hides the entry: reason definition_changed, row tool_disabled (the label of the existing result value).',
-    [event('85', 'resource_read', { resourceTemplate: 'issue', decision: 'deny', reason: 'definition_changed', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('resource-read-kill-switch', 'A kill switch on the resource: reason kill_switch, row tool_disabled.',
-    [event('86', 'resource_read', { resourceTemplate: 'issue', decision: 'deny', reason: 'kill_switch', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('resource-read-filter-scope', 'An address filter that excludes the resource: reason filter_scope, row denied_filter_scope.',
-    [event('87', 'resource_read', { filter: 'systems=gitlab', resourceTemplate: 'issue', decision: 'deny', reason: 'filter_scope', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('resource-read-result-too-large', 'A result over MCP_RESOURCE_MAX_BYTES is an error row with the errorCode of the event.',
-    [event('88', 'resource_read', { resourceTemplate: 'issue', resource, decision: 'allow', reason: 'result_too_large', outcome: 'error', errorCode: 'upstream_unavailable' })]);
+    read('81', { resourceTemplate: 'issue', resource, decision: 'allow', outcome: 'ok', errorCode: null, latencyMs: 31 }), 'ok', null);
+  aggregation('resource-read-uri-no-match', 'A URI that matches no approved entry is answered like an unknown tool name: the row is denied_not_granted with not_found_or_denied, so it does not tell a missing resource from a forbidden one (CC-187, invariant 8). Decision of the owner, 2026-11-22.',
+    read('82', { decision: 'deny', reason: 'uri_no_match', outcome: 'error', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
+  aggregation('resource-read-variable-invalid', 'A variable that fails the idPattern of its type gives the same -32602 as an unknown URI (CC-259): denied_not_granted with not_found_or_denied.',
+    read('83', { resourceTemplate: 'issue', decision: 'deny', reason: 'variable_invalid', outcome: 'error', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
+  aggregation('resource-read-not-granted', 'A resource the user is not granted: denied_not_granted with not_found_or_denied.',
+    read('84', { resourceTemplate: 'issue', resource, decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
+  aggregation('resource-read-policy-forbid', 'A Cedar forbid on a resource is denied_not_granted with not_found_or_denied, whatever errorCode the event carries: the row does not tell it from a missing grant.',
+    read('85', { resourceTemplate: 'issue', resource, decision: 'deny', reason: 'policy_forbid', outcome: 'denied', errorCode: 'access_denied' }), 'denied_not_granted', NOT_FOUND);
+  aggregation('resource-read-definition-changed', 'A definition that differs from the approved one hides the entry: reason definition_changed, result tool_disabled (the existing result value is reused), not_found_or_denied.',
+    read('86', { resourceTemplate: 'issue', decision: 'deny', reason: 'definition_changed', outcome: 'denied', errorCode: NOT_FOUND }), 'tool_disabled', NOT_FOUND);
+  aggregation('resource-read-kill-switch', 'A kill switch on the resource: reason kill_switch, result tool_disabled, not_found_or_denied.',
+    read('87', { resourceTemplate: 'issue', decision: 'deny', reason: 'kill_switch', outcome: 'denied', errorCode: NOT_FOUND }), 'tool_disabled', NOT_FOUND);
+  aggregation('resource-read-filter-scope', 'An address filter that excludes the resource: reason filter_scope, result denied_filter_scope, not_found_or_denied.',
+    read('88', { filter: 'systems=gitlab', resourceTemplate: 'issue', decision: 'deny', reason: 'filter_scope', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_filter_scope', NOT_FOUND);
+  aggregation('resource-read-result-too-large', 'A result above MCP_RESOURCE_MAX_BYTES is -32603 with upstream_unavailable (CC-259: a rejected result): an error row with that errorCode.',
+    read('89', { resourceTemplate: 'issue', resource, decision: 'allow', reason: 'result_too_large', outcome: 'error', errorCode: 'upstream_unavailable' }), 'error', 'upstream_unavailable');
+  aggregation('resource-read-upstream-unavailable', 'The server does not answer (step 7 of resources/read): an error row, upstream_unavailable.',
+    read('91', { resourceTemplate: 'issue', resource, decision: 'allow', reason: 'upstream_unavailable', outcome: 'error', errorCode: 'upstream_unavailable' }), 'error', 'upstream_unavailable');
+  aggregation('resource-read-credential-required', 'The account has no connection for a template that needs a credential: -32603 credential_required (CC-259), row credential_required.',
+    read('92', { resourceTemplate: 'issue', resource, decision: 'allow', reason: 'credential_required', outcome: 'error', errorCode: 'credential_required' }), 'credential_required', 'credential_required');
   aggregation('resource-read-rate-limited-user', 'rate_limited_user on a resource read is a rate_limited row like on a tool call.',
-    [event('89', 'resource_read', { decision: 'deny', reason: 'rate_limited_user', outcome: 'denied', errorCode: 'rate_limited' })]);
-  aggregation('resource-read-agent-suspended', 'A suspended agent reading a resource: reason agent_suspended, row denied_not_granted (CC-261, CC-266). The row has no field for the principal.',
-    [event('90', 'resource_read', { client: 'agent-reports', principalType: 'agent', resourceTemplate: 'issue', decision: 'deny', reason: 'agent_suspended', outcome: 'denied', errorCode: 'access_denied' })]);
+    read('93', { decision: 'deny', reason: 'rate_limited_user', outcome: 'denied', errorCode: 'rate_limited' }), 'rate_limited', 'rate_limited');
+  aggregation('resource-read-rate-limited-agent', 'rate_limited_agent is a rate_limited row (CC-264, rule rate_limited_* of CC-165).',
+    read('94', { client: 'agent-reports', principalType: 'agent', decision: 'deny', reason: 'rate_limited_agent', outcome: 'denied', errorCode: 'rate_limited' }), 'rate_limited', 'rate_limited');
+  aggregation('resource-read-agent-suspended', 'A suspended agent reading a resource: reason agent_suspended, denied_not_granted with not_found_or_denied as in audit-events/gateway-agent-suspended (CC-261, CC-266). The row has no field for the principal.',
+    read('95', { client: 'agent-reports', principalType: 'agent', resourceTemplate: 'issue', decision: 'deny', reason: 'agent_suspended', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
   aggregation('prompt-get-ok', 'A prompt_get that ended ok is a row of kind prompt named <system>__<prompt>, result ok; no tool (CC-264, CC-265).',
-    [event('91', 'prompt_get', { prompt: 'triage_issue', decision: 'allow', outcome: 'ok', errorCode: null, latencyMs: 5, argsLength: 64, definitionHash: 'sha256:' + 'b'.repeat(64) })]);
-  aggregation('prompt-get-argument-invalid', 'An argument that fails its rule: -32602, reason argument_invalid, an error row.',
-    [event('92', 'prompt_get', { prompt: 'triage_issue', decision: 'deny', reason: 'argument_invalid', outcome: 'error', errorCode: 'invalid_argument', argsLength: 30 })]);
-  aggregation('prompt-get-definition-changed', 'A prompt whose messages changed is hidden until it is approved again: reason definition_changed, row tool_disabled.',
-    [event('93', 'prompt_get', { prompt: 'triage_issue', decision: 'deny', reason: 'definition_changed', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('prompt-get-hidden-kill-switch', 'A prompt under a kill switch (hidden): reason kill_switch, row tool_disabled.',
-    [event('94', 'prompt_get', { prompt: 'triage_issue', decision: 'deny', reason: 'kill_switch', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('prompt-get-not-granted', 'A prompt the user is not granted: denied_not_granted.',
-    [event('95', 'prompt_get', { prompt: 'triage_issue', decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: 'not_found_or_denied' })]);
-  aggregation('prompt-get-agent-suspended', 'A suspended agent getting a prompt: denied_not_granted.',
-    [event('96', 'prompt_get', { client: 'agent-reports', principalType: 'agent', prompt: 'triage_issue', decision: 'deny', reason: 'agent_suspended', outcome: 'denied', errorCode: 'access_denied' })]);
+    get('96', { prompt: 'triage_issue', decision: 'allow', outcome: 'ok', errorCode: null, latencyMs: 5, argsLength: 64, definitionHash: 'sha256:' + 'b'.repeat(64) }), 'ok', null);
+  aggregation('prompt-get-argument-invalid', 'An argument that fails its rule is checked after authorization and the client is told so (CC-259): an error row with the errorCode of the event.',
+    get('97', { prompt: 'triage_issue', decision: 'deny', reason: 'argument_invalid', outcome: 'error', errorCode: 'invalid_argument', argsLength: 30 }), 'error', 'invalid_argument');
+  aggregation('prompt-get-definition-changed', 'A prompt whose messages changed is hidden until it is approved again: reason definition_changed, result tool_disabled, not_found_or_denied.',
+    get('98', { prompt: 'triage_issue', decision: 'deny', reason: 'definition_changed', outcome: 'denied', errorCode: NOT_FOUND }), 'tool_disabled', NOT_FOUND);
+  aggregation('prompt-get-hidden-kill-switch', 'A prompt under a kill switch (hidden): reason kill_switch, result tool_disabled, not_found_or_denied.',
+    get('99', { prompt: 'triage_issue', decision: 'deny', reason: 'kill_switch', outcome: 'denied', errorCode: NOT_FOUND }), 'tool_disabled', NOT_FOUND);
+  aggregation('prompt-get-not-granted', 'A prompt the user is not granted: denied_not_granted with not_found_or_denied.',
+    get('a1', { prompt: 'triage_issue', decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
+  aggregation('prompt-get-policy-forbid', 'A Cedar forbid on a prompt: denied_not_granted with not_found_or_denied whatever errorCode the event carries.',
+    get('a2', { prompt: 'triage_issue', decision: 'deny', reason: 'policy_forbid', outcome: 'denied', errorCode: 'access_denied' }), 'denied_not_granted', NOT_FOUND);
+  aggregation('prompt-get-agent-suspended', 'A suspended agent getting a prompt: denied_not_granted with not_found_or_denied.',
+    get('a3', { client: 'agent-reports', principalType: 'agent', prompt: 'triage_issue', decision: 'deny', reason: 'agent_suspended', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
 }

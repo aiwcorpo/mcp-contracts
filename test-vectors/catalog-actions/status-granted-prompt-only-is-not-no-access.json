@@ -1,0 +1,24 @@
+{
+  "description": "No tool is granted but a prompt is: rule 2 does not apply, the status follows the connection (CC-265).",
+  "input": {
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-write"
+        ]
+      },
+      {
+        "kind": "prompt",
+        "access": "granted",
+        "requiredEntitlements": []
+      }
+    ],
+    "credentialDefaultType": "user-oauth",
+    "connectionStatus": "connected"
+  },
+  "expected": {
+    "status": "connected"
+  }
+}

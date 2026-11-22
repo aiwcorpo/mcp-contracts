@@ -1,0 +1,30 @@
+{
+  "description": "A variable that fails the idPattern of its type gives the same -32602 as an unknown URI (CC-259): denied_not_granted with not_found_or_denied.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "resourceTemplate": "issue",
+      "decision": "deny",
+      "reason": "variable_invalid",
+      "outcome": "error",
+      "errorCode": "not_found_or_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e83",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "resourceTemplate": "issue",
+    "result": "denied_not_granted",
+    "errorCode": "not_found_or_denied"
+  }
+}

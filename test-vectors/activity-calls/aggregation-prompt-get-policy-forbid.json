@@ -1,0 +1,30 @@
+{
+  "description": "A Cedar forbid on a prompt: denied_not_granted with not_found_or_denied whatever errorCode the event carries.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6ea2",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "prompt_get",
+      "server": "mcp-jira",
+      "prompt": "triage_issue",
+      "decision": "deny",
+      "reason": "policy_forbid",
+      "outcome": "denied",
+      "errorCode": "access_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6ea2",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "prompt",
+    "client": "claude-code",
+    "prompt": "jira__triage_issue",
+    "result": "denied_not_granted",
+    "errorCode": "not_found_or_denied"
+  }
+}

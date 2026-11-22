@@ -1,0 +1,26 @@
+{
+  "description": "No tool, resource, template or prompt is granted: no_access.",
+  "input": {
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-write"
+        ]
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ],
+    "credentialDefaultType": "user-oauth",
+    "connectionStatus": "connected"
+  },
+  "expected": {
+    "status": "no_access"
+  }
+}
