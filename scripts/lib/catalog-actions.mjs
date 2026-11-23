@@ -45,11 +45,11 @@ export function deniedEntryFlags(entries, pendingEntitlements = []) {
 export const catalogActionsOfEntries = ({ entries, pendingEntitlements, ...server }) => catalogActions({ ...server, ...deniedEntryFlags(entries, pendingEntitlements) });
 
 // Status rules 1 and 2 of GET /api/v1/catalog (CC-021) with entries counted like tools: the server has no access when none of its
-// entries is granted (disabled does not change a grant), and a pending request for an entitlement of any of them makes it
+// entries is granted (disabled does not change a grant), and a pending request for an entitlement of any of them (a disabled resource, template or prompt asks for nothing) makes it
 // request_pending. The rules 3 to 5 need the system and the connection.
 export function catalogStatus({ entries, pendingEntitlements = [], credentialDefaultType, connectionStatus }) {
   if (!entries.some((e) => e.access === 'granted')) {
-    const needed = entries.flatMap((e) => e.requiredEntitlements ?? []);
+    const needed = entries.filter((e) => !(e.kind !== 'tool' && e.disabled === true)).flatMap((e) => e.requiredEntitlements ?? []);
     return needed.some((g) => pendingEntitlements.includes(g)) ? 'request_pending' : 'no_access';
   }
   if (['service-account', 'token-exchange'].includes(credentialDefaultType)) return 'connected';

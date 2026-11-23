@@ -214,7 +214,7 @@ paths:
 
         Since 8.0.0 (CC-265) a resource, a resource template and a prompt count like a tool in all of the above: an entry with `access: denied`
         is a denied tool for the server row (its `requiredEntitlements` count for `request_access` and for the pending request), and a granted
-        entry is a granted tool for rules 1 and 2. A disabled resource, template or prompt is not counted as denied; entries have no actions
+        entry is a granted tool for rules 1 and 2. A disabled resource, template or prompt is not counted as denied, in the actions and in rule 1 (its requiredEntitlements do not make the server `request_pending`); entries have no actions
         of their own (vectors `catalog-actions/entries-*` and `status-*`).
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)

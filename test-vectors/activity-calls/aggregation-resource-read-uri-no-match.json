@@ -13,7 +13,7 @@
       "server": "mcp-jira",
       "decision": "deny",
       "reason": "uri_no_match",
-      "outcome": "error",
+      "outcome": "denied",
       "errorCode": "not_found_or_denied"
     }
   ],

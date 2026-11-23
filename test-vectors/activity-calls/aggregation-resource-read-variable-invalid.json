@@ -14,7 +14,7 @@
       "resourceTemplate": "issue",
       "decision": "deny",
       "reason": "variable_invalid",
-      "outcome": "error",
+      "outcome": "denied",
       "errorCode": "not_found_or_denied"
     }
   ],

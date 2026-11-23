@@ -1,0 +1,23 @@
+{
+  "description": "The only entry is a denied prompt that is disabled and its entitlement has a pending request: nothing to ask for until it is enabled, so no_access and not request_pending.",
+  "input": {
+    "entries": [
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ],
+        "disabled": true
+      }
+    ],
+    "pendingEntitlements": [
+      "mcp-jira-read"
+    ],
+    "credentialDefaultType": "user-oauth",
+    "connectionStatus": "connected"
+  },
+  "expected": {
+    "status": "no_access"
+  }
+}

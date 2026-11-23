@@ -16,7 +16,7 @@
     "decision": "deny",
     "reason": "uri_no_match",
     "policyRevision": 41,
-    "outcome": "error",
+    "outcome": "denied",
     "errorCode": "not_found_or_denied",
     "latencyMs": 3
   }

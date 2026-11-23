@@ -140,6 +140,7 @@ const write = (dir, name, value) => {
   state('status-granted-resource-only-not-connected', 'A granted resource is enough to leave no_access; with no connection the status is not_connected.', { entries: [{ kind: 'resource', access: 'granted', requiredEntitlements: [] }], credentialDefaultType: 'user-oauth', connectionStatus: null }, 'not_connected');
   state('status-nothing-granted-no-access', 'No tool, resource, template or prompt is granted: no_access.', { entries: [{ ...tool, access: 'denied', requiredEntitlements: ['mcp-jira-write'] }, promptDenied], ...oauth }, 'no_access');
   state('status-nothing-granted-prompt-request-pending', 'Nothing granted and a request pending for the entitlement of a denied prompt: request_pending.', { entries: [{ ...tool, access: 'denied', requiredEntitlements: [] }, promptDenied], pendingEntitlements: ['mcp-jira-read'], ...oauth }, 'request_pending');
+  state('status-nothing-granted-disabled-prompt-request-not-pending', 'The only entry is a denied prompt that is disabled and its entitlement has a pending request: nothing to ask for until it is enabled, so no_access and not request_pending.', { entries: [{ kind: 'prompt', access: 'denied', requiredEntitlements: ['mcp-jira-read'], disabled: true }], pendingEntitlements: ['mcp-jira-read'], ...oauth }, 'no_access');
   state('status-granted-disabled-prompt-counts-as-granted', 'A disabled entry keeps its grant: access, not disabled, decides rules 1 and 2.', { entries: [{ ...tool, access: 'denied', requiredEntitlements: [] }, { kind: 'prompt', access: 'granted', requiredEntitlements: [], disabled: true }], ...oauth }, 'connected');
 }
 
@@ -170,9 +171,9 @@ const write = (dir, name, value) => {
   aggregation('resource-read-ok', 'A resource_read that ended ok is a row of kind resource with the template and the entity of the audit event, result ok; no tool, no confirmation (CC-264, CC-265).',
     read('81', { resourceTemplate: 'issue', resource, decision: 'allow', outcome: 'ok', errorCode: null, latencyMs: 31 }), 'ok', null);
   aggregation('resource-read-uri-no-match', 'A URI that matches no approved entry is answered like an unknown tool name: the row is denied_not_granted with not_found_or_denied, so it does not tell a missing resource from a forbidden one (CC-187, invariant 8). Decision of the owner, 2026-11-22.',
-    read('82', { decision: 'deny', reason: 'uri_no_match', outcome: 'error', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
+    read('82', { decision: 'deny', reason: 'uri_no_match', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
   aggregation('resource-read-variable-invalid', 'A variable that fails the idPattern of its type gives the same -32602 as an unknown URI (CC-259): denied_not_granted with not_found_or_denied.',
-    read('83', { resourceTemplate: 'issue', decision: 'deny', reason: 'variable_invalid', outcome: 'error', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
+    read('83', { resourceTemplate: 'issue', decision: 'deny', reason: 'variable_invalid', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
   aggregation('resource-read-not-granted', 'A resource the user is not granted: denied_not_granted with not_found_or_denied.',
     read('84', { resourceTemplate: 'issue', resource, decision: 'deny', reason: 'not_granted', outcome: 'denied', errorCode: NOT_FOUND }), 'denied_not_granted', NOT_FOUND);
   aggregation('resource-read-policy-forbid', 'A Cedar forbid on a resource is denied_not_granted with not_found_or_denied, whatever errorCode the event carries: the row does not tell it from a missing grant.',
