@@ -1,0 +1,53 @@
+{
+  "description": "A blob content: result_invalid with the reason blob_not_supported.",
+  "kind": "read",
+  "input": {
+    "era": "modern",
+    "header": "servicedesk://ticket/SD-1042",
+    "uri": "servicedesk://ticket/SD-1042",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "ok",
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "blob": "AAAA"
+        }
+      ],
+      "bytes": 11
+    },
+    "maxBytes": 1048576
+  },
+  "expected": {
+    "outcome": "error",
+    "error": {
+      "code": -32603,
+      "message": "Internal error",
+      "data": {
+        "error": "upstream_unavailable"
+      }
+    },
+    "auditReason": "blob_not_supported",
+    "step": 10
+  }
+}

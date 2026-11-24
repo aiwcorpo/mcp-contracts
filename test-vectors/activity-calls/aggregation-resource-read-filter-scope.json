@@ -1,0 +1,32 @@
+{
+  "description": "An address filter that excludes the resource: reason filter_scope, result denied_filter_scope, not_found_or_denied.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e88",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "filter": "systems=gitlab",
+      "resourceTemplate": "issue",
+      "decision": "deny",
+      "reason": "filter_scope",
+      "outcome": "denied",
+      "errorCode": "not_found_or_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e88",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "filter": "systems=gitlab",
+    "resourceTemplate": "issue",
+    "result": "denied_filter_scope",
+    "errorCode": "not_found_or_denied"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "description": "rate_limited_user on a resource read is a rate_limited row like on a tool call.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e93",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "decision": "deny",
+      "reason": "rate_limited_user",
+      "outcome": "denied",
+      "errorCode": "rate_limited"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e93",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "result": "rate_limited",
+    "errorCode": "rate_limited"
+  }
+}

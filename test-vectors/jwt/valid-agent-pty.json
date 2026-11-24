@@ -1,0 +1,47 @@
+{
+  "description": "An autonomous agent: pty agent, sub of the service account, usr its preferred_username, azp the client agent-<slug>, no mfa and no act (CC-260).",
+  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QtZ3ctMjAyNi0xMC1hIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL21jcC1nYXRld2F5LmludGVybmFsIiwiYXVkIjoibWNwLWppcmEiLCJ1c2UiOiJjYWxsIiwic3ViIjoiM2IwZjZjNTItOGYzZS00ZjBlLWI2YTItNWQ1YTFmMGU5YzExIiwidXNyIjoic2VydmljZS1hY2NvdW50LWFnZW50LXRyaWFnZSIsImdycCI6WyJtY3AtamlyYS1yZWFkIl0sImF6cCI6ImFnZW50LXRyaWFnZSIsInRvb2wiOiJnZXRfaXNzdWUiLCJyaWQiOiIwMTkyZDFiMi03YzNhLTdkNGUtOGYxMC0yYTNiNGM1ZDZlN2YiLCJwcnYiOjQxLCJpYXQiOjE3OTMwMTYwMDAsImV4cCI6MTc5MzAxNjA2MCwianRpIjoiMDE5MmQxYjItN2MzYS03ZjAwLTlhMTEtMDAwMDAwMDAwMzA0IiwicHR5IjoiYWdlbnQifQ.tYiS7j4nXsQBEwxfwuTtHtkZxjNIveFeSpKtoJbV1cjKunuyfrea238SmFDuAQrZt3ixUguJiQhkEx_l48txQQ",
+  "header": {
+    "alg": "ES256",
+    "kid": "test-gw-2026-10-a",
+    "typ": "JWT"
+  },
+  "claims": {
+    "iss": "https://mcp-gateway.internal",
+    "aud": "mcp-jira",
+    "use": "call",
+    "sub": "3b0f6c52-8f3e-4f0e-b6a2-5d5a1f0e9c11",
+    "usr": "service-account-agent-triage",
+    "grp": [
+      "mcp-jira-read"
+    ],
+    "azp": "agent-triage",
+    "tool": "get_issue",
+    "rid": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "prv": 41,
+    "iat": 1793016000,
+    "exp": 1793016060,
+    "jti": "0192d1b2-7c3a-7f00-9a11-000000000304",
+    "pty": "agent"
+  },
+  "verifier": {
+    "issuer": "https://mcp-gateway.internal",
+    "audience": "mcp-jira",
+    "jwks": "keys/test-gateway-jwks.json",
+    "now": "2026-10-26T12:00:10Z",
+    "clockSkewSeconds": 30,
+    "maxLifetimeSeconds": 60,
+    "seenJtis": [],
+    "allowTestKeys": true
+  },
+  "request": {
+    "kind": "jsonrpc",
+    "method": "tools/call",
+    "toolName": "get_issue",
+    "xRequestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f"
+  },
+  "expected": {
+    "valid": true,
+    "httpStatus": 200
+  }
+}

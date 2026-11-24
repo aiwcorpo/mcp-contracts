@@ -1,5 +1,5 @@
 // Rules of C5/C6 that JSON Schema cannot express (README: "Manifest semantic rules", CC-005, CC-018).
-import { manifestEntryHash, policiesHash } from './definition-hash.mjs';
+import { manifestEntryHash, manifestPrimitiveHash, policiesHash } from './definition-hash.mjs';
 
 export const RESERVED_SYSTEM_IDS = ['gateway', 'offboarding', 'portal', 'broker', 'prometheus', 'platform', 'admin', 'registry', 'adapter', 'internal', 'ci'];
 
@@ -17,17 +17,23 @@ export function manifestRuleViolations(manifest) {
   const referenced = [
     ...manifest.tools.flatMap((t) => t.resourceRefs.map((r) => r.type)),
     ...manifest.resourceTypes.map((r) => r.parent).filter(Boolean),
+    ...(manifest.resourceTemplates ?? []).flatMap((t) => t.variables.map((v) => v.type).filter(Boolean)),
+    ...(manifest.prompts ?? []).flatMap((p) => p.argumentRules.map((r) => r.type).filter(Boolean)),
   ];
   if (declared.size !== manifest.resourceTypes.length || referenced.some((type) => !declared.has(type))) {
     violations.push('resource-types-declared');
   }
   violations.push(...resourceTypeViolations(manifest));
   violations.push(...policiesViolations(manifest));
+  violations.push(...primitiveViolations(manifest));
   for (const tool of manifest.tools) {
     if (tool.additionalGroup !== undefined) {
       const prefix = `mcp-${manifest.system}-`;
       const suffix = tool.additionalGroup.startsWith(prefix) ? tool.additionalGroup.slice(prefix.length) : '';
       if (!/^[a-z][a-z0-9-]{0,30}$/.test(suffix) || ['read', 'write', 'destructive'].includes(suffix)) violations.push('additional-group-valid');
+    }
+    for (const { type } of tool.resourceRefs) {
+      if (declared_(manifest).get(type)?.valueOnly === true) violations.push('resource-types-valid');
     }
     for (const { argument } of tool.resourceRefs) {
       if (!idArgument(tool.definition.inputSchema?.properties?.[argument])) violations.push('resource-ref-argument-declared');
@@ -40,6 +46,9 @@ export function manifestRuleViolations(manifest) {
   return [...new Set(violations)];
 }
 
+const declared_ = (manifest) => new Map(manifest.resourceTypes.map((r) => [r.type, r]));
+// CC-262: a type of one of these names would shadow a type of the base schema (Cedar 4 refuses a shadowed type).
+export const RESERVED_TYPE_NAMES = ['User', 'UserGroup', 'ResourceScope', 'Tool', 'McpResource', 'McpPrompt', 'RequestContext'];
 const ATTRIBUTE = /^[a-z][A-Za-z0-9]*$/;
 export const MAX_PATTERN_LENGTH = 512;
 export const MAX_ID_LENGTH = 1024;
@@ -284,6 +293,7 @@ function resourceTypeViolations(manifest) {
   };
   for (const d of manifest.resourceTypes) {
     const attributes = d.attributes ?? [];
+    if (RESERVED_TYPE_NAMES.includes(d.type.slice(d.type.indexOf('::') + 2))) found.add('resource-type-name-reserved');
     if (attributes.includes('scopes')) found.add('resource-types-valid');
     if (d.parent !== undefined) {
       const parent = declared.get(d.parent);
@@ -382,4 +392,122 @@ export function anchoredPattern(pattern) {
     else if (ch === '|' && depth === 0) return false;
   }
   return true;
+}
+
+const TEMPLATE_VARIABLE = /\{([^{}]*)\}/g;
+const LEVEL1_VARIABLE = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
+const PLACEHOLDER = /\{\{([^{}]*)\}\}/g;
+const schemeOf = (uri) => uri.slice(0, uri.indexOf('://'));
+const uriBody = (uri) => uri.slice(uri.indexOf('://') + 3);
+
+/** Variable names of a URI template in order of occurrence, or null when the template is not level 1 (only {name}). */
+export function templateVariables(template) {
+  const names = [];
+  const rest = template.replace(TEMPLATE_VARIABLE, (_, name) => {
+    names.push(name);
+    return '';
+  });
+  if (rest.includes('{') || rest.includes('}') || names.some((n) => !LEVEL1_VARIABLE.test(n))) return null;
+  return names;
+}
+
+/**
+ * Whether a URI template matches a URI when every variable stands for any non-empty text. Literal parts are found left to right
+ * without backtracking, so the cost is linear in the length of the URI for each part.
+ */
+export function templateMatches(template, uri) {
+  const literals = template.split(TEMPLATE_VARIABLE).filter((_, i) => i % 2 === 0);
+  if (literals.length === 1) return uri === literals[0];
+  if (!uri.startsWith(literals[0])) return false;
+  let at = literals[0].length;
+  for (const literal of literals.slice(1, -1)) {
+    const found = uri.indexOf(literal, at + 1);
+    if (found < 0) return false;
+    at = found + literal.length;
+  }
+  const last = literals[literals.length - 1];
+  return uri.length - last.length >= at + 1 && uri.endsWith(last);
+}
+
+const compiles = (pattern) => {
+  try {
+    new RegExp(pattern, 'u');
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// CC-258: resources, resource templates and prompts. definitionHash mismatches are reported as definition-hash-matches, like tools.
+function primitiveViolations(manifest) {
+  const found = new Set();
+  const resources = manifest.resources ?? [];
+  const templates = manifest.resourceTemplates ?? [];
+  const prompts = manifest.prompts ?? [];
+  const adapter = manifest.source === 'adapter';
+  const declared = declared_(manifest);
+  const schemeFits = (uri) => {
+    const scheme = schemeOf(uri);
+    return adapter ? scheme.startsWith(`${manifest.system}+`) : scheme === manifest.system;
+  };
+  const names = [...resources, ...templates].map((e) => e.name);
+  if (new Set(names).size !== names.length) found.add('resource-names-unique');
+  for (const [kind, entries] of [['resource', resources], ['resourceTemplate', templates], ['prompt', prompts]]) {
+    for (const entry of entries) {
+      if (manifestPrimitiveHash(manifest, kind, entry) !== entry.definitionHash) found.add('definition-hash-matches');
+      if (entry.additionalGroup !== undefined) {
+        const prefix = `mcp-${manifest.system}-`;
+        const suffix = entry.additionalGroup.startsWith(prefix) ? entry.additionalGroup.slice(prefix.length) : '';
+        if (!/^[a-z][a-z0-9-]{0,30}$/.test(suffix) || ['read', 'write', 'destructive'].includes(suffix)) found.add('additional-group-valid');
+      }
+    }
+  }
+  for (const resource of resources) {
+    if (resource.definition.name !== resource.name) found.add('resources-valid');
+    if (!schemeFits(resource.definition.uri)) found.add('resource-uri-scheme');
+  }
+  const skeletons = new Set();
+  for (const template of templates) {
+    const { definition, variables } = template;
+    if (definition.name !== template.name) found.add('resource-templates-valid');
+    if (!schemeFits(definition.uriTemplate)) found.add('resource-uri-scheme');
+    const names_ = templateVariables(definition.uriTemplate);
+    if (names_ === null) found.add('uri-template-level1');
+    else {
+      const first = [...new Set(names_)];
+      if (first.length !== variables.length || first.some((n, i) => variables[i].name !== n)) found.add('uri-variables-bound');
+      const skeleton = definition.uriTemplate.replace(TEMPLATE_VARIABLE, '{}');
+      if (skeletons.has(skeleton)) found.add('resource-uri-unambiguous');
+      skeletons.add(skeleton);
+      if (resources.some((r) => templateMatches(definition.uriTemplate, r.definition.uri))) found.add('resource-uri-unambiguous');
+    }
+    if (adapter) {
+      for (const variable of variables) {
+        if (!anchoredPattern(variable.pattern) || grammarViolation(variable.pattern) !== null || !compiles(variable.pattern)) found.add('resource-templates-valid');
+      }
+    } else if (!variables.some((v) => declared.has(v.type) && declared.get(v.type).valueOnly !== true)) {
+      found.add('uri-template-entity-variable');
+    }
+  }
+  const promptNames = prompts.map((p) => p.name);
+  if (new Set(promptNames).size !== promptNames.length) found.add('prompts-valid');
+  for (const prompt of prompts) {
+    const argumentNames = (prompt.definition.arguments ?? []).map((a) => a.name);
+    const ruleNames = prompt.argumentRules.map((r) => r.name);
+    if (prompt.definition.name !== prompt.name) found.add('prompts-valid');
+    if (new Set(argumentNames).size !== argumentNames.length || new Set(ruleNames).size !== ruleNames.length
+      || argumentNames.length !== ruleNames.length || argumentNames.some((n) => !ruleNames.includes(n))) found.add('prompts-valid');
+    for (const rule of prompt.argumentRules) {
+      if (!anchoredPattern(rule.pattern) || !compiles(rule.pattern)) found.add('prompts-valid');
+    }
+    for (const message of prompt.messages) {
+      const used = [];
+      const rest = message.text.replace(PLACEHOLDER, (_, name) => {
+        used.push(name);
+        return '';
+      });
+      if (used.some((n) => !argumentNames.includes(n)) || rest.includes('{{') || rest.includes('}}')) found.add('prompt-placeholders-declared');
+    }
+  }
+  return [...found];
 }

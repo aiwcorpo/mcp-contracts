@@ -118,6 +118,13 @@ public final class ResourceTypes {
     }
 
     private static ResourceTypeDeclaration declaration(JsonNode node) {
+        if (node.path("valueOnly").asBoolean(false)) {
+            for (String member : List.of("attributes", "parent", "parentAttribute", "scopePattern", "earlyScopeCheck", "classification")) {
+                if (node.has(member)) {
+                    throw new IllegalArgumentException(node.path("type").asText() + ": a valueOnly type has no " + member);
+                }
+            }
+        }
         List<String> attributes = new ArrayList<>();
         node.path("attributes").forEach(a -> attributes.add(a.asText()));
         Optional<Classification> classification = node.has("classification")
@@ -127,7 +134,7 @@ public final class ResourceTypes {
                 : Optional.empty();
         return new ResourceTypeDeclaration(node.path("type").asText(), attributes, text(node, "parent"),
                 text(node, "parentAttribute"), node.path("idPattern").asText(), text(node, "scopePattern"),
-                node.path("earlyScopeCheck").asBoolean(false), classification);
+                node.path("earlyScopeCheck").asBoolean(false), classification, node.path("valueOnly").asBoolean(false));
     }
 
     private static Kind kindOfString(JsonNode node) {
@@ -159,7 +166,7 @@ public final class ResourceTypes {
         }
         if (d.parent().isPresent()) {
             ResourceTypeDeclaration parent = declared.get(d.parent().get());
-            if (parent == null || !parent.namespace().equals(d.namespace())) {
+            if (parent == null || parent.valueOnly() || !parent.namespace().equals(d.namespace())) {
                 throw new IllegalArgumentException(d.type() + ": parent " + d.parent().get() + " is not declared in the same namespace");
             }
             String attribute = d.parentAttribute().get();
@@ -239,9 +246,23 @@ public final class ResourceTypes {
         return Optional.ofNullable(byType.get(type)).map(Compiled::declaration);
     }
 
-    /** @return every declaration, in declaration order */
+    /** @return every declaration, in declaration order, the {@code valueOnly} types included */
     public List<ResourceTypeDeclaration> declarations() {
         return byType.values().stream().map(Compiled::declaration).toList();
+    }
+
+    /**
+     * @return the declarations of the types that have an entity, in declaration order: what a fragment schema, the generated
+     *         platform policies and the entities of a request are built from. {@code valueOnly} types are left out.
+     */
+    public List<ResourceTypeDeclaration> entityDeclarations() {
+        return byType.values().stream().map(Compiled::declaration).filter(d -> !d.valueOnly()).toList();
+    }
+
+    /** @return whether the type is declared and only limits a value (CC-258) */
+    public boolean isValueOnly(String type) {
+        Compiled compiled = byType.get(type);
+        return compiled != null && compiled.declaration().valueOnly();
     }
 
     /** @return true when the type is declared and {@code id} matches its {@code idPattern} as a whole; false otherwise */

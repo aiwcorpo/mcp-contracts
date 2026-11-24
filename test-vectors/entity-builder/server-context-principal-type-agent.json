@@ -1,0 +1,112 @@
+{
+  "description": "The server context carries principalType too: the starter takes it from pty (CC-263).",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000f",
+      "usr": "agent",
+      "grp": [
+        "mcp-notes-read"
+      ],
+      "azp": "claude-code",
+      "pty": "agent"
+    },
+    "tool": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "get_folder",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": [
+        {
+          "argument": "folderPath",
+          "type": "Notes::Folder"
+        }
+      ]
+    },
+    "arguments": {
+      "folderPath": "team"
+    },
+    "credentialType": "user-oauth",
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team",
+      "attrs": {
+        "path": "team"
+      },
+      "scopes": [
+        "Notes::Folder/team"
+      ]
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000f"
+    },
+    "action": {
+      "type": "Notes::Action",
+      "id": "read"
+    },
+    "resource": {
+      "type": "Notes::Folder",
+      "id": "team"
+    },
+    "context": {
+      "client": "claude-code",
+      "credentialType": "user-oauth",
+      "principalType": "agent",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "Notes::Folder",
+          "id": "team"
+        },
+        "attrs": {
+          "path": "team",
+          "scopes": [
+            {
+              "__entity": {
+                "type": "ResourceScope",
+                "id": "Notes::Folder/team"
+              }
+            }
+          ]
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000f"
+        },
+        "attrs": {
+          "username": "agent",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

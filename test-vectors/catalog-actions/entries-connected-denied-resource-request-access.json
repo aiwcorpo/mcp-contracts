@@ -1,0 +1,33 @@
+{
+  "description": "A denied resource counts like a denied tool.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "resource",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "request_access"
+    ]
+  }
+}

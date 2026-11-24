@@ -1,0 +1,13 @@
+{
+  "description": "A DESTRUCTIVE tool is above every ceiling an agent can have.",
+  "input": {
+    "maxRisk": "UPDATE",
+    "toolRisk": "DESTRUCTIVE",
+    "event": "call"
+  },
+  "expected": {
+    "allowed": false,
+    "errorCode": "not_found_or_denied",
+    "auditReason": "agent_max_risk"
+  }
+}

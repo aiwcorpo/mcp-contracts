@@ -42,6 +42,7 @@ public final class EntityBuilder {
             .<Entity, String>comparing(e -> e.getEUID().getType().toString())
             .thenComparing(e -> e.getEUID().getId().toString());
 
+    private static final Set<String> PRINCIPAL_TYPES = Set.of("user", "agent", "delegated");
     private static final Set<String> CREDENTIAL_TYPES = Set.of("user-oauth", "user-secret", "token-exchange", "service-account");
 
     private final ResourceTypes types;
@@ -105,6 +106,48 @@ public final class EntityBuilder {
         tool.additionalGroup().ifPresent(group -> attrs.put("additionalGroup", uid("UserGroup", group)));
         entities.add(new Entity(resource, attrs, Set.of()));
         return result(caller, uid("Action", "call"), resource, context, entities);
+    }
+
+    /**
+     * Gateway evaluation of {@code resources/read}: {@code Action::"read_resource"} on
+     * {@code McpResource::"<system>__<name>"} (CC-262). {@code context.refs} holds the values of the template variables whose
+     * type is declared {@code earlyScopeCheck}; every value is checked against the {@code idPattern} of its type.
+     *
+     * @param variables values of the template variables by name, empty for a static resource
+     * @throws EntityBuilderException {@code INVALID_ARGUMENT} for a value that is not a valid id, {@code INTERNAL_ERROR} for an
+     *         undeclared type
+     */
+    public CedarRequest forResourceRead(Caller caller, ResourceDescriptor resource, Map<String, ?> variables) {
+        Objects.requireNonNull(resource, "resource");
+        Map<String, Value> context = context(caller, resource.variables(), variables, true);
+        List<Entity> entities = principalEntities(caller);
+        EntityUID uid = uid("McpResource", resource.qualifiedName());
+        Map<String, Value> attrs = new LinkedHashMap<>();
+        attrs.put("server", new PrimString(resource.serverId()));
+        attrs.put("name", new PrimString(resource.name()));
+        attrs.put("uriTemplate", new PrimString(resource.uriTemplate()));
+        attrs.put("requiredGroup", uid("UserGroup", resource.requiredGroup()));
+        resource.additionalGroup().ifPresent(group -> attrs.put("additionalGroup", uid("UserGroup", group)));
+        entities.add(new Entity(uid, attrs, Set.of()));
+        return result(caller, uid("Action", "read_resource"), uid, context, entities);
+    }
+
+    /**
+     * Gateway evaluation of {@code prompts/get}: {@code Action::"get_prompt"} on {@code McpPrompt::"<system>__<name>"} (CC-262).
+     * {@code context.refs} is an empty set.
+     */
+    public CedarRequest forPromptGet(Caller caller, PromptDescriptor prompt) {
+        Objects.requireNonNull(prompt, "prompt");
+        Map<String, Value> context = context(caller, List.of(), Map.of(), false);
+        List<Entity> entities = principalEntities(caller);
+        EntityUID uid = uid("McpPrompt", prompt.qualifiedName());
+        Map<String, Value> attrs = new LinkedHashMap<>();
+        attrs.put("server", new PrimString(prompt.serverId()));
+        attrs.put("name", new PrimString(prompt.name()));
+        attrs.put("requiredGroup", uid("UserGroup", prompt.requiredGroup()));
+        prompt.additionalGroup().ifPresent(group -> attrs.put("additionalGroup", uid("UserGroup", group)));
+        entities.add(new Entity(uid, attrs, Set.of()));
+        return result(caller, uid("Action", "get_prompt"), uid, context, entities);
     }
 
     /**
@@ -177,6 +220,17 @@ public final class EntityBuilder {
         if (!ACTIONS.contains(tool.action())) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown action " + tool.action());
         }
+        return context(caller, tool.resourceRefs(), arguments, false);
+    }
+
+    private Map<String, Value> context(Caller caller, List<ResourceRef> refs, Map<String, ?> values, boolean variables) {
+        Objects.requireNonNull(caller, "caller");
+        if (!PRINCIPAL_TYPES.contains(caller.principalType())) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, "unknown principalType " + caller.principalType());
+        }
+        if (caller.actor().isPresent() && !"delegated".equals(caller.principalType())) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, "actor only with principalType delegated");
+        }
         Map<String, Value> context = new LinkedHashMap<>();
         context.put("client", new PrimString(caller.client()));
         if (credentialType != null) {
@@ -186,8 +240,10 @@ public final class EntityBuilder {
             throw invalid("mfa age must be >= 0");
         }
         caller.mfaAgeSeconds().ifPresent(age -> context.put("mfaAge", new PrimLong(age)));
+        context.put("principalType", new PrimString(caller.principalType()));
+        caller.actor().ifPresent(actor -> context.put("actor", new PrimString(actor)));
         List<String> refScopes = new ArrayList<>();
-        for (Map.Entry<String, String> value : resourceValues(tool, arguments)) {
+        for (Map.Entry<String, String> value : resourceValues(refs, values, variables)) {
             if (types.isEarlyScopeCheck(value.getKey())) {
                 refScopes.add(Scopes.id(value.getKey(), value.getValue()));
             }
@@ -204,9 +260,17 @@ public final class EntityBuilder {
      *         for a type no server declared
      */
     List<Map.Entry<String, String>> resourceValues(ToolDescriptor tool, Map<String, ?> arguments) {
+        return resourceValues(tool.resourceRefs(), arguments, false);
+    }
+
+    /** As above for the variables of a template, whose type may be {@code valueOnly}; a resourceRef never may (CC-258). */
+    private List<Map.Entry<String, String>> resourceValues(List<ResourceRef> refs, Map<String, ?> arguments, boolean variables) {
         List<Map.Entry<String, String>> values = new ArrayList<>();
-        for (ResourceRef ref : tool.resourceRefs()) {
+        for (ResourceRef ref : refs) {
             declaration(ref.type());
+            if (!variables && types.isValueOnly(ref.type())) {
+                throw new EntityBuilderException(Code.INTERNAL_ERROR, "a valueOnly type cannot be a resourceRef: " + ref.type());
+            }
             for (String id : argumentIds(ref.argument(), arguments.get(ref.argument()))) {
                 if (!types.isValidId(ref.type(), id)) {
                     throw invalid(ref.argument() + ": not a valid " + ref.type() + " id");
@@ -297,6 +361,9 @@ public final class EntityBuilder {
 
     private Entity resourceEntity(ResolvedResource resource, Optional<ResolvedResource> parent) {
         ResourceTypeDeclaration declaration = declaration(resource.type());
+        if (declaration.valueOnly()) {
+            throw new EntityBuilderException(Code.INTERNAL_ERROR, resource.type() + " is a valueOnly type: it has no entity");
+        }
         if (!types.isValidId(resource.type(), resource.id())) {
             throw new EntityBuilderException(Code.INTERNAL_ERROR, "resolved " + resource.type() + " has an invalid id");
         }

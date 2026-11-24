@@ -1,0 +1,19 @@
+{
+  "description": "resources/read with current data but other policies than the approved ones: upstream_unavailable, final.",
+  "input": {
+    "ownHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "held": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "method": "resources/read"
+  },
+  "expected": {
+    "decision": "deny",
+    "errorCode": "upstream_unavailable",
+    "reason": "policies_differ",
+    "gatewayAction": "none"
+  }
+}

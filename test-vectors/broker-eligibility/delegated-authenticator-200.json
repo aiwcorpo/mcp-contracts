@@ -1,0 +1,25 @@
+{
+  "description": "The authenticator works for delegated by the sub of the human.",
+  "input": {
+    "operation": "authenticator",
+    "claims": {
+      "pty": "delegated",
+      "act": {
+        "sub": "agent-sub"
+      },
+      "tool": "update_issue"
+    },
+    "system": {
+      "supportedTypes": [
+        "user-secret",
+        "user-oauth",
+        "token-exchange"
+      ],
+      "agentsAllowed": false
+    }
+  },
+  "expected": {
+    "status": 200,
+    "resolvedBy": "human_sub"
+  }
+}

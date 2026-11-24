@@ -31,6 +31,47 @@
       "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
       "maxLength": 100
     },
+    "ResourceName": {
+      "description": "Server-side name of a resource or a resource template (CC-258), without the gateway prefix. Same pattern and limit as ToolName; static resources and templates of one server share one namespace of names.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "PromptName": {
+      "description": "Server-side name of a prompt (CC-258), without the gateway prefix. Same pattern and limit as ToolName; prompts have a namespace of their own.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "QualifiedPromptName": {
+      "description": "Prompt name as seen by MCP clients: <system>__<prompt>, with the system pattern of SystemId (CC-258).",
+      "type": "string",
+      "pattern": "^(?!(?:gateway|offboarding|portal|broker|prometheus|platform|admin|registry|adapter|internal|ci)__)[a-z][a-z0-9]{1,30}__[a-z][a-z0-9]*(_[a-z0-9]+)*$",
+      "maxLength": 100
+    },
+    "ResourceUri": {
+      "description": "URI of a static resource as seen by MCP clients (CC-258). The scheme is the SystemId of the server; for an adapter it is <system>+<foreign scheme>. ASCII only: a client encodes characters outside ASCII as percent-encoded UTF-8. Which scheme belongs to which manifest is checked by the rule resource-uri-scheme.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]{1,30}(?:\\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,2000}$",
+      "maxLength": 2100
+    },
+    "ResourceUriTemplate": {
+      "description": "URI template of a resource template (CC-258): the beginning of ResourceUri, then at most 1000 printable ASCII characters. Only level 1 expressions {name} are allowed; the rule uri-template-level1 checks the syntax.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]{1,30}(?:\\+[a-z][a-z0-9.+-]{0,30})?://[!-~]{1,1000}$",
+      "maxLength": 1100
+    },
+    "UriVariableName": {
+      "description": "Name of a variable in a resource URI template (CC-258).",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]{0,31}$"
+    },
+    "AgentClientId": {
+      "description": "Identity of an autonomous agent in the registry of the gateway (CC-266): the client_id of the agent in the IdP, always with the agent- prefix.",
+      "type": "string",
+      "pattern": "^agent-[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
     "EndpointFilterQuery": {
       "description": "Canonical query of the aggregate MCP endpoint (/mcp and /s/<serverId>/mcp), CC-170: parameters systems, tools, access, exclude in this fixed order, values lower case, comma separated, sorted bytewise, without duplicates; no percent-encoding, no empty parameter, no leading or trailing ampersand. Entries of systems are system ids, entries of tools are qualified tool names (<system>__<tool>, one double underscore), entries of exclude are either. Reference: scripts/lib/endpoint-filter.mjs. Sorting, absence of duplicates and the limits (at most 5 entries in systems, 100 in tools, 100 in exclude, 512 bytes in all) cannot be written as a pattern; the reference parser checks them and the vectors pin them (CC-186). Appears without the leading '?'.",
       "type": "string",
@@ -137,7 +178,7 @@
       ]
     },
     "ResourceType": {
-      "description": "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in.",
+      "description": "Cedar entity type of a resource, declared by a server in the resourceTypes of its manifest (C6): <Namespace>::<Name>, where the namespace is the Cedar namespace of the server. No type is built in. The second part must not be a name of the base schema: User, UserGroup, ResourceScope, Tool, McpResource, McpPrompt or RequestContext (CC-262; the rule resource-type-name-reserved checks it, because a type of that name would shadow the base type).",
       "type": "string",
       "pattern": "^[A-Z][A-Za-z0-9]{0,30}::[A-Z][A-Za-z0-9]{0,30}$"
     },

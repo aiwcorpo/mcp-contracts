@@ -72,3 +72,26 @@ export function expectedSystemDecision({ expectedSystem = null, manifestSystem }
   if (expectedSystem !== null && expectedSystem !== manifestSystem) return { status: 422, error: 'server_rejected', reason: 'system_mismatch' };
   return { status: 200 };
 }
+
+export const CLAIMS_RELEASE = '8.0.0';
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/** SemVer precedence without pre-release handling beyond "lower than the release": true when `version` is at least `release`; false for a missing or malformed version. */
+export function atLeast(version, release) {
+  if (typeof version !== 'string' || !SEMVER.test(version)) return false;
+  const [a, b] = [version, release].map((v) => v.split(/[-+]/)[0].split('.').map(Number));
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
+  return !/-/.test(version);
+}
+
+/**
+ * CC-260: before emitting resource, pty, act or allowedAgentClients the gateway checks that the receiver accepts them. A server: the
+ * contractsVersion of its approved manifest is at least 8.0.0 (absent means 7.x or older). The broker has no manifest: the gateway
+ * configuration must confirm a broker version of at least 8.0.0. A receiver that does not meet the condition gets no call: the client
+ * sees upstream_unavailable and the audit reason is contracts_version_unsupported (before the call, instead of a 401 from the old receiver).
+ */
+export function emissionDecision({ receiver, contractsVersion, confirmedBrokerVersion }) {
+  const version = receiver === 'broker' ? confirmedBrokerVersion : contractsVersion;
+  if (atLeast(version, CLAIMS_RELEASE)) return { emit: true };
+  return { emit: false, errorCode: 'upstream_unavailable', auditReason: 'contracts_version_unsupported' };
+}

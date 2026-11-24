@@ -1,0 +1,33 @@
+{
+  "description": "All tools granted and one prompt denied with known requiredEntitlements: the server row has request_access, as for a denied tool (CC-265).",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "request_access"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "description": "Nothing granted and a request pending for the entitlement of a denied prompt: request_pending.",
+  "input": {
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "denied",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ],
+    "pendingEntitlements": [
+      "mcp-jira-read"
+    ],
+    "credentialDefaultType": "user-oauth",
+    "connectionStatus": "connected"
+  },
+  "expected": {
+    "status": "request_pending"
+  }
+}

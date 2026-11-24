@@ -1,0 +1,66 @@
+{
+  "description": "prompts/get after every check: the rendered result; the server is not called.",
+  "kind": "prompt-get",
+  "input": {
+    "name": "servicedesk__summarize_ticket",
+    "render": {
+      "result": {
+        "resultType": "complete",
+        "description": "Summarize one service desk ticket for a handover.",
+        "messages": [
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Summarize the ticket <ticket_id>SD-1042</ticket_id> for a handover."
+            }
+          },
+          {
+            "role": "assistant",
+            "content": {
+              "type": "text",
+              "text": "I will read the ticket first."
+            }
+          },
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "Remark: <note></note>"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "expected": {
+    "outcome": "ok",
+    "result": {
+      "resultType": "complete",
+      "description": "Summarize one service desk ticket for a handover.",
+      "messages": [
+        {
+          "role": "user",
+          "content": {
+            "type": "text",
+            "text": "Summarize the ticket <ticket_id>SD-1042</ticket_id> for a handover."
+          }
+        },
+        {
+          "role": "assistant",
+          "content": {
+            "type": "text",
+            "text": "I will read the ticket first."
+          }
+        },
+        {
+          "role": "user",
+          "content": {
+            "type": "text",
+            "text": "Remark: <note></note>"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "resources/read with approved policies and current data is evaluated.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 41,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "method": "resources/read"
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

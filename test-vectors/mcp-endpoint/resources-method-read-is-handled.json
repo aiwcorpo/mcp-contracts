@@ -1,0 +1,11 @@
+{
+  "description": "resources/read is handled.",
+  "kind": "method",
+  "input": {
+    "method": "resources/read",
+    "era": "modern"
+  },
+  "expected": {
+    "handled": true
+  }
+}

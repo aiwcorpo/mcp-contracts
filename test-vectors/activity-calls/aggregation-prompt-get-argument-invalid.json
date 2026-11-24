@@ -1,0 +1,31 @@
+{
+  "description": "An argument that fails its rule is checked after authorization and the client is told so (CC-259): an error row with the errorCode of the event.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e97",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "prompt_get",
+      "server": "mcp-jira",
+      "prompt": "triage_issue",
+      "decision": "deny",
+      "reason": "argument_invalid",
+      "outcome": "error",
+      "errorCode": "invalid_argument",
+      "argsLength": 30
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e97",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "prompt",
+    "client": "claude-code",
+    "prompt": "jira__triage_issue",
+    "result": "error",
+    "errorCode": "invalid_argument"
+  }
+}

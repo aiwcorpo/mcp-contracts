@@ -1,0 +1,29 @@
+{
+  "description": "An agent acting for a user: sub is the user, actorSub and actorClient the agent (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "tool_call",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "principalType": "delegated",
+    "actorSub": "9a4e7c10-2b5d-4f38-b6a1-0d8c3e5f7a22",
+    "actorClient": "agent-nightly",
+    "server": "mcp-jira",
+    "tool": "get_issue",
+    "risk": "READ_ONLY",
+    "decision": "allow",
+    "policyRevision": 41,
+    "credentialType": "user-secret",
+    "outcome": "ok",
+    "errorCode": null,
+    "latencyMs": 44,
+    "argsLength": 90
+  }
+}

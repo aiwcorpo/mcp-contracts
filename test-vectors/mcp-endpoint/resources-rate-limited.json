@@ -1,0 +1,22 @@
+{
+  "description": "Over the limit resources/read is the HTTP 429 of any MCP request that is not tools/call, with Retry-After and no X-RateLimit headers.",
+  "kind": "rate-limited",
+  "input": {
+    "method": "resources/read",
+    "retryAfterSeconds": 7
+  },
+  "expected": {
+    "status": 429,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Retry-After": "7"
+    },
+    "body": {
+      "error": "rate_limited",
+      "message": "Too many requests. Try again later.",
+      "retryAfterSeconds": 7
+    },
+    "auditReason": "rate_limited_user"
+  }
+}

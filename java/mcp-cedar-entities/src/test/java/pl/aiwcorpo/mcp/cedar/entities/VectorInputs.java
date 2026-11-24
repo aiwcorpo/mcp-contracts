@@ -47,13 +47,15 @@ final class VectorInputs {
 
     static CedarRequest build(String level, JsonNode input, JsonNode vector) {
         Caller caller = caller(input);
-        ToolDescriptor tool = tool(input);
-        Map<String, Object> arguments = arguments(input);
+        ToolDescriptor tool = level.startsWith("gateway-") ? null : tool(input);
+        Map<String, Object> arguments = level.startsWith("gateway-") ? Map.of() : arguments(input);
         EntityBuilder builder = builder(vector);
         if (input.has("credentialType")) {
             builder = builder.withCredentialType(input.get("credentialType").asText());
         }
         return switch (level) {
+            case "gateway-resource" -> builder.forResourceRead(caller, resourceDescriptor(input.get("resource")), values(input));
+            case "gateway-prompt" -> builder.forPromptGet(caller, promptDescriptor(input.get("prompt")));
             case "gateway" -> builder.forToolCall(caller, tool, arguments);
             case "server" -> builder.forResource(caller, tool, arguments, resource(input.get("resource")));
             default -> throw new IllegalArgumentException(level);
@@ -68,7 +70,30 @@ final class VectorInputs {
         if (c.has("mfa")) {
             caller = caller.withMfaAge(c.get("mfa").asLong());
         }
+        if (c.has("pty")) {
+            caller = caller.withPrincipalType(c.get("pty").asText());
+        }
+        if (c.has("act")) {
+            caller = caller.withActor(c.get("act").get("sub").asText());
+        }
         return caller;
+    }
+
+    static ResourceDescriptor resourceDescriptor(JsonNode r) {
+        List<ResourceRef> variables = new ArrayList<>();
+        r.get("variables").forEach(v -> variables.add(new ResourceRef(v.get("name").asText(), v.get("type").asText())));
+        ResourceDescriptor resource = new ResourceDescriptor(r.get("serverId").asText(), r.get("system").asText(), r.get("name").asText(),
+                r.get("uriTemplate").asText(), variables);
+        return r.has("additionalGroup") ? resource.withAdditionalGroup(r.get("additionalGroup").asText()) : resource;
+    }
+
+    static PromptDescriptor promptDescriptor(JsonNode p) {
+        PromptDescriptor prompt = new PromptDescriptor(p.get("serverId").asText(), p.get("system").asText(), p.get("name").asText());
+        return p.has("additionalGroup") ? prompt.withAdditionalGroup(p.get("additionalGroup").asText()) : prompt;
+    }
+
+    static Map<String, Object> values(JsonNode input) {
+        return input.has("values") ? JSON.convertValue(input.get("values"), new TypeReference<Map<String, Object>>() { }) : Map.of();
     }
 
     static ToolDescriptor tool(JsonNode input) {

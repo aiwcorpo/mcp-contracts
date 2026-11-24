@@ -1,0 +1,37 @@
+{
+  "description": "A resolver cannot return a resource of a valueOnly type: it has no entity.",
+  "level": "server",
+  "resourceTypes": [
+    "cedar/examples/systems/gitlab/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping-example-systems.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-000000000011",
+      "usr": "gitlabreader",
+      "grp": [
+        "mcp-gitlab-read"
+      ],
+      "azp": "claude-code"
+    },
+    "tool": {
+      "serverId": "mcp-gitlab",
+      "system": "gitlab",
+      "name": "get_file",
+      "risk": "READ_ONLY",
+      "action": "read",
+      "resourceRefs": []
+    },
+    "arguments": {},
+    "credentialType": "user-oauth",
+    "resource": {
+      "type": "GitLab::Ref",
+      "id": "main",
+      "attrs": {},
+      "scopes": []
+    }
+  },
+  "expected": {
+    "error": "internal_error"
+  }
+}

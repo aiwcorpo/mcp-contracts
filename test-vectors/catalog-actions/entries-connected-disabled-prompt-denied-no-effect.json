@@ -1,0 +1,33 @@
+{
+  "description": "A disabled prompt is not counted as denied: the server row has no request_access.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ],
+        "disabled": true
+      }
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect"
+    ]
+  }
+}

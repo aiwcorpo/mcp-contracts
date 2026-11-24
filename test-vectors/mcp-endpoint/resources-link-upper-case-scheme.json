@@ -1,0 +1,23 @@
+{
+  "description": "The scheme is compared as written (README, matching a URI): SERVICEDESK is not servicedesk.",
+  "kind": "links",
+  "input": {
+    "system": "servicedesk",
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "SERVICEDESK://ticket/SD-1042",
+        "name": "a"
+      },
+      {
+        "type": "resource_link",
+        "uri": "ServiceDesk://ticket/SD-1042",
+        "name": "b"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [],
+    "auditReason": "link_scheme_refused"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "description": "rate_limited_agent is a rate_limited row (CC-264, rule rate_limited_* of CC-165).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e94",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "agent-reports",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "principalType": "agent",
+      "decision": "deny",
+      "reason": "rate_limited_agent",
+      "outcome": "denied",
+      "errorCode": "rate_limited"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e94",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "agent-reports",
+    "result": "rate_limited",
+    "errorCode": "rate_limited"
+  }
+}

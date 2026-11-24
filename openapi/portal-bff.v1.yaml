@@ -51,6 +51,7 @@ tags:
   - name: access-requests
   - name: mcp-endpoint
   - name: activity
+  - name: agents
   - name: admin
 paths:
   /api/v1/auth/login:
@@ -174,16 +175,16 @@ paths:
         Built from C5 catalog, C4 connections, C4 systems and C13 requests. Status per server
         (first matching rule wins, CC-021):
 
-        1. no tool of the server is granted and a request for one of its requiredEntitlements is pending: `request_pending`
-        2. no tool of the server is granted: `no_access`
+        1. no tool, resource, resource template or prompt of the server is granted and a request for one of their requiredEntitlements is pending: `request_pending`
+        2. none of them is granted: `no_access`
         3. the system's default credential type is `service-account` or `token-exchange` (nothing to connect): `connected`
         4. C4 connection `connected` -> `connected`, `expiring` -> `expiring`, `expired`/`revoked`/`error`/`needs_reconnect` -> `reconnect_required`
         5. no connection: `not_connected`
 
         Actions per status (the BFF returns exactly these, CC-083). "Type" below is the type of the existing connection (`connection.type`) for `expiring` and `reconnect_required`, and `credential.supportedTypes` for `not_connected`:
 
-        - `connected`: `copy_link`, `disconnect` only when `connection` is not null (+ `request_access` when some tool of
-          the server is denied); a `service-account` or `token-exchange` system has no connection and no `disconnect`
+        - `connected`: `copy_link`, `disconnect` only when `connection` is not null (+ `request_access` when some tool, resource,
+          resource template or prompt of the server is denied); a `service-account` or `token-exchange` system has no connection and no `disconnect`
         - `expiring`: `copy_link`, `add_secret` (user-secret) or `reconnect` (user-oauth), `disconnect`
         - `reconnect_required`: `reconnect` (user-oauth) or `add_secret` (user-secret), `disconnect`
         - `not_connected`: `connect_oauth` and/or `add_secret`, one per type in `credential.supportedTypes`
@@ -197,6 +198,11 @@ paths:
         a denied tool (without them there is nothing to ask for, so `no_access` then has no action). When the user has a
         pending request for an entitlement that a denied tool needs, `view_request` is returned instead of
         `request_access`, also for a server whose status is `connected`.
+
+        Since 8.0.0 (CC-265) a resource, a resource template and a prompt count like a tool in all of the above: an entry with `access: denied`
+        is a denied tool for the server row (its `requiredEntitlements` count for `request_access` and for the pending request), and a granted
+        entry is a granted tool for rules 1 and 2. A disabled resource, template or prompt is not counted as denied, in the actions and in rule 1 (its requiredEntitlements do not make the server `request_pending`); entries have no actions
+        of their own (vectors `catalog-actions/entries-*` and `status-*`).
 
         `credential` and `connection` come from one consistent read of C4 (`GET /v1/systems`, `GET /v1/connections`)
         (CC-080).
@@ -1274,6 +1280,7 @@ paths:
       tags: [activity]
       operationId: listMyActivityCalls
       summary: My tool calls, one row per call, with filters (proxy to C5 GET /admin/v1/activity/calls; from gateway audit, without arguments).
+      description: Since 8.0.0 a row can also be a read of a resource or a get of a prompt (`kind`, `prompt`, and no `tool`), CC-265.
       security:
         - session: []
       parameters:
@@ -2800,6 +2807,10 @@ paths:
         A create first removes a leftover service account key of the same id, in the transaction of the insert; when the broker cannot, the create is
         `503` and no system is created. A replace that drops `service-account` removes the key after the change; when that fails the change stays applied
         and the answer is `503`. A replace that adds `service-account` removes any stored entry first, in the same transaction (`503` and nothing applied when it cannot) (C4 `putAdminSystem`, CC-251 amendment of 2026-11-16).
+
+        `agentsAllowed` (CC-261) is mirrored from C4: `true` only with `service-account` in `supportedTypes` (`422 agents_allowed_without_service_account`), and a replace that
+        changes it from `false` to `true` needs a fresh MFA (a replace that only turns it off needs none). The form warns the administrator that the setting hands the shared
+        service account credential to agents: in the target system an agent and a human on that account cannot be told apart, accountability is in the audit.
       security:
         - session: []
           csrf: []
@@ -3212,6 +3223,859 @@ paths:
           $ref: '#/components/responses/NotFound'
         "503":
           $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/resources/{name}/pending:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/ResourceName'
+    get:
+      tags: [admin]
+      operationId: getAdminPendingResource
+      summary: Pending resource change for a diff (proxy to C5, CC-265).
+      description: |
+        Approved and pending entry side by side. The portal shows the diff of the definition and of the variables.
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved vs pending entry.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/PendingEntry'
+              examples:
+                new_entry:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: howto
+                      definition:
+                        name: howto
+                        title: Handling guide
+                        description: How the service desk queues are handled.
+                        uri: servicedesk://docs/howto
+                        mimeType: text/markdown
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingVersion: 1.1.0
+                    source: manifest
+                    approvedInVersion: null
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/registry/servers/{serverId}/resources/{name}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/ResourceName'
+    post:
+      tags: [admin]
+      operationId: approveAdminResource
+      summary: Approve a pending resource definition (proxy to C5, CC-265).
+      description: The body is `definitionHash` only; `risk`, `action` and `acceptRiskLowering` are `422 classification_not_allowed`. No fresh MFA, as for a plain approval of a tool.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ApproveRequest'
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The definition changed again; reload the diff.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: A classification was sent, or the definition holds a hidden character (no reason, CC-250).
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ManifestRejected'
+              examples:
+                classification_not_allowed:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_not_allowed
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/resource-templates/{name}/pending:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/ResourceName'
+    get:
+      tags: [admin]
+      operationId: getAdminPendingResourceTemplate
+      summary: Pending resource template change for a diff (proxy to C5, CC-265).
+      description: |
+        Approved and pending entry side by side. The portal shows the diff of the definition and of the variables.
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved vs pending entry.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/PendingEntry'
+              examples:
+                new_entry:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: ticket
+                      definition:
+                        name: ticket
+                        title: Ticket
+                        description: One ticket of the service desk.
+                        uriTemplate: servicedesk://ticket/{ticketId}
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingVersion: 1.1.0
+                    source: manifest
+                    approvedInVersion: null
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/registry/servers/{serverId}/resource-templates/{name}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/ResourceName'
+    post:
+      tags: [admin]
+      operationId: approveAdminResourceTemplate
+      summary: Approve a pending resource template definition (proxy to C5, CC-265).
+      description: The body is `definitionHash` only; `risk`, `action` and `acceptRiskLowering` are `422 classification_not_allowed`. No fresh MFA, as for a plain approval of a tool.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ApproveRequest'
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The definition changed again; reload the diff.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: A classification was sent, or the definition holds a hidden character (no reason, CC-250).
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ManifestRejected'
+              examples:
+                classification_not_allowed:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_not_allowed
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/prompts/{name}/pending:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/PromptName'
+    get:
+      tags: [admin]
+      operationId: getAdminPendingPrompt
+      summary: Pending prompt change for a diff (proxy to C5, CC-265).
+      description: |
+        Approved and pending entry side by side. The portal shows the `messages` of the prompt before and after, and the text of the prompt as untrusted data (it goes to a model).
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved vs pending entry.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/PendingEntry'
+              examples:
+                new_entry:
+                  value:
+                    approvedEntry: null
+                    pendingEntry:
+                      name: summarize_ticket
+                      definition:
+                        name: summarize_ticket
+                        title: Summarize a ticket
+                        description: Summary of one ticket.
+                        arguments:
+                          - name: ticketId
+                            required: true
+                      messages:
+                        - role: user
+                          text: 'Summarize <ticket_id>{{ticketId}}</ticket_id>.'
+                    pendingHash: sha256:d466e0905a241d983029dfe36cbaef079907105fac2658b4869cab20e706d8fe
+                    pendingVersion: 1.1.0
+                    source: manifest
+                    approvedInVersion: null
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/registry/servers/{serverId}/prompts/{name}/approve:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/PromptName'
+    post:
+      tags: [admin]
+      operationId: approveAdminPrompt
+      summary: Approve a pending prompt definition (proxy to C5, CC-265).
+      description: The body is `definitionHash` only; `risk`, `action` and `acceptRiskLowering` are `422 classification_not_allowed`. No fresh MFA, as for a plain approval of a tool.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/ApproveRequest'
+            examples:
+              approve:
+                value:
+                  definitionHash: sha256:a8f67fd1227b134a398c4ffabfc32ebf9a64dbc15c4e9001b288341990e44aeb
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Approved.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The definition changed again; reload the diff.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                hash_mismatch:
+                  value:
+                    error: hash_mismatch
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: A classification was sent, or the definition holds a hidden character (no reason, CC-250).
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/ManifestRejected'
+              examples:
+                classification_not_allowed:
+                  value:
+                    error: manifest_rejected
+                    reason: classification_not_allowed
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/registry/servers/{serverId}/resources/{name}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/ResourceName'
+    put:
+      tags: [admin]
+      operationId: putAdminResourceKillSwitch
+      summary: Switch off one resource (proxy to C5, CC-265).
+      description: 'Same rules as for a tool: no fresh MFA, effective within 5 seconds, lifted only by the DELETE (the name is a static resource or a resource template).'
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Content is wrong after the migration
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is on.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    delete:
+      tags: [admin]
+      operationId: deleteAdminResourceKillSwitch
+      summary: Lift the switch of a resource (proxy to C5, CC-265).
+      description: Needs a fresh MFA of the administrator like the lift of any other switch (`401 step_up_required` with `stepUpUrl`). Idempotent.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is off.
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/registry/servers/{serverId}/prompts/{name}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/ServerId'
+      - $ref: '#/components/parameters/PromptName'
+    put:
+      tags: [admin]
+      operationId: putAdminPromptKillSwitch
+      summary: Switch off one prompt (proxy to C5, CC-265).
+      description: 'Same rules as for a tool: no fresh MFA, effective within 5 seconds, lifted only by the DELETE.'
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Content is wrong after the migration
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is on.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    delete:
+      tags: [admin]
+      operationId: deleteAdminPromptKillSwitch
+      summary: Lift the switch of a prompt (proxy to C5, CC-265).
+      description: Needs a fresh MFA of the administrator like the lift of any other switch (`401 step_up_required` with `stepUpUrl`). Idempotent.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The switch is off.
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/agent-clients:
+    get:
+      tags: [agents]
+      operationId: listMyAgentClients
+      summary: Agents that the caller owns (proxy to C5 GET /admin/v1/agent-clients?owner=me, CC-266).
+      description: Owner view; needs no administrator group. The portal lets the owner suspend an agent (`PUT .../kill-switch`) and shows its limits.
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The agents whose `ownerSub` is the `sub` of the session.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 1000
+                items:
+                  $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClient'
+              examples:
+                agent:
+                  value:
+                      - clientId: agent-reports
+                        serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                        ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                        status: active
+                        maxRisk: READ_ONLY
+                        allowedGroups: [mcp-jira-read]
+                        delegationAllowed: false
+                        createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        createdAt: '2026-11-20T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/agent-clients/{clientId}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/AgentClientRef'
+    put:
+      tags: [agents]
+      operationId: putMyAgentClientKillSwitch
+      summary: Suspend an agent that the caller owns (proxy to C5, CC-266).
+      description: No fresh MFA. The owner cannot lift the suspension; that is `deleteAdminAgentClientKillSwitch`. Another person's agent is `404 not_found_or_denied`.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Unexpected volume of calls
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The agent is suspended.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/agent-clients:
+    get:
+      tags: [admin]
+      operationId: listAdminAgentClients
+      summary: Agents of the registry (proxy to C5, group mcp-platform-admin, CC-266).
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Every agent.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 1000
+                items:
+                  $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClient'
+              examples:
+                agent:
+                  value:
+                      - clientId: agent-reports
+                        serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                        ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                        status: active
+                        maxRisk: READ_ONLY
+                        allowedGroups: [mcp-jira-read]
+                        delegationAllowed: false
+                        createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                        createdAt: '2026-11-20T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    post:
+      tags: [admin]
+      operationId: createAdminAgentClient
+      summary: Register an agent (proxy to C5, fresh MFA, CC-266).
+      description: The BFF asks for the step-up first (`401 step_up_required` with `stepUpUrl`); the gateway checks it again. The client in the IdP is created beforehand by an administrator.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClientCreateRequest'
+            examples:
+              reports:
+                value:
+                  clientId: agent-reports
+                  serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                  ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+      responses:
+        '201':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Registered.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClient'
+              examples:
+                agent:
+                  value:
+                      clientId: agent-reports
+                      serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                      ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                      status: active
+                      maxRisk: READ_ONLY
+                      allowedGroups: [mcp-jira-read]
+                      delegationAllowed: false
+                      createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      createdAt: '2026-11-20T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: An agent with this clientId exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                agent_exists:
+                  value:
+                    error: agent_exists
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: agent_group_not_allowed or max_risk_not_allowed.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentRejected'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+  /api/v1/admin/agent-clients/{clientId}:
+    parameters:
+      - $ref: '#/components/parameters/AgentClientRef'
+    get:
+      tags: [admin]
+      operationId: getAdminAgentClient
+      summary: One agent (proxy to C5, CC-266).
+      security:
+        - session: []
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: The agent.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClient'
+              examples:
+                agent:
+                  value:
+                      clientId: agent-reports
+                      serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                      ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                      status: active
+                      maxRisk: READ_ONLY
+                      allowedGroups: [mcp-jira-read]
+                      delegationAllowed: false
+                      createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      createdAt: '2026-11-20T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    patch:
+      tags: [admin]
+      operationId: updateAdminAgentClient
+      summary: Change an agent (proxy to C5, fresh MFA, If-Match, CC-266).
+      security:
+        - session: []
+          csrf: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClientPatch'
+            examples:
+              raise_to_update:
+                value:
+                  maxRisk: UPDATE
+      responses:
+        '200':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            ETag:
+              $ref: '#/components/headers/DocumentETag'
+          description: The agent after the change.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentClient'
+              examples:
+                agent:
+                  value:
+                      clientId: agent-reports
+                      serviceAccountSub: 7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47
+                      ownerSub: 3c1d6b7e-5a43-4f49-9d4f-0a7b1a1f2c11
+                      status: active
+                      maxRisk: READ_ONLY
+                      allowedGroups: [mcp-jira-read]
+                      delegationAllowed: false
+                      createdBy: 6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11
+                      createdAt: '2026-11-20T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '422':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: agent_group_not_allowed or max_risk_not_allowed.
+          content:
+            application/json:
+              schema:
+                $ref: 'gateway-admin.v1.yaml#/components/schemas/AgentRejected'
+        "503":
+          $ref: "#/components/responses/UpstreamUnavailable"
+    delete:
+      tags: [admin]
+      operationId: deleteAdminAgentClient
+      summary: Remove an agent (proxy to C5, fresh MFA, CC-266).
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/agent-clients/{clientId}/key-rotated:
+    parameters:
+      - $ref: '#/components/parameters/AgentClientRef'
+    post:
+      tags: [admin]
+      operationId: recordAdminAgentClientKeyRotation
+      summary: Record that the key of the agent was rotated in the IdP (proxy to C5, fresh MFA, CC-266).
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: Recorded.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+  /api/v1/admin/agent-clients/{clientId}/kill-switch:
+    parameters:
+      - $ref: '#/components/parameters/AgentClientRef'
+    put:
+      tags: [admin]
+      operationId: putAdminAgentClientKillSwitch
+      summary: Suspend an agent (proxy to C5, CC-266).
+      description: No fresh MFA.
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'gateway-admin.v1.yaml#/components/schemas/KillSwitchRequest'
+            examples:
+              incident:
+                value:
+                  reason: Unexpected volume of calls
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The agent is suspended.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
+    delete:
+      tags: [admin]
+      operationId: deleteAdminAgentClientKillSwitch
+      summary: Resume a suspended agent (proxy to C5, fresh MFA, CC-266).
+      description: Only an administrator can resume an agent, also one they do not own.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          description: The agent is active again.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/StepUpOrUnauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailable'
 components:
   headers:
     DocumentETag:
@@ -3300,6 +4164,27 @@ components:
       schema:
         $ref: '../schemas/common.schema.json#/$defs/ServerId'
       example: mcp-jira
+    ResourceName:
+      name: name
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/ResourceName'
+      example: ticket
+    PromptName:
+      name: name
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/PromptName'
+      example: summarize_ticket
+    AgentClientRef:
+      name: clientId
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/common.schema.json#/$defs/AgentClientId'
+      example: agent-reports
     Tool:
       name: tool
       in: path
@@ -3567,6 +4452,21 @@ components:
           type: array
           items:
             $ref: 'gateway-admin.v1.yaml#/components/schemas/CatalogTool'
+        resources:
+          description: Tab of static resources (CC-265). Absent when the server has none.
+          type: array
+          items:
+            $ref: 'gateway-admin.v1.yaml#/components/schemas/CatalogResource'
+        resourceTemplates:
+          description: Resource templates, shown with the resources (CC-265).
+          type: array
+          items:
+            $ref: 'gateway-admin.v1.yaml#/components/schemas/CatalogResourceTemplate'
+        prompts:
+          description: Tab of prompts (CC-265). The text of the messages is not in the catalog.
+          type: array
+          items:
+            $ref: 'gateway-admin.v1.yaml#/components/schemas/CatalogPrompt'
       additionalProperties: false
     PortalCatalog:
       type: object

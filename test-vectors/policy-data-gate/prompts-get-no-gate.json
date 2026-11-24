@@ -1,0 +1,16 @@
+{
+  "description": "prompts/get never reaches a server (the gateway renders it from the manifest), so the gate does not apply even when the data is behind.",
+  "input": {
+    "ownHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "held": {
+      "revision": 40,
+      "approvedPoliciesHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "overridesValid": true
+    },
+    "prv": 41,
+    "method": "prompts/get"
+  },
+  "expected": {
+    "decision": "continue"
+  }
+}

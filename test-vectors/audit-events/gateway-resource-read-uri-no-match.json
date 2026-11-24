@@ -1,0 +1,23 @@
+{
+  "description": "A URI that matches no approved resource or template: the client gets the same -32602 as for a forbidden one, so errorCode is not_found_or_denied like for an unknown tool name (CC-264, CC-187).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "resource_read",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "server": "mcp-jira",
+    "decision": "deny",
+    "reason": "uri_no_match",
+    "policyRevision": 41,
+    "outcome": "denied",
+    "errorCode": "not_found_or_denied",
+    "latencyMs": 3
+  }
+}

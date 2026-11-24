@@ -1,0 +1,67 @@
+{
+  "description": "A server with a static resource and no tool: tools may be empty when another list is not (CC-258).",
+  "expected": {
+    "valid": true
+  },
+  "manifest": {
+    "serverId": "mcp-servicedesk",
+    "version": "1.1.0",
+    "contractsVersion": "8.0.0",
+    "system": "servicedesk",
+    "internalUrl": "https://mcp-servicedesk.internal:8443/mcp",
+    "credential": {
+      "required": true,
+      "acceptedTypes": [
+        "service-account"
+      ]
+    },
+    "resourceTypes": [
+      {
+        "type": "ServiceDesk::Queue",
+        "attributes": [
+          "id",
+          "classification"
+        ],
+        "idPattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+        "scopePattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+        "earlyScopeCheck": true,
+        "classification": {
+          "attribute": "classification",
+          "kind": "set",
+          "required": false
+        }
+      },
+      {
+        "type": "ServiceDesk::Ticket",
+        "attributes": [
+          "id"
+        ],
+        "parent": "ServiceDesk::Queue",
+        "parentAttribute": "queue",
+        "idPattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+      }
+    ],
+    "tools": [],
+    "resources": [
+      {
+        "name": "escalation_guide",
+        "definition": {
+          "name": "escalation_guide",
+          "title": "Escalation guide",
+          "description": "How a ticket is escalated between support levels.",
+          "uri": "servicedesk://docs/escalation-guide",
+          "mimeType": "text/markdown"
+        },
+        "definitionHash": "sha256:60e8ead59db1f5a3287edf4c20c055c8ba3bf0c1d6678d9e8fc931ac4d3a8c44"
+      }
+    ],
+    "resourceTemplates": [],
+    "prompts": [],
+    "policies": {
+      "namespace": "ServiceDesk",
+      "schema": "// Reference fragment, not a policy of the platform: the schema of a service desk server in the form the platform requires.\n\nnamespace ServiceDesk {\n  // classification: category of the queue as reported by the adapter, normalized; optional (CC-057). A ticket is\n  // classified through its queue.\n  entity Queue {\n    id: String,\n    classification?: Set<String>,\n    scopes: Set<ResourceScope>,\n  };\n  entity Ticket in [Queue] {\n    id: String,\n    queue: Queue,\n    scopes: Set<ResourceScope>,\n  };\n\n  action \"read\", \"update\", \"delete\", \"admin\" appliesTo {\n    principal: [User],\n    resource: [Queue, Ticket],\n    context: RequestContext,\n  };\n}\n",
+      "files": []
+    },
+    "policiesHash": "sha256:3e2f7a937cac1724010e7d615de6261f39584b932aafa3c6425ad05ffaa56288"
+  }
+}

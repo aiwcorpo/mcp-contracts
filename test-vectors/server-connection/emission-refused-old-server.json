@@ -1,0 +1,15 @@
+{
+  "description": "The call to a server that does not meet the condition is not sent: upstream_unavailable, audit reason contracts_version_unsupported, not a 401 of the old receiver.",
+  "kind": "emission",
+  "input": {
+    "emission": {
+      "receiver": "server",
+      "contractsVersion": "7.1.0"
+    }
+  },
+  "expected": {
+    "emit": false,
+    "errorCode": "upstream_unavailable",
+    "auditReason": "contracts_version_unsupported"
+  }
+}

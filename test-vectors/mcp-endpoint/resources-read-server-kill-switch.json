@@ -1,0 +1,57 @@
+{
+  "description": "A kill switch of the server whose resource is read, the server otherwise approved: -32602 kill_switch before any call.",
+  "kind": "read",
+  "input": {
+    "era": "modern",
+    "header": "servicedesk://ticket/SD-1042",
+    "uri": "servicedesk://ticket/SD-1042",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "ok",
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        }
+      ],
+      "bytes": 11
+    },
+    "maxBytes": 1048576,
+    "killSwitch": "set",
+    "server": {
+      "status": "approved"
+    }
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Resource not found",
+      "data": {
+        "uri": "servicedesk://ticket/SD-1042"
+      }
+    },
+    "auditReason": "kill_switch",
+    "step": 6
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "A granted resource is enough to leave no_access; with no connection the status is not_connected.",
+  "input": {
+    "entries": [
+      {
+        "kind": "resource",
+        "access": "granted",
+        "requiredEntitlements": []
+      }
+    ],
+    "credentialDefaultType": "user-oauth",
+    "connectionStatus": null
+  },
+  "expected": {
+    "status": "not_connected"
+  }
+}

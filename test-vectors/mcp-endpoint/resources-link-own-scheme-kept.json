@@ -1,0 +1,23 @@
+{
+  "description": "A link under the system scheme stays.",
+  "kind": "links",
+  "input": {
+    "system": "servicedesk",
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "servicedesk://ticket/SD-1042",
+        "name": "ticket"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "servicedesk://ticket/SD-1042",
+        "name": "ticket"
+      }
+    ]
+  }
+}

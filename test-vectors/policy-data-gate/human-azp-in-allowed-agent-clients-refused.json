@@ -1,0 +1,16 @@
+{
+  "description": "A token without pty never takes its azp from allowedAgentClients.",
+  "input": {
+    "azp": "agent-reports",
+    "allowedClients": [
+      "claude-code"
+    ],
+    "allowedAgentClients": [
+      "agent-reports"
+    ]
+  },
+  "expected": {
+    "decision": "deny",
+    "reason": "client_not_allowed"
+  }
+}

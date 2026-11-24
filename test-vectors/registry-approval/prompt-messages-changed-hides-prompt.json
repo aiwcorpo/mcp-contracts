@@ -1,0 +1,12 @@
+{
+  "description": "A changed messages text of a prompt is another hash: the prompt is pending, and hidden from prompts/list and prompts/get, until approved again.",
+  "input": {
+    "approved": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "submitted": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "expected": {
+    "removed": false,
+    "status": "pending_approval",
+    "change": "changed"
+  }
+}

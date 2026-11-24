@@ -189,7 +189,56 @@ class PolicyFragmentsTest {
         com.cedarpolicy.model.policy.PolicySet clash = PolicyFragments.policySet(Map.of("o.cedar",
                 "@id(\"platform-call-write-outside-scope\") forbid (principal, action, resource);"));
         assertThrows(IllegalArgumentException.class, () -> PolicyFragments.merge(platform, clash));
-        assertEquals(4, PolicyFragments.merge(platform).policies.size());
+        assertEquals(10, PolicyFragments.merge(platform).policies.size());
+    }
+
+    @Test
+    void gatewayOverridesMayTargetCallReadResourceAndGetPromptEachOnItsOwnType() {
+        PolicyFragments.OverrideTarget gateway = PolicyFragments.OverrideTarget.GATEWAY;
+        assertTrue(PolicyFragments.validateOverride("override-a", "forbid (principal, action == Action::\"read_resource\", resource is McpResource);", gateway, List.of()).ok());
+        assertTrue(PolicyFragments.validateOverride("override-b", "forbid (principal, action == Action::\"get_prompt\", resource is McpPrompt);", gateway, List.of()).ok());
+        assertTrue(!PolicyFragments.validateOverride("override-c", "forbid (principal, action == Action::\"read_resource\", resource is McpPrompt);", gateway, List.of()).ok(),
+                "an action on the wrong type blocks nothing");
+        assertTrue(!PolicyFragments.validateOverride("override-d", "forbid (principal, action == Action::\"get_prompt\", resource);", gateway, List.of()).ok());
+    }
+
+    @Test
+    void serverOverridesAndFragmentsCannotMentionTheEntitiesAndActionsOfTheGateway() {
+        List<String> fragments = List.of(schema(NOTES_DIR));
+        for (PolicyFragments.OverrideTarget target : List.of(PolicyFragments.OverrideTarget.ALL_SERVERS, PolicyFragments.OverrideTarget.SERVER)) {
+            assertTrue(!PolicyFragments.validateOverride("override-r", "forbid (principal, action == Action::\"read_resource\", resource);", target, fragments).ok());
+            assertTrue(!PolicyFragments.validateOverride("override-p", "forbid (principal, action == Action::\"get_prompt\", resource);", target, fragments).ok());
+            assertTrue(!PolicyFragments.validateOverride("override-m", "forbid (principal, action, resource is McpResource);", target, fragments).ok());
+        }
+        Map<String, String> files = policies(NOTES_DIR);
+        for (String mention : List.of("action == Action::\"read_resource\", resource", "action == Action::\"get_prompt\", resource",
+                "action, resource is McpResource", "action, resource is McpPrompt")) {
+            Map<String, String> withMention = new LinkedHashMap<>(files);
+            withMention.put("mention.cedar", "@id(\"notes-mention\")\nforbid (principal, " + mention + ");\n");
+            PolicyFragments.Result result = PolicyFragments.validateFragment("Notes", schema(NOTES_DIR), withMention, types(NOTES_DIR));
+            assertTrue(result.errors().stream().anyMatch(e -> e.contains("belong to the gateway")), mention + ": " + result);
+        }
+    }
+
+    @Test
+    void valueOnlyTypesHaveNoEntityInTheFragment() {
+        ResourceTypes gitlab = types("cedar/examples/systems/gitlab");
+        assertTrue(gitlab.isValueOnly("GitLab::Ref") && gitlab.isValueOnly("GitLab::FilePath") && !gitlab.isValueOnly("GitLab::Project"));
+        assertEquals(List.of("GitLab::Group", "GitLab::Project"), gitlab.entityDeclarations().stream().map(ResourceTypeDeclaration::type).toList());
+        PolicyFragments.Result result = PolicyFragments.validateFragment("GitLab", schema("cedar/examples/systems/gitlab"), Map.of(), gitlab);
+        assertTrue(result.ok(), result::toString);
+        assertEquals(List.of("platform-gitlab-group-service-account-outside-scope", "platform-gitlab-project-service-account-outside-scope",
+                "platform-gitlab-restricted-group", "platform-gitlab-restricted-project", "platform-gitlab-restricted-project-by-group"),
+                PlatformServerPolicies.ids(gitlab).stream().sorted().toList());
+    }
+
+    @Test
+    void aGatewayCallerWithoutPrincipalTypeIsRefusedByThePolicyAndAnActorNeedsDelegated() {
+        EntityBuilderException wrong = assertThrows(EntityBuilderException.class, () -> new EntityBuilder(ResourceTypes.empty(),
+                ScopeMapping.of(ResourceTypes.empty(), Map.of())).forToolCall(
+                        Caller.of("s", "u", List.of(), "c").withActor("a"),
+                        new ToolDescriptor("mcp-x", "x", "t", "READ_ONLY", "read", List.of()), Map.of()));
+        assertEquals("internal_error", wrong.code().wireCode());
     }
 
     @Test

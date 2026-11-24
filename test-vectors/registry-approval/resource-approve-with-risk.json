@@ -1,0 +1,18 @@
+{
+  "description": "risk in the approval of a resource is 422 classification_not_allowed.",
+  "input": {
+    "entry": {
+      "source": "manifest",
+      "hashMatches": true
+    },
+    "body": {
+      "risk": "READ_ONLY",
+      "action": "read"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "manifest_rejected",
+    "reason": "classification_not_allowed"
+  }
+}

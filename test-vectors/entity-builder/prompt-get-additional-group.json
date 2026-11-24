@@ -1,0 +1,107 @@
+{
+  "description": "A prompt whose manifest entry names an additionalGroup carries it on the McpPrompt entity.",
+  "level": "gateway-prompt",
+  "resourceTypes": [
+    "cedar/examples/systems/jira/resource-types.json",
+    "test-vectors/fixtures/notes/resource-types.json"
+  ],
+  "scopeMapping": "test-vectors/fixtures/scope-mapping.json",
+  "input": {
+    "caller": {
+      "sub": "b1a7c0de-0000-4000-8000-00000000000d",
+      "usr": "notesops",
+      "grp": [
+        "mcp-notes-read",
+        "mcp-notes-ops"
+      ],
+      "azp": "claude-code"
+    },
+    "prompt": {
+      "serverId": "mcp-notes",
+      "system": "notes",
+      "name": "summarize_note",
+      "additionalGroup": "mcp-notes-ops"
+    }
+  },
+  "expected": {
+    "principal": {
+      "type": "User",
+      "id": "b1a7c0de-0000-4000-8000-00000000000d"
+    },
+    "action": {
+      "type": "Action",
+      "id": "get_prompt"
+    },
+    "resource": {
+      "type": "McpPrompt",
+      "id": "notes__summarize_note"
+    },
+    "context": {
+      "client": "claude-code",
+      "principalType": "user",
+      "refs": []
+    },
+    "entities": [
+      {
+        "uid": {
+          "type": "McpPrompt",
+          "id": "notes__summarize_note"
+        },
+        "attrs": {
+          "server": "mcp-notes",
+          "name": "summarize_note",
+          "requiredGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-read"
+            }
+          },
+          "additionalGroup": {
+            "__entity": {
+              "type": "UserGroup",
+              "id": "mcp-notes-ops"
+            }
+          }
+        },
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "User",
+          "id": "b1a7c0de-0000-4000-8000-00000000000d"
+        },
+        "attrs": {
+          "username": "notesops",
+          "client": "claude-code",
+          "scopes": []
+        },
+        "parents": [
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-ops"
+          },
+          {
+            "type": "UserGroup",
+            "id": "mcp-notes-read"
+          }
+        ]
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-ops"
+        },
+        "attrs": {},
+        "parents": []
+      },
+      {
+        "uid": {
+          "type": "UserGroup",
+          "id": "mcp-notes-read"
+        },
+        "attrs": {},
+        "parents": []
+      }
+    ]
+  }
+}

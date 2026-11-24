@@ -1,0 +1,38 @@
+{
+  "description": "A resource_read that ended ok is a row of kind resource with the template and the entity of the audit event, result ok; no tool, no confirmation (CC-264, CC-265).",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e81",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "resourceTemplate": "issue",
+      "resource": {
+        "type": "Jira::Issue",
+        "id": "ABC-123"
+      },
+      "decision": "allow",
+      "outcome": "ok",
+      "errorCode": null,
+      "latencyMs": 31
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e81",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "resourceTemplate": "issue",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123"
+    },
+    "result": "ok",
+    "errorCode": null
+  }
+}

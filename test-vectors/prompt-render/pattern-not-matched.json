@@ -1,0 +1,69 @@
+{
+  "description": "A value that does not match the pattern of the rule.",
+  "input": {
+    "prompt": {
+      "name": "summarize_ticket",
+      "definition": {
+        "name": "summarize_ticket",
+        "title": "Summarize a ticket",
+        "description": "Summarize one service desk ticket for a handover.",
+        "arguments": [
+          {
+            "name": "ticketId",
+            "description": "Ticket id",
+            "required": true
+          },
+          {
+            "name": "note",
+            "description": "A remark for the summary",
+            "required": false
+          }
+        ]
+      },
+      "argumentRules": [
+        {
+          "name": "ticketId",
+          "maxLength": 20,
+          "pattern": "^SD-[0-9]{1,9}$",
+          "type": "ServiceDesk::Ticket"
+        },
+        {
+          "name": "note",
+          "maxLength": 50,
+          "pattern": "^.{1,50}$"
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "text": "Summarize the ticket <ticket_id>{{ticketId}}</ticket_id> for a handover."
+        },
+        {
+          "role": "assistant",
+          "text": "I will read the ticket first."
+        },
+        {
+          "role": "user",
+          "text": "Remark: <note>{{note}}</note>"
+        }
+      ]
+    },
+    "typePatterns": {
+      "ServiceDesk::Ticket": "^SD-[0-9]{1,9}$"
+    },
+    "arguments": {
+      "ticketId": "ABC-1"
+    },
+    "era": "modern"
+  },
+  "expected": {
+    "error": {
+      "code": -32602,
+      "message": "Prompt not found",
+      "data": {
+        "name": "summarize_ticket"
+      }
+    },
+    "reason": "argument_invalid"
+  }
+}

@@ -4,11 +4,11 @@ import { existsSync } from 'node:fs';
 import { compactVerify, importJWK } from 'jose';
 import { createAjv, listJson, path, readJson, schemaValidator } from '../scripts/lib/contracts.mjs';
 
-const SERVICE_METHODS = new Set(['initialize', 'server/discover', 'tools/list', 'ping']);
+const SERVICE_METHODS = new Set(['initialize', 'server/discover', 'tools/list', 'resources/list', 'resources/templates/list', 'ping']);
 const ajv = createAjv();
 const validateClaims = schemaValidator(ajv, 'internal-jwt.schema.json');
 
-// Server: initialize, server/discover (CC-069), tools/list, ping, POST /.well-known/mcp-policy-data.
+// Server: initialize, server/discover (CC-069), tools/list, resources/list, resources/templates/list (CC-260), ping, POST /.well-known/mcp-policy-data.
 // Broker: GET /v1/systems only (CC-030).
 function serviceRequestAllowed(request, audience) {
   if (audience === 'mcp-credential-broker') return request.method === 'GET' && request.path === '/v1/systems';
@@ -68,11 +68,18 @@ async function verify(vector) {
   const resolve = request.kind === 'http' && (
     (request.method === 'POST' && ['/v1/credentials/resolve', '/v1/authenticator/verify', '/v1/authenticator/invalidate-codes'].includes(request.path))
     || (request.method === 'GET' && request.path === '/v1/authenticator'));
+  // CC-260: resources/read carries resource == params.uri and no tool; the broker resolve carries exactly one of the two (the schema
+  // already refuses both together); every other request carries neither.
+  const resourceRead = request.kind === 'jsonrpc' && request.method === 'resources/read';
   if (!service) {
-    if ((toolCall || resolve) && claims.tool === undefined) return 'tool_missing';
+    if (claims.resource !== undefined && !resourceRead && !resolve) return 'resource_not_allowed';
+    if (resourceRead && claims.resource === undefined) return 'resource_missing';
+    if (resolve && claims.tool === undefined && claims.resource === undefined) return 'tool_missing';
+    if (toolCall && claims.tool === undefined) return 'tool_missing';
     if (!toolCall && !resolve && claims.tool !== undefined) return 'tool_not_allowed';
   }
   if (toolCall && claims.tool !== request.toolName) return 'tool_mismatch';
+  if (resourceRead && claims.resource !== request.uri) return 'resource_mismatch';
   // CC-226: a sidecar of an adapter that gets a tools/call without the classification refuses it (fail-closed, as a tool without a classification counts as DESTRUCTIVE).
   if (verifier.receiverMode === 'adapter' && toolCall && claims.mcp_risk === undefined) return 'classification_missing';
   return null;
@@ -91,7 +98,7 @@ test('every C2 rejection case is covered', () => {
   for (const reason of ['missing_token', 'bad_signature', 'unknown_kid', 'alg_not_allowed', 'wrong_issuer',
     'wrong_audience', 'expired', 'replayed_jti', 'service_token_not_allowed', 'tool_mismatch',
     'invalid_claims', 'lifetime_too_long', 'not_yet_valid', 'request_id_mismatch', 'tool_missing',
-    'tool_not_allowed', 'test_key_not_allowed', 'wrong_purpose']) {
+    'tool_not_allowed', 'test_key_not_allowed', 'wrong_purpose', 'resource_missing', 'resource_not_allowed', 'resource_mismatch']) {
     assert.ok(reasons.has(reason), `no vector for ${reason}`);
   }
 });

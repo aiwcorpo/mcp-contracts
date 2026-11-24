@@ -1,0 +1,17 @@
+{
+  "description": "maxRisk DESTRUCTIVE: 422 max_risk_not_allowed.",
+  "input": {
+    "operation": "create",
+    "body": {
+      "clientId": "agent-reports",
+      "serviceAccountSub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+      "ownerSub": "owner-1",
+      "maxRisk": "DESTRUCTIVE"
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "agent_rejected",
+    "reason": "max_risk_not_allowed"
+  }
+}

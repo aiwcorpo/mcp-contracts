@@ -1,0 +1,13 @@
+{
+  "description": "Fields of the result of prompts/list in the modern era (legacy: none).",
+  "kind": "result-fields",
+  "input": {
+    "method": "prompts/list",
+    "era": "modern"
+  },
+  "expected": {
+    "resultType": "complete",
+    "ttlMs": 60000,
+    "cacheScope": "private"
+  }
+}

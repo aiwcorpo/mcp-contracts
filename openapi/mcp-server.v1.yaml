@@ -30,7 +30,7 @@ info:
     | Endpoint | `use` | JWT variant |
     | --- | --- | --- |
     | `POST /.well-known/mcp-policy-data` | `policy-data` | service |
-    | the MCP endpoint (`initialize`, `server/discover`, `tools/list`, `ping`, `tools/call`, streams, notifications) | `call` | as in C2 |
+    | the MCP endpoint (`initialize`, `server/discover`, `tools/list`, `resources/list`, `resources/templates/list`, `resources/read`, `ping`, `tools/call`, streams, notifications) | `call` | as in C2 |
 
     A token of one purpose is never accepted for another: a `call` token cannot replace policy data, and a `policy-data` token cannot call a tool. There is no
     purpose `manifest`: a token with `use: manifest` is `invalid_claims`. Test vectors: `test-vectors/jwt/purpose-*`, `test-vectors/jwt/valid-manifest-without-token`.
@@ -39,7 +39,7 @@ info:
     address and then connects with a standard HTTP client. The `Host` header carries the name of the server's address, as for any HTTP client, and a
     self-signed certificate is not matched against any `Host` by the server. A server does not depend on the `Host` header.
 
-    **The gate of policy data (fail-closed).** A server evaluates a `tools/call` only with policy data that is at least as new as `prv` of the token
+    **The gate of policy data (fail-closed).** A server evaluates a `tools/call` and, since 8.0.0, a `resources/read` (CC-259) only with policy data that is at least as new as `prv` of the token
     and only when its own policies are the approved ones (README, "Policy data gate"). Which refusal the server returns:
 
     - the server holds no policy data, or `prv` is greater than the `revision` it holds: `409` with the body `PolicyDataStale`
@@ -236,6 +236,17 @@ paths:
                   overrides:
                     - id: override-no-claude-ai
                       text: 'forbid (principal, action, resource) when { context.client == "claude-ai" };'
+              for_a_server_with_agents:
+                summary: Server whose manifest has contractsVersion 8.0.0 or higher (CC-266)
+                value:
+                  revision: 43
+                  approvedPoliciesHash: sha256:12573bd466924c3e35d2a79ca0c6257f4c7663c9d188510593b08dd3867220f8
+                  scopeMapping:
+                    - group: mcp-jira-proj-ABC
+                      scopes: [Jira::Project/ABC]
+                  allowedClients: [claude-code, claude-ai]
+                  allowedAgentClients: [agent-reports]
+                  overrides: []
       responses:
         '200':
           description: Processed. `accepted` is false when the revision was not newer than the one held.
@@ -273,8 +284,11 @@ paths:
       description: |
         The path is the path of `internalUrl` (`/mcp` here); the endpoint speaks MCP (Streamable HTTP) and is not described by this document, except for the answers that the
         gateway acts on. The token has the purpose `call`. Besides `401` (a token that fails C2, including `wrong_purpose`), a `tools/call` can be refused with
-        `409 policy_data_stale`, see "The gate of policy data" above: the gateway pushes its policy data and repeats the call once. Any other refusal of the gate is an MCP
+        `409 policy_data_stale` (a `resources/read` too, CC-259), see "The gate of policy data" above: the gateway pushes its policy data and repeats the call once. Any other refusal of the gate is an MCP
         answer with the error `upstream_unavailable` (C10) and is not retried.
+        Resources (CC-259): the server serves `resources/list`, `resources/templates/list` and `resources/read` here. `resources/read` carries the claim `resource` equal to
+        `params.uri` and no `tool`; the lists carry neither. The result of `resources/read` is exactly one item of `contents` with `uri` equal to the requested one and the
+        field `text`; a `blob` is refused. The gateway renders prompts itself and never sends `prompts/*` to a server.
         A server may report `step_up_required`, `credential_required` or `confirmation_required` (only the shape with `registerUrl`) in a `tools/call` result, but
         never chooses a link (CC-253): the gateway drops `stepUpUrl`, `connectUrl`, `registerUrl` and `previewUrl` from the server and builds each from its own portal
         address (for `credential_required` with the system of the called tool), as for `connectUrl` of the broker (CC-105). A `confirmation_required` from a server with
@@ -298,6 +312,13 @@ paths:
                     name: get_issue
                     arguments:
                       issueKey: ABC-123
+              resources_read:
+                value:
+                  jsonrpc: '2.0'
+                  id: 2
+                  method: resources/read
+                  params:
+                    uri: servicedesk://ticket/SD-1042
       responses:
         '200':
           description: The MCP answer (a JSON-RPC response or an event stream); not described here.
@@ -317,7 +338,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '409':
-          description: The server holds no policy data, or older than `prv` of the token. Nothing was executed.
+          description: The server holds no policy data, or older than `prv` of the token, at `tools/call` or `resources/read`. Nothing was executed.
           content:
             application/json:
               schema:
@@ -542,6 +563,21 @@ components:
           items:
             type: string
             pattern: '^[A-Za-z0-9._-]{1,128}$'
+        allowedAgentClients:
+          description: |
+            Values of `azp` of the autonomous agents that may call, the active entries of the agent registry of the gateway (CC-266);
+            checked in code before Cedar, like `allowedClients`. May be empty. A server takes the `azp` of a token without `pty` only
+            from `allowedClients`, and the `azp` of a token with `pty` agent or delegated only from `allowedAgentClients`: a human cannot
+            use the `azp` of an agent and an agent cannot use that of a human client. The object is closed, so the gateway sends the field only to a server whose
+            approved manifest has `contractsVersion` 8.0.0 or higher (the same condition as the emission of the claims `resource`, `pty` and `act`,
+            CC-260) and leaves it out altogether, not as an empty array, for any other server; otherwise an older server would refuse
+            the push and every call of a human would end as `409 policy_data_stale`. Creating, deleting, suspending and resuming an agent raises
+            `revision` and pushes the data; a server learns of it at the first push, within 60 s at the latest, and the gateway
+            refuses the calls of a suspended agent at once.
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '../schemas/common.schema.json#/$defs/AgentClientId'
         overrides:
           description: Overrides that target this server or all servers.
           type: array

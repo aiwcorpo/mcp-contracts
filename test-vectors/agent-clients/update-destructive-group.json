@@ -1,0 +1,16 @@
+{
+  "description": "The same group rule on update.",
+  "input": {
+    "operation": "update",
+    "body": {
+      "allowedGroups": [
+        "mcp-gitlab-destructive"
+      ]
+    }
+  },
+  "expected": {
+    "status": 422,
+    "error": "agent_rejected",
+    "reason": "agent_group_not_allowed"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "description": "No active agent: a server of 8.0.0 or higher gets an empty array.",
+  "input": {
+    "contractsVersion": "8.1.0",
+    "agents": []
+  },
+  "expected": {
+    "includesAllowedAgentClients": true,
+    "allowedAgentClients": []
+  }
+}

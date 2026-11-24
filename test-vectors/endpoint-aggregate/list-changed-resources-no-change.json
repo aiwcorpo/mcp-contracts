@@ -1,0 +1,25 @@
+{
+  "description": "Nothing changed.",
+  "kind": "list-changed",
+  "primitives": true,
+  "input": {
+    "query": "",
+    "before": [
+      {
+        "system": "servicedesk",
+        "name": "runbook",
+        "definitionHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ],
+    "after": [
+      {
+        "system": "servicedesk",
+        "name": "runbook",
+        "definitionHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "expected": {
+    "notify": false
+  }
+}

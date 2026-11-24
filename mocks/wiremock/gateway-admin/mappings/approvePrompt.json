@@ -1,0 +1,169 @@
+{
+  "mappings": [
+    {
+      "name": "approvePrompt without bearer token",
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "absent": true
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "approvePrompt 204 status-204",
+      "priority": 5,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          }
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "name": "approvePrompt 401 unauthenticated",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=unauthenticated($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "unauthenticated"
+        }
+      }
+    },
+    {
+      "name": "approvePrompt 403 access_denied",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=access_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "access_denied"
+        }
+      }
+    },
+    {
+      "name": "approvePrompt 404 not_found_or_denied",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=not_found_or_denied($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "not_found_or_denied"
+        }
+      }
+    },
+    {
+      "name": "approvePrompt 409 hash_mismatch",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=hash_mismatch($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "hash_mismatch"
+        }
+      }
+    },
+    {
+      "name": "approvePrompt 422 classification_not_allowed",
+      "priority": 2,
+      "request": {
+        "method": "POST",
+        "urlPathTemplate": "/admin/v1/registry/servers/{serverId}/prompts/{name}/approve",
+        "headers": {
+          "Authorization": {
+            "matches": "^Bearer .+$"
+          },
+          "Prefer": {
+            "matches": "(^|.*[ ,;])example=classification_not_allowed($|[ ,;].*)"
+          }
+        }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "jsonBody": {
+          "error": "manifest_rejected",
+          "reason": "classification_not_allowed",
+          "message": "a prompt has no risk and no action"
+        }
+      }
+    }
+  ]
+}

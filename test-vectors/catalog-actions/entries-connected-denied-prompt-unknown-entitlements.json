@@ -1,0 +1,30 @@
+{
+  "description": "A denied prompt without requiredEntitlements: nothing to ask for, no request_access (CC-113).",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": []
+      }
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect"
+    ]
+  }
+}

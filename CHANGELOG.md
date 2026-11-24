@@ -5,6 +5,20 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
+## Unreleased
+
+Pakiet 1 przed wydaniem **major** 8.0.0 (CC-258 ... CC-266, wpisy zaakceptowane 2026-11-20): zasoby, szablony zasobów, prompty i agent autonomiczny. Wersja projektu bez zmian do commitu wydania.
+
+- **CC-258 (C6):** manifest ma `resources`, `resourceTemplates`, `prompts` (po 100), `contractsVersion` i typy `valueOnly`; hash definicji per rodzaj; reguły semantyczne od `resources-valid` do `prompt-placeholders-declared`; wektory manifestów, hashy i identyfikatorów (`gitlab-file-path`, `gitlab-ref`).
+- **CC-259 (C14, README):** zasoby i prompty między klientem, gatewayem i serwerem: metody, ery, kolejność kontroli `resources/read` i `prompts/get`, jedna odpowiedź -32602 dla każdej odmowy, `-32020` w erze modern; biblioteki `resource-uri`, `prompt-render`, `resources-endpoint`; wektory `resource-uri`, `prompt-render`, `mcp-endpoint/resources-*`, rozszerzone `endpoint-aggregate`, `kill-switch`, `policy-data-gate`.
+- **CC-260 (C2):** claimy `resource`, `pty` i `act` w wewnętrznym JWT, kolejność wdrożenia i preflight (`emissionDecision`, `contractsVersion`); wektory `jwt`, `server-connection`, `idp-token-claims`.
+- **CC-261 (C4):** broker: `principal_not_eligible` dla agenta i podmiotu delegowanego, `agentsAllowed` w systemie, `resolve` z `resource`; wektory `broker-eligibility`.
+- **CC-262 (C7):** Cedar: encje `McpResource` i `McpPrompt`, akcje `read_resource` i `get_prompt`, zarezerwowane nazwy typów (`resource-type-name-reserved`), polityki platformy i builder encji; nowy SHA-256 zamrożonego schematu.
+- **CC-263 (C7):** Cedar: atrybuty kontekstu `principalType` i `actor`, polityka `agent-no-destructive`; w każdym kontekście wektorów builder zawsze ustawia `principalType`.
+- **CC-264 (C8):** audyt: zdarzenia `resource_read` i `prompt_get`, pola `principalType`, `actorSub`, `actorClient`, `agentOwner`, `resourceTemplate`, `prompt`, `contentBytes`, `contentSha256` i nowe powody.
+- **CC-265 (C5, C12):** API administracyjne i portalu: zatwierdzanie zasobów, szablonów zasobów i promptów, wyłącznik awaryjny dla zasobu i promptu, katalog i aktywność z nowymi rodzajami (zasoby i prompty liczone jak narzędzia w akcjach i statusie katalogu, wiersze aktywności z `resource_read` i `prompt_get`).
+- **CC-266 (C5, C12, C14):** rejestr agentów (`agent-clients`), sufit ryzyka, wyłącznik agenta, `allowedAgentClients` w danych polityki serwera od `contractsVersion` 8.0.0.
+
 ## 7.2.0 - 2026-11-18
 
 Wydanie **minor** po audycie bezpieczeństwa z 2026-11-13 (CC-252 ... CC-257): nowe odpowiedzi i limity, zmiany zachowania gatewaya

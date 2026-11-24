@@ -1,0 +1,14 @@
+{
+  "description": "Approval of a resource template with the current hash: 204, no fresh MFA.",
+  "input": {
+    "entry": {
+      "source": "manifest",
+      "hashMatches": true
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 204,
+    "auditReason": "definition_approved"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "description": "Gateway, allowed read of a resource: the template name and the entity of the first variable, never the URI, plus the size and hash of the content (CC-264).",
+  "expected": {
+    "valid": true
+  },
+  "event": {
+    "ts": "2026-10-26T20:00:00.123Z",
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e7f",
+    "component": "gateway",
+    "componentId": "mcp-gateway",
+    "event": "resource_read",
+    "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+    "username": "jkowalski",
+    "client": "claude-code",
+    "server": "mcp-jira",
+    "filter": "systems=jira",
+    "resourceTemplate": "issue",
+    "resource": {
+      "type": "Jira::Issue",
+      "id": "ABC-123"
+    },
+    "decision": "allow",
+    "policyRevision": 41,
+    "outcome": "ok",
+    "errorCode": null,
+    "latencyMs": 31,
+    "contentBytes": 2048,
+    "contentSha256": "sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7"
+  }
+}

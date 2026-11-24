@@ -1,0 +1,30 @@
+{
+  "description": "A definition that differs from the approved one hides the entry: reason definition_changed, result tool_disabled (the existing result value is reused), not_found_or_denied.",
+  "now": "2026-10-26T20:00:30.000Z",
+  "events": [
+    {
+      "ts": "2026-10-26T20:00:00.123Z",
+      "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e86",
+      "component": "gateway",
+      "componentId": "mcp-gateway",
+      "sub": "6f1c2a9e-4d4b-4c51-9a53-1e0f0c7d2b11",
+      "client": "claude-code",
+      "event": "resource_read",
+      "server": "mcp-jira",
+      "resourceTemplate": "issue",
+      "decision": "deny",
+      "reason": "definition_changed",
+      "outcome": "denied",
+      "errorCode": "not_found_or_denied"
+    }
+  ],
+  "expected": {
+    "requestId": "0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e86",
+    "ts": "2026-10-26T20:00:00.123Z",
+    "kind": "resource",
+    "client": "claude-code",
+    "resourceTemplate": "issue",
+    "result": "tool_disabled",
+    "errorCode": "not_found_or_denied"
+  }
+}

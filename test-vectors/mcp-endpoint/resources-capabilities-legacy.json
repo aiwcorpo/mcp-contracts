@@ -1,0 +1,22 @@
+{
+  "description": "Declared in initialize whatever the registry holds; completions never.",
+  "kind": "capabilities",
+  "input": {
+    "era": "legacy"
+  },
+  "expected": {
+    "declaredIn": "initialize",
+    "capabilities": {
+      "tools": {
+        "listChanged": true
+      },
+      "resources": {
+        "subscribe": false,
+        "listChanged": true
+      },
+      "prompts": {
+        "listChanged": true
+      }
+    }
+  }
+}

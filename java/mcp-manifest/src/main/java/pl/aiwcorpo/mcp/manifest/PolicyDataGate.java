@@ -40,6 +40,19 @@ public final class PolicyDataGate {
      * @param prv revision of the token, if it has one
      */
     public static Decision decide(String ownHash, Data held, OptionalLong prv) {
+        return decide(ownHash, held, prv, "tools/call");
+    }
+
+    /**
+     * The gate covers {@code tools/call} and, since 8.0.0 (CC-259), {@code resources/read}. Any other method (prompts are rendered by the
+     * gateway and never reach a server; the lists are not evaluated against policy data) passes.
+     *
+     * @param method the JSON-RPC method of the request
+     */
+    public static Decision decide(String ownHash, Data held, OptionalLong prv, String method) {
+        if (!"tools/call".equals(method) && !"resources/read".equals(method)) {
+            return new Decision(true, "ok");
+        }
         if (held == null || (prv.isPresent() && prv.getAsLong() > held.revision())) {
             return new Decision(false, "policy_data_stale");
         }

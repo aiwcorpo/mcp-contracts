@@ -1,0 +1,9 @@
+{
+  "description": "Fields of the result of resources/read in the legacy era (legacy: none).",
+  "kind": "result-fields",
+  "input": {
+    "method": "resources/read",
+    "era": "legacy"
+  },
+  "expected": {}
+}

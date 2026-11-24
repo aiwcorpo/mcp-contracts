@@ -1,0 +1,36 @@
+{
+  "description": "A pending request for another entitlement does not replace request_access.",
+  "input": {
+    "status": "connected",
+    "supportedTypes": [
+      "user-oauth",
+      "user-secret"
+    ],
+    "connectionType": "user-oauth",
+    "hasConnection": true,
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "granted",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "denied",
+        "requiredEntitlements": [
+          "mcp-jira-read"
+        ]
+      }
+    ],
+    "pendingEntitlements": [
+      "mcp-gitlab-read"
+    ]
+  },
+  "expected": {
+    "actions": [
+      "copy_link",
+      "disconnect",
+      "request_access"
+    ]
+  }
+}

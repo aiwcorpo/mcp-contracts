@@ -1,0 +1,53 @@
+{
+  "description": "A URI that matches nothing: -32602 with the requested uri.",
+  "kind": "read",
+  "input": {
+    "era": "modern",
+    "header": "servicedesk://other/1",
+    "uri": "servicedesk://other/1",
+    "entries": {
+      "resources": [
+        {
+          "name": "runbook",
+          "uri": "servicedesk://runbook/escalation"
+        }
+      ],
+      "templates": [
+        {
+          "name": "ticket",
+          "uriTemplate": "servicedesk://ticket/{ticketId}",
+          "variables": [
+            {
+              "name": "ticketId",
+              "idPattern": "^SD-[0-9]{1,9}$"
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "outcome": "ok",
+      "contents": [
+        {
+          "uri": "servicedesk://ticket/SD-1042",
+          "mimeType": "text/plain",
+          "text": "Ticket text"
+        }
+      ],
+      "bytes": 11
+    },
+    "maxBytes": 1048576
+  },
+  "expected": {
+    "outcome": "denied",
+    "error": {
+      "code": -32602,
+      "message": "Resource not found",
+      "data": {
+        "uri": "servicedesk://other/1"
+      }
+    },
+    "auditReason": "uri_no_match",
+    "step": 3
+  }
+}

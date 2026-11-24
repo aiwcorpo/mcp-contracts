@@ -1,5 +1,6 @@
 // Generates test-vectors/jwt. ES256 signatures are randomized, so re-running rewrites every token;
-// tests never regenerate, they verify the committed tokens.
+// tests never regenerate, they verify the committed tokens. `--only-new` writes only the vectors of the block marked
+// "new" below (CC-260) and leaves every existing file alone.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHmac } from 'node:crypto';
 import { SignJWT, exportJWK, generateKeyPair, importJWK } from 'jose';
@@ -58,6 +59,7 @@ const SERVICE_RID = '0192d1b2-7c3a-7d4e-8f10-2a3b4c5d6e80';
 // xRequestId is the X-Request-Id header sent with the token; receivers require it to equal rid.
 const toolsCall = (name, xRequestId = USER_RID) => ({ kind: 'jsonrpc', method: 'tools/call', toolName: name, xRequestId });
 const rpc = (method, xRequestId = SERVICE_RID) => ({ kind: 'jsonrpc', method, xRequestId });
+const resourcesRead = (uri, xRequestId = USER_RID) => ({ kind: 'jsonrpc', method: 'resources/read', uri, xRequestId });
 const http = (method, path, xRequestId = USER_RID) => ({ kind: 'http', method, path, xRequestId });
 
 function verifier(overrides = {}) {
@@ -83,8 +85,9 @@ function decode(token) {
 }
 
 const vectors = [];
+let fresh = false;
 const add = async (name, description, { token, request, verifierOverrides, valid, reason }) => {
-  vectors.push({ name, description, token, request, verifier: verifier(verifierOverrides), valid, reason });
+  vectors.push({ name, description, token, request, verifier: verifier(verifierOverrides), valid, reason, fresh });
 };
 
 await add('valid', 'User variant for tools/call, signed with active key A.', {
@@ -264,7 +267,7 @@ await add('test-kid-rejected-by-default', 'Otherwise valid token signed with a p
 // test keys and only the dev- rule (CC-137) can refuse a token signed with it.
 const devPair = await generateKeyPair('ES256', { extractable: true });
 const devPublic = { ...(await exportJWK(devPair.publicKey)), kid: 'dev-gw-2026-10-a', alg: 'ES256', use: 'sig' };
-writeFileSync(path('test-vectors', 'keys', 'dev-gateway-jwks.json'), JSON.stringify({ keys: [devPublic] }, null, 2) + '\n');
+if (!process.argv.includes('--only-new')) writeFileSync(path('test-vectors', 'keys', 'dev-gateway-jwks.json'), JSON.stringify({ keys: [devPublic] }, null, 2) + '\n');
 const signWithDevKey = (claims) => new SignJWT(claims).setProtectedHeader({ alg: 'ES256', kid: 'dev-gw-2026-10-a', typ: 'JWT' }).sign(devPair.privateKey);
 await add('dev-kid-rejected-by-default', 'Otherwise valid token whose kid starts with dev- (signed with a key of a dev stack that is not one of the published test keys); a receiver that is not in dev mode (devstack profile and allowTestKeys) rejects it (CC-137).', {
   token: await signWithDevKey(userClaims({ jti: '0192d1b2-7c3a-7f00-9a11-000000000091' })),
@@ -349,8 +352,87 @@ await add('idp-token-passthrough', 'User token from the IdP (C1) sent straight t
   }, 'test-idp-corp'),
   request: toolsCall('get_issue'), valid: false, reason: 'unknown_kid' });
 
+
+// ---------- new: resource, pty and act (CC-260) ----------
+fresh = true;
+const TICKET_URI = 'servicedesk://ticket/SD-1042';
+const AGENT_SUB = '3b0f6c52-8f3e-4f0e-b6a2-5d5a1f0e9c11';
+const userWithoutTool = (overrides = {}) => {
+  const claims = userClaims(overrides);
+  delete claims.tool;
+  return claims;
+};
+const jtiOf = (n) => `0192d1b2-7c3a-7f00-9a11-000000000${n}`;
+const serviceDeskAudience = { aud: 'mcp-servicedesk' };
+const serviceDeskVerifier = { audience: 'mcp-servicedesk' };
+
+await add('valid-resource-read', 'resources/read: the user variant carries resource equal to params.uri and no tool (CC-260).', {
+  token: await sign(userWithoutTool({ ...serviceDeskAudience, resource: TICKET_URI, jti: jtiOf(301) }), 'test-gateway-jwt-a'),
+  request: resourcesRead(TICKET_URI), verifierOverrides: serviceDeskVerifier, valid: true });
+await add('valid-list-resources-user', 'resources/list in a session: the user variant without tool and without resource.', {
+  token: await sign(userWithoutTool({ ...serviceDeskAudience, jti: jtiOf(302) }), 'test-gateway-jwt-a'),
+  request: rpc('resources/list', USER_RID), verifierOverrides: serviceDeskVerifier, valid: true });
+await add('valid-list-resources-service', 'resources/templates/list without a session: the service variant is accepted for the resource lists like for tools/list.', {
+  token: await sign(serviceClaims({ ...serviceDeskAudience, jti: jtiOf(303) }), 'test-gateway-jwt-a'),
+  request: rpc('resources/templates/list'), verifierOverrides: serviceDeskVerifier, valid: true });
+await add('valid-agent-pty', 'An autonomous agent: pty agent, sub of the service account, usr its preferred_username, azp the client agent-<slug>, no mfa and no act (CC-260).', {
+  token: await sign(userClaims({ sub: AGENT_SUB, usr: 'service-account-agent-triage', azp: 'agent-triage', pty: 'agent', grp: ['mcp-jira-read'], jti: jtiOf(304) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: true });
+await add('valid-delegated-pty-act', 'A delegated call: pty delegated with act {sub, azp} of the agent (defined in 8.0.0, not emitted by the gateway before stage T2).', {
+  token: await sign(userClaims({ pty: 'delegated', act: { sub: AGENT_SUB, azp: 'agent-triage' }, jti: jtiOf(305) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: true });
+await add('valid-broker-resolve-resource', 'Broker resolve that serves resources/read: exactly one of tool and resource, here resource.', {
+  token: await sign(userWithoutTool({ aud: 'mcp-credential-broker', resource: TICKET_URI, jti: jtiOf(306) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+
+await add('resource-with-tool', 'tool and resource together: at most one of them (CC-260); rejected as invalid_claims.', {
+  token: await sign(userClaims({ ...serviceDeskAudience, resource: TICKET_URI, jti: jtiOf(311) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: serviceDeskVerifier, valid: false, reason: 'invalid_claims' });
+await add('resource-at-tools-call', 'A token with resource and without tool presented to tools/call: resource belongs to resources/read only.', {
+  token: await sign(userWithoutTool({ ...serviceDeskAudience, resource: TICKET_URI, jti: jtiOf(312) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), verifierOverrides: serviceDeskVerifier, valid: false, reason: 'resource_not_allowed' });
+await add('resource-missing-at-resources-read', 'resources/read with a token that has no resource claim.', {
+  token: await sign(userWithoutTool({ ...serviceDeskAudience, jti: jtiOf(313) }), 'test-gateway-jwt-a'),
+  request: resourcesRead(TICKET_URI), verifierOverrides: serviceDeskVerifier, valid: false, reason: 'resource_missing' });
+await add('resource-differs-from-uri', 'The token was minted for one URI and params.uri is another: a server does not accept a token issued for another URI.', {
+  token: await sign(userWithoutTool({ ...serviceDeskAudience, resource: 'servicedesk://ticket/SD-1043', jti: jtiOf(314) }), 'test-gateway-jwt-a'),
+  request: resourcesRead(TICKET_URI), verifierOverrides: serviceDeskVerifier, valid: false, reason: 'resource_mismatch' });
+await add('resource-uri-too-long', 'resource longer than 2100 characters (ResourceUri).', {
+  token: await sign(userWithoutTool({ ...serviceDeskAudience, resource: `servicedesk://ticket/${'A'.repeat(2090)}`, jti: jtiOf(315) }), 'test-gateway-jwt-a'),
+  request: resourcesRead(`servicedesk://ticket/${'A'.repeat(2090)}`), verifierOverrides: serviceDeskVerifier, valid: false, reason: 'invalid_claims' });
+await add('service-variant-with-resource', 'The service variant is closed: a resource claim matches neither variant.', {
+  token: await sign(serviceClaims({ ...serviceDeskAudience, resource: TICKET_URI, jti: jtiOf(316) }), 'test-gateway-jwt-a'),
+  request: resourcesRead(TICKET_URI, SERVICE_RID), verifierOverrides: serviceDeskVerifier, valid: false, reason: 'invalid_claims' });
+await add('pty-user', 'pty user is not a value: a human is the absence of the claim (CC-260).', {
+  token: await sign(userClaims({ pty: 'user', jti: jtiOf(317) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('pty-agent-with-act', 'pty agent with act: act belongs to delegated only.', {
+  token: await sign(userClaims({ pty: 'agent', act: { sub: AGENT_SUB, azp: 'agent-triage' }, jti: jtiOf(318) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('pty-delegated-without-act', 'pty delegated needs act.', {
+  token: await sign(userClaims({ pty: 'delegated', jti: jtiOf(319) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('act-extra-field', 'act has exactly sub and azp.', {
+  token: await sign(userClaims({ pty: 'delegated', act: { sub: AGENT_SUB, azp: 'agent-triage', mfa: 10 }, jti: jtiOf(320) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('act-without-pty', 'act without pty.', {
+  token: await sign(userClaims({ act: { sub: AGENT_SUB, azp: 'agent-triage' }, jti: jtiOf(321) }), 'test-gateway-jwt-a'),
+  request: toolsCall('get_issue'), valid: false, reason: 'invalid_claims' });
+await add('broker-resolve-agent-valid', 'An autonomous agent token at broker resolve: a valid user-variant token with pty agent and a tool; whether the credential type is allowed for an agent is decided by the broker (broker-eligibility/, CC-261).', {
+  token: await sign(userClaims({ sub: AGENT_SUB, usr: 'service-account-agent-triage', azp: 'agent-triage', pty: 'agent', grp: ['mcp-jira-read'], aud: 'mcp-credential-broker', jti: jtiOf(322) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+await add('broker-resolve-agent-resource', 'An agent token at broker resolve for resources/read: pty agent with resource instead of tool.', {
+  token: await sign(userWithoutTool({ sub: AGENT_SUB, usr: 'service-account-agent-triage', azp: 'agent-triage', pty: 'agent', grp: ['mcp-jira-read'], aud: 'mcp-credential-broker', resource: TICKET_URI, jti: jtiOf(323) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: true });
+await add('broker-resolve-delegated-without-act', 'pty delegated without act at broker resolve: invalid_claims, so the broker answers 401 (CC-261).', {
+  token: await sign(userClaims({ pty: 'delegated', aud: 'mcp-credential-broker', jti: jtiOf(324) }), 'test-gateway-jwt-a'),
+  request: http('POST', '/v1/credentials/resolve'), verifierOverrides: { audience: 'mcp-credential-broker' }, valid: false, reason: 'invalid_claims' });
+fresh = false;
+
 mkdirSync(path('test-vectors', 'jwt'), { recursive: true });
-for (const v of vectors) {
+const onlyNew = process.argv.includes('--only-new');
+const written = vectors.filter((v) => !onlyNew || v.fresh);
+for (const v of written) {
   const { header, claims } = decode(v.token);
   const body = {
     description: v.description,
@@ -363,4 +445,4 @@ for (const v of vectors) {
   };
   writeFileSync(path('test-vectors', 'jwt', `${v.name}.json`), JSON.stringify(body, null, 2) + '\n');
 }
-console.log(`wrote ${vectors.length} JWT vectors`);
+console.log(`wrote ${written.length} JWT vectors`);

@@ -1,0 +1,27 @@
+{
+  "description": "A resource_link with a scheme other than the system of the server is removed, audit reason link_scheme_refused.",
+  "kind": "links",
+  "input": {
+    "system": "servicedesk",
+    "blocks": [
+      {
+        "type": "text",
+        "text": "a"
+      },
+      {
+        "type": "resource_link",
+        "uri": "https://elsewhere.test/x",
+        "name": "x"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "type": "text",
+        "text": "a"
+      }
+    ],
+    "auditReason": "link_scheme_refused"
+  }
+}

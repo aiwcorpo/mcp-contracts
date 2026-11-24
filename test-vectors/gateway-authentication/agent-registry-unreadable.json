@@ -1,0 +1,21 @@
+{
+  "description": "An unreadable registry refuses an agent (fail-closed).",
+  "input": {
+    "token": {
+      "azp": "agent-reports",
+      "sub": "7d0f3c1e-2b64-4a8e-9a0b-5c1f6e2d8a47",
+      "principalType": "agent",
+      "iat": 1000,
+      "exp": 1300
+    },
+    "registry": null,
+    "registryReadable": false
+  },
+  "expected": {
+    "principal": "agent",
+    "decision": "deny",
+    "status": 503,
+    "errorCode": "upstream_unavailable",
+    "reason": "upstream_unavailable"
+  }
+}

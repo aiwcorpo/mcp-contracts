@@ -1,0 +1,33 @@
+{
+  "description": "Prompts are paged too.",
+  "kind": "page",
+  "input": {
+    "tools": [
+      {
+        "name": "servicedesk__prompt_000"
+      },
+      {
+        "name": "servicedesk__prompt_001"
+      },
+      {
+        "name": "servicedesk__prompt_002"
+      },
+      {
+        "name": "servicedesk__prompt_003"
+      },
+      {
+        "name": "servicedesk__prompt_004"
+      }
+    ],
+    "afterName": "servicedesk__prompt_001",
+    "pageSize": 2
+  },
+  "expected": {
+    "tools": [
+      "servicedesk__prompt_002",
+      "servicedesk__prompt_003"
+    ],
+    "nextCursorAfter": "servicedesk__prompt_003"
+  },
+  "list": "prompts"
+}

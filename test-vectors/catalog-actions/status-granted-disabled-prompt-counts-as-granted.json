@@ -1,0 +1,23 @@
+{
+  "description": "A disabled entry keeps its grant: access, not disabled, decides rules 1 and 2.",
+  "input": {
+    "entries": [
+      {
+        "kind": "tool",
+        "access": "denied",
+        "requiredEntitlements": []
+      },
+      {
+        "kind": "prompt",
+        "access": "granted",
+        "requiredEntitlements": [],
+        "disabled": true
+      }
+    ],
+    "credentialDefaultType": "user-oauth",
+    "connectionStatus": "connected"
+  },
+  "expected": {
+    "status": "connected"
+  }
+}

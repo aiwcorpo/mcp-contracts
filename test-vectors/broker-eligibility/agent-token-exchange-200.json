@@ -1,0 +1,23 @@
+{
+  "description": "token-exchange: the broker exchanges the token of the agent, 200.",
+  "input": {
+    "operation": "resolve",
+    "claims": {
+      "pty": "agent",
+      "tool": "get_issue"
+    },
+    "system": {
+      "supportedTypes": [
+        "user-secret",
+        "user-oauth",
+        "token-exchange"
+      ],
+      "agentsAllowed": false
+    },
+    "credentialType": "token-exchange"
+  },
+  "expected": {
+    "status": 200,
+    "resolvedBy": "sub"
+  }
+}

@@ -55,7 +55,7 @@ test('portal-bff.v1.yaml: every response declares X-Request-Id (CC-087)', async 
 });
 
 test('portal-bff.v1.yaml: catalog examples follow the action table of CC-083', async () => {
-  const { catalogActions } = await import('../scripts/lib/catalog-actions.mjs');
+  const { catalogActionsOfEntries } = await import('../scripts/lib/catalog-actions.mjs');
   const spec = await dereferenceOpenApi('portal-bff.v1.yaml');
   const operation = operations(spec).find((o) => o.operation.operationId === 'getPortalCatalog').operation;
   const examples = Object.entries(operation.responses['200'].content['application/json'].examples);
@@ -64,13 +64,18 @@ test('portal-bff.v1.yaml: catalog examples follow the action table of CC-083', a
     for (const server of example.value.servers) {
       seen.add(server.status);
       const where = `${exampleName} ${server.serverId}`;
-      assert.deepEqual([...server.actions].sort(), catalogActions({
+      const entries = [
+        ...server.tools.map((e) => ({ kind: 'tool', ...e })),
+        ...(server.resources ?? []).map((e) => ({ kind: 'resource', ...e })),
+        ...(server.resourceTemplates ?? []).map((e) => ({ kind: 'resource-template', ...e })),
+        ...(server.prompts ?? []).map((e) => ({ kind: 'prompt', ...e })),
+      ];
+      assert.deepEqual([...server.actions].sort(), catalogActionsOfEntries({
         status: server.status,
         supportedTypes: server.credential.supportedTypes,
         connectionType: server.connection?.type,
         hasConnection: server.connection != null,
-        someToolDenied: server.tools.some((t) => t.access === 'denied'),
-        entitlementsKnown: server.tools.some((t) => t.access === 'denied' && (t.requiredEntitlements ?? []).length > 0),
+        entries,
       }), where);
       if (['service-account', 'token-exchange'].includes(server.credential.defaultType)) {
         assert.equal(server.connection, null, `${where}: nothing to connect`);

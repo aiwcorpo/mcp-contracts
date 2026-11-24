@@ -1,0 +1,17 @@
+{
+  "description": "ABC followed by a line feed: a pattern matcher that lets $ accept a trailing newline would take it (README, Resource identifiers); it does not match.",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "servicedesk://ticket/SD-1042\n"
+  },
+  "expected": {
+    "match": false
+  }
+}

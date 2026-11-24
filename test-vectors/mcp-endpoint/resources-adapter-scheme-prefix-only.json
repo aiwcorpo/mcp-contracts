@@ -1,0 +1,40 @@
+{
+  "description": "For an adapter the system part must be followed by + and a valid scheme: jiraX://, jira+ alone and jira+1x are refused.",
+  "kind": "links",
+  "input": {
+    "system": "jira",
+    "adapter": true,
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "jiraX://host/f",
+        "name": "a"
+      },
+      {
+        "type": "resource_link",
+        "uri": "jira+://host/f",
+        "name": "b"
+      },
+      {
+        "type": "resource_link",
+        "uri": "jira+1x://host/f",
+        "name": "c"
+      },
+      {
+        "type": "resource_link",
+        "uri": "jira+ftp://host/f",
+        "name": "d"
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "type": "resource_link",
+        "uri": "jira+ftp://host/f",
+        "name": "d"
+      }
+    ],
+    "auditReason": "link_scheme_refused"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "The whole registry without the administrator group: 403.",
+  "input": {
+    "isAdmin": false,
+    "callerSub": "owner-1",
+    "agents": [
+      {
+        "clientId": "agent-reports",
+        "ownerSub": "owner-1"
+      },
+      {
+        "clientId": "agent-billing",
+        "ownerSub": "owner-2"
+      }
+    ]
+  },
+  "expected": {
+    "status": 403,
+    "error": "access_denied"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "A fragment.",
+  "kind": "template",
+  "input": {
+    "template": "servicedesk://ticket/{ticketId}",
+    "variables": [
+      {
+        "name": "ticketId",
+        "idPattern": "^SD-[0-9]{1,9}$"
+      }
+    ],
+    "uri": "servicedesk://ticket/SD-1042#top"
+  },
+  "expected": {
+    "match": false
+  }
+}

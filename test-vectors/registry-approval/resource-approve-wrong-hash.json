@@ -1,0 +1,14 @@
+{
+  "description": "A hash that is not the pendingHash is 409 and changes nothing.",
+  "input": {
+    "entry": {
+      "source": "manifest",
+      "hashMatches": false
+    },
+    "body": {}
+  },
+  "expected": {
+    "status": 409,
+    "error": "hash_mismatch"
+  }
+}
