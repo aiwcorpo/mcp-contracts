@@ -5,9 +5,9 @@ Strict SemVer applies from 2.0.0. Releases 1.1.0 and 1.2.0 contained incompatibl
 their "Niezgodne z poprzednią wersją" sections and collected relative to 1.1.0 in the 2.0.0 section. Entries for released
 versions are historical and are kept in the language they were written in.
 
-## Unreleased
+## 8.0.0 - 2026-11-24
 
-Pakiet 1 przed wydaniem **major** 8.0.0 (CC-258 ... CC-266, wpisy zaakceptowane 2026-11-20): zasoby, szablony zasobów, prompty i agent autonomiczny. Wersja projektu bez zmian do commitu wydania.
+Wydanie **major** z pakietem 1 (CC-258 ... CC-266, wpisy zaakceptowane 2026-11-20): zasoby, szablony zasobów, prompty i agent autonomiczny.
 
 - **CC-258 (C6):** manifest ma `resources`, `resourceTemplates`, `prompts` (po 100), `contractsVersion` i typy `valueOnly`; hash definicji per rodzaj; reguły semantyczne od `resources-valid` do `prompt-placeholders-declared`; wektory manifestów, hashy i identyfikatorów (`gitlab-file-path`, `gitlab-ref`).
 - **CC-259 (C14, README):** zasoby i prompty między klientem, gatewayem i serwerem: metody, ery, kolejność kontroli `resources/read` i `prompts/get`, jedna odpowiedź -32602 dla każdej odmowy, `-32020` w erze modern; biblioteki `resource-uri`, `prompt-render`, `resources-endpoint`; wektory `resource-uri`, `prompt-render`, `mcp-endpoint/resources-*`, rozszerzone `endpoint-aggregate`, `kill-switch`, `policy-data-gate`.
