@@ -16,7 +16,7 @@
 
     <groupId>pl.aiwcorpo.mcp</groupId>
     <artifactId>mcp-contracts-parent</artifactId>
-    <version>7.2.0</version>
+    <version>8.0.0</version>
     <packaging>pom</packaging>
     <name>Aiwcorpo MCP Platform :: Contracts (parent)</name>
     <description>Parent of the machine-readable contracts of the MCP platform: OpenAPI, JSON Schema, Cedar schema, test vectors and the Java libraries built on them.</description>
